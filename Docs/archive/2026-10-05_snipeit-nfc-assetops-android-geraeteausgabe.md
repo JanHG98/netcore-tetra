@@ -1,30 +1,28 @@
-# Abschlussdokumentation: Android AssetOps / Snipe-IT / NFC-Geräteausgabe
+# Brainstorming: Android AssetOps, Snipe-IT und NFC-Geräteausgabe
 
-## Metadaten
+## Rahmen
 
 - **Thema:** Android-NFC-Assetverwaltung auf Basis von Snipe-IT für Funkgeräte- und Geräteausgabe
-- **Ursprünglicher Chattitel:** im verfügbaren Verlauf nicht eindeutig überliefert
-- **Chatlink:** nicht verfügbar
-- **Zusammenfassung erstellt:** 2026-10-05
+- **Notizstand:** 2026-10-05
 - **Repository:** `JanHG98/netcore-tetra`
 - **Zielbranch:** `Archiving`
 - **Vor dem Schreiben geprüfter Branch-Head:** `83cdd56e1450be16437f1b94bb4f2db035149460`
 - **Vor dem Schreiben geprüfter Tree:** `68b221e4ea958e34a8ae26f02da880952ff60a15`
-- **Repository-Abgleich:** Code-Suchen auf dem Branch nach `Snipe-IT`, `NFCBrigde` und `AssetOps` ergaben jeweils **0 Treffer**. Der in diesem Chat entwickelte Android-Code ist damit am geprüften Stand **nicht Bestandteil dieses Repositories**.
-- **Geheimnisse:** Im Chat wurde zeitweise ein echter Snipe-IT-API-Token gezeigt. Dieser Wert wird hier bewusst **nicht übernommen**. Der Token sollte als kompromittiert betrachtet und ersetzt werden.
+- **Repository-Abgleich:** Code-Suchen auf dem Branch nach `Snipe-IT`, `NFCBrigde` und `AssetOps` ergaben jeweils **0 Treffer**. Der lokal entwickelte Android-Code ist damit am geprüften Stand **nicht Bestandteil dieses Repositories**.
+- **Tokenwechsel offen:** Ein echter Snipe-IT-API-Token wurde offengelegt und nicht übernommen. Er ist als kompromittiert zu behandeln; ein Austausch ist noch nicht bestätigt.
 
 > Statusbegriffe in diesem Dokument:
 > - **Idee** = diskutiert, noch nicht zugesagt.
 > - **beschlossen/geplant** = gewünschter Zielzustand.
-> - **implementiert** = im Chat wurde Code dafür erzeugt bzw. in der laufenden Android-Version nach Nutzerangabe eingebaut.
-> - **getestet** = im Chat wurde ein konkretes Ergebnis, Screenshot oder API-Resultat gezeigt.
-> - **im Betrieb bestätigt** = vom Nutzer ausdrücklich als funktionierend auf dem realen Gerät / gegen die reale Snipe-IT-Instanz bestätigt.
+> - **implementiert** = Code im lokalen Entwicklungsstand vorhanden beziehungsweise laut Betriebsrückmeldung in die Android-App eingebaut.
+> - **getestet** = konkretes Ergebnis, Screenshot oder API-Resultat liegt vor.
+> - **im Betrieb bestätigt** = Funktion auf dem realen Android-Gerät gegen die reale Snipe-IT-Instanz ausdrücklich bestätigt.
 
 ---
 
 ## 1. Ziel und Ausgangslage
 
-Ziel des Chats war zunächst, vorhandenes **Snipe-IT** als Geräteverwaltung zu behalten und eine möglichst reibungslose NFC-Bedienung für Funkgeräte und Benutzerkarten zu erhalten. Der ursprüngliche Wunsch war ausdrücklich **kein Browser-Workflow** und möglichst **keine zusätzliche eigene App**. Es sollte sich wie ein OOBE-/native-App-Workflow anfühlen.
+Ausgangsziel war, vorhandenes **Snipe-IT** als Geräteverwaltung zu behalten und eine möglichst reibungslose NFC-Bedienung für Funkgeräte und Benutzerkarten zu erhalten. Der ursprüngliche Wunsch war ausdrücklich **kein Browser-Workflow** und möglichst **keine zusätzliche eigene App**. Es sollte sich wie ein OOBE-/native-App-Workflow anfühlen.
 
 Ausgangspunkt:
 
@@ -38,7 +36,7 @@ Ausgangspunkt:
 - Primärer Geräte-Identifier sollte die NFC-Tag-UID ohne Leerzeichen sein und direkt als **Snipe-IT Asset Tag** genutzt werden.
 - Benutzerkarten sollten zunächst über die **Mitarbeiternummer / employee_num** eindeutig einem Snipe-IT-Benutzer zugeordnet werden.
 
-Der Chat entwickelte sich damit von einem Versuch, die bestehende Snipe-IT-App tief zu öffnen bzw. zu patchen, zu einer eigenständigen kleinen Android-Oberfläche, die direkt die **Snipe-IT REST API** nutzt.
+Die Deep-Link-/Patchversuche mit der vorhandenen App wurden durch eine eigene kleine Android-Oberfläche abgelöst. Diese nutzt direkt die **Snipe-IT REST API**.
 
 ---
 
@@ -305,7 +303,7 @@ Content-Type: application/json
 
 ### 4.3 Relevante Endpunkte
 
-Im Chat implementiert bzw. verwendet:
+Im lokalen Entwicklungsstand implementiert bzw. verwendet:
 
 - Assets suchen:
   `GET /api/v1/hardware?search={tag}`
@@ -322,7 +320,7 @@ Im Chat implementiert bzw. verwendet:
 - Asset anlegen:
   `POST /api/v1/hardware`
 - Assetänderung:
-  im Chat per `POST` plus
+  historisch per `POST` plus
   `X-HTTP-Method-Override: PATCH`
   an `/api/v1/hardware/{id}`
 - Rücknahme:
@@ -349,7 +347,7 @@ Fehlerbilder:
    - HTTP 401
    - mit demselben Token hart in der MainActivity funktionierte die API sofort.
 
-**Endgültige Entscheidung im Chat:** Für die laufende Entwicklungsfassung vorerst wieder hardcoded, damit die Funktionsentwicklung weitergehen kann.
+**Festlegung für die Entwicklungsfassung:** Für die laufende Entwicklungsfassung vorerst wieder hardcoded, damit die Funktionsentwicklung weitergehen kann.
 
 **Sicherheitsstatus:** nicht produktionsreif. Ein API-Token in der APK ist auslesbar. Für einen späteren produktiven Stand ist ein Proxy/Backend oder ein besseres Secret-/Credential-Modell erforderlich.
 
@@ -450,9 +448,9 @@ Wenn bei normalem Scan kein Asset zur UID gefunden wird:
 1. App versucht Benutzerauflösung.
 2. Wird ein Benutzer gefunden, zeigt die App die Geräte an, die aktuell an diesen Benutzer ausgegeben sind.
 
-Filterung im Chatstand erfolgte pragmatisch über `assignedToName == user.name`.
+Die Filterung erfolgte pragmatisch über `assignedToName == user.name`.
 
-Der Nutzer akzeptierte dies, weil die Benutzer über eindeutige Usernamen geführt werden.
+Die Filterung wurde wegen der eindeutigen Usernamen akzeptiert.
 
 ### 6.3 MIFARE Plus / Random UID
 
@@ -482,7 +480,7 @@ Diskutierte Optionen:
 - eigenes Identity-Mapping-Backend vor AssetOps schalten.
 - einmalige Koppelung / manuelle Bestätigung als Fallback.
 
-**Endgültiger Stand:** Ein eigenes kleines Mapping-Backend wurde als sinnvollste nächste Architekturidee erkannt; es wurde in diesem Chat **nicht implementiert**.
+**Endgültiger Stand:** Ein eigenes kleines Mapping-Backend wurde als sinnvollste nächste Architekturidee erkannt; es ist **noch nicht implementiert**.
 
 Mögliche Minimalfunktionen:
 
@@ -536,7 +534,7 @@ Gewünscht waren kurze, systemartige Meldungen unten („Doppelt tippen zum Been
 
 Ein Snackbar-Umbau verursachte Abstürze bei Aktionen wie „Assets laden“.
 
-**Endgültige Lösung im Chat:** wieder einfache Android-`Toast`-Meldungen verwenden.
+**Gewählte Lösung:** wieder einfache Android-`Toast`-Meldungen verwenden.
 
 Wichtige Toasts:
 
@@ -595,13 +593,13 @@ Diskutiert und zeitweise implementiert:
 - „Lade Assets…“ während Erstladung
 - Pull-to-refresh über `SwipeRefreshLayout`
 
-Später wurde die Assetliste auf `RecyclerView` umgebaut. Der im Chat zuletzt als funktionierend bezeichnete Ausgangsstand vor dem RecyclerView-Umbau sollte als Referenz dienen.
+Später wurde die Assetliste auf `RecyclerView` umgebaut. Als Referenz dient der zuvor als funktionierend bestätigte Stand. Die Regression nach dem Umbau ist noch abzusichern.
 
 **Hinweis:** Der exakte finale lokale Quellstand ist nicht im Repository vorhanden und deshalb in diesem Archiv nicht verifizierbar.
 
 ### 7.8 RecyclerView
 
-**Implementiert im Chat-Canvas, Repository nicht verifiziert.**
+**Als Editor-Arbeitsstand implementiert; Repository nicht verifiziert.**
 
 Ziel:
 
@@ -615,7 +613,7 @@ Abhängigkeit, falls im Projekt noch nicht vorhanden:
 implementation("androidx.recyclerview:recyclerview:1.3.2")
 ```
 
-Keine belastbare Rückmeldung im zugänglichen Verlauf bestätigt, dass genau dieser letzte RecyclerView-Stand kompiliert und auf dem Gerät lief.
+Keine belastbare Rückmeldung in den vorliegenden Unterlagen bestätigt, dass genau dieser letzte RecyclerView-Stand kompiliert und auf dem Gerät lief.
 
 ---
 
@@ -635,7 +633,7 @@ Wenn kein Bild existiert:
 
 Im Snipe-IT-Webinterface werden in der Assetliste Bilder korrekt dargestellt.
 
-Beispiele im Chat zeigen u. a. Funkgeräte, Akkus und RSMs.
+Die Beispiele zeigen u. a. Funkgeräte, Akkus und RSMs.
 
 Der Android-Dialog zeigte dagegen einen großen leeren Bildbereich.
 
@@ -646,7 +644,7 @@ Snipe-IT kann Bilder auf mehreren Ebenen liefern:
 1. Asset-eigenes Bild
 2. Modellbild
 
-Der Chatcode nutzte zunächst nur `obj.image`.
+Der Entwicklungscode nutzte zunächst nur `obj.image`.
 
 Danach wurde als Fallback vorgeschlagen:
 
@@ -665,14 +663,14 @@ Auch nach diesen Vorschlägen wurde weiter kein Bild angezeigt.
 Wichtig:
 
 - JPG und WebP sind grundsätzlich von Android dekodierbar.
-- Der konkrete API-Response bzw. tatsächliche Bildpfad im Detail-Endpoint wurde im Chat noch nicht abschließend ausgelesen und gegen den erfolgreichen WebUI-Bildrequest verglichen.
+- Der konkrete API-Response bzw. tatsächliche Bildpfad im Detail-Endpoint wurde noch nicht abschließend ausgelesen und gegen den erfolgreichen WebUI-Bildrequest verglichen.
 - Dieser Punkt bleibt offen und sollte beim Fortsetzen mit einem echten JSON-Dump eines bildbehafteten Assets und HTTP-Status/Content-Type des Bildrequests diagnostiziert werden.
 
 ---
 
 ## 9. Neues Gerät per NFC anlegen
 
-**Implementiert im Chat.**
+**Im lokalen Entwicklungsstand implementiert; keine Repository-Übernahme belegt.**
 
 Gewünschter Flow:
 
@@ -708,7 +706,7 @@ Wichtige Korrektur:
 - Der Dialog darf nicht bereits beim bloßen NFC-Ereignis geschlossen werden.
 - Er soll erst geschlossen werden, wenn die Benutzerauflösung tatsächlich erfolgreich war.
 
-Im Chat wurde der Dialog schließlich in `searchUserByTag` nach `foundUser != null` geschlossen.
+Der Dialog wurde schließlich in `searchUserByTag` nach `foundUser != null` geschlossen.
 
 ---
 
@@ -826,7 +824,7 @@ Ein aggressiver Fullscreen-Versuch zum Verstecken der unteren Android-Navigation
 - direkte API-Konfiguration mit hardcodierter IP und Token funktionierte.
 - BuildConfig-Variante produzierte erst fehlende URL, danach 401.
 
-### Im Chat getestet, aber nicht vollständig regressionsgesichert
+### Historisch getestet, aber nicht vollständig regressionsgesichert
 
 - Statuswechsel
 - Ausgabe an Benutzer
@@ -1020,7 +1018,7 @@ Dieser Backend-Layer könnte gleichzeitig das derzeit hardcodierte Snipe-IT-API-
 
 ### Priorität A — Funktionssicherheit
 
-- **[beschlossen/geplant]** Aktuellen funktionierenden Android-Source-Stand außerhalb des Chat-Canvas sichern und versionieren.
+- **[beschlossen/geplant]** Aktuellen funktionierenden Android-Source-Stand als vollständiges Projekt sichern und versionieren.
 - **[offen]** Alle Status-/Ausgabe-/Rücknahme-Flows mit mehreren realen Assets regressionsprüfen.
 - **[offen]** Audit-/Historienlog für:
   - Asset
@@ -1035,7 +1033,7 @@ Dieser Backend-Layer könnte gleichzeitig das derzeit hardcodierte Snipe-IT-API-
 
 ### Priorität B — Security
 
-- **[beschlossen/geplant]** im Chat offengelegten API-Token rotieren.
+- **[beschlossen/geplant]** offengelegten API-Token rotieren.
 - **[offen]** Snipe-IT-Token aus der APK entfernen.
 - **[Idee / empfohlen]** kleines Backend/Proxy vor Snipe-IT.
 - **[offen]** TLS statt reinem HTTP im LAN prüfen.
@@ -1089,16 +1087,15 @@ lieferten **keine Treffer**.
 
 Daraus folgt:
 
-- Der hier beschriebene Android-Code ist **Chat-/lokaler Entwicklungsstand**, nicht verifizierter Repository-Stand.
+- Der hier beschriebene Android-Code ist **lokaler Entwicklungsstand**, nicht verifizierter Repository-Stand.
 - Dieses Archiv dokumentiert den Entwicklungsverlauf und die Entscheidungen.
 - Es bestätigt **nicht**, dass die Android-App bereits in `netcore-tetra` eingecheckt, gebaut oder aus diesem Repository deployed wird.
-- Änderungen dieses Archivauftrags erfolgen ausschließlich unter `Docs/archive/`.
 
 ---
 
-## 20. Chatbilder / Anhänge
+## 20. Referenzbilder / Anhänge
 
-Im aktuellen Chat-Runtime-Kontext waren 17 relevante Bilddateien zugänglich, darunter:
+17 Bilddateien waren als Referenzen verfügbar, darunter:
 
 1. erster NFC-Scan ohne NDEF-Nutzdaten
 2. frühe Assetliste
@@ -1118,23 +1115,21 @@ Im aktuellen Chat-Runtime-Kontext waren 17 relevante Bilddateien zugänglich, da
 16. Android-Studio-Ressourcenbaum
 17. rohe Snipe-IT-API-Antwort
 
-**Archivierungsgrenze:** Der in dieser Sitzung verfügbare GitHub-Connector kann UTF-8-Dateien schreiben und Git-Blobs aus bereitgestellten Text-/Base64-Inhalten erzeugen, besitzt aber keinen direkten Binär-Uploadpfad für die lokal gemounteten Chatbilder. Die Originalbilddateien konnten daher im automatisierten Git-Schreibpfad dieses Auftrags nicht zuverlässig nach `Docs/archive/` übertragen werden. Die Bilder wurden im Chat ausgewertet; ihr Fehlen im Repository ist ausdrücklich eine verbleibende Archivlücke.
+**Bildnachweis:** Die Originalbilder wurden ausgewertet, liegen aber nicht als verlässlich übertragene Repository-Binärdateien vor. Die fehlenden Originalkopien bleiben eine Dokumentationslücke.
 
 ---
 
-## 21. Auswertungslücken
+## 21. Offene Nachweise
 
-- Kein eindeutiger ursprünglicher Chat-Titel verfügbar.
-- Kein Chatlink verfügbar.
-- Der aktuelle lokale Android-Projektordner ist nicht als Datei/ZIP im Chat angehängt; nur Codeausschnitte und Canvas-Zwischenstände waren zugänglich.
+- Der vollständige lokale Android-Projektordner liegt nicht als Datei/ZIP vor. Verfügbar sind Codeausschnitte und Editor-Zwischenstände; der finale Source-Stand ist noch zu sichern.
 - Die genaue letzte **kompilierende** Version von `MainActivity.kt` ist daher nicht mit Hash/Datei belegbar.
 - Mehrere Canvas-Umbauten waren Zwischenstände und wurden später wieder korrigiert; sie sind nicht automatisch als „funktionierend“ zu behandeln.
-- Die Original-Chatbilder sind im Runtime-Dateisystem vorhanden, konnten mit dem verfügbaren GitHub-Schreibconnector aber nicht binär hochgeladen werden.
-- Die zahlreichen im Projektkontext verfügbaren ETSI-PDFs waren für diesen konkreten Snipe-IT/NFC-Android-Chat nicht die fachliche Quelle und wurden deshalb nicht künstlich in diese App-Dokumentation hineingezogen.
+- Die Originalbilder sind im Runtime-Dateisystem vorhanden, konnten mit dem verfügbaren GitHub-Schreibconnector aber nicht binär hochgeladen werden.
+- Die ETSI-Referenzsammlung ist keine fachliche Grundlage der Snipe-IT/NFC-App.
 
 ---
 
-## 22. Empfohlener nächster Einstieg in einem neuen Chat
+## 22. Nächste Schritte
 
 1. **Letzten tatsächlich laufenden Android-Source-Stand hochladen oder in ein eigenes Repo/Verzeichnis einchecken.**
 2. API-Token rotieren.
@@ -1150,7 +1145,7 @@ Im aktuellen Chat-Runtime-Kontext waren 17 relevante Bilddateien zugänglich, da
 
 ## 23. Zusammenfassung
 
-Der Chat hat einen klaren Architekturwechsel vollzogen:
+Die Entwicklung führte zu einem klaren Architekturwechsel:
 
 **von:** „NFC-Bridge soll die bestehende Snipe-IT-App direkt auf das Asset öffnen“
 

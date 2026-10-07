@@ -1,30 +1,30 @@
-# NetCore-Tetra – Basisstations-Hardware: GPIO-Pass-Through, Jumpersteuerung und SXceiver
+# Brainstorming: GPIO-Pass-Through, Jumpersteuerung und SXceiver
 
-## 1. Metadaten
+**Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
+
+## 1. Arbeitsstand
 
 | Feld | Wert |
 | --- | --- |
 | Thema | Industriell anmutende Hardware-Modi für die TETRA-Basisstation über Jumper/DIP-Schalter; Zugriff auf freie Raspberry-Pi-GPIO trotz aufgestecktem SXceiver/SDR |
-| Ursprünglicher Chattitel | Im verfügbaren Chatkontext nicht überliefert |
-| Chatlink | Im verfügbaren Chatkontext nicht verfügbar |
-| Sichtbarer Gesprächsbeginn | 2026-09-12, Europe/Berlin |
+| Sichtbarer Planungsbeginn | 2026-09-12, Europe/Berlin |
 | Zusammenfassung erstellt | 2026-10-05 |
 | Zielrepository | JanHG98/netcore-tetra |
 | Archivbranch vor diesem Archivcommit | Archiving@5e2386f849584ef48540743eb45eb875b346036c |
 | Zusätzlich geprüfter aktueller Produktstand | main@9116c15d645458f99e236712b67a1ad970432791 |
 | Branchvergleich beim Schreiben | Archiving → main: diverged; Archiving 68 Commits hinter und 5 Commits vor main |
 | Ablage | ausschließlich Docs/archive/ |
-| Nachweischarakter | Gesprächsabschluss + statische Repository-Prüfung; keine elektrische oder On-Air-Abnahme |
+| Prüfart | Hardwarekonzept und statische Repository-Prüfung; elektrische und On-Air-Abnahme offen |
 
-**Wichtige Nachweisgrenze:** Aussagen des Chats sind nicht automatisch implementiert. Diese Dokumentation unterscheidet Idee, beschlossen/geplant, implementiert, getestet und im Betrieb bestätigt. Der Archivbranch ist beim Schreiben gegenüber main divergiert; aktuelle Implementierungsbefunde wurden deshalb separat gegen main geprüft.
+Die Umsetzung wird nach Idee, Planung, vorhandenem Code und Testbelegen unterschieden. `Archiving` und `main` waren am Prüfdatum divergiert; Softwarebefunde beziehen sich deshalb gesondert auf den benannten `main`-Commit.
 
 ## 2. Ziel, Ausgangslage und behandelte Themen
 
 Ausgangspunkt war die Idee, die NetCore-Tetra-Basisstation hardwareseitig stärker wie eine Industrie-/Telekommunikationssteuerung aufzubauen: Betriebsarten und Wartungszustände sollen nicht ausschließlich in einer Weboberfläche oder Konfigurationsdatei existieren, sondern optional über physische Jumper beziehungsweise DIP-Schalter sichtbar und eindeutig vorgegeben werden können.
 
-Der erste Entwurf ging davon aus, dass der Raspberry-Pi-40-Pin-Header wegen des aufgesteckten SXceiver/SDR praktisch nicht erreichbar sei. Daraus entstand zunächst die Idee eines separaten Supervisor-Controllers per USB. Der Nutzer korrigierte diese Annahme: Der SDR belegt voraussichtlich nicht jeden GPIO. Anschließend wurde ein stackbares Raspberry-Pi-Breakout-Board mit Pass-Through-Header und Schraubklemmen als wesentlich einfacherer Ansatz identifiziert.
+Der erste Entwurf ging davon aus, dass der Raspberry-Pi-40-Pin-Header wegen des aufgesteckten SXceiver/SDR praktisch nicht erreichbar sei. Daraus entstand zunächst die Idee eines separaten Supervisor-Controllers per USB. Diese Annahme wurde präzisiert: Der SDR belegt voraussichtlich nicht jeden GPIO. Anschließend wurde ein stackbares Raspberry-Pi-Breakout-Board mit Pass-Through-Header und Schraubklemmen als wesentlich einfacherer Ansatz identifiziert.
 
-Der finale Gesprächsstand ist damit kein eigener Supervisor als Startpunkt, sondern:
+Der finale Planungsstand ist damit kein eigener Supervisor als Startpunkt, sondern:
 
 ~~~text
 SXceiver / SDR
@@ -45,7 +45,7 @@ Das Breakout dient nur zum Herausführen der Signale. Es macht einen vom SXceive
 
 ## 3. Statusbegriffe dieser Dokumentation
 
-- **Idee:** im Gespräch vorgeschlagen, aber nicht verbindlich festgelegt.
+- **Idee:** in der Diskussion vorgeschlagen, aber nicht verbindlich festgelegt.
 - **Beschlossen/geplant:** als bevorzugter weiterer Weg festgehalten, aber noch nicht umgesetzt.
 - **Implementiert:** im geprüften Repository tatsächlich als Code/Dokument/Hardwaredefinition vorhanden.
 - **Getestet:** mit einem konkret beschriebenen Test nachgewiesen.
@@ -55,7 +55,7 @@ Das Breakout dient nur zum Herausführen der Signale. Es macht einen vom SXceive
 
 ### 4.1 Beschlossen/geplant: stackbares GPIO-Breakout als bevorzugter erster Hardwareweg
 
-Der bevorzugte Aufbau ist ein Raspberry-Pi-Breakout-Board, das auf den 40-Pin-Header gesteckt wird und den Header nach oben für den SXceiver weiterführt. Die seitlichen Klemmleisten stellen die Pins zusätzlich zur Verfügung. Der Nutzer lieferte dazu ein Freenove-Produktbild sowie ein Herstellerbild, das den vorgesehenen Einsatz direkt auf einem Raspberry Pi zeigt.
+Der bevorzugte Aufbau ist ein Raspberry-Pi-Breakout-Board, das auf den 40-Pin-Header gesteckt wird und den Header nach oben für den SXceiver weiterführt. Die seitlichen Klemmleisten stellen die Pins zusätzlich zur Verfügung. Ein Freenove-Produktbild und eine Herstellerdarstellung zeigen den vorgesehenen Einsatz direkt auf einem Raspberry Pi.
 
 Damit gilt die frühere Annahme „kein Zugriff auf Pi-GPIO wegen SDR“ als **überholt**. Korrekt ist: GPIO-Zugriff ist mechanisch möglich; elektrisch dürfen ausschließlich Pins verwendet werden, die der konkrete SXceiver in der konkreten Hardwareversion nicht nutzt beziehungsweise deren Mehrfachnutzung ausdrücklich zulässig ist.
 
@@ -75,7 +75,7 @@ Eine reine Durchschleifplatine ist kein Beleg dafür, dass eine Leitung frei ist
 
 ### 4.3 Idee: physische Betriebsmodi über Jumper/DIP
 
-Im Chat wurden unter anderem folgende Kandidaten vorgeschlagen. Es wurde **keine endgültige Bitbelegung** beschlossen:
+In der Planung wurden unter anderem folgende Kandidaten vorgeschlagen. Es wurde **keine endgültige Bitbelegung** beschlossen:
 
 - LOCAL / STANDALONE
 - HYBRID
@@ -101,7 +101,7 @@ GPIO ----+---- interner/externer Pull-up nach 3,3 V
         GND
 ~~~
 
-Damit wäre „Jumper offen = HIGH“ und „Jumper gesteckt = LOW“. Dies wurde im Chat **nicht elektrisch aufgebaut oder getestet**. Für einen fertigen Entwurf müssen Bootzustände, Störfestigkeit, ESD, Kabellänge, Entprellung/Filterung und das Verhalten bei Floating/Defekt bewusst festgelegt werden.
+Damit wäre „Jumper offen = HIGH“ und „Jumper gesteckt = LOW“. Dies wurde in der Planung **nicht elektrisch aufgebaut oder getestet**. Für einen fertigen Entwurf müssen Bootzustände, Störfestigkeit, ESD, Kabellänge, Entprellung/Filterung und das Verhalten bei Floating/Defekt bewusst festgelegt werden.
 
 ### 4.5 Idee: RF INHIBIT besonders behandeln
 
@@ -110,7 +110,7 @@ RF INHIBIT wurde als besonders wertvoller Wartungsmodus herausgestellt. Zwei unt
 1. **Software-Inhibit:** Jumperzustand wird von NetCore gelesen und der TX-Pfad wird softwareseitig nicht gestartet.
 2. **Echter Hardware-Inhibit:** eine physische TX-/PA-Enable-Leitung wird unabhängig von Linux gesperrt.
 
-Nur Variante 2 ist ein tatsächlicher Hardware-Lockout. Ob der aktuelle SXceiver beziehungsweise eine nachgeschaltete PA eine geeignete Enable-Leitung bereitstellt, wurde in diesem Chat nicht nachgewiesen.
+Nur Variante 2 ist ein tatsächlicher Hardware-Lockout. Ob der aktuelle SXceiver beziehungsweise eine nachgeschaltete PA eine geeignete Enable-Leitung bereitstellt, wurde für diesen Arbeitsstand nicht nachgewiesen.
 
 ### 4.6 Beschlossen/geplant: Zusatzcontroller zunächst nicht erzwingen
 
@@ -170,24 +170,24 @@ Die statische Prüfung von main@9116c15d645458f99e236712b67a1ad970432791 ergab:
 - Diese Angaben sind BCM-GPIO-Nummern; sie ersetzen noch keine vollständige physische 40-Pin-Matrix.
 - Das Device-Tree-Overlay selbst dokumentiert nicht vollständig, welche physischen Headerpins in jeder Pi-/HAT-Kombination am Ende exklusiv belegt sind.
 
-Die Konsequenz aus dem Chat bleibt daher korrekt: **erst Pinout verifizieren, dann Klemmen nutzen.**
+Die Konsequenz aus den Projektaufzeichnungen bleibt daher korrekt: **erst Pinout verifizieren, dann Klemmen nutzen.**
 
 ### 5.4 Bezug zum vorhandenen NetCore-Hardware-Stack
 
-main enthält bereits system-backend/hardware-gateway mit MQTT-/HTTP-bezogener Hardwaretelemetrie und WebUI. Das ist ein sinnvoller vorhandener Integrationspunkt für einen späteren Jumper-/Sensorstatus. Es wurde im Chat jedoch keine konkrete API-Anbindung implementiert.
+main enthält bereits system-backend/hardware-gateway mit MQTT-/HTTP-bezogener Hardwaretelemetrie und WebUI. Das ist ein sinnvoller vorhandener Integrationspunkt für einen späteren Jumper-/Sensorstatus. Es wurde in der Planung jedoch keine konkrete API-Anbindung implementiert.
 
 Außerdem existiert ein Software-Health-Watchdog im TBS-Code. Dieser ist von einem zukünftigen **Hardware-Watchdog** ausdrücklich zu unterscheiden.
 
 ## 6. Erreichter Entwicklungs- und Betriebsstand
 
-### Gesprächsstand
+### Planungsstand
 
 | Punkt | Status | Nachweis |
 | --- | --- | --- |
-| Industrielle Jumper-/DIP-Idee | Idee | Gespräch |
-| Stackbares Breakout zwischen Pi und SXceiver | beschlossen/geplant | Nutzer zeigte geeignetes Raspberry-Pi-Pass-Through-Board und dessen Montage |
-| Konkretes Freenove-Board gekauft/eingebaut | nicht bestätigt | kein Einbau-/Bestellnachweis im Chat |
-| Exakte freie GPIO bestimmt | offen | im Chat nicht vermessen |
+| Industrielle Jumper-/DIP-Idee | Idee | Hardwarekonzept |
+| Stackbares Breakout zwischen Pi und SXceiver | beschlossen/geplant | Produktbilder eines Raspberry-Pi-Pass-Through-Boards und seiner Montage |
+| Konkretes Freenove-Board gekauft/eingebaut | nicht bestätigt | kein Einbau-/Bestellnachweis in der Planung |
+| Exakte freie GPIO bestimmt | offen | in der Planung nicht vermessen |
 | Jumper elektrisch aufgebaut | nicht implementiert | kein Hardwareaufbau |
 | Jumper von NetCore eingelesen | nicht implementiert | kein Codeauftrag/Commit |
 | RF INHIBIT | Idee | Software-/Hardwarevarianten diskutiert |
@@ -196,39 +196,39 @@ Außerdem existiert ein Software-Health-Watchdog im TBS-Code. Dieser ist von ein
 | Mechanischer Stack getestet | offen | nur Hersteller-/Produktdarstellung |
 | On-Air- oder Dauerbetrieb | nicht getestet | kein entsprechender Test |
 
-### Aktueller Repository-Stand, getrennt vom Chat
+### Aktueller Repository-Stand, getrennt vom historischen Arbeitsstand
 
 Auf main@9116c15d645458f99e236712b67a1ad970432791 ist die allgemeine Hardwareidee bereits in wiki/Hardware-und-RF.md und wiki/Roadmap.md verankert. Dort wird eine GPIO-/Rack-Platine mit Sensorik, Lüftern, Statusanzeigen, Watchdog und Stromversorgung als Ausbauziel geführt und ausdrücklich ein Schaltplan-/Pinout-Abgleich des SXceiver verlangt. Ein fertiger und geprüfter PCB-Stand wird dort nicht behauptet.
 
-Die Suche auf main ergab zum Archivierungszeitpunkt:
+Die Suche auf main ergab am Prüfdatum:
 - vorhandene SXceiver-HAT-/Overlay-Definitionen;
 - vorhandenes Hardware-Gateway;
 - vorhandenen Software-Watchdog;
 - **keinen** spezifischen MCP23017-Fund;
 - **keinen** spezifischen „RF inhibit“-Fund als implementierte Funktion.
 
-Damit stimmt das aktuelle Repository mit dem Schluss des Chats überein: Die Idee passt zur Roadmap, ist aber noch kein implementiertes Jumper-Subsystem.
+Damit stimmt das aktuelle Repository mit dem Schluss der Planung überein: Die Idee passt zur Roadmap, ist aber noch kein implementiertes Jumper-Subsystem.
 
 ## 7. Relevante Dateien, Dienste, Protokolle und technische Parameter
 
-| Element | Bedeutung für diesen Chat | Status |
+| Element | Bedeutung für diese Planung | Status |
 | --- | --- | --- |
 | sxxcvr-main/dts/Makefile | HAT-Version und TX/RX-Control-GPIO | implementiert im geprüften main |
 | sxxcvr-main/dts/sx1255_raspberrypi.dts | I²S-/SPI0-Aktivierung für SX1255 | implementiert im geprüften main |
 | wiki/Hardware-und-RF.md | Hinweis auf HAT-Pinprüfung und geplante Leiterplatte | dokumentiert |
 | wiki/Roadmap.md | GPIO-/Rack-Platine als Ausbauziel | geplant |
-| system-backend/hardware-gateway/ | bestehender NetCore-Pfad für Hardware-/Racktelemetrie | Code vorhanden; Livebetrieb in diesem Chat nicht geprüft |
+| system-backend/hardware-gateway/ | bestehender NetCore-Pfad für Hardware-/Racktelemetrie | Code vorhanden; Livebetrieb für diesen Arbeitsstand nicht geprüft |
 | config.toml / health-Code | Software-Watchdog für TBS-Core | Code vorhanden; kein Hardware-Watchdog |
 | GPIO-Pegel | 3,3 V Logik | Hardware-Randbedingung |
 | SPI0 / I²S | vom SXceiver-Stack aktiviert | nicht für freie Jumper verplanen, bevor Pinmatrix bestätigt ist |
 | BCM 22 / 23 | TX/RX-Control bei HAT-Versionen ungleich 0x0100 im aktuellen Makefile | versionsabhängig belegt |
 | BCM 12 / 13 | TX/RX-Control bei HAT-Version 0x0100 | versionsabhängig belegt |
 
-Keine neuen Ports, Daemons oder Netzwerkprotokolle wurden in diesem Chat verbindlich eingeführt.
+Keine neuen Ports, Daemons oder Netzwerkprotokolle wurden für diesen Arbeitsstand verbindlich eingeführt.
 
 ## 8. Wichtige Befehle und Abläufe
 
-Im ursprünglichen Gespräch wurde **kein Installations-, Build-, Deployment- oder Reparaturbefehl auf der realen TBS ausgeführt**. Es gab lediglich Architektur- und Pseudokonfigurationsbeispiele.
+In der ursprünglichen Planung wurde **kein Installations-, Build-, Deployment- oder Reparaturbefehl auf der realen TBS ausgeführt**. Es gab lediglich Architektur- und Pseudokonfigurationsbeispiele.
 
 Daraus folgt:
 - kein erfolgreicher GPIO-Test ist belegt;
@@ -258,13 +258,13 @@ Der erste Lösungsweg sprang direkt zu RP2040/STM32 per USB. Das ist technisch w
 
 Zunächst wurde als Risiko genannt, dass ein beliebiges Breakout nicht automatisch einen nach oben nutzbaren Header besitzt.
 
-**Korrektur durch späteres Chatbild:** Das gezeigte Freenove-Raspberry-Pi-Board ist ausdrücklich für die Montage auf dem Pi gedacht und zeigt den weiterhin zugänglichen zentralen 40-Pin-Header. Damit ist die mechanische Grundidee plausibel. Die tatsächliche Bauhöhe mit dem SXceiver bleibt trotzdem zu prüfen.
+**Korrektur durch späteres Originalbild:** Das gezeigte Freenove-Raspberry-Pi-Board ist ausdrücklich für die Montage auf dem Pi gedacht und zeigt den weiterhin zugänglichen zentralen 40-Pin-Header. Damit ist die mechanische Grundidee plausibel. Die tatsächliche Bauhöhe mit dem SXceiver bleibt trotzdem zu prüfen.
 
 ## 10. Tests und Ergebnisse
 
-### Im Chat tatsächlich erfolgt
+### In der Planung tatsächlich erfolgt
 
-1. **Visuelle Prüfung der Produktbilder:**  
+1. **Visuelle Prüfung der Produktbilder:**\
    - erstes Bild: OSOYOO Breakout Board for Pico Series; nur als Stil-/Breakout-Beispiel relevant, nicht als Raspberry-Pi-HAT-Lösung;
    - zweites Bild: Freenove Raspberry-Pi-Breakout mit Schraubklemmen und zentralem 40-Pin-Header;
    - drittes Bild: Herstellerdarstellung des Freenove-Boards auf Raspberry Pi; bestätigt den vorgesehenen Stack-Einsatz.
@@ -296,25 +296,25 @@ Ein Breakout stellt Leitungen zugänglich dar, garantiert aber nicht deren Freih
 
 ### Nicht als Finaldesign übernommen: direkte Frequenz-/MCC-/MNC-Wahl per Jumper
 
-Im Gespräch wurde empfohlen, keine konkreten Funkparameter hart über Jumper zu kodieren. Wenn überhaupt, sollten Jumper Hardware-/Betriebsprofile auswählen; eigentliche Netz- und RF-Parameter verbleiben in kontrollierter Konfiguration.
+In der Diskussion wurde empfohlen, keine konkreten Funkparameter hart über Jumper zu kodieren. Wenn überhaupt, sollten Jumper Hardware-/Betriebsprofile auswählen; eigentliche Netz- und RF-Parameter verbleiben in kontrollierter Konfiguration.
 
 ## 12. Bilder und Anhänge
 
-Dieser Chat enthält drei relevante Nutzerbilder. Die ursprünglichen Rasterdateien waren in der Chat-Laufzeit zugänglich, konnten über den verfügbaren GitHub-Connector jedoch nicht als Binärdatei direkt in den Commit übertragen werden. Deshalb liegen unter Docs/archive/assets/2026-10-05_gpio-breakout-jumper/ **SVG-Archivtranskriptionen** mit den wesentlichen sichtbaren Merkmalen und Beschriftungen. Sie sind **keine bitidentischen Kopien** der Originalbilder.
+Drei Produktbilder sind als **SVG-Archivtranskriptionen** unter `Docs/archive/assets/2026-10-05_gpio-breakout-jumper/` erhalten. Sie dokumentieren sichtbare Merkmale und Beschriftungen; die Originalraster wurden geprüft, konnten aber nicht direkt in den Git-Commit übernommen werden. Die SVGs sind **keine bitidentischen Kopien** der Rasterbilder.
 
 Zur Nachvollziehbarkeit wurden die Original-Rasterdaten lokal geprüft:
 
-| Bild | Originalabmessung | SHA-256 des im Chat verfügbaren Rasters | Archivasset |
+| Bild | Originalabmessung | SHA-256 des Originalrasters | Archivasset |
 | --- | ---: | --- | --- |
 | OSOYOO Pico-Series Breakout | 2000 × 2000 PNG | 0719cc4856656ca8904bc623541aa7ace3683daf81cad2a98a459d0c15bae938 | [01_osoyoo-breakout-board.svg](assets/2026-10-05_gpio-breakout-jumper/01_osoyoo-breakout-board.svg) |
 | Freenove Raspberry-Pi-Breakout, Produktansicht | 1441 × 1383 PNG | 6a22187581d9a38c5c906aa1444d4c3016cd4229892cfea975e31bb314761bbf | [02_freenove-breakout-board.svg](assets/2026-10-05_gpio-breakout-jumper/02_freenove-breakout-board.svg) |
 | Freenove Breakout auf Raspberry Pi | 1443 × 1170 PNG | 5f504348ac539c58b211eb78290b680f7f3fabeb18500819bd1e964498bd4358 | [03_freenove-stacked-on-pi.svg](assets/2026-10-05_gpio-breakout-jumper/03_freenove-stacked-on-pi.svg) |
 
-Andere im Projektkontext vorhandene ETSI-PDFs wurden für diesen GPIO-/Breakout-Chat nicht benötigt und deshalb nicht als Chatanhänge dieses Archivs dupliziert.
+Andere im Projektkontext vorhandene ETSI-PDFs wurden für diesen GPIO-/Breakout-Planung nicht benötigt und deshalb nicht als zugehörige Anhänge dieses Archivs dupliziert.
 
-## 13. Roadmap-Kandidaten aus diesem Chat
+## 13. Roadmap-Kandidaten aus dieser Planung
 
-Diese Punkte gehören als Kandidaten in die spätere Hardware-Roadmap; **dieser Archivauftrag ändert absichtlich nichts außerhalb Docs/archive/**.
+Die folgenden Kandidaten bauen auf einem bestätigten Breakout-Prototyp auf.
 
 ### P0 – vor jeder Verdrahtung
 
@@ -384,12 +384,9 @@ Geprüft am 2026-10-05:
 
 Es wurde kein PR und kein früherer Commit als Beleg für eine bereits implementierte Jumperplatine gefunden beziehungsweise behauptet.
 
-## 16. Auswertungslücken
+## 16. Offene Nachweise
 
-- Ursprünglicher Chattitel und Chatlink sind nicht verfügbar.
-- Es liegt kein vollständiger exportierter Chatdatensatz außerhalb des hier sichtbaren Verlaufs vor; ausgewertet wurde der in diesem Chat verfügbare Verlauf.
 - Die drei Rasterbilder sind verfügbar und wurden visuell ausgewertet; im Repository werden aus Connector-Gründen SVG-Archivtranskriptionen statt bitidentischer Binärkopien abgelegt.
-- Die konkrete SXceiver-Hardwareversion der realen Basisstation wurde in diesem Chat nicht eindeutig festgehalten.
+- Die konkrete SXceiver-Hardwareversion der realen Basisstation wurde für diesen Arbeitsstand nicht eindeutig festgehalten.
 - Keine Messung belegt die freie GPIO-Menge.
 - Keine elektrische, thermische, mechanische oder RF-Abnahme des geplanten Stacks wurde durchgeführt.
-- Keine Live-Installation wurde für diesen Archivauftrag verändert.

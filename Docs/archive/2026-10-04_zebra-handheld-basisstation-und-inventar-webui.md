@@ -1,81 +1,69 @@
-# NetCore-Tetra: Zebra-Handheld, Basisstationszugriff und Inventar im WebUI
+# Brainstorming: Zebra-Handheld, Basisstationszugriff und Inventar im WebUI
 
-Technische Abschlussdokumentation des zugänglichen Chats. Der historische Vorschlag einer Lighthouse-Inventarverwaltung wird vom am 4. Oktober 2026 überprüften Repository-Stand getrennt. Diese Archivierung implementiert keine neue Projektfunktion und bestätigt keinen Betrieb auf Jans Geräten.
+**Arbeitsstand:** 2026-10-04. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
 
-## 1. Metadaten und Nachweisgrenzen
+Gesucht sind realistische Einsatzmöglichkeiten für ein Zebra-Handheld mit einer einzelnen Basisstation. Ein späteres Lighthouse-Inventar bleibt als Ausbauidee erhalten; der am 4. Oktober 2026 vorhandene Asset-Dienst bietet dafür einen anderen technischen Ausgangspunkt.
+
+## 1. Arbeitsstand und Bezugsquellen
 
 | Merkmal | Stand |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Repository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
 | Thema | Realistische Nutzung des Zebra-Handhelds zunächst mit einer einzelnen Basisstation; spätere Inventarverwaltung im Lighthouse-WebUI |
-| Ursprünglicher Chattitel | Nicht zugänglich; dieser Dokumenttitel ist eine nachträgliche Themenbeschreibung. |
-| Ursprünglicher Chatlink | Nicht zugänglich; es wird keine Chat-URL rekonstruiert. |
-| Ursprüngliche Datierung | Die zusätzliche Kontextsuche ordnet relevante Nachrichten dem 17./18.10.2025 zu. Die bereitgestellten Originalauszüge enthalten keine Zeitstempel. Die Suchdatierung ist deshalb ein Hinweis und kein verifizierter vollständiger Chatzeitraum. |
+| Historischer Planungszeitraum | Hinweise auf 17./18.10.2025; mangels Originalzeitstempeln nicht abschließend verifiziert. |
 | Erstellungsdatum | **2026-10-04**, Zeitzone Europe/Berlin |
 | Ausschließlicher Zielbranch | **`Archiving`** |
 | Geprüfter Code-Commit | **`e4cdd99091385b3b32b438f8cf6f020ccf78fba1`** ([Commit](https://github.com/JanHG98/netcore-tetra/commit/e4cdd99091385b3b32b438f8cf6f020ccf78fba1)) |
 | Prüfverfahren | Frisch abgerufener Branch, Quelldateien und Konfigurationsvorlagen gelesen, relevante Begriffe gesucht, isolierter lokaler HTTP-Smoke-Test des vorhandenen Asset-Dienstes |
-| Gerät | Nutzer nennt **„Zebra TH57“**; die frühere Assistenzantwort verwendet **„TC57“**. Die genaue Modellnummer wurde im zugänglichen Verlauf nicht durch Typenschild, Android-Geräteinformationen oder Foto bestätigt. |
+| Gerät | **„Zebra TH57“** und **„TC57“** sind als unterschiedliche Bezeichnungen überliefert. Typenschild, Android-Geräteinformationen oder ein Foto müssen die Variante bestätigen. |
 | Archivdatei | `Docs/archive/2026-10-04_zebra-handheld-basisstation-und-inventar-webui.md` |
 | Archivindex | `Docs/archive/README.md` |
 | Vor dem Schreiben geladener Branchkopf | `e4cdd99091385b3b32b438f8cf6f020ccf78fba1` |
-| Commit dieser Archivdatei | Nach der Veröffentlichung der Git-Historie dieser Datei zu entnehmen; der oben genannte Prüfcommit bezeichnet den geprüften Code vor der Archivänderung, nicht den sich erst daraus ergebenden Speichercommit. |
 
-### 1.1 Welche Quellen tatsächlich verfügbar waren
+### 1.1 Quellenbasis und offene Nachweise
 
-**H1 – direkt zugänglicher Verlauf:** Ein bereitgestellter Verlaufsauszug mit acht nummerierten Nutzerbeiträgen (`msg_idx` 0–4 und 6–8) und einer vollständigen, über zwei Blöcke verteilten Assistenzantwort (`msg_idx` 5). Enthalten sind die erste Zebra-Frage, zwei kurze Korrekturen, die wiederholte Frage, die Lighthouse-Inventaridee, der ausführliche Inventarvorschlag, die Bitte um eine Codex-Zusammenfassung und die spätere Korrektur der Ausgangslage.
+**H1 – Ausgangsplanung:** Realistische Nutzung des Zebra-Handhelds, lokale Basisstation und spätere Inventaridee. Die zentrale Korrektur lautet: Lighthouse war nicht vorhanden; unmittelbar nutzbare Funktionen müssen mit der Einzelbasisstation auskommen.
 
-**H2 – zusätzlich abgerufener Kontext:** Zwei gezielte Kontextabfragen nach genau diesem Zebra-/Lighthouse-Chat lieferten verdichtete Hinweise auf spätere Antworten: Zugriff per Browser/SSH, lokale Erfassung, Audio, Automatisierungsbuttons, GPS-Logging, Mini-API, PWA und PTT. Sie lieferten **keine vollständig lesbaren Originalantworten**, keinen gesicherten Chattitel und keinen Chatlink. Die dort erwähnten Ideen werden mit dieser schwächeren Nachweisqualität erhalten. Treffer zu anderen Chats, Handbüchern oder späteren TBS-Installationen werden nicht als Vorgänge dieses Chats übernommen.
+**H2 – Ergänzende Ideensammlung:** Browser/SSH, lokale Erfassung, Audio, Automatisierungsbuttons, GPS-Logging, Mini-API, PWA und PTT. Diese Möglichkeiten sind nur zusammenfassend dokumentiert und haben keine Installations- oder Testbelege.
 
-**R1 – heutiger Repository-Abgleich:** Der Branch `Archiving` wurde remote geladen. Die Codeaussagen unten beziehen sich auf den exakt benannten Prüfcommit. Andere Entwicklungsbranches, lokale Installationen und laufende NetCore-Dienste wurden nicht als Vergleichsstand herangezogen.
+**R1 – Repository-Prüfung vom 4. Oktober 2026:** Branch `Archiving` am genannten Prüfcommit; Quelldateien, Konfigurationsvorlagen und ein lokaler HTTP-Smoke-Test des Asset-Dienstes. Andere Entwicklungsbranches und Zielinstallationen gehören nicht zum Prüfstand.
 
-**A1 – Anhänge:** 25 bereitgestellte PDF-Dateien sind lokal zugänglich. Dateimetadaten, erste Seiten, Seitenzahlen und SHA-256 wurden geprüft. Sie enthalten TETRA-Normen beziehungsweise eine Normensammlung, kein erkennbares Originalprotokoll dieses Zebra-Chats. Eine vollständige Auswertung sämtlicher Normseiten fand für dieses Thema nicht statt.
+**A1 – Normenbestand:** 25 TETRA-PDFs; Dateimetadaten, Titelseiten, Seitenzahlen und SHA-256 geprüft. Die vollständige Normauswertung war für die Zebra-Idee nicht erforderlich.
 
-### 1.2 Auswertungslücken
-
-- Es liegt **kein vollständiger exportierter Chat** vor. Insbesondere fehlen die Originalantworten auf die Bitte um die Codex-Zusammenfassung sowie auf die beiden letzten Fragen zur Nutzung ohne Lighthouse.
-- Der Kontext zur kurzen Aussage „nein gar nichts im pitch“ ist unvollständig. Sie wird als Korrektur der damaligen Antwortausrichtung bewahrt, ohne daraus unbekannte Projektanforderungen abzuleiten.
-- Gerätevariante, Android-Version, DataWedge-Version, Browser, Scannerprofil, Firmware, tatsächlich eingerichtete Apps und installierter Basisstations-Commit sind unbekannt.
-- Keine diesem Chat eindeutig zuordenbaren eigenständigen Bilddateien oder Originalbilder sind zugänglich. Es konnten daher **keine historischen Chatbilder hochgeladen** werden. Bilder anderer Archivchats und Normgrafiken werden nicht ersatzweise diesem Chat zugeordnet.
-- Keine Angaben zu einem tatsächlich installierten Lighthouse, zu einem ausgeführten Inventar-Rollout oder zu einem erfolgreichen Scan vom Zebra in NetCore sind belegt.
+Offen bleiben Gerätevariante, Android-/DataWedge-/Browserversionen, Scannerprofil, installierter TBS-Commit sowie ein tatsächlicher Scan-, API- oder Lighthouse-Rollout. Originalbilder und ein vollständiger Übergabetext für die Umsetzung liegen nicht vor.
 
 ### 1.3 Statusbegriffe
 
 | Kennzeichnung | Bedeutung in diesem Archiv |
 |---|---|
 | **Idee** | Vorschlag oder denkbare Nutzung; keine angenommene Umsetzung |
-| **beschlossen/geplant** | Ausdrückliche Nutzeranforderung oder als Arbeitsrichtung festgelegter Umfang; noch kein Implementierungsbeleg |
+| **beschlossen/geplant** | Ausdrückliche Projektanforderung oder als Arbeitsrichtung festgelegter Umfang; noch kein Implementierungsbeleg |
 | **implementiert** | Konkreter Code oder Konfigurations-/Installationspfad am Prüfcommit vorhanden |
 | **getestet** | Ein beschriebener Test wurde tatsächlich ausgeführt; seine Grenzen gehören zur Aussage |
-| **im Betrieb bestätigt** | Durch konkrete Beobachtungen auf der Zielinstallation bestätigt; für die Zebra-Integration in diesem Chat nicht erreicht |
+| **im Betrieb bestätigt** | Durch konkrete Beobachtungen auf der Zielinstallation bestätigt; für die Zebra-Integration für diesen Arbeitsstand nicht erreicht |
 | **nicht belegt / nicht zugänglich** | Fehlende Evidenz; keine Behauptung, dass etwas niemals existierte |
 
 ## 2. Ziel, Ausgangslage und Verlauf
 
-### 2.1 Eigentliches Ziel
+### 2.1 Ziel
 
-Jan wollte **realistische, zum vorhandenen NetCore-Tetra-System passende Einsatzmöglichkeiten für sein Zebra-Handheld**. Die Frage war praktisch: Was kann dieses Gerät jetzt sinnvoll beitragen? Eine spätere Inventarverwaltung wurde als mögliche Verwendung seines integrierten Scanners angesprochen.
+Das Zebra soll als mobiles Arbeitsgerät einen praktischen Beitrag zu NetCore-Tetra leisten. Unmittelbar geht es um Zugriff auf die vorhandene Basisstation und lokale Materialerfassung. Der integrierte Scanner macht eine spätere Inventarverwaltung interessant.
 
-### 2.2 Verlauf und spätere Korrekturen
+### 2.2 Festlegungen und Korrekturen
 
-| Reihenfolge | Aussage / Thema | Bedeutung und Status |
+| Thema | Festgehaltene Richtung | Status |
 |---|---|---|
-| 1 | „ideen für mein Projekt, wo ich mein Zebra TH57 einbringen kann die aber auch realistisch sind?“ | Nutzeranforderung: technische Realisierbarkeit und Bezug zum eigenen Projekt; **beschlossen/geplant** als Rahmen |
-| 2 | „wieso vpn jetzt gerade?!?!“ | Ausdrückliche Korrektur einer nicht zugänglichen vorherigen Antwort. VPN ist keine aus diesem Chat ableitbare Voraussetzung. |
-| 3 | „nein gar nichts im pitch“ | Weitere Korrektur der Antwortausrichtung; der fehlende Kontext bleibt offen. |
-| 4 | Wiederholung der Zebra-Frage | Erneute Fokussierung auf realistische Gerätenutzung |
-| 5 | „vllt auch im lighthouse ne art inventarsoftware integrieren im webui?“ | Nutzeridee für spätere Integration; **Idee**, keine Installationsbestätigung |
-| 6 | Assistenz schlägt ein umfangreiches Lighthouse-Inventarmodul vor | Historischer Lösungsvorschlag mit Datenmodell, Scanner, APIs und Sprints; **Idee / vorgeschlagene Planung** |
-| 7 | Bitte um Zusammenfassung als Aufforderung für Codex, gern Englisch | Gewünschte Arbeitsübergabe; **beschlossen/geplant**. Der tatsächlich gelieferte Prompt ist nicht zugänglich. |
-| 8 | „leider habe ich noch kein Lighthouse … bisher habe ich nur die Basisstation alleine“ | **Maßgebliche spätere Korrektur:** Eine einzelne Basisstation ist die damalige reale Ausgangslage. Lighthouse darf nicht als verfügbar vorausgesetzt werden. |
-| 9 | „was kann ich bis jetzt mit meinem Zebra machen?“ | Endgültiger unmittelbarer Fokus: Nutzbarkeit mit dem vorhandenen Einzelsystem |
+| Ausgangssystem | Eine einzelne Basisstation; Lighthouse noch nicht vorhanden | Maßgebliche Ausgangslage |
+| Sofortiger Nutzen | Funktionen auswählen, die mit diesem Einzelsystem tatsächlich möglich sind | Geplant |
+| Inventar | Lighthouse-WebUI, Scanner, Datenmodell und APIs als spätere Erweiterung untersuchen | Idee |
+| VPN | Keine zusätzliche VPN-Pflicht als Voraussetzung der Zebra-Nutzung festgelegt | Korrektur |
+| Umsetzungshilfe | Kompakte Arbeitsübergabe; Englisch ist zulässig | Gewünscht, Originaltext nicht verfügbar |
+| Gerätebezeichnung | TH57/TC57 erst am realen Gerät klären | Offen |
 
-### 2.3 Historischer Endstand
+### 2.3 Entwicklungsstand
 
-Die Inventaridee bleibt ein späterer Erweiterungswunsch. Der unmittelbar passende Umfang ist ein mobiles Arbeitsgerät für die vorhandene Basisstation und gegebenenfalls eine lokale Erfassung von Materialdaten. Der verfügbare Chat endet ohne nachgewiesene App-Installation, API-Implementierung, erfolgreiche Scans oder Deployment.
-
-Weder die Forderung nach einem Codex-Prompt noch der frühere Zeitplan bestätigen, dass Code erzeugt, eingecheckt oder getestet wurde.
+Die Inventaridee ist ein Erweiterungswunsch. App-Installation, Scan, API-Implementierung oder Deployment sind für die historische Ausgangslage nicht belegt. Ein Plan oder Zeitraster ersetzt keinen Ausführungsnachweis.
 
 ## 3. Endgültige Anforderungen und Entscheidungsregister
 
@@ -83,17 +71,17 @@ Weder die Forderung nach einem Codex-Prompt noch der frühere Zeitplan bestätig
 |---|---|---|---|
 | Z-01 | Zebra sinnvoll in NetCore-Tetra einsetzen | **beschlossen/geplant** | Realistische Nutzung statt unbelegter Integrationsversprechen |
 | Z-02 | Sofortmöglichkeiten müssen mit nur einer Basisstation funktionieren | **beschlossen/geplant** | Spätere ausdrückliche Korrektur hat Vorrang vor der früheren Lighthouse-Annahme. |
-| Z-03 | Lighthouse-Inventar als spätere Möglichkeit erhalten | **Idee** | Nutzer schlägt diese Richtung vor, entscheidet aber keinen verbindlichen Vollausbau. |
-| Z-04 | Keine neue VPN-Pflicht aus diesem Gespräch ableiten | **beschlossen/geplant** als Korrektur | Der Nutzer beanstandet den VPN-Abzweig ausdrücklich. Die frühere Formulierung „Sync wenn Online/VPN“ ist kein festgelegtes Architekturmerkmal. |
-| Z-05 | Codex-Übergabe zusammenfassen; Englisch ist zulässig | **beschlossen/geplant** | Gewünscht, aber historischer Originalprompt nicht verfügbar |
-| Z-06 | Modell TH57/TC57 nicht stillschweigend festlegen | **offen** | Nutzer- und Assistenzbezeichnung unterscheiden sich; heutige technische TC57-Quellen gelten nur unter dieser Modellannahme. |
-| Z-07 | Vorhandenes Asset Management für eine Fortsetzung berücksichtigen | **neuer Roadmap-Kandidat aus R1** | Heute ist ein Asset-Dienst vorhanden. Das ist eine technische Folgerung dieser Archivprüfung, keine rückwirkende Nutzerentscheidung im alten Chat. |
+| Z-03 | Lighthouse-Inventar als spätere Möglichkeit erhalten | **Idee** | Als spätere Richtung vorgeschlagen; kein verbindlicher Vollausbau festgelegt. |
+| Z-04 | Keine neue VPN-Pflicht aus der Planung ableiten | **beschlossen/geplant** als Korrektur | Eine zusätzliche VPN-Voraussetzung wurde ausdrücklich zurückgewiesen. Die frühere Formulierung „Sync wenn Online/VPN“ ist kein festgelegtes Architekturmerkmal. |
+| Z-05 | Umsetzungsauftrag zusammenfassen; Englisch ist zulässig | **beschlossen/geplant** | Gewünscht; vollständiger Originaltext fehlt |
+| Z-06 | Modell TH57/TC57 nicht stillschweigend festlegen | **offen** | Geräte- und Entwurfsbezeichnung unterscheiden sich; geprüfte technische TC57-Quellen gelten nur unter dieser Modellannahme. |
+| Z-07 | Vorhandenes Asset Management für eine Fortsetzung berücksichtigen | **neuer Roadmap-Kandidat aus R1** | Am Prüfdatum ist ein Asset-Dienst vorhanden. Das ist eine technische Folgerung dieser Archivprüfung, keine rückwirkende Festlegung im historischen Planungsstand. |
 
 Nicht endgültig festgelegt wurden Datenbanktechnologie, native App gegenüber Browser/PWA, Asset-Nummernplan, Labelabmessungen, produktive Rollen, Exportberechtigungen, Offlinekonfliktregeln und konkrete Einführungstermine.
 
 ## 4. Historischer Lighthouse-Inventarvorschlag
 
-Dieser Abschnitt erhält die direkt zugängliche ausführliche Assistenzantwort als **Vorschlag**. Er ist keine Beschreibung des damaligen Betriebs.
+Der Lighthouse-Ansatz ist ein **Konzeptvorschlag**. Datenmodell, APIs und Sprints beschreiben eine mögliche Erweiterung.
 
 ### 4.1 Zielumfang und Assetarten
 
@@ -101,7 +89,7 @@ Dieser Abschnitt erhält die direkt zugängliche ausführliche Assistenzantwort 
 - QR-/Barcodegestützte Erfassung und Suche mit dem Zebra.
 - Optional offline erfassen und später synchronisieren.
 - Physische Assets mit NetCore-Nodes und Statusinformationen verknüpfen.
-- Lighthouse als gedachte Verwaltungsoberfläche; Watchtower als gedachte Statusquelle. Eine API oder implementierte Komponente dieser Namen wurde im Chat nicht nachgewiesen.
+- Lighthouse als gedachte Verwaltungsoberfläche; Watchtower als gedachte Statusquelle. Eine API oder implementierte Komponente dieser Namen wurde in der Planung nicht nachgewiesen.
 
 Die frühere Formulierung „GSSI-Standorte“ ist fachlich unscharf. Eine GSSI ist eine Gruppenidentität, kein physischer Standort. Eine spätere Umsetzung muss Standort, Asset, Basisstation und Gruppenbezug separat modellieren.
 
@@ -131,7 +119,7 @@ nasset:9f5d6b2e-7c11-4b38-9b3e-8fbe2b0d2a41
 
 Die UUID sollte stabil sein und keine Seriennummer im Klartext erfordern. Auf dem Label waren zusätzlich Name, Typ, Seriennummer und Support-URL vorgesehen. Optionale Farbcodes: grün für `in_service`, gelb für `spare`, rot für `repair`.
 
-**Offen:** Ein `nasset:`-Schema benötigt eine explizite Auswertung im Client oder eine passende App-Verknüpfung. Ein beliebiger Browser oder die heutige Inventarsuche kann daraus nicht automatisch eine Asset-Detailansicht ableiten. Gedruckte Statusfarben veralten bei Zustandsänderungen; ein unveränderliches Label und ein live abgefragter Status müssen bei der Umsetzung voneinander getrennt werden. Beides sind Folgerungen dieser Archivprüfung.
+**Offen:** Ein `nasset:`-Schema benötigt eine explizite Auswertung im Client oder eine passende App-Verknüpfung. Ein beliebiger Browser oder die geprüfte Inventarsuche kann daraus nicht automatisch eine Asset-Detailansicht ableiten. Gedruckte Statusfarben veralten bei Zustandsänderungen; ein unveränderliches Label und ein live abgefragter Status müssen bei der Umsetzung voneinander getrennt werden. Beides sind Folgerungen dieser Archivprüfung.
 
 ### 4.4 Vorgeschlagene Arbeitsabläufe
 
@@ -156,7 +144,7 @@ Die UUID sollte stabil sein und keine Seriennummer im Klartext erfordern. Auf de
 
 ### 4.6 Historische API-Beispiele
 
-Die folgenden Routen waren **Entwurfsbeispiele**, keine im Chat ausgeführten Requests:
+Die folgenden Routen waren **Entwurfsbeispiele**, keine in der Planung ausgeführten Requests:
 
 | Methode | Vorgeschlagene Route | Zweck |
 |---|---|---|
@@ -168,7 +156,7 @@ Die folgenden Routen waren **Entwurfsbeispiele**, keine im Chat ausgeführten Re
 | `POST` | `/api/assets/bulk` | CSV-/JSON-Serienimport |
 | `GET` | `/api/assets/{id}/label` | QR-Label als PDF |
 
-Heute haben die tatsächlich implementierten Asset-Routen ein **`/api/v1/`-Präfix**, ein anderes Feldschema und `PUT` für Änderungen. Die historische Liste darf nicht als heutige API-Dokumentation verwendet werden.
+Am Prüfdatum haben die tatsächlich implementierten Asset-Routen ein **`/api/v1/`-Präfix**, ein anderes Feldschema und `PUT` für Änderungen. Die historische Liste darf nicht als geprüfte API-Dokumentation verwendet werden.
 
 ### 4.7 Vorgeschlagene Rollen und Rechte
 
@@ -183,7 +171,7 @@ Zusätzlich wurden JWT, optional 2FA für Massenfunktionen sowie später Virensc
 
 ### 4.8 Clientvarianten, Automatisierungen und Reporting
 
-**Client A:** PWA, Kioskbetrieb, Kamerascan; die damalige Antwort nennt zusätzlich „Zebra EMDK Intent“ als vermeintlichen Browserweg. Diese Formulierung ist zu korrigieren, siehe Abschnitt 9.
+**Client A:** PWA, Kioskbetrieb, Kamerascan; der damalige Entwurf nennt zusätzlich „Zebra EMDK Intent“ als vermeintlichen Browserweg. Diese Formulierung ist zu korrigieren, siehe Abschnitt 9.
 
 **Client B:** Native Android-App mit Zebra-Anbindung, Room-Datenbank, Sync-Worker und Scanprofilen. Vorgeschlagene Funktionen: Scan/Lookup, Quick-Create, Inventursession, Fotos, Offlinequeue.
 
@@ -195,17 +183,17 @@ Zusätzlich wurden JWT, optional 2FA für Massenfunktionen sowie später Virensc
 
 ### 4.9 Historischer Sprintplan
 
-| Phase | Ursprünglich vorgeschlagener Inhalt | Heutige Einordnung |
+| Phase | Ursprünglich vorgeschlagener Inhalt | Geprüfte Einordnung |
 |---|---|---|
 | Sprint 1 | DB, CRUD, Liste/Detail, QR-Label, PWA-Scanner, Quick-Create, Node-Bezug, CSV-Import | Vorschlag; damalige Aufwandsschätzung 1–2 Wochen abhängig vom Team, ohne bestätigte Voraussetzungen |
 | Sprint 2 | Audit/Lifecycle, Fotos, Inventurmodus, Filter/Export, Watchtower-Abweichungsbadge | Vorschlag |
 | Sprint 3 | Ausgabe/Rückgabe, Reporting, Offline-PWA oder native App, Push/Automatisierungen | Vorschlag |
 
-Die Reihenfolge passt nicht unverändert zum heutigen Repository: Ausgabe/Rückgabe, Audit und CSV-Export sind bereits im Asset-Dienst vorhanden; QR-/Scan-/Offlinefunktionen sind dagegen noch nicht belegt. Die später bestätigte historische Ausgangslage ohne Lighthouse macht einen vollständigen damaligen Sprint-1-Rollout zudem nicht plausibel.
+Die Reihenfolge passt nicht unverändert zum geprüften Repository: Ausgabe/Rückgabe, Audit und CSV-Export sind bereits im Asset-Dienst vorhanden; QR-/Scan-/Offlinefunktionen sind dagegen noch nicht belegt. Die später bestätigte historische Ausgangslage ohne Lighthouse macht einen vollständigen damaligen Sprint-1-Rollout zudem nicht plausibel.
 
 ## 5. Ideen für die damalige Einzelbasisstation
 
-Die Originalantworten auf die letzten Fragen fehlen. Folgende Ideen wurden in der zusätzlichen Kontextsuche H2 zusammengefasst und werden deshalb **nicht als wörtlich oder vollständig rekonstruierte Antworten** dargestellt.
+Für die Einzelbasisstation sind folgende Möglichkeiten in der ergänzenden Ideensammlung H2 festgehalten. Ihre konkrete Ausgestaltung und Umsetzung sind offen.
 
 | Idee | Gedachte Nutzung mit einer Basisstation | Voraussetzungen und Grenzen |
 |---|---|---|
@@ -219,11 +207,11 @@ Die Originalantworten auf die letzten Fragen fehlen. Folgende Ideen wurden in de
 | PTT-Apps | IP-basierte Sprachkommunikation, eventuell später Gatewayanbindung | Keine native TETRA-Funktion und keine nachgewiesene Brücke zur Funkzelle |
 | Offline-Wartungsformulare | Notizen und Checklisten im Feld erfassen | Spätere manuelle oder implementierte Übernahme; Konflikt- und Synchronisierungslogik fehlt |
 
-H2 nennt zusätzlich eine **Flask-/FastAPI-Mini-API** mit `/status`, `/play/<file>` und `/log`, sowie beispielhafte Aktionen `/play alarm.wav`, `/reboot node`, `/status check` und SDS-Kommandos `/play`, `/reboot`, `/test`. Diese Namen bleiben historische Konzeptbeispiele. Es gibt für diesen Chat **keinen Nachweis ihrer Implementierung, Installation oder erfolgreichen Ausführung**. Ein Zebra kann solche SDS-Kommandos auch nicht allein wegen seiner Android-Apps direkt als TETRA-Endgerät senden.
+H2 nennt zusätzlich eine **Flask-/FastAPI-Mini-API** mit `/status`, `/play/<file>` und `/log`, sowie beispielhafte Aktionen `/play alarm.wav`, `/reboot node`, `/status check` und SDS-Kommandos `/play`, `/reboot`, `/test`. Diese Namen bleiben historische Konzeptbeispiele. Es gibt für diese Planung **keinen Nachweis ihrer Implementierung, Installation oder erfolgreichen Ausführung**. Ein Zebra kann solche SDS-Kommandos auch nicht allein wegen seiner Android-Apps direkt als TETRA-Endgerät senden.
 
-Für eine Fortsetzung muss zuerst der installierte TBS-Stand mit dem heutigen Repository abgeglichen werden. Funktionen am Prüfcommit sind kein Beweis, dass dieselben Funktionen bereits damals oder heute auf der Basisstation laufen.
+Für eine Fortsetzung muss zuerst der installierte TBS-Stand mit dem geprüften Repository abgeglichen werden. Funktionen am Prüfcommit sind kein Beweis, dass dieselben Funktionen bereits damals oder am Prüfdatum auf der Basisstation laufen.
 
-## 6. Heute überprüfter Repository-Stand
+## 6. Am Prüfdatum überprüfter Repository-Stand
 
 ### 6.1 Prüfumfang
 
@@ -244,7 +232,7 @@ Eine Suche in textuellen Code-, Konfigurations- und Dokumentationsdateien außer
 
 ### 6.2 Vorhandene Architektur
 
-**Implementiert:** Ein eigenständiger Python-Dienst **Asset Management, Phase 10** mit eigener WebUI und HTTP-/JSON-API. Die Persistenz erfolgt in JSON beziehungsweise NDJSON, nicht in einer im Chat vorgeschlagenen relationalen DB.
+**Implementiert:** Ein eigenständiger Python-Dienst **Asset Management, Phase 10** mit eigener WebUI und HTTP-/JSON-API. Die Persistenz erfolgt in JSON beziehungsweise NDJSON, nicht in einer in der Planung vorgeschlagenen relationalen DB.
 
 | Komponente | Zuständigkeit / Datenweg |
 |---|---|
@@ -279,11 +267,11 @@ Aktuelle Assetzustände: `in_stock`, `assigned`, `maintenance`, `repair`, `retir
 
 Eine ID kann frei vorgegeben, aus einer Inventarnummer abgeleitet oder als UUID erzeugt werden. Das Schema erzwingt keine ausschließliche UUID-Nutzung. `normalize_asset()` übernimmt keine dedizierten Felder `qr_code`, `geo`, `attachments` oder `related_node_id`.
 
-### 6.4 Historische Begriffe auf das heutige Schema abbilden
+### 6.4 Historische Begriffe auf das geprüfte Schema abbilden
 
 Diese Tabelle beschreibt **zu prüfende Migrationsentscheidungen**, keinen bereits umgesetzten Import:
 
-| Historischer Begriff | Heutiger Bezug | Verbleibende Entscheidung |
+| Historischer Begriff | Geprüfter Bezug | Verbleibende Entscheidung |
 |---|---|---|
 | `id` | `asset_id` | Stabilität und Zulässigkeit vorhandener IDs festlegen |
 | `serial` | `serial_number` | Dublettenregeln auch für Änderungen und Import durchsetzen |
@@ -295,7 +283,7 @@ Diese Tabelle beschreibt **zu prüfende Migrationsentscheidungen**, keinen berei
 | `related_node_id` | kein dediziertes Feld | Physische Zuordnung und Netzstatus nicht vermischen |
 | `qr_code`, `geo`, `attachments` | kein dediziertes Feld | Schema/Storage und API müssten gezielt erweitert werden. |
 
-### 6.5 Heutige HTTP-Schnittstellen
+### 6.5 Geprüfte HTTP-Schnittstellen
 
 | Methode | Route | Implementierter Zweck |
 |---|---|---|
@@ -333,11 +321,11 @@ Die WebUI enthält ein Suchfeld `id="filter"` mit `oninput="render()"` sowie Ein
 
 In dieser Asset-WebUI wurden weder Service Worker noch IndexedDB-Synchronisierung gefunden. Themeeinstellungen in `localStorage` sind keine Offline-Inventardatenbank. Es ist keine installierbare Zebra-PWA oder native Scanner-App am Prüfcommit belegt.
 
-### 6.7 Basisstationsfunktionen als heutige Alternative zur Mini-API
+### 6.7 Basisstationsfunktionen als geprüfte Alternative zur Mini-API
 
-Der heutige TBS-Code enthält bereits eine Dashboardoberfläche und Audio-HTTP-Handler. Im Beispiel `config.toml.fallback` stehen für das Dashboard `bind = "0.0.0.0"` und `port = 8080`; das sind **Repository-Beispielwerte**, keine aus dem alten Chat bestätigten Livewerte.
+Der geprüfte TBS-Code enthält bereits eine Dashboardoberfläche und Audio-HTTP-Handler. Im Beispiel `config.toml.fallback` stehen für das Dashboard `bind = "0.0.0.0"` und `port = 8080`; das sind **Repository-Beispielwerte**, keine aus dem historischen Planungsstand bestätigten Livewerte.
 
-| Heutiger Codepfad | Aussage |
+| Geprüfter Codepfad | Aussage |
 |---|---|
 | `GET /api/btsinfo` | Zell-/RF-Identität aus laufender Konfiguration; Code gelesen, hier nicht auf einer TBS getestet |
 | `GET /api/edge-fallback` | Lokale Autonomie-/Backend-/Replayzustände; Code gelesen, kein Betriebsnachweis |
@@ -360,7 +348,7 @@ Die Dashboardauthentifizierung nutzt bei entsprechender Konfiguration eine Anmel
 | Dienst | `netcore-asset-management.service` | Vorhandene Unit |
 | Ausführbare Datei | `/usr/local/bin/netcore-asset-management` | Installationsziel des Python-Skripts |
 | Konfiguration | `/etc/netcore/asset-management.toml` | Zielpfad |
-| HTTP-Listener | `0.0.0.0:8290`, TCP | Vorlagenwert, kein heutiger Live-Socket geprüft |
+| HTTP-Listener | `0.0.0.0:8290`, TCP | Vorlagenwert, kein Live-Socket am Prüfdatum erhoben |
 | WebUI | `http://<LXC-IP>:8290/` | Dokumentiertes Zugriffsmuster |
 | Open-Lab-Beispielhost | `10.0.20.32` | Inventory-Beispiel; nicht Jans tatsächlich gemessene IP |
 | Zustand | `/var/lib/netcore-asset-management/state.json` | Atomarer Austausch einer JSON-Datei |
@@ -375,7 +363,7 @@ Die Dashboardauthentifizierung nutzt bei entsprechender Konfiguration eine Anmel
 | Subscriber Core | Port `8100`; `/api/v1/subscribers`, `/api/v1/observed` | Read-only-Reconcile |
 | Mobility Core | Port `8090`; `/api/v1/subscribers` | Read-only-Reconcile |
 | Task Workflow | Port `8280`; `/api/v1/tasks` | Optionaler schreibender Wartungsauftrag |
-| Task-Gruppenwert | `default_gssi = 15201` | Nur Vorlagenwert; keine für Jan beschlossene Betriebsgruppe |
+| Task-Gruppenwert | `default_gssi = 15201` | Nur Vorlagenwert; keine festgelegte Betriebsgruppe |
 | Python | `tomllib`, Standardbibliothek-HTTP-Server | Aus dem Quelltext mindestens Python 3.11 erforderlich |
 | systemd | `User=root`, `Group=root`, `Restart=on-failure`, `RestartSec=2` | Tatsächliche Unitwerte; nicht im Archiv geändert |
 | Inventory-Abhängigkeiten | `iot-gateway`, `subscriber-core`, `mobility-core`, `task-workflow` | Deployment-Reihenfolge laut Serviceeintrag; im Code direkte Upstreams nur wie oben |
@@ -386,7 +374,7 @@ SSH, HTTP-/JSON und gegebenenfalls MQTT sind die denkbaren Verwaltungswege diese
 
 ## 8. Befehle und Abläufe: tatsächlich ausgeführt oder nur vorgesehen
 
-### 8.1 Im historischen Chat
+### 8.1 Im historischen Arbeitsstand
 
 Keine vollständig zugänglichen Shellausgaben, erfolgreichen Installationsbefehle oder Tests für Zebra/Lighthouse/Inventar sind enthalten. Die API-Liste und die H2-Kommandonamen waren Beispiele, keine Ausführungsnachweise. Ein belastbarer historischer Reparaturablauf ist nicht vorhanden.
 
@@ -413,7 +401,7 @@ Der gelesene Installer ist:
 sudo bash system-backend/asset-management/install/install.sh
 ```
 
-Er installiert laut Code `python3`, `mosquitto-clients` und `ca-certificates`, kopiert Programm und Unit, legt eine Konfiguration nur an, falls diese noch fehlt, ruft den gemeinsamen LXC-Endpointkonfigurator auf und startet die Unit mit systemd. Das Skript wurde in dieser Arbeit **nur gelesen**. Es ist keine historische erfolgreiche Installation aus diesem Chat.
+Er installiert laut Code `python3`, `mosquitto-clients` und `ca-certificates`, kopiert Programm und Unit, legt eine Konfiguration nur an, falls diese noch fehlt, ruft den gemeinsamen LXC-Endpointkonfigurator auf und startet die Unit mit systemd. Das Skript wurde in dieser Arbeit **nur gelesen**. Es ist keine historische erfolgreiche Installation aus dieser Planung.
 
 Quellen für spätere Update-/Rückbauprüfung: `install/update.sh`, `install/configure-openlab.sh` und `install/uninstall.sh` im Asset-Modul. Auch diese Pfade sind kein durchgeführter Rollout.
 
@@ -433,14 +421,14 @@ Diese Befehle gelten für den **Asset-Host**, wenn der Listener entsprechend ein
 
 | Punkt | Diagnose / Ursache | Korrektur oder verbleibende Aufgabe |
 |---|---|---|
-| Lighthouse als bereits verfügbare Grundlage | Frühere Assistenzantwort baut auf einer nicht vorhandenen Komponente auf. | Durch ausdrückliche Nutzerkorrektur ersetzt: damals nur einzelne Basisstation. |
-| Ungewünschter VPN-Abzweig | Vorheriger Antwortkontext fehlt; Nutzer weist VPN ausdrücklich zurück. | Keine VPN-Pflicht in die Zebra- oder Inventarplanung hineinlesen. |
-| TH57 ungefragt zu TC57 geändert | Unterschiedliche Gerätebezeichnungen ohne Nachweis | Modell am realen Gerät prüfen; heutige Zebra-Dokumentation ist unter TC57-Annahme eingeordnet. |
+| Lighthouse als bereits verfügbare Grundlage | Frühere früherer Entwurf baut auf einer nicht vorhandenen Komponente auf. | Durch ausdrückliche spätere Korrektur ersetzt: damals nur einzelne Basisstation. |
+| Ungewünschter VPN-Abzweig | Zusätzliche VPN-Voraussetzung ausdrücklich zurückgewiesen; ursprünglicher Zusammenhang fehlt. | Keine VPN-Pflicht in die Zebra- oder Inventarplanung hineinlesen. |
+| TH57 ungefragt zu TC57 geändert | Unterschiedliche Gerätebezeichnungen ohne Nachweis | Modell am realen Gerät prüfen; geprüfte Zebra-Dokumentation ist unter TC57-Annahme eingeordnet. |
 | „EMDK Intent“ direkt in einer PWA | Native Scanner-/Intent-Anbindung und Browsermöglichkeiten wurden vermischt. | DataWedge-Tastaturausgabe kann in fokussierte Webfelder schreiben; Intent Output benötigt einen Android-Empfänger beziehungsweise eine bewusst gebaute App-Brücke. Kein EMDK-/Intent-Zugriff aus beliebigem Browser-JavaScript ableiten. |
 | Typ-/Seriennummer-Autofill durch beliebigen Scan | Ein Scan liefert die Nutzlast, nicht automatisch verlässliche Inventarmetadaten. | Payloadformat, Lookup und Pflichtfelder definieren. |
 | „GPS = Funkabdeckung“ | Zebra-Ortsdaten allein enthalten keine nachgewiesene TETRA-Signalqualität. | Messquelle und Zuordnung zu Ort/Zeit getrennt festlegen. |
 | PTT-App als TETRA-Anbindung | IP-Audio und Funkzellenanbindung sind verschiedene Schnittstellen. | Gateway, Ruf-/Floorsteuerung und Audioformat müssten gesondert belegt werden. |
-| Alter API-Entwurf als aktuelle Anleitung | `/api/assets`, `PATCH`, `/bulk` und Labelhandler passen nicht zur Implementierung. | Heutige `/api/v1`-Routen und `PUT` verwenden; fehlende Funktionen explizit planen. |
+| Alter API-Entwurf als aktuelle Anleitung | `/api/assets`, `PATCH`, `/bulk` und Labelhandler passen nicht zur Implementierung. | Geprüfte `/api/v1`-Routen und `PUT` verwenden; fehlende Funktionen explizit planen. |
 | Seriennummer-Dubletten beim Bearbeiten | `create_asset()` prüft Dubletten; `update_asset()` enthält diese Prüfung nicht. | In der Archivprüfung reproduziert: `POST` einer Dublette → 400; `PUT` auf identische Seriennummer eines anderen Assets → 200. Fix als Roadmap-Kandidat, hier nicht implementiert. |
 | `/label` liefert scheinbar Erfolg | GET-Handler nimmt bei `/api/v1/assets/...` nur das ID-Segment und prüft überzählige Segmente nicht. | Reproduziert: `/api/v1/assets/{id}/label` → 200 mit normalem Asset-JSON. Kein PDF-Label. Routing strikt machen und Labelhandler gezielt ergänzen. |
 | `qr_code` und `geo` verschwinden bei Anlage | Sie gehören nicht zum normalisierten aktuellen Schema. | Im lokalen Test nicht übernommen; Schema bewusst erweitern oder Import abbilden. |
@@ -448,9 +436,9 @@ Diese Befehle gelten für den **Asset-Host**, wenn der Listener entsprechend ein
 | OPEN LAB statt historischer RBAC-Idee | Der aktuelle Asset-Dienst besitzt keine authentifizierten Rollen; der Akteurheader ist frei setzbar. | Mit der zentralen IAM-Planung abstimmen, bevor produktive Rechte behauptet werden. |
 | „MQTT verbunden“ im isolierten Test | Bei deaktiviertem MQTT setzt der Code das Flag `mqtt_connected` auf wahr, ohne Brokerkontakt. | Lokalen Smoke-Test nicht als MQTT-/Readiness-Abnahme ausgeben. |
 
-Die beiden reproduzierten Codeprobleme wurden **nicht behoben**, weil der Auftrag ausschließlich die Archivierung unter `Docs/archive/` umfasst.
+Die beiden lokal reproduzierten Codeprobleme bleiben **offen**.
 
-### 9.1 Primärquellen zur heutigen Scanner-Einordnung
+### 9.1 Primärquellen zur geprüften Scanner-Einordnung
 
 Zebras DataWedge-Dokumentation beschreibt **Keystroke Output** als Tastatureingaben an die zugeordnete Vordergrundanwendung, einschließlich TAB/ENTER. Die Quick-Start-Anleitung des TC57 nennt ein fokussiertes Textfeld als Ziel eines Scans. Das stützt einen Browser-Formulartest, aber keinen nachgewiesenen NetCore-Workflow.
 
@@ -473,7 +461,7 @@ Die DataWedge-Seiten erklären die Schnittstelle; sie belegen nicht die auf Jans
 
 Im zugänglichen Verlauf ist **kein erfolgreicher Zebra-/Inventar-/Lighthouse-Test** nachgewiesen. Es gibt keine belegte Scannerkonfiguration, kein On-Air-Ergebnis, keine Betriebszeit und keinen ausgeführten Rollout. Der Satz, dass nur die Basisstation vorhanden ist, ist eine Ausgangslage und kein bestandener Funktions-/Funkabnahmetest.
 
-### 10.2 Tests während der Archivierung
+### 10.2 Lokale Prüfungen vom Prüfdatum
 
 Umgebung: Python **3.12.14**, Code R1; kurzlebiger HTTP-Server ausschließlich auf **Loopback und zufälligem Port**, temporäre Dateien; **MQTT, Subscriber Core, Mobility Core und Task Workflow deaktiviert**. Der periodische Integrationsworker wurde nicht gestartet. Synthetische IDs und Seriennummern wurden verwendet, keine Echtdaten. Die Instanz wurde anschließend beendet und die temporäre Persistenz entfernt.
 
@@ -502,12 +490,12 @@ Die vorhandene Datei `tests/open_lab_smoke.md` ist ein Prüfplan für Person/Fun
 
 ## 11. Entwicklungs- und Betriebsstand im direkten Vergleich
 
-| Funktion | Historischer Chatstand | Repository R1 | Tests / Betriebsnachweis |
+| Funktion | Historischer Planungsstand | Repository R1 | Tests / Betriebsnachweis |
 |---|---|---|---|
-| Zebra-Gerät vorhanden | Nach Nutzerangabe | Kein projektspezifischer Client gefunden | Modell/Version nicht verifiziert |
-| Einzelbasisstation | Maßgebliche Nutzerangabe | Umfangreicher TBS-Code vorhanden | Kein Livezugriff in diesem Auftrag |
+| Zebra-Gerät vorhanden | Nach Angabe zum Aufbau | Kein projektspezifischer Client gefunden | Modell/Version nicht verifiziert |
+| Einzelbasisstation | Maßgebliche Angabe zum Aufbau | Umfangreicher TBS-Code vorhanden | Kein Livezugriff in diesem Auftrag |
 | Lighthouse | Ausdrücklich noch nicht vorhanden | Keine benannte Implementierung gefunden | Nicht getestet |
-| Web-Inventar | Nutzeridee + Assistenzentwurf | Eigenständiger Asset-Dienst **implementiert** | Kernabläufe lokal **getestet**; kein Zielbetriebsnachweis |
+| Web-Inventar | Nutzeridee + Konzeptentwurf | Eigenständiger Asset-Dienst **implementiert** | Kernabläufe lokal **getestet**; kein Zielbetriebsnachweis |
 | Ausgabe/Rückgabe | Als späterer Sprint vorgeschlagen | **implementiert** | Lokal **getestet** |
 | Wartungsakte und Ereignisse | Vorschlag | **implementiert** | Lokaler Teilumfang **getestet** |
 | CSV-Export / JSON-Import | Serienimport/Export vorgeschlagen | CSV-Export/JSON-Import **implementiert** | Export lokal getestet; Import nicht ausgeführt |
@@ -522,7 +510,7 @@ Die vorhandene Datei `tests/open_lab_smoke.md` ist ein Prüfplan für Person/Fun
 
 ## 12. Offene Aufgaben und Roadmap-Kandidaten
 
-Die Prioritäten unten sind eine **Fortsetzungsempfehlung aus dieser Archivprüfung**. Im ursprünglichen Chat wurden außer dem Vorrang sofort nutzbarer Funktionen mit einer Einzelbasisstation keine verbindlichen Prioritäten oder Termine beschlossen.
+Die Prioritäten unten sind eine **Fortsetzungsempfehlung aus dieser Archivprüfung**. In der ursprünglichen Planung wurden außer dem Vorrang sofort nutzbarer Funktionen mit einer Einzelbasisstation keine verbindlichen Prioritäten oder Termine beschlossen.
 
 | Priorität | Aufgabe | Abhängigkeit / konkreter Abschlussnachweis |
 |---|---|---|
@@ -545,15 +533,13 @@ Die Prioritäten unten sind eine **Fortsetzungsempfehlung aus dieser Archivprüf
 | P3 | Wartungsbenachrichtigungen, Hardware-Mismatch und Reporting | Tatsächliche Ereignisquelle/Serial-Telemetrie; Zustellweg; fachliche Kennzahlen und MTBF-Grunddaten |
 | Nachrangig | Audio-Buttons / Playout | Installierte Audiofeature-/Quellenkonfiguration, tatsächliche Gruppen/Teilnehmer und On-Air-Abnahme |
 | Nachrangig | Reichweitenlogging und PTT-Gatewayideen | Explizite TETRA-Messquelle beziehungsweise Audio-/Floor-/Rufgateway; keine native Zebra-Funkfähigkeit voraussetzen |
-| Bei Wiederaufnahme | Historischen Codex-Prompt und fehlende Antworten ergänzen | Originalchat oder Export erforderlich; heutige API-/Architekturkorrekturen dabei beibehalten |
-| Bei verfügbarer Quelle | Echte Bilder dieses Chats nacharchivieren | Nur eindeutig zuordenbare Originalbytes unter `Docs/archive/`, mit relativen Links |
 
 ### 12.1 Konkreter nächster sinnvoller Ablauf
 
-1. Gerät und installierte TBS-Software identifizieren, einen echten Browserzugriff nachweisen und damit die unmittelbare Nutzerfrage auf realem Stand beantworten.
+1. Gerät und installierte TBS-Software identifizieren, einen echten Browserzugriff nachweisen und damit die unmittelbare praktische Fragestellung auf realem Stand beantworten.
 2. Falls der vorhandene Asset-Dienst zugänglich ist, einen einzelnen Testdatensatz im Onlinebetrieb per DataWedge in ein fokussiertes Feld erfassen; andernfalls lokale Erfassung als Übergang verwenden.
 3. Erst danach Scan-Nutzlast und Workflow festlegen, vorhandenen Asset-Dienst abbilden und die reproduzierten Datenqualitäts-/Routingprobleme reparieren.
-4. Offlinebetrieb, Inventur, Fotos, Reporting und Lighthouse-Einbettung nach Bedarf priorisieren. Für Lighthouse ist weiterhin keine vorhandene Komponente aus diesem Chat oder R1 belegt.
+4. Offlinebetrieb, Inventur, Fotos, Reporting und Lighthouse-Einbettung nach Bedarf priorisieren. Für Lighthouse ist weiterhin keine vorhandene Komponente aus dieser Planung oder R1 belegt.
 
 ## 13. Quellen, Repository-Dateien und Anhänge
 
@@ -574,11 +560,11 @@ Die folgenden Links sind an R1 gebunden:
 - [TBS-Dashboard-/Audiohandler](https://github.com/JanHG98/netcore-tetra/blob/e4cdd99091385b3b32b438f8cf6f020ccf78fba1/crates/tetra-entities/src/net_dashboard/server.rs)
 - [TBS-Cargo-Features](https://github.com/JanHG98/netcore-tetra/blob/e4cdd99091385b3b32b438f8cf6f020ccf78fba1/bins/bluestation-bs/Cargo.toml)
 
-Der historische Chat nennt keinen belastbar zugehörigen Implementierungscommit und keine zugehörige PR. Solche Referenzen werden nicht ergänzt. Ähnliche Android-/Inventarchats sind andere Vorgänge, keine fehlenden Teile dieses Chats.
+Die historische Planung nennt keinen belastbar zugehörigen Implementierungscommit und keine zugehörige PR. Solche Referenzen werden nicht ergänzt. Andere Android-/Inventarplanungen bleiben eigenständige Vorhaben.
 
 ### 13.2 Bereitgestellte PDF-Dateien
 
-Alle 25 PDFs waren lesbar. Insgesamt wurden **8.061 PDF-Seiten** gezählt; das ist eine Dateiseitensumme einschließlich der 4.100 Seiten von `ETSI.pdf`, keine Anzahl unterschiedlicher oder vollständig geprüfter Normseiten. Inhaltlich erfolgten hier nur Metadaten-/Titelseitenprüfung und Einordnung der Relevanz. PDFs wurden nicht als neue Zebra-Dokumentation oder Chatbilder in Git importiert.
+Alle 25 PDFs waren lesbar. Insgesamt wurden **8.061 PDF-Seiten** gezählt; das ist eine Dateiseitensumme einschließlich der 4.100 Seiten von `ETSI.pdf`, keine Anzahl unterschiedlicher oder vollständig geprüfter Normseiten. Inhaltlich erfolgten hier nur Metadaten-/Titelseitenprüfung und Einordnung der Relevanz. PDFs wurden nicht als neue Zebra-Dokumentation oder Originalbilder in Git importiert.
 
 | Datei | Metadaten / Titelseite | Seiten | SHA-256 |
 |---|---|---:|---|
@@ -608,12 +594,6 @@ Alle 25 PDFs waren lesbar. Insgesamt wurden **8.061 PDF-Seiten** gezählt; das i
 | `en_30039202v030801p.pdf` | EN 300 392-2 - V3.8.1 - Terrestrial Trunked Radio (TETRA); Voice plus Data (V+D); Part 2: Air Interface (AI) | 1445 | `3f07b1e4ad73fabc16277a900006fc19844b3a882bbc2bc1d74d78f6156daf28` |
 | `ETSI.pdf` | Zusammenstellung; erste Seite: ETSI EN 300 812 V2.1.1 (2001-12); Gesamtinhalt nicht vollständig ausgewertet | 4100 | `9434dad1e7bc80ca39b0edadd8e3b9995fda5ae5f5c3dd565af05708d5059e38` |
 
-### 13.3 Bildarchivstatus
+### 13.3 Bildquellen
 
-**Keine eigenständigen historischen Bilder verfügbar.** Das aktuelle Anhängeverzeichnis enthält ausschließlich die genannten PDFs. Auch der zugängliche Zebra-Verlauf enthält keinen Bildblock und keine zugehörige Bildreferenz. Damit bleibt der ausdrücklich gewünschte Upload tatsächlicher Chatbilder mangels Quelle offen. Es wurden keine Ersatzbilder erzeugt und keine Bilder aus anderen Gesprächen übernommen.
-
-## 14. Archivierungsumfang
-
-Dieser Auftrag ergänzt ausschließlich die vorliegende Abschlussdokumentation und ihren Eintrag in `Docs/archive/README.md` im Branch `Archiving`. Roadmap-Kandidaten bleiben in dieser Datei; Code, Konfigurationen, Installationen und externe Aufgaben wurden nicht geändert. Vorhandene Archiveinträge werden bewahrt. Es erfolgt kein Force-Push und keine Zusammenführung mit einem anderen Branch.
-
-Die Git-Historie benennt den tatsächlichen Veröffentlichungscommit. Die Abschlussmeldung des Archivauftrags enthält Datei-/Commitlink und das Ergebnis der Remote-Nachprüfung. Den Chat archiviert Jan anschließend selbst.
+Für diese Zebra-Planung liegen keine Originalbilder vor. Der verfügbare Normenbestand ersetzt weder Gerätefotos noch Scannerbelege.

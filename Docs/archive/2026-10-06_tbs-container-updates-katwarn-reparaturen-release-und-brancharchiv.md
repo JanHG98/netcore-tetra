@@ -1,77 +1,74 @@
-# TBS-Container aktualisieren: Flottenupdate, KatWarn/NINA-Reparaturen, v1.9.0 und Brancharchiv
+# Brainstorming: TBS-Container aktualisieren: Flottenupdate, KatWarn/NINA-Reparaturen, v1.9.0 und Brancharchiv
 
-## 1. Metadaten, Quellenumfang und Nachweisstufen
+Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
+
+## 1. Projektstand, Quellenumfang und Nachweisstufen
 
 | Feld | Wert |
 |---|---|
-| Ursprünglicher Chattitel | **TBS-Container aktualisieren**; im historischen Aufgabenverzeichnis und am 06.10.2026 erneut bestätigt |
-| Chat-ID | `01a0de52-c038-71c2-b7b0-4bc2da75addd` |
-| Interner Chatlink | [Codex-Aufgabe öffnen](codex://threads/01a0de52-c038-71c2-b7b0-4bc2da75addd); nur innerhalb der passenden Codex-Installation nutzbar |
-| Öffentlicher Chatlink | Nicht vorhanden bzw. im zugänglichen Verlauf nicht nachgewiesen; kein Freigabelink erzeugt |
 | Historischer Zeitraum | 26.–27.09.2026; Sitzungsbeginn 26.09.2026 17:26 Uhr Europe/Berlin |
-| Erstellung dieser Abschlussdokumentation | **06.10.2026**, Europe/Berlin |
+| Erstellung dieser Entwicklungsnotizen | **06.10.2026**, Europe/Berlin |
 | Repository / Ablagebranch | `JanHG98/netcore-tetra` / ausschließlich **`Archiving`** |
 | Geprüfter Archiv-Ausgangsstand | `Archiving@0ca574aae4a06691d1f688e6f664eda96e3a8b0c` |
-| Zusätzlich geprüfter heutiger Entwicklungsstand | `main@9116c15d645458f99e236712b67a1ad970432791` |
+| Zusätzlich geprüfter Entwicklungsstand | `main@9116c15d645458f99e236712b67a1ad970432791` |
 | Historisch ausgerollte Testbasis | `32e0e87d0994107dd007a541df308eae7c691ed2`, damals `katwarn/nina`, mit gezielt reparierter Cargo-Lockdatei und späteren separaten Reparaturen |
 | Historischer regulärer Release | `v1.9.0` → `086a81fa8820ef579c475a65a38e3d23644c52f0` |
-| Auftrag dieser Archivierung | Verlauf und zugängliche Anhänge auswerten, heutigen Code abgleichen, Dokumentation/Index/Bilder unter `Docs/archive/` committen und ohne Force pushen; keine Produktänderung, kein Deployment und kein Merge |
 
-**Leseregel:** Die Abschnitte 2–9 beschreiben die Arbeit vom September. Abschnitt 10 beschreibt gesondert die Prüfung vom 06.10.2026. Der heutige Code ist kein rückwirkender Beleg dafür, dass eine Funktion damals schon auf einem Container lief. Ein erfolgreiches Update ist kein vollständiger Funktionstest.
+**Leseregel:** Die Abschnitte 2–9 beschreiben die Arbeit vom September. Abschnitt 10 beschreibt gesondert die Prüfung vom 06.10.2026. Der geprüfte Code ist kein rückwirkender Beleg dafür, dass eine Funktion damals schon auf einem Container lief. Ein erfolgreiches Update ist kein vollständiger Funktionstest.
 
 Die folgenden Begriffe werden ausdrücklich unterschieden:
 
 | Stufe | Bedeutung in diesem Dokument |
 |---|---|
 | **Idee** | Erörterte Möglichkeit ohne Umsetzungsbeschluss. |
-| **Beschlossen/geplant** | Vom Nutzer gewolltes oder als nächster Schritt festgelegtes Verhalten; noch kein Ausführungsbeweis. |
+| **Beschlossen/geplant** | Gewünschtes oder als nächster Schritt festgelegtes Verhalten; noch kein Ausführungsbeweis. |
 | **Implementiert** | Datei/Code ist vorhanden oder eine Repositoryänderung nachgewiesen. Bei lokalen Hilfsdateien wird das ausdrücklich angegeben. |
 | **Getestet** | Konkrete statische Prüfung, lokaler Test, Simulation, CI oder echter HTTP-Test liegt vor; Art und Grenzen werden genannt. |
-| **Im Betrieb bestätigt** | Tatsächliche Betreiber-/Geräteausgabe oder ausdrückliche Nutzerbestätigung vorhanden. Umfang der Bestätigung bleibt begrenzt. |
+| **Im Betrieb bestätigt** | Tatsächliche Betreiber-/Geräteausgabe oder ausdrückliche Betreiberbestätigung vorhanden. Umfang der Bestätigung bleibt begrenzt. |
 | **Unbestätigt/offen** | Kein ausreichender Nachweis im ausgewerteten Material. |
 
 ### 1.1 Zugängliche und ausgewertete Quellen
 
-- Der verfügbare Gesprächsverlauf einschließlich späterer Nutzerkorrekturen und der ursprünglichen lokalen Sitzung ist zugänglich. Die Sitzung liegt lokal unter `C:\Users\janho\.codex\sessions\2026\09\26\rollout-2026-09-26T17-26-00-01a0de52-c038-71c2-b7b0-4bc2da75addd.jsonl`. Historische Arbeit und Archivierungsauftrag vom Oktober wurden getrennt ausgewertet.
-- Alle sechs im Chat genannten Textanhänge sind zugänglich; Inventar siehe Abschnitt 12.1. Sie enthalten den ersten Updatefehler, den Gesamtlauf, Nachläufe, den Basisstations-Funktest und die Asterisk-Diagnose.
-- Die lokalen Verlaufslogs und zugeordneten Skripte unter `C:\Users\janho\NetCore-Updates` wurden geprüft. Neuere Dateien vom 28.09. aus anderer Arbeit werden nicht als Nachweis dieses Chats verwendet.
+- Betriebsnotizen, spätere Korrekturen und das ursprüngliche lokale Sitzungsprotokoll liegen unter `C:\Users\janho\.codex\sessions\2026\09\26\rollout-2026-09-26T17-26-00-01a0de52-c038-71c2-b7b0-4bc2da75addd.jsonl`. Die Septemberarbeit und die Prüfung vom Oktober werden getrennt geführt.
+- Alle sechs im dokumentierten Arbeitsstand genannten Textanhänge sind zugänglich; Inventar siehe Abschnitt 12.1. Sie enthalten den ersten Updatefehler, den Gesamtlauf, Nachläufe, den Basisstations-Funktest und die Asterisk-Diagnose.
+- Die lokalen Verlaufslogs und zugeordneten Skripte unter `C:\Users\janho\NetCore-Updates` wurden geprüft. Neuere Dateien vom 28.09. aus anderer Arbeit werden nicht als Nachweis dieser Arbeitsphase verwendet.
 - Lokale Generatoren, Prüfhilfen und Pakete im Projektarbeitsordner sowie `netcore-alert-fix`/`netcore-release` helfen, die tatsächlich erzeugten Reparaturen und Prüfungen zuzuordnen. Ihre bloße Existenz ist kein Nachweis der Remote-Ausführung.
 - Git-Refs, aktuelle Dateien, PR #55, GitHub-Releases und die drei zugehörigen historischen CI-Läufe wurden am 06.10.2026 erneut gelesen.
-- Ein historischer UI-Screenshot wurde unverändert aus dem Sitzungsprotokoll wiedergewonnen. Das kleine Favicon aus dem Nutzer-Bookmarkexport ist separat als dekoratives Asset eingeordnet; siehe Abschnitt 13.
+- Ein historischer UI-Screenshot wurde unverändert aus dem Sitzungsprotokoll wiedergewonnen. Das kleine Favicon aus dem Bookmarkexport ist separat als dekoratives Asset eingeordnet; siehe Abschnitt 13.
 
-### 1.2 Grenzen der Auswertung
+### 1.2 Quellenlücken
 
-Es fehlt keiner der sechs ausdrücklich referenzierten Textanhänge. Nicht vorhanden ist ein detailliertes finales Betreiberprotokoll für jede der drei zuletzt gelieferten Reparaturen. Die letzte Rückmeldung „sieht so weit gut aus“ und „KatWarn läuft“ ersetzt weder einen Task-Workflow-Readiness-Nachweis noch einen SIP-Telefonietest. Vollständige Proxmox-Inventarisierung, aktuelle Konfigurationsdateien aller Hosts, aktuelle Binary-Hashes, heutige Erreichbarkeit und heutiger Funkbetrieb wurden in diesem Archivauftrag **nicht** erhoben.
+Es fehlt keiner der sechs ausdrücklich referenzierten Textanhänge. Nicht vorhanden ist ein detailliertes finales Betreiberprotokoll für jede der drei zuletzt gelieferten Reparaturen. Die letzte Rückmeldung „sieht so weit gut aus“ und „KatWarn läuft“ ersetzt weder einen Task-Workflow-Readiness-Nachweis noch einen SIP-Telefonietest. Vollständige Proxmox-Inventarisierung, aktuelle Konfigurationsdateien aller Hosts, aktuelle Binary-Hashes, geprüfte Erreichbarkeit und geprüfter Funkbetrieb wurden bei der Quellenprüfung vom 06.10.2026 **nicht** erhoben.
 
-Die Dokumentation übernimmt keine Passwörter, API-Token oder privaten Schlüssel. Vollständige Rohsitzungen und Betriebslogs werden nicht ins öffentliche Git kopiert; relevante Befunde werden mit lokaler Quellenzuordnung dokumentiert. Die lokalen Updatepakete sind hier als historische Artefakte beschrieben, aber nicht als neues Installationspaket veröffentlicht. Der Archivcommit dieses Dokuments ist über seine Git-Historie und die Abschlussmeldung zu bestimmen; er wird nicht mit den geprüften Quell-Commits verwechselt.
+Die Dokumentation übernimmt keine Passwörter, API-Token oder privaten Schlüssel. Vollständige Rohsitzungen und Betriebslogs werden nicht ins öffentliche Git kopiert; relevante Befunde werden mit lokaler Quellenzuordnung dokumentiert. Die lokalen Updatepakete sind hier als historische Artefakte beschrieben, aber nicht als neues Installationspaket veröffentlicht. Der Veröffentlichungsstand der Notizen ist über die Git-Historie nachvollziehbar und von den geprüften Quell-Commits zu unterscheiden.
 
 ## 2. Ziel und Ausgangslage
 
-Der Nutzer wollte zuerst für die TBS und **jeden** Container einen eigenen kopierbaren Updateblock, um vor aussagekräftigen Tests eine einheitliche NetCore-Testbasis herzustellen. Die Ausgangslage war uneinheitlich:
+Ziel war eine einheitliche NetCore-Testbasis für TBS und **jeden** Container. Dafür sollten pro Ziel kopierbare Updateblöcke entstehen. Die Ausgangslage war uneinheitlich:
 
 - `katwarn/nina` enthielt den neueren Funk-/SDS-/Warnsystemstand.
 - `main` enthielt den neueren separaten Brew-Server sowie Wiki-/Dokumentationsarbeit; seine Git-Historie war gerade neu aufgesetzt worden.
 - Windows-CMD, PowerShell und interaktive SSH-Sitzungen wurden gemischt benutzt. Lange mehrzeilige Blöcke ließen sich nicht zuverlässig einfügen.
-- Nicht alle Dienstvarianten und IP-Adressen waren anfangs bekannt. Insbesondere Brew und TBS mussten nach ausdrücklichen Nutzerangaben anders behandelt werden als zuerst angenommen.
+- Nicht alle Dienstvarianten und IP-Adressen waren anfangs bekannt. Insbesondere Brew und TBS mussten nach ausdrücklichen Standortangaben anders behandelt werden als zuerst angenommen.
 
 Der Auftrag entwickelte sich zu einem vollständigen, interaktiven 29-Ziel-Rollout mit Wiederaufnahme, einem Nachlauf für Fehlerfälle, drei gezielten Funktionsreparaturen, der Integration nach `main`, Release `v1.9.0` sowie Metadaten für historische Archiv-Releases.
 
-„Auf den neuesten Stand“ bedeutete in diesem Chat **NetCore-Anwendungssoftware auf der vereinbarten Testbasis**. Ein pauschales Betriebssystem-, Firmware-, Asterisk-, Mosquitto- oder Piper-Upgrade war damit nicht nachgewiesen und wurde nicht als Ergebnis behauptet.
+„Auf den neuesten Stand“ bedeutete für diesen Entwicklungsstand **NetCore-Anwendungssoftware auf der vereinbarten Testbasis**. Ein pauschales Betriebssystem-, Firmware-, Asterisk-, Mosquitto- oder Piper-Upgrade war damit nicht nachgewiesen und wurde nicht als Ergebnis behauptet.
 
 ## 3. Endgültige Entscheidungen und ersetzte Annahmen
 
 | Thema | Endgültige Festlegung | Begründung / Nachweis |
 |---|---|---|
-| Testbasis vor Release | TBS/Core auf `katwarn/nina`, konkret `32e0e87…`; Änderungen und Konfigurationen sichern | Nutzer wählte die Funk-/Warn-Testbasis ausdrücklich. Ein beweglicher Branch allein wäre für Wiederholbarkeit zu ungenau. |
-| Brew | **Bestehenden Legacy-Python-Brew/TBS-Connect erhalten**, nicht automatisch zum separaten Rust-Brew migrieren | Nutzer korrigierte: „Alter Python-TBS-Connect ist das brew“. Die frühere Auswahl „Brew aus main“ beschrieb eine zunächst angenommene andere Installation. |
-| TBS | `10.0.1.20`, SSH-Benutzer `jan`, interaktives `sudo`, manuell unter root gestartet | Nutzer bestätigte: kein systemd; Verzeichnis `/opt/netcore-tetra`, Start `./target/release/bluestation-bs ./config.toml`. |
-| Übrige Systeme | SSH als `root`; Fingerprint und Passwort interaktiv | Nutzer gab Benutzer und gewünschte Schrittfolge vor; keine Passwortspeicherung. |
-| Home Assistant | `10.0.1.128` **vom Update ausnehmen** | Ausdrückliche Nutzerentscheidung. |
+| Testbasis vor Release | TBS/Core auf `katwarn/nina`, konkret `32e0e87…`; Änderungen und Konfigurationen sichern | Festgelegt wurde die Funk-/Warn-Testbasis ausdrücklich. Ein beweglicher Branch allein wäre für Wiederholbarkeit zu ungenau. |
+| Brew | **Bestehenden Legacy-Python-Brew/TBS-Connect erhalten**, nicht automatisch zum separaten Rust-Brew migrieren | Korrigiert: „Alter Python-TBS-Connect ist das brew“. Die frühere Auswahl „Brew aus main“ beschrieb eine zunächst angenommene andere Installation. |
+| TBS | `10.0.1.20`, SSH-Benutzer `jan`, interaktives `sudo`, manuell unter root gestartet | Bestätigt: kein systemd; Verzeichnis `/opt/netcore-tetra`, Start `./target/release/bluestation-bs ./config.toml`. |
+| Übrige Systeme | SSH als `root`; Fingerprint und Passwort interaktiv | Benutzer und Schrittfolge waren vorgegeben; keine Passwortspeicherung. |
+| Home Assistant | `10.0.1.128` **vom Update ausnehmen** | Ausdrückliche Projektentscheidung. |
 | Updatebedienung | Kurze Einstiege bzw. Dateien übertragen und per BAT nacheinander ausführen | Lange Copy/Paste-Blöcke wurden in CMD/SSH beschädigt. |
 | Fehlerstrategie | Gesamtlauf zunächst Abbruch + Startnummer; Nachlauf/Restlauf später Fortsetzung mit nächstem Ziel und versionsbezogenem Überspringen erfolgreicher Ziele | Bereits erfolgreiche Updates sollten nicht erneut gebaut werden. |
 | Lokale Daten | Konfiguration, Zugangsdaten, Datenbanken, Empfänger-/Versandhistorie, bestehende Python-Brew-Einstellungen erhalten | Aktualisieren ohne Neuinstallation/Zurücksetzen fachlicher Zustände. |
-| Eigene Warnungen | Nach Versand auffindbar; Suche und Alle/Aktiv/Beendet; vor Ablauf löschen können | Expliziter Nutzerwunsch nach realem Warnversand. Löschen stoppt weitere Zustellungen, nicht bereits empfangene SDS. |
-| Release | KatWarn/NINA mit vorhandenem main-Inhalt zusammenführen, geprüften regulären Release erstellen | Nutzer bestätigte funktionierenden Warnbetrieb und autorisierte Merge/Release. |
+| Eigene Warnungen | Nach Versand auffindbar; Suche und Alle/Aktiv/Beendet; vor Ablauf löschen können | Expliziter Anforderung nach realem Warnversand. Löschen stoppt weitere Zustellungen, nicht bereits empfangene SDS. |
+| Release | KatWarn/NINA mit vorhandenem main-Inhalt zusammenführen, geprüften regulären Release erstellen | Betriebsrückmeldung bestätigte funktionierenden Warnbetrieb und autorisierte Merge/Release. |
 | Branchhistorie | Vor Löschen Tags an exakten alten Branchspitzen sichern; Archiv-Releases als Pre-Release | Squash-Merge erhält Code, aber nicht dieselbe einzelne Commit-Abstammung. |
 
 **Überholt:** Die anfänglichen TBS-Annahmen systemd/automatisch erkannte Unit und ein anderer Konfigurationspfad sind für diese konkrete TBS nicht maßgeblich. Ebenso ist die zunächst vorgesehene neue Brew-Server-Variante durch die später bestätigte Python-Installation ersetzt. Die zuerst erzeugten 30 Blöcke sind nicht mit den finalen **29 tatsächlichen Updatezielen** gleichzusetzen.
@@ -97,13 +94,13 @@ flowchart LR
     B[Legacy Python-Brew] <-->|WebSocket| TBS
 ```
 
-Das Diagramm zeigt die für diesen Chat relevanten funktionalen Wege, nicht jeden internen Adapter des Gesamtsystems. Warnzustellung hängt von nutzbaren GPS-/Teilnehmerdaten, einer zuständigen erreichbaren TBS und dem SDS-Pfad ab. Die Warnzentrale führt dauerhafte Zuordnungen je Warnung/Gerät; Routerpersistenz und Idempotenz verhindern unbeabsichtigte Wiederholungen. „Von TBS angenommen“ ist dabei keine Empfangs- oder Lesebestätigung des Endgeräts.
+Das Diagramm zeigt die für diese Arbeitsphase relevanten funktionalen Wege, nicht jeden internen Adapter des Gesamtsystems. Warnzustellung hängt von nutzbaren GPS-/Teilnehmerdaten, einer zuständigen erreichbaren TBS und dem SDS-Pfad ab. Die Warnzentrale führt dauerhafte Zuordnungen je Warnung/Gerät; Routerpersistenz und Idempotenz verhindern unbeabsichtigte Wiederholungen. „Von TBS angenommen“ ist dabei keine Empfangs- oder Lesebestätigung des Endgeräts.
 
-Die Flotte besteht aus Rust- und Python-Diensten, HTTP-Verwaltung/Healthchecks, WebSocket-Verbindungen zum Funknetz und einem Asterisk-basierten SIP-Pfad. Der reguläre Installerbestand enthält gemeinsame Netzwerk-/Servicehilfen. Beispieladressen aus dem Open-Lab-Inventory sind nicht automatisch die tatsächlichen Adressen des Nutzers.
+Die Flotte besteht aus Rust- und Python-Diensten, HTTP-Verwaltung/Healthchecks, WebSocket-Verbindungen zum Funknetz und einem Asterisk-basierten SIP-Pfad. Der reguläre Installerbestand enthält gemeinsame Netzwerk-/Servicehilfen. Beispieladressen aus dem Open-Lab-Inventory sind nicht automatisch die tatsächlichen Adressen des Betreibers.
 
 ### 4.2 Finale Reihenfolge der 29 Updateziele
 
-Die folgende Tabelle stammt aus Nutzerangaben und dem tatsächlich verwendeten BAT-Lauf. Ports sind **Web-/Managementports**, nicht die SSH-Ports. Alarm Workflow `8270` stammt aus der Dienstkonfiguration; seine IP gab der Nutzer nach `hostname -I` an. Die Angaben sind historisches Inventar, kein aktueller Netzwerkscan.
+Die folgende Tabelle stammt aus Standortangaben und dem tatsächlich verwendeten BAT-Lauf. Ports sind **Web-/Managementports**, nicht die SSH-Ports. Alarm Workflow `8270` stammt aus der Dienstkonfiguration; die IP wurde über `hostname -I` bestätigt. Die Angaben sind historisches Inventar, kein aktueller Netzwerkscan.
 
 | Position | Rolle | IP | Web-/Managementport | SSH-Benutzer / Besonderheit |
 |---:|---|---|---:|---|
@@ -149,26 +146,26 @@ SSH verwendete Port **22**. Das lokale `NetCore-Ziele.json` enthält die ausfüh
 | `/opt/netcore-tetra` | TBS-Checkout und häufiger bestehender Quellpfad; nicht bei allen Sonderdiensten blind voraussetzen |
 | `/opt/netcore-update-sources` | Separater Arbeitsbereich der historischen Update-/Nachlaufskripte |
 | `/var/backups/netcore-update/`, `/var/lib/netcore-update-state/` | Update-Sicherungen und zustands-/versionsbezogene Erfolgsquittungen |
-| `/opt/netcore-tetra/target/release/bluestation-bs` | Nutzerbestätigte manuell gestartete TBS-Binary |
-| `/opt/netcore-tetra/config.toml` | Nutzerbestätigte TBS-Konfiguration |
+| `/opt/netcore-tetra/target/release/bluestation-bs` | Im Betrieb bestätigte manuell gestartete TBS-Binary |
+| `/opt/netcore-tetra/config.toml` | Im Betrieb bestätigte TBS-Konfiguration |
 | `/etc/netcore/<dienst>.toml` | Übliche zentrale Dienstkonfiguration; pro Unit/Startargument prüfen |
 | `/etc/netcore/alert-service.toml`, `/etc/netcore/alert-service.env` | Warnkonfiguration und Secret-Umgebung; Inhalte nicht ins Archiv übernehmen |
 | `/etc/netcore/lxc-network.env` | Durch gemeinsame Netzwerkinstallation ermittelte LXC-Endpunktdaten |
 | `/etc/asterisk/netcore-pjsip.conf`, `netcore-extensions.conf`, `netcore-rtp.conf` | Drei vom SIP Switch erzeugte Includes; Gruppe `asterisk`, Modus `0640` |
-| `/var/lib/asterisk/core` | In der Startdiagnose vorhandener Core-Dump, 77.352.960 Bytes; kein ausgewerteter Backtrace im Chat |
+| `/var/lib/asterisk/core` | In der Startdiagnose vorhandener Core-Dump, 77.352.960 Bytes; kein ausgewerteter Backtrace im dokumentierten Arbeitsstand |
 | `/var/backups/netcore-fixes/` | Sicherungen der drei gezielten Reparaturen einschließlich Metadaten |
 | `/root/netcore-nachlauf-<position>.log`, `/root/netcore-restlauf-<position>.log` | Ausführliche Linux-Protokolle der Nach-/Restläufe |
-| `/root/netcore-fix-warn.log`, `netcore-fix-task.log`, `netcore-fix-sip.log` | Reparaturprotokolle, deren finale Betriebsausgaben im Chat fehlen |
+| `/root/netcore-fix-warn.log`, `netcore-fix-task.log`, `netcore-fix-sip.log` | Reparaturprotokolle, deren finale Betriebsausgaben im dokumentierten Arbeitsstand fehlen |
 | `CARGO_BUILD_JOBS=1` | RAM-schonender Rust-Build; unnötiges `cargo clean` vermeiden |
 | `umask 077` | Restriktiver Updatekontext; war ohne explizite Gruppenleserechte für Asterisk problematisch |
 
-### 4.4 Heute geprüfte Schnittstellen und Beispielwerte
+### 4.4 Zum Prüfstand vom 06.10.2026 geprüfte Schnittstellen und Beispielwerte
 
-Die Werte dieses Absatzes sind **Repository-Beispiele/Implementierungsparameter**, keine aus den Betriebshosts ausgelesenen heutigen Einstellungen:
+Die Werte dieses Absatzes sind **Repository-Beispiele/Implementierungsparameter**, keine aus den Betriebshosts ausgelesenen geprüften Einstellungen:
 
 - Warn-Dienst: HTTP `0.0.0.0:8310`; Zugriffsschutz standardmäßig aktiv; SQLite `/var/lib/netcore-alert-service/alerts.sqlite3` mit `WAL`, `synchronous=FULL`, Fremdschlüsseln, Tabellen `alerts`, `aliases`, `deliveries`, `metadata`. `(alert_id, issi)` und ein eindeutiger Idempotenzschlüssel sichern die Gerätezuordnung.
 - `system-backend/alert-service/config/alert-service.example.toml`: Control Room `http://control-room:9010`, SDS Router `http://sds-router:8150`, Beispiel-Quell-ISSI `9999`, Poll 5 s, GPS-Alter höchstens 3600 s, Node-Alter 120 s, HTTP-Timeout 10 s. Der tatsächliche historische Funktest benutzte die abweichende Quell-ISSI `4010112`.
-- NINA-Basis `https://warnung.bund.de/api31`, Quellen `mowas/katwarn/biwapp/dwd/lhp`, Poll 60 s, veraltete Feed-Daten höchstens 300 s; Versand standardmäßig deaktiviert, TTL 300 s, Textlimit 120. Das belegt die konfigurierte Integration, keine heutige Verfügbarkeit externer Feeds.
+- NINA-Basis `https://warnung.bund.de/api31`, Quellen `mowas/katwarn/biwapp/dwd/lhp`, Poll 60 s, veraltete Feed-Daten höchstens 300 s; Versand standardmäßig deaktiviert, TTL 300 s, Textlimit 120. Das belegt die konfigurierte Integration, keine geprüfte Verfügbarkeit externer Feeds.
 - Teilnehmer/GPS über Control-Room-GET `/api/subscribers?online=true` und `/api/nodes`; Routerstatus `/api/v1/status`; individuelle SDS Type 4, Protocol-ID **130**, `at_most_once=true`, `force_nodes`, absolute Ablaufzeit, SHA-256-basierter Alert-/ISSI-Key. Für noch rücknehmbare Routeraufträge POST `/api/v1/messages/<id>/cancel`.
 - Eigene Warnung löschen: autorisiertes DELETE `/api/v1/alerts/<id>`, bei Erfolg `deleted=true`, `history_preserved=true`; in SQLite Soft Delete mit `removed=1`. Der weitere Versand liest die aktuelle Warnung erneut. Der technische Routerstatus `delivered` wird auf Warnseite als `accepted` eingeordnet und bedeutet hier TBS-Annahme; das ist keine Empfangs- oder Lesebestätigung des Funkgeräts.
 - Warnsystem-Unit `netcore-alert-service.service`: Benutzer/Gruppe `netcore-alert`, Programmverzeichnis `/usr/local/lib/netcore-alert-service`, Konfiguration `/etc/netcore/alert-service.toml`, EnvironmentFile `/etc/netcore/alert-service.env`, StateDirectory `/var/lib/netcore-alert-service`, `UMask=0027`, Restart 5 s.
@@ -181,7 +178,7 @@ Diese Defaults erklären Zuständigkeiten und Fehlersuche. Geheimnisse aus Envir
 
 ### 5.1 Erster Block: Cargo-Lockdatei und tatsächliche Buildprüfung
 
-Der erste ausgelieferte Block scheiterte beim Nutzer bereits am Node Gateway. Die erste Prüfung der Blöcke hatte Bash-/eingebettete-Python-Syntax und ausgewählte Fehlerpfade abgedeckt, aber keinen tatsächlichen Linux-Gesamtbuild. Der anschließend gemeldete Cargo-Fehler wurde lokal reproduziert.
+Der erste ausgelieferte Block scheiterte im ersten Betriebsversuch bereits am Node Gateway. Die erste Prüfung der Blöcke hatte Bash-/eingebettete-Python-Syntax und ausgewählte Fehlerpfade abgedeckt, aber keinen tatsächlichen Linux-Gesamtbuild. Der anschließend gemeldete Cargo-Fehler wurde lokal reproduziert.
 
 Die Root-`Cargo.lock` passte nicht vollständig zum Workspace: unter anderem fehlten IoT-Gateway-Abhängigkeiten sowie Feature-Abhängigkeiten von `chrono`/`uuid`. Die Korrektur ergänzte die Lockstruktur **ohne Crate-Versionsanhebung**. 21 betroffene Helper wurden konsistent korrigiert; unbekannte lokal veränderte Lockdateien wurden nicht blind ersetzt. `cargo metadata --locked` wurde für Linux x86_64 und ARM64 sowie die separate Brew-Lockdatei geprüft. Alle 30 damaligen Shellblöcke wurden syntaktisch geprüft.
 
@@ -191,14 +188,14 @@ Historische SHA-256 der ursprünglichen Lockdatei: `a26cbb99a4d488e6bd6737e0eb87
 
 ### 5.2 Lange Shellblöcke, CMD/PowerShell und interaktives SSH
 
-Der Nutzer meldete beschädigte Blöcke beim Einfügen in SSH aus CMD. Daraufhin wurden kürzere Einstiege und einzelne `.sh`-Dateien zum Übertragen erstellt. Ein weiterer Fehler entstand durch CMD-Syntax in PowerShell:
+Im Betriebsprotokoll dokumentiert sind beschädigte Blöcke beim Einfügen in SSH aus CMD. Daraufhin wurden kürzere Einstiege und einzelne `.sh`-Dateien zum Übertragen erstellt. Ein weiterer Fehler entstand durch CMD-Syntax in PowerShell:
 
 ```text
 scp "%USERPROFILE%\NetCore-Updates\01-node-gateway.sh" ...
 stat local "%USERPROFILE%/...": No such file or directory
 ```
 
-`%USERPROFILE%` wird in CMD expandiert, in PowerShell verwendet man `$env:USERPROFILE`. Ebenso gehört kein Backslash vor das `@` in `root@10.0.1.179`. Danach wollte der Nutzer eine BAT, die die Container nacheinander kontaktiert und die interaktiven Fingerprint-/Passwortabfragen jeweils abwartet. Die noch fehlenden IPs und der TBS-Benutzer wurden vor Fertigstellung erfragt.
+`%USERPROFILE%` wird in CMD expandiert, in PowerShell verwendet man `$env:USERPROFILE`. Ebenso gehört kein Backslash vor das `@` in `root@10.0.1.179`. Danach wurde eine BAT vorgesehen, die die Container nacheinander kontaktiert und die interaktiven Fingerprint-/Passwortabfragen jeweils abwartet. Die noch fehlenden IPs und der TBS-Benutzer wurden vor Fertigstellung erfragt.
 
 Der finale BAT-Einstieg verwendete für jedes Ziel einen Upload und einen separaten SSH-Aufruf; TBS erhielt einen eigenen Startschritt. Ein lokaler Test im echten CMD-Interpreter durchlief 29 Ziele mit **59 sequentiellen SCP-/SSH-Aufrufen als Attrappen**. Fehlerabbruch, Wiederaufnahme, ungültige Startnummer und fehlende Dateien wurden geprüft. Das testete die Windows-Steuerung, nicht die Live-Erreichbarkeit.
 
@@ -207,7 +204,7 @@ Der finale BAT-Einstieg verwendete für jedes Ziel einen Upload und einen separa
 | Zeitpunkt / Stufe | Tatsächlich belegtes Ergebnis |
 |---|---|
 | 26.09. 18:42–19:24, Positionen 1–8 | Erfolgreiche Software-Updates laut `NetCore-Update-Verlauf.log` |
-| Position 9 Recorder | Zwei Uploadfehler `Exit=255`; Nutzer setzte ausdrücklich mit Position 10 fort |
+| Position 9 Recorder | Zwei Uploadfehler `Exit=255`; Fortsetzung erfolgte ausdrücklich mit Position 10 fort |
 | Positionen 10–20 | Erfolgreiche Updates; Task Workflow „OK“ bedeutete noch keine erreichbare SDS-Abhängigkeit |
 | Position 21 SIP Switch | Ebenfalls Upload `Exit=255`, später nachgezogen |
 | Position 22 Media Library | Erst zwei Updatefehler `Exit=128`, später zusätzlich Upload-/Schreibfehler bei vollem Dateisystem |
@@ -230,14 +227,14 @@ Bei Recorder/SIP meldete der ursprüngliche Upload `Connection closed by ... por
 
 ### 5.4 Media Library: Speicher statt Inodes
 
-Die vom Nutzer ausgeführten `df`-Prüfungen zeigten:
+Die am Zielsystem ausgeführten `df`-Prüfungen zeigten:
 
 - Root-Dateisystem `VirtualMachines_OSData/subvol-138-disk-0`: **10 GiB**, praktisch voll, nur **30 MiB** verfügbar, Anzeige **100 %**.
 - Inodes: **68 %** genutzt, also kein akuter Inodemangel.
 - `/tmp` lag auf einem separaten, leeren **40-GiB-tmpfs**; freier RAM-/tmpfs-Platz beseitigte den Engpass auf `/` nicht.
 - `du`: `/var/log` **7,5 GiB**, `/var` **8,0 GiB**, `/opt` ca. **380 MiB**, `/root` ca. **891 MiB**. Die Medien-/Programmverzeichnisse waren nicht der Hauptverbraucher.
 
-Der Nutzer vergrößerte das Volume; danach gelang das Update. Es wurde kein pauschales Löschen von Medien, Datenbanken oder Logverzeichnissen als durchgeführte Lösung ausgegeben.
+Die Abhilfe war die Vergrößerung des Volumes; danach gelang das Update. Es wurde kein pauschales Löschen von Medien, Datenbanken oder Logverzeichnissen als durchgeführte Lösung ausgegeben.
 
 Die korrigierte Vorprüfung lief vor dem großen Upload direkt über SSH und brauchte keine erst hochzuladende Skriptdatei auf dem vollen Ziel. Für den Rust-Build verlangte sie vorsorglich 4 GiB frei auf `/opt`, 512 MiB auf `/root`, 256 MiB auf `/var` und prüfte auch Inodes. Auf derselben Partition sind diese Schwellen **nicht zu addieren**; maßgeblich ist die größte. Das sind Vorprüfwerte, keine gemessene garantierte Buildgröße.
 
@@ -262,19 +259,19 @@ Directory verwendete `netcore-directory.service`, installiertes Skript `/opt/net
 
 ### 5.6 TBS ohne systemd
 
-Der Nutzer startete die TBS weiterhin manuell als root in `/opt/netcore-tetra` mit `./config.toml`. Ein vorhandener generischer `install/update-basisstation.sh` für systemd ist deshalb nicht automatisch das richtige Betriebsverfahren für diesen Host. Die BAT musste über `jan` anmelden, ein Terminal für `sudo` bereitstellen und den bisherigen Start beibehalten.
+Die TBS wurde weiterhin manuell gestartet als root in `/opt/netcore-tetra` mit `./config.toml`. Ein vorhandener generischer `install/update-basisstation.sh` für systemd ist deshalb nicht automatisch das richtige Betriebsverfahren für diesen Host. Die BAT musste über `jan` anmelden, ein Terminal für `sudo` bereitstellen und den bisherigen Start beibehalten.
 
-`TBS-Starten.bat` sollte einen Start ohne erneuten Build ermöglichen. Das Vordergrundfenster muss für diesen Betriebsmodus offen bleiben. Der erste `Exit=255` nach dem erfolgreichen TBS-Update belegt nur das Ende/Problem der SSH-Sitzung; der spätere Nutzerlog belegt einen erneut laufenden Funkbetrieb. Eine Umstellung auf systemd wurde in diesem Chat nicht als endgültige Nutzerentscheidung umgesetzt.
+`TBS-Starten.bat` sollte einen Start ohne erneuten Build ermöglichen. Das Vordergrundfenster muss für diesen Betriebsmodus offen bleiben. Der erste `Exit=255` nach dem erfolgreichen TBS-Update belegt nur das Ende/Problem der SSH-Sitzung; der spätere Betriebslog belegt einen erneut laufenden Funkbetrieb. Eine Umstellung auf systemd wurde für diesen Entwicklungsstand nicht als endgültige Projektentscheidung umgesetzt.
 
 Der historische TBS-Updatehelfer baute `cargo build --release --locked -p bluestation-bs` mit `CARGO_BUILD_JOBS=1` und prüfte `media_library_top_level_section_parses` sowie `media_library_unknown_field_is_rejected`. Obsolete lokale TTS-Einträge wurden mit `install/remove-local-tts-config.py` aus einer zuvor gesicherten Konfigurationskopie entfernt; „Konfiguration erhalten“ bedeutet hier nicht bytegleiche Unverändertheit aller überholten Felder. Beim Stoppen wurde nur die passende `/proc/*/exe`-Instanz adressiert: SIGINT mit 20 s, danach SIGTERM mit 10 s, kein SIGKILL; bei weiterlaufendem Prozess Abbruch vor Austausch. Der spätere Starthelfer prüfte, ob bereits eine TBS lief.
 
-Davon getrennt bleibt der heutige generische systemd-Updater: Er verlangt eine erkannte Unit und hat eigene Konfigurations-/TTS-Defaults. Die Warninstallationsanleitung setzt für diesen Servicepfad `MIGRATE_LOCAL_TTS_CONFIG=0 DISABLE_LOCAL_PIPER=0`, um vorhandene TTS/Piper-Einstellungen zu bewahren, und dokumentiert für die manuelle TBS einen separaten Build-/Binarytausch. Alte BAT-Sonderlogik und heutige generische Anleitung nicht ungeprüft vermischen.
+Davon getrennt bleibt der geprüfte generische systemd-Updater: Er verlangt eine erkannte Unit und hat eigene Konfigurations-/TTS-Defaults. Die Warninstallationsanleitung setzt für diesen Servicepfad `MIGRATE_LOCAL_TTS_CONFIG=0 DISABLE_LOCAL_PIPER=0`, um vorhandene TTS/Piper-Einstellungen zu bewahren, und dokumentiert für die manuelle TBS einen separaten Build-/Binarytausch. Alte BAT-Sonderlogik und geprüfte generische Anleitung nicht ungeprüft vermischen.
 
 ## 6. Eigene Warnmeldungen: realer Versand, Auffindbarkeit und frühes Löschen
 
 ### 6.1 Im Betrieb bestätigter Ausgangstest
 
-Der Nutzer meldete ausdrücklich, dass die Aussendung einer eigenen Meldung funktioniert. Im beigefügten TBS-Log ist die Test-SDS `EIGEN: Test. Test` von `4010112` an ISSI `5102` mit **168 Bit** Nutzdaten sowie anschließend `U-STATUS MessageReceived` mit Referenz `1` und zentraler Weitergabe nachvollziehbar. Das ist ein konkreter On-Air-/Empfangsbeleg für diesen Testfall, keine Abnahme jeder Warnquelle oder aller Endgeräte.
+Im Betriebsprotokoll dokumentiert ist ausdrücklich, dass die Aussendung einer eigenen Meldung funktioniert. Im beigefügten TBS-Log ist die Test-SDS `EIGEN: Test. Test` von `4010112` an ISSI `5102` mit **168 Bit** Nutzdaten sowie anschließend `U-STATUS MessageReceived` mit Referenz `1` und zentraler Weitergabe nachvollziehbar. Das ist ein konkreter On-Air-/Empfangsbeleg für diesen Testfall, keine Abnahme jeder Warnquelle oder aller Endgeräte.
 
 Das Log zeigt außerdem `ws://10.0.1.22:8081` für Brew und `ws://10.0.1.179:8080/ws/node` für Node Gateway, den Übergang aus anfänglichem Degraded/Recovering in Online sowie Dual-Carrier-Kanäle **720/721**. Startmeldungen über RX-Overrun/TX-Late bleiben Diagnosehinweise; der erfolgreiche einzelne Warnversand beweist keinen störungsfreien RF-Dauerlauf.
 
@@ -297,7 +294,7 @@ Die betreffenden Logzeilen 449–477 zeigen den Downlink um `00:17:06.665` und d
 
 ### 6.2 Ursache des vermeintlichen Verschwindens
 
-Die gemeinsame Warnliste war nach Aktualisierung sortiert. Wiederholte NINA-Abrufe konnten eigene Meldungen nach unten verdrängen, obwohl deren Laufzeit noch nicht abgelaufen war. Der Nutzer konnte sie deshalb nicht zuverlässig wiederfinden oder löschen. Es lag kein ausreichender Beleg vor, dass die Meldung selbst aus der persistenten Datenbank verschwunden war.
+Die gemeinsame Warnliste war nach Aktualisierung sortiert. Wiederholte NINA-Abrufe konnten eigene Meldungen nach unten verdrängen, obwohl deren Laufzeit noch nicht abgelaufen war. Die Meldungen ließen sich deshalb nicht zuverlässig wiederfinden oder löschen. Es lag kein ausreichender Beleg vor, dass die Meldung selbst aus der persistenten Datenbank verschwunden war.
 
 ### 6.3 Implementierte Lösung und Semantik
 
@@ -310,7 +307,7 @@ Die gemeinsame Warnliste war nach Aktualisierung sortiert. Wiederholte NINA-Abru
 
 Die gezielte Vor-Ort-Reparatur betraf die drei statischen Webdateien `index.html`, `app.js`, `style.css`, erforderte keinen Dienstneustart und änderte weder Warn-Datenbank noch Token. Danach war ein hartes Neuladen der UI mit Strg+F5 vorgesehen. API-/Persistenzverhalten und der vorhandene Löschpfad wurden mitgeprüft.
 
-**Status:** Implementiert, lokal/browserseitig getestet, in Linux-CI abgedeckt und später mit PR #55 in v1.9.0 integriert. Die allgemeine positive Nutzerrückmeldung am Ende ist vorhanden; ein detailliertes Remote-UI-Abnahmeprotokoll nach Ausführung der Reparatur fehlt. Der archivierte Screenshot zeigt den **lokalen** Test, nicht die produktive Warnzentrale.
+**Status:** Implementiert, lokal/browserseitig getestet, in Linux-CI abgedeckt und später mit PR #55 in v1.9.0 integriert. Die allgemeine positive Betriebsrückmeldung am Ende ist vorhanden; ein detailliertes Remote-UI-Abnahmeprotokoll nach Ausführung der Reparatur fehlt. Der archivierte Screenshot zeigt den **lokalen** Test, nicht die produktive Warnzentrale.
 
 ## 7. Task Workflow und SIP/Asterisk: Diagnose und gezielte Reparaturen
 
@@ -322,7 +319,7 @@ Zusätzlich war die zunächst abgefragte lokale Readiness-Adresse irreführend, 
 
 Die Reparatur änderte gezielt `[sds_router].base_url` von Loopback auf `.169`, erhielt andere Werte und Kommentare, prüfte den Router vorher, startete Task Workflow neu und prüfte anschließend dessen konfigurierte `/health/ready`-Adresse. Ein unbekanntes vorheriges SDS-Ziel wurde nicht ungefragt überschrieben.
 
-**Status:** Lokales Reparaturpaket implementiert und getestet. Kein detaillierter nachfolgender Betreiber-Readiness-Beleg in diesem Chat. Die IP `.169` ist eine **installationsspezifische Konfiguration**, keine globale Repositoryvorgabe; die Beispielkonfiguration hat weiterhin Loopback.
+**Status:** Lokales Reparaturpaket implementiert und getestet. Kein detaillierter nachfolgender Betreiber-Readiness-Beleg für diesen Entwicklungsstand. Die IP `.169` ist eine **installationsspezifische Konfiguration**, keine globale Repositoryvorgabe; die Beispielkonfiguration hat weiterhin Loopback.
 
 ### 7.2 SIP/Asterisk: von Statusdiagnose bis zum reproduzierbaren Rechtefehler
 
@@ -346,7 +343,7 @@ Der alte Renderer schrieb temporäre Includes ohne explizite Gruppenleserechte. 
 5. `netcore-sip-switch.service` neu starten; Asterisk wiederholt auf Aktivität/CLI und den SIP-Status prüfen.
 6. Bei Fehlern die gesicherten Dateien wiederherstellen; Asterisk nach fehlgeschlagener Reparatur gestoppt lassen, um keine weitere Absturzschleife auszulösen.
 
-**Beweisgrenze:** Der Rechtefehler ist durch Log, Code und Regressionstest belegt. Ein symbolisierter Core-Backtrace, der die interne SIGSEGV-Ursache abschließend beweist, fehlt. Aus dem Chat folgt keine vollständige PBX-/TBS-Anmelde- oder bidirektionale Sprach-/RTP-Abnahme.
+**Beweisgrenze:** Der Rechtefehler ist durch Log, Code und Regressionstest belegt. Ein symbolisierter Core-Backtrace, der die interne SIGSEGV-Ursache abschließend beweist, fehlt. Die Befunde bestätigen keine vollständige PBX-/TBS-Anmelde- oder bidirektionale Sprach-/RTP-Abnahme.
 
 ### 7.3 Gemeinsames Reparaturpaket und Schutz lokaler Zustände
 
@@ -354,7 +351,7 @@ Der alte Renderer schrieb temporäre Includes ohne explizite Gruppenleserechte. 
 
 Das kleine Paket `NetCore-Korrekturen-2026-09-27.tar.gz` und eine Datei-Hashprüfung akzeptierten nur den bekannten vorherigen Programmstand `32e0e87…` oder dieselbe bereits angewendete Korrektur. Unbekannte lokale Programmänderungen wurden abgelehnt. Backups lagen unter `/var/backups/netcore-fixes/`; ein Fehler nach dem Austausch löste Rollback aus. Die ZIP `NetCore-Drei-Korrekturen.zip` enthielt Sammel-/Einzelstarter und Anleitung.
 
-**Wichtig für eine Fortsetzung:** Ein erneutes Ausrollen des alten großen Quellpakets `32e0e87` kann diese späteren Programmkorrekturen wieder ersetzen. Nach Releaseintegration wurde deshalb `main` bzw. für den damaligen geprüften Stand `v1.9.0` empfohlen. Die alten Patch-BATs sind keine universelle Aktualisierung eines beliebigen heutigen Checkouts.
+**Wichtig für eine Fortsetzung:** Ein erneutes Ausrollen des alten großen Quellpakets `32e0e87` kann diese späteren Programmkorrekturen wieder ersetzen. Nach Releaseintegration wurde deshalb `main` bzw. für den damaligen geprüften Stand `v1.9.0` empfohlen. Die alten Patch-BATs sind keine universelle Aktualisierung eines beliebigen geprüften Checkouts.
 
 ## 8. Tatsächlich verwendete und nur vorbereitete Befehle
 
@@ -362,7 +359,7 @@ Die folgenden Beispiele dokumentieren den historischen Ablauf. Sie sind keine Au
 
 ### 8.1 Windows-Einstiege
 
-**Vom Nutzer tatsächlich ausgeführt:** Gesamt-BAT, Wiederaufnahme über Startpositionen, Nachlauf und Restlauf. Der Einstieg in CMD war:
+**Tatsächlich am Zielsystem ausgeführt:** Gesamt-BAT, Wiederaufnahme über Startpositionen, Nachlauf und Restlauf. Der Einstieg in CMD war:
 
 ```cmd
 cd /d "%USERPROFILE%\NetCore-Updates"
@@ -388,16 +385,16 @@ scp "$env:USERPROFILE\NetCore-Updates\01-node-gateway.sh" root@10.0.1.179:nc-upd
 scp "%USERPROFILE%\NetCore-Updates\01-node-gateway.sh" root@10.0.1.179:nc-update.sh
 ```
 
-### 8.2 Tatsächlich vom Nutzer ausgeführte Speicherdiagnosen
+### 8.2 Tatsächlich durch den Betreiber ausgeführte Speicherdiagnosen
 
 ```cmd
 ssh root@10.0.1.154 "df -h / /root /opt /var /tmp; df -i / /root /opt /var /tmp"
 ssh root@10.0.1.154 "du -xhd1 /opt /root /var 2>/dev/null"
 ```
 
-Diese Befehle waren lesend. Ihre Ergebnisse begründeten die anschließende vom Nutzer durchgeführte Plattenvergrößerung.
+Diese Befehle waren lesend. Ihre Ergebnisse begründeten die anschließende durchgeführte Plattenvergrößerung.
 
-### 8.3 Nutzerbestätigter manueller TBS-Start
+### 8.3 Im Betrieb bestätigter manueller TBS-Start
 
 ```text
 SSH-Anmeldung: jan@10.0.1.20
@@ -409,11 +406,11 @@ cd /opt/netcore-tetra
 ./target/release/bluestation-bs ./config.toml
 ```
 
-Der Nutzer bestätigte diesen Betriebsweg ausdrücklich und lieferte später ein tatsächliches Funklog. Ein fortbestehender systemd-Autostart wird daraus nicht abgeleitet.
+Dieser Betriebsweg ist ausdrücklich bestätigt; später wurde ein tatsächliches Funklog dokumentiert. Ein fortbestehender systemd-Autostart wird daraus nicht abgeleitet.
 
 ### 8.4 Diagnosehelfer und Releasecheckout
 
-`SIP-Switch-Pruefen.bat`, `Task-Workflow-Pruefen.bat`, `SIP-Absturz-Pruefen.bat` und `SIP-Startdiagnose.bat` wurden vom Nutzer ausgeführt; die Ausgaben sind im Chat. Die Startdiagnose war die einzige dieser Diagnosestufen mit bewusstem begrenztem Asterisk-Startversuch. `TBS-Starten.bat` wurde als separater Startweg ohne Neubau geliefert.
+`SIP-Switch-Pruefen.bat`, `Task-Workflow-Pruefen.bat`, `SIP-Absturz-Pruefen.bat` und `SIP-Startdiagnose.bat` wurden durch den Betreiber ausgeführt; die Ausgaben sind im dokumentierten Arbeitsstand. Die Startdiagnose war die einzige dieser Diagnosestufen mit bewusstem begrenztem Asterisk-Startversuch. `TBS-Starten.bat` wurde als separater Startweg ohne Neubau geliefert.
 
 **Nach dem Release dokumentiert, kein dadurch belegter weiterer Flottenrollout:**
 
@@ -421,7 +418,7 @@ Der Nutzer bestätigte diesen Betriebsweg ausdrücklich und lieferte später ein
 git clone --branch v1.9.0 --single-branch https://github.com/JanHG98/netcore-tetra.git netcore-tetra-v1.9.0
 ```
 
-Bei alten Checkouts wurde ein explizites `git fetch origin main:refs/remotes/origin/main` und danach `git switch --detach origin/main` statt eines blinden `git pull` über die neu aufgebaute Historie beschrieben. Lokale Änderungen/Konfigurationen müssen dabei vorher zugeordnet und gesichert sein. Dieser Archivauftrag führte diese Befehle auf keinem Betriebshost aus.
+Bei alten Checkouts wurde ein explizites `git fetch origin main:refs/remotes/origin/main` und danach `git switch --detach origin/main` statt eines blinden `git pull` über die neu aufgebaute Historie beschrieben. Lokale Änderungen/Konfigurationen müssen dabei vorher zugeordnet und gesichert sein. Dieser Prüfdurchlauf vom 06.10.2026 führte diese Befehle auf keinem Betriebshost aus.
 
 ## 9. Tests, Releaseintegration und historisches Brancharchiv
 
@@ -443,7 +440,7 @@ Bei alten Checkouts wurde ein explizites `git fetch origin main:refs/remotes/ori
 | Control-Room-HTTP-Integration | Gateway-Snapshot, Registrierung/GPS, zuständige TBS, Relogin ohne Duplikat, Disconnect blockiert Versand | Simulierter Gateway-/Teilnehmerkontext |
 | TBS-SDS und Radio-CI | 4 zentrale SDS-Handler-Tests, TBS-Debugbuild; Funk-/SIP-/Scheduler-Regressionen und Releasebuild | Kein vollständiger RF-/Handover-/Dauerlastnachweis |
 | Reale Flotte | 29 Updateerfolge; anschließend 24/26 Backend-Endpunkte bereit | Noch offene Task-/SIP-Abhängigkeiten |
-| Reales Funkgerät | Eigene Testwarnung ausgesendet, `MessageReceived` im TBS-Log; Nutzer bestätigt Funktion | Ein konkreter Test, nicht alle Geräte/Funkfälle |
+| Reales Funkgerät | Eigene Testwarnung ausgesendet, `MessageReceived` im TBS-Log; Betriebsrückmeldung bestätigt Funktion | Ein konkreter Test, nicht alle Geräte/Funkfälle |
 
 Die Prüfzahlen stammen aus historischen Testausgaben und CI-Belegen. Am 06.10. wurden CI-Metadaten und Code erneut gelesen; die komplette September-Testserie wurde für diesen reinen Dokumentationsauftrag nicht neu ausgeführt.
 
@@ -457,7 +454,7 @@ Alle folgenden Jobs gehören zum geprüften PR-Head `b4667e09a48e4ee66cd3166e292
 | [Radio traffic regression tests](https://github.com/JanHG98/netcore-tetra/actions/runs/36277876095) | 36277876095 | `slotter` |
 | [Asterisk installer tests](https://github.com/JanHG98/netcore-tetra/actions/runs/36277876177) | 36277876177 | `selection`, `trixie-source (ubuntu-24.04)`, `trixie-source (ubuntu-24.04-arm)` |
 
-Die Trixie-Tests prüften Installerwahl, Wiederverwendung einer installierten Binary/Erhalt lokaler Konfiguration sowie Asterisk/PJSIP-Start in den CI-Containern. Sie beweisen nicht, dass die konkrete PBX-Anlage des Nutzers danach korrekt telefonierte.
+Die Trixie-Tests prüften Installerwahl, Wiederverwendung einer installierten Binary/Erhalt lokaler Konfiguration sowie Asterisk/PJSIP-Start in den CI-Containern. Sie beweisen nicht, dass die konkrete PBX-Anlage des Betreibers danach korrekt telefonierte.
 
 ### 9.3 Zusammenführung trotz neu aufgesetzter main-Historie
 
@@ -479,15 +476,15 @@ Ein sauberer Dreiwege-Dateibaum-Merge zwischen archiviertem main und `katwarn/ni
 
 Der neuere separate `misc/brew-server`, die Wiki-Überarbeitung und `CODE_OF_CONDUCT.md` blieben gegenüber dem damaligen main-Snapshot erhalten. Das bedeutet keine Migration der tatsächlich betriebenen Python-Brew-Instanz. Relevante CI-Builds wurden auf `--locked` umgestellt; `Docs/RELEASE_v1.9.0.md`, README und Warninstallationsanleitungen beschreiben den neuen gemeinsamen Stand.
 
-Die Aussage „KatWarn läuft“ ist der begrenzte Betreiberbefund, auf dessen Grundlage der Nutzer Merge/Release wünschte. Der Release entstand zusätzlich erst nach den genannten CI-Prüfungen. Ein vollständiger anschließender v1.9.0-Neurollout auf alle 29 Ziele ist im Chat nicht dokumentiert; ursprünglich liefen diese auf `32e0e87` plus Reparaturen.
+Die Aussage „KatWarn läuft“ ist der begrenzte Betreiberbefund, auf dessen Grundlage Merge und Release festgelegt wurden. Der Release entstand zusätzlich erst nach den genannten CI-Prüfungen. Ein vollständiger anschließender v1.9.0-Neurollout auf alle 29 Ziele ist nicht dokumentiert; ursprünglich liefen diese auf `32e0e87` plus Reparaturen.
 
 ### 9.4 Archiv-Tags und Branchlöschung
 
-Nach dem Squash-Merge waren die Codeänderungen integriert, aber ursprüngliche Zwischencommits hatten nicht automatisch denselben Platz in der neuen main-Abstammung. Vor Erstellung der Archiv-Tags waren 6 Commits des alten main-Archivs und 20 Commits des KatWarn-Branches durch die übrigen damaligen Branches/Release-Tags nicht abgedeckt. Diese Zahlen beschreiben den damaligen Ref-Zustand, nicht die heutige Erreichbarkeit.
+Nach dem Squash-Merge waren die Codeänderungen integriert, aber ursprüngliche Zwischencommits hatten nicht automatisch denselben Platz in der neuen main-Abstammung. Vor Erstellung der Archiv-Tags waren 6 Commits des alten main-Archivs und 20 Commits des KatWarn-Branches durch die übrigen damaligen Branches/Release-Tags nicht abgedeckt. Diese Zahlen beschreiben den damaligen Ref-Zustand, nicht die geprüfte Erreichbarkeit.
 
-Der Nutzer wollte die Branches selbst aufräumen und bat um kopierbare Titel/Tags/Beschreibungen für Pre-Releases. Im historischen Chat wurden die drei Veröffentlichungen nicht vom Assistenten ausgeführt, sondern vorbereitet. `main_old` war bereits identisch mit `v1.8.0`; sein zusätzliches Archiv-Release war daher eine verständliche Benennung, keine notwendige zusätzliche Codesicherung.
+Für die Branchbereinigung wurden kopierbare Titel, Tags und Beschreibungen für Pre-Releases vorbereitet. Die drei Veröffentlichungen waren zunächst noch nicht ausgeführt. `main_old` war bereits identisch mit `v1.8.0`; das zusätzliche Archiv-Release diente deshalb der Benennung, nicht der zusätzlichen Codesicherung.
 
-| Alter Branch | Vorgeschlagener und heute vorhandener Tag | Exakter Commit |
+| Alter Branch | Vorgeschlagener und zum Prüfstand vom 06.10.2026 vorhandener Tag | Exakter Commit |
 |---|---|---|
 | `archive/pre-contributor-reset-2026-09-26` | `archive-pre-contributor-reset-2026-09-26` | `32af356ec276dd651f9e6be4d05f2baeb5e2d100` |
 | `katwarn/nina` | `archive-katwarn-nina-2026-09-27` | `32e0e87d0994107dd007a541df308eae7c691ed2` |
@@ -497,7 +494,7 @@ Ein neuer Tag musste im GitHub-Releaseformular jeweils den richtigen alten Branc
 
 ## 10. Zusätzlich überprüfter Repository-Stand am 06.10.2026
 
-### 10.1 Branches und Releases heute
+### 10.1 Branches und Releases zum Prüfstand vom 06.10.2026
 
 `git ls-remote --heads --tags` zeigte am Prüftag als Branches nur **`main`** und **`Archiving`**. Die drei alten Branches und der Integrationsbranch sind nicht mehr vorhanden. Alle drei Archiv-Tags zeigen exakt auf die in Abschnitt 9.4 genannten Commits. Die GitHub-API bestätigt die zugehörigen Releases jeweils mit `draft=false`, `prerelease=true`:
 
@@ -507,13 +504,13 @@ Ein neuer Tag musste im GitHub-Releaseformular jeweils den richtigen alten Branc
 | [KatWarn/NINA](https://github.com/JanHG98/netcore-tetra/releases/tag/archive-katwarn-nina-2026-09-27) | 26.09.2026 23:12:32 |
 | [main_old](https://github.com/JanHG98/netcore-tetra/releases/tag/archive-main-old-2026-09-27) | 26.09.2026 23:13:26 |
 
-Diese heutige Prüfung schließt die damalige Nachweislücke für die Tag-Veröffentlichung und den heutigen Branchzustand. Sie bestimmt nicht rückwirkend den exakten Zeitpunkt jeder Branchlöschung. Die Archivierungsaufgabe vom Oktober löscht selbst keine Branches oder Tags.
+Die Prüfung vom 06.10.2026 schließt die damalige Nachweislücke für die Tag-Veröffentlichung und den geprüften Branchzustand. Sie bestimmt nicht rückwirkend den exakten Zeitpunkt jeder Branchlöschung. Die Archivierungsaufgabe vom Oktober löscht selbst keine Branches oder Tags.
 
-### 10.2 Codeabgleich: damals implementiert und heute weiter vorhanden
+### 10.2 Codeabgleich: damals implementiert und zum Prüfstand vom 06.10.2026 weiter vorhanden
 
 Die hier maßgeblichen Produktcodepfade sind zwischen geprüftem `Archiving@0ca574a` und `main@9116c15` identisch. Außerhalb von `Docs/archive/` bestehen Unterschiede in AGENTS-/Roadmap-/README-/Dokumentationsdateien; daraus wird keine Codeabweichung dieser Reparaturen konstruiert. Gegenüber v1.9.0 gab es spätere WebUI-/Designarbeit, insbesondere PR #59. Die konkrete Installation dieser neueren Oberfläche auf den historischen Hosts ist unbestätigt.
 
-| Gegenstand | Heutiger Befund | Belegpfade |
+| Gegenstand | Geprüfter Befund | Belegpfade |
 |---|---|---|
 | Eigene Warnmeldungen verwalten | Eigene Liste, Filter, Suche und Löschverwaltung vorhanden; Kernlogik gegenüber v1.9.0 erhalten | `system-backend/alert-service/static/app.js`, `static/index.html`, `static/style.css`; `tests/test_*_ui.cjs` |
 | Warn-API / Persistenz | Vorhandener Lösch-/Storno-/Historienpfad; keine Rückholung bereits empfangener SDS zugesagt | `system-backend/alert-service/` einschließlich Python-Anwendung und Tests; `Docs/RELEASE_v1.9.0.md` |
@@ -523,9 +520,9 @@ Die hier maßgeblichen Produktcodepfade sind zwischen geprüftem `Archiving@0ca5
 | Gemeinsamer LXC-Netzwerkpfad | Installationshilfe passt reale bind-/public-/advertised-Endpunkte an | `system-backend/shared/install/lxc-network.sh` |
 | Reproduzierbarer Release | v1.9.0 und PR55-Merge-SHA stimmen weiterhin; relevante Workflows/Lockdatei vorhanden | `Cargo.lock`, `.github/workflows/alert-service-tests.yml`, `.github/workflows/asterisk-installer-tests.yml`, `.github/workflows/phy-slotter-tests.yml` |
 
-**Nicht gleichsetzen:** Ein heute unverändert vorhandener Fix beweist nicht seine heutige Installation auf `.129`, `.120` oder `.125`. Die Task-IP-Korrektur `.169` war bewusst lokal. Ein heutiger Beispielwert `127.0.0.1` widerlegt die damalige lokale Korrektur nicht, zeigt aber den weiterhin nötigen Konfigurationsschritt bei getrennten Containern.
+**Nicht gleichsetzen:** Ein zum Prüfstand vom 06.10.2026 unverändert vorhandener Fix beweist nicht seine geprüfte Installation auf `.129`, `.120` oder `.125`. Die Task-IP-Korrektur `.169` war bewusst lokal. Ein geprüfter Beispielwert `127.0.0.1` widerlegt die damalige lokale Korrektur nicht, zeigt aber den weiterhin nötigen Konfigurationsschritt bei getrennten Containern.
 
-### 10.3 Heute weiterhin offener Reviewbefund: alte Telemetrie-Zeitmarke
+### 10.3 Zum Prüfstand vom 06.10.2026 weiterhin offener Reviewbefund: alte Telemetrie-Zeitmarke
 
 [Reviewkommentar zu PR #55](https://github.com/JanHG98/netcore-tetra/pull/55#discussion_r4113225528), erstellt am 26.09.2026 **23:02:25 UTC**, also **nach dem Merge um 23:02:03 UTC**, meldet einen P2-Fall: Die pro Node gespeicherte `gateway_latest_telemetry`-Zeitmarke wird bei Sessionwechsel/Disconnect nicht zurückgesetzt. Nach Uhr-Rücksprung oder einem zuvor akzeptierten leicht zukünftigen Zeitstempel können neue Registrierungs-/GPS-Ereignisse als zu alt verworfen werden, bis die Uhr aufgeholt hat.
 
@@ -536,28 +533,28 @@ Die statische Prüfung am 06.10. bestätigt den Anschlussbedarf in `bins/netcore
 - `gateway_latest_telemetry` wird initialisiert, geprüft und überschrieben, jedoch im relevanten Code nicht bei diesem Lebenszykluswechsel entfernt.
 - Vorhandene Tests in `bins/netcore-control-room/src/gateway.rs` prüfen Reconnect, Präsenzinvalidierung und ältere Ereignisse, aber keinen neuen Sessionkontext nach Uhr-Rücksprung.
 
-**Status:** Heute statisch bestätigter offener Codebefund, kein in diesem Chat beobachteter Betriebsausfall. Die sechs grünen CI-Jobs bleiben korrekt; sie deckten diesen zusätzlichen Fall nicht ab. Es wäre falsch, aus der damaligen Freigabe „keine offenen Reviewpunkte“ für alle später eingegangenen Kommentare abzuleiten. Eine Behebung gehört in einen separaten Codeauftrag, nicht in diesen Archivcommit.
+**Status:** Zum Prüfstand vom 06.10.2026 statisch bestätigter offener Codebefund, kein für diesen Entwicklungsstand beobachteter Betriebsausfall. Die sechs grünen CI-Jobs bleiben korrekt; sie deckten diesen zusätzlichen Fall nicht ab. Es wäre falsch, aus der damaligen Freigabe „keine offenen Reviewpunkte“ für alle später eingegangenen Kommentare abzuleiten. Eine Behebung gehört in einen separaten Codeauftrag, nicht in diesen Archivcommit.
 
-### 10.4 Heutige Gesamtprioritäten bleiben getrennt
+### 10.4 Geprüfte Gesamtprioritäten bleiben getrennt
 
-Der aktuelle main enthält inzwischen eine zentrale [ROADMAP.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md). Dort bleibt **Z01.1**, der Vergleich fehlender Deployment-/Syslog-Arbeit und Vorbereitung eines Integrationsplans, der erste Gesamtschritt. Die zentrale Gruppenbefehlsausführung Z02.5 ist als parallele P0-Arbeit aufgenommen. Diese späteren Projektentscheidungen stammen nicht aus dem historischen Updatechat.
+Der aktuelle main enthält inzwischen eine zentrale [ROADMAP.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md). Dort bleibt **Z01.1**, der Vergleich fehlender Deployment-/Syslog-Arbeit und Vorbereitung eines Integrationsplans, der erste Gesamtschritt. Die zentrale Gruppenbefehlsausführung Z02.5 ist als parallele P0-Arbeit aufgenommen. Diese späteren Projektentscheidungen stammen nicht aus dem historischen Rollout.
 
-Die offenen Punkte dieses Chats werden nachfolgend als Kandidaten für Z01/Z03/Z05 bzw. gezielte Stabilitätsarbeit festgehalten. Es wird keine Roadmap außerhalb `Docs/archive/` geändert und keine neue technische Priorität stillschweigend über die bestehende Gesamtfolge gesetzt.
+Die offenen Punkte dieser Arbeitsphase werden nachfolgend als Kandidaten für Z01/Z03/Z05 bzw. gezielte Stabilitätsarbeit festgehalten. Es wird keine Roadmap außerhalb `Docs/archive/` geändert und keine neue technische Priorität stillschweigend über die bestehende Gesamtfolge gesetzt.
 
 ## 11. Offene Aufgaben, Roadmap-Kandidaten und konkrete Fortsetzung
 
 | ID | Status / Herkunft | Konkreter nächster Schritt und Abnahme |
 |---|---|---|
-| TBS-UPD-01 | **Beschlossen/geplant, Betriebsnachweise ergänzen** | Für alle 29 historischen Rollen tatsächliche aktuelle Source-SHA, Binaryversion, Konfigurationspfad und Dienst-/Startart erfassen. Alten `32e0e87`-Rollout plus Patches von echtem v1.9.0/heutigem main unterscheiden. Mit Z01-Bestandsabgleich verbinden. |
+| TBS-UPD-01 | **Beschlossen/geplant, Betriebsnachweise ergänzen** | Für alle 29 historischen Rollen tatsächliche aktuelle Source-SHA, Binaryversion, Konfigurationspfad und Dienst-/Startart erfassen. Alten `32e0e87`-Rollout plus Patches von echtem v1.9.0/geprüftem main unterscheiden. Mit Z01-Bestandsabgleich verbinden. |
 | TBS-UPD-02 | **Implementiert/getestet, Remote-Abnahme offen** | Warn-UI auf `.129` öffnen, eigene Meldung erstellen, senden, über Suche/Filter wiederfinden, vor Ablauf löschen und nach Refresh/Neustart Historie/Versandstopp belegen. Keine bereits empfangene SDS-Rückholung erwarten. |
 | TBS-UPD-03 | **Lokale Reparatur implementiert/getestet, Betrieb unbestätigt** | Task Workflow auf `.120`: effektives SDS-Ziel `.169`, konfigurierte Bindadresse und `/health/ready` prüfen; einen echten fachlichen Task→SDS-Auftrag mit nachvollziehbarem Ergebnis testen. |
 | TBS-UPD-04 | **Repositoryfix implementiert/CI-getestet, Telefonie offen** | Auf `.125` Include-Eigentümer/Gruppe/0640 auch nach erneutem Rendern unter umask077 prüfen; Asterisk-CLI/Readiness, PBX-/TBS-Registrierung und bidirektionale Telefonie/RTP einschließlich Rufabbau testen. Bei verbleibendem SIGSEGV Core-Dump symbolisiert auswerten. |
 | TBS-UPD-05 | **Akut im Betrieb behoben, Ursache offen** | Media Library: freien Platz erneut erfassen; größte Logquellen, Journald/Rotation und Wachstum über Zeit prüfen. Keine Medien pauschal löschen. Eine dauerhafte Speichergrenze/Rotation wäre ein eigener Betriebsänderungsauftrag. |
-| TBS-UPD-06 | **Heute statisch belegter offener Fehler** | Telemetrie-Watermark an Node-/Session-Lebenszyklus koppeln; Regression für Reconnect/Disconnect/Nodeverlust und Uhr-Rücksprung ergänzen, ohne legitime Reihenfolgeprüfung innerhalb einer Session aufzuheben. Danach Warnzustellung/GPS erneut integrieren. |
+| TBS-UPD-06 | **Zum Prüfstand vom 06.10.2026 statisch belegter offener Fehler** | Telemetrie-Watermark an Node-/Session-Lebenszyklus koppeln; Regression für Reconnect/Disconnect/Nodeverlust und Uhr-Rücksprung ergänzen, ohne legitime Reihenfolgeprüfung innerhalb einer Session aufzuheben. Danach Warnzustellung/GPS erneut integrieren. |
 | TBS-UPD-07 | **Beschlossen/geplant, teilweise durch Tags erledigt** | Weitere Updateanleitungen und lokal verwendete BATs auf veraltete `katwarn/nina`-Fetches prüfen. Historische Pakete eindeutig als alt kennzeichnen; für neue Rollouts freigegebenen aktuellen Commit verwenden. Archiv-Tags unverändert erhalten. |
 | TBS-UPD-08 | **Im Betrieb teilweise bestätigt, Dauerabnahme offen** | TBS nach Update/Neustart mit tatsächlichem Startmodus abnehmen; RX/TX-Warnungen, Registrierung, kurze SDS/Status, eigene Warnung und dualen Carrier unter Last beobachten. Einzelner Warnempfang ist keine vollständige RF-Stabilitätsabnahme. |
 | TBS-UPD-09 | **Testgrenze / weiterer Wunsch** | Wiederholbare Ende-zu-Ende-Nachweise mit Host-/Geräte-/Firmware-/Quellstand dokumentieren; Annahme, Aussendung, Empfang und Lesen getrennt kennzeichnen. Restore/Handover laufender Rufe und laufende SIP-Dialogmigration bleiben eigenständige spätere Funktionen. |
-| TBS-UPD-10 | **Lokale Artefakte vorhanden, Langzeitablage offen** | Falls die alten Reparaturpakete dauerhaft erhalten werden sollen, sie separat prüfen/sanitieren und unter einem ausdrücklichen Archivauftrag versionieren. Dieses Dokument liefert die Dateinamen/Logik, aber nicht alle BAT-/Tar-Binaries. |
+| TBS-UPD-10 | **Lokale Artefakte vorhanden, Langzeitablage offen** | Falls die alten Reparaturpakete dauerhaft erhalten werden sollen, sie separat prüfen/sanitieren und in einer gesonderten Archivierung versionieren. Dieses Dokument liefert die Dateinamen/Logik, aber nicht alle BAT-/Tar-Binaries. |
 
 Für die unmittelbare Fortsetzung zuerst die aktuelle Gesamtroadmap und den wirklich installierten Stand lesen. Unabhängig davon ist der Reviewfall TBS-UPD-06 ein klar abgegrenzter Code-/Regressionstestauftrag. Auf laufenden Containern sind die fehlenden Einzelnachweise TBS-UPD-02 bis -05 gezielt zu erheben; ein erneuter kompletter Altrollout ist dafür nicht erforderlich. Es wurden keine Termine, neuen Automationen oder pauschalen Betriebseingriffe beschlossen.
 
@@ -576,7 +573,7 @@ Alle folgenden Anhänge heißen lokal `Eingefügter Text.txt` unter `C:\Users\ja
 | `002a9db9-4947-448b-9d37-21bd75ef7940` | 336.051 Bytes | Basisstationsstart und eigener Warn-/SDS-Funktest; maßgeblicher Betriebsbeleg |
 | `572780d6-c08e-4e04-b1a5-419af1a63ea7` | 7.753 Bytes | Asterisk-Status/Journal mit SIGSEGV und Restartlimit |
 
-Zusätzliche Diagnoseausgaben wurden direkt als Nutzertext bzw. Antworten auf Rückfragen geliefert: `df`, `du`, Asterisk-Version/Pakete, fehlendes `coredumpctl`, 20-Sekunden-Startdiagnose und die erste Task-/SIP-Abhängigkeitsprüfung. Die ursprüngliche IP-Liste ist ein HTML-Bookmarkexport mit anschließend ergänzten Adressen; ihre Browserports sind keine SSH-Portangaben.
+Zusätzliche Diagnoseausgaben wurden direkt als Betriebsnotizen dokumentiert: `df`, `du`, Asterisk-Version/Pakete, fehlendes `coredumpctl`, 20-Sekunden-Startdiagnose und die erste Task-/SIP-Abhängigkeitsprüfung. Die ursprüngliche IP-Liste ist ein HTML-Bookmarkexport mit anschließend ergänzten Adressen; ihre Browserports sind keine SSH-Portangaben.
 
 ### 12.2 Lokale historische Werkzeuge und Ergebnisse
 
@@ -596,11 +593,11 @@ Zusätzliche Diagnoseausgaben wurden direkt als Nutzertext bzw. Antworten auf R�
 | `verify_update_blocks.py`, `verify_update_cargo.py`, `verify_update_special_hosts.py`, `verify_update_bat.py`, `verify_recovery.py`, `verify_backup_paths.py`, `verify_remaining_updates.py` | Lokale Syntax-/Fehler-/CMD-/Sicherungsprüfungen |
 | `update_fixes/` | Lokale Erstellung/Prüfung der gezielten Fixes; `publish_netcore_release.py` prüfte PR-/main-SHAs, CI und Tag vor Veröffentlichung |
 
-Der Workspace ist `C:\Users\janho\.codex\.chatgpt-projects\g-p-6a01f2ddb85c8191b93bf905c1d1e427`. `sources/` ist ausschließlich synchronisiertes, schreibgeschütztes Referenzmaterial. Die im Chat verwendeten Arbeitskopien `netcore-update-reference`, `netcore-alert-fix`, `netcore-release` können lokale Reständerungen enthalten; dieses Archiv wurde deshalb in einem eigenen Checkout erzeugt.
+Der Workspace ist `C:\Users\janho\.codex\.chatgpt-projects\g-p-6a01f2ddb85c8191b93bf905c1d1e427`. `sources/` ist ausschließlich synchronisiertes, schreibgeschütztes Referenzmaterial. Die im dokumentierten Arbeitsstand verwendeten Arbeitskopien `netcore-update-reference`, `netcore-alert-fix`, `netcore-release` können lokale Reständerungen enthalten; dieses Archiv wurde deshalb in einem eigenen Checkout erzeugt.
 
 ### 12.3 Maßgebliche Repositoryquellen
 
-Die folgenden relativen Links verweisen innerhalb desselben Archivbranches auf Repositorydateien. Für reproduzierbare heutige Codebelege zusätzlich den in Abschnitt 1 genannten main-SHA verwenden.
+Die folgenden relativen Links verweisen innerhalb desselben Archivbranches auf Repositorydateien. Für reproduzierbare geprüfte Codebelege zusätzlich den in Abschnitt 1 genannten main-SHA verwenden.
 
 - [Release v1.9.0](../RELEASE_v1.9.0.md) und [NINA/KATWARN-Installation/Update](../KATWARN_NINA_INSTALL_UPDATE.md).
 - [Zentrales Rollout](../CENTRAL_NETWORK_ROLLOUT.md), [SDS-/Call-Control-Fallback-Reparatur](../SDS_CALL_CONTROL_FALLBACK_REPARATUR.md), [Open-Lab-Inventory](../../deploy/open-lab/inventory.example.toml).
@@ -626,18 +623,16 @@ Die folgenden relativen Links verweisen innerhalb desselben Archivbranches auf R
 
 ### 13.2 Dekoratives Favicon aus dem Bookmarkexport
 
-Der Nutzerexport enthält zusätzlich ein 16×16-PNG-Favicon zu Home Assistant. Es ist nur Bookmark-Dekoration, keine technische Anlagenabbildung. Home Assistant war vom Update ausgeschlossen. Das originale kleine Asset ist unter [home-assistant-bookmark-favicon.png](assets/2026-10-06_tbs-container-updates-katwarn-release/home-assistant-bookmark-favicon.png) abgelegt.
+Der Bookmarkexport enthält zusätzlich ein 16×16-PNG-Favicon zu Home Assistant. Es ist nur Bookmark-Dekoration, keine technische Anlagenabbildung. Home Assistant war vom Update ausgeschlossen. Das originale kleine Asset ist unter [home-assistant-bookmark-favicon.png](assets/2026-10-06_tbs-container-updates-katwarn-release/home-assistant-bookmark-favicon.png) abgelegt.
 
-PNG, 496 Bytes, SHA-256 `3093a9300fd1f55c7f0ac7b510b0159a7c8bd1bee6a31a90574caea3d6c9ac08`; unverändert aus dem Nutzer-Bookmarkexport in der Sitzung, Ordinal 582 / JSONL-Zeile 583, Zeitpunkt `2026-09-26T16:23:08.043Z`. Es enthält keine Zugangsdaten.
+PNG, 496 Bytes, SHA-256 `3093a9300fd1f55c7f0ac7b510b0159a7c8bd1bee6a31a90574caea3d6c9ac08`; unverändert aus dem Bookmarkexport in der Sitzung, Ordinal 582 / JSONL-Zeile 583, Zeitpunkt `2026-09-26T16:23:08.043Z`. Es enthält keine Zugangsdaten.
 
-Im historischen Verlauf wurde kein weiterer eigenständiger Nutzerbildanhang gefunden. Der zugeordnete Visualisierungsordner ist heute leer; Bilder in anderen lokalen Archivordnern stammen aus anderen Chats und wurden nicht als Bilder dieses Gesprächs übernommen. Es wurde keine neue Abbildung als angeblich historischer Screenshot erzeugt.
+Im historischen Verlauf wurde kein weiterer eigenständiger Bildanhang gefunden. Der zugeordnete Visualisierungsordner ist zum Prüfstand vom 06.10.2026 leer; Bilder in anderen lokalen Archivordnern stammen aus anderen Arbeitsphasen und wurden nicht als Bilder dieser Arbeitsphase übernommen. Es wurde keine neue Abbildung als angeblich historischer Screenshot erzeugt.
 
-## 14. Archivierungsabschluss und Schutz bestehender Inhalte
+## 14. Ablage und erhaltene Inhalte
 
-Vor dem Schreiben wurden der aktuelle Remote-Branch `Archiving`, der vorhandene Archivindex und mögliche Treffer auf Chat-ID/Titel geprüft; eine bereits eindeutig diesem Chat zugehörige Zusammenfassung war nicht vorhanden. Bestehende Archiveinträge werden erhalten. Die Veröffentlichung dieses Auftrags umfasst ausschließlich diese Markdown-Datei, den zugehörigen Indexeintrag und die zugeordneten Bildassets unter `Docs/archive/`.
+Die Veröffentlichung der Archivnotizen umfasst diese Markdown-Datei, den Indexeintrag und zugehörige Bildassets. Produktänderungen und ein weiterer Flottenrollout sind damit nicht belegt.
 
 Ein isolierter Checkout vermeidet die Übernahme lokaler Programmänderungen anderer Arbeit. Beim Checkout trat ein Windows-Pfadlängenproblem bei einem bereits vorhandenen fremden Archivbild auf; `core.longpaths=true` und gezieltes Wiederherstellen genau dieser bestehenden Datei brachten den Checkout wieder auf unveränderten Ausgangsstand. Dieses fremde Bild gehört nicht zum neuen Commit.
 
-Die lokale Abschlussprüfung bestätigte gültige relative Dokument-/Bildlinks, geschlossene Codeblöcke, unveränderte bestehende Indexzeilen, genau einen neuen Indexeintrag und die SHA-256 beider Originalbilder. Eine zusätzliche Prüfung fand keine typischen Token-/Private-Key-Muster; die selektive Quellenübernahme und die visuelle Bildprüfung ergänzen diese begrenzte automatische Kontrolle. Die historischen und heutigen Fachaussagen wurden separat gegengelesen; insbesondere Reparaturreihenfolge, TBS-Konfigurationsmigration und Zustellstatus wurden präzisiert.
-
-Die Veröffentlichungsprüfung begrenzt geänderte Pfade auf `Docs/archive/`, pusht normal auf `Archiving` und liest Zusammenfassung/Index/Assets vom Remote-Branch zurück. Der tatsächlich veröffentlichte Commit steht in der Abschlussmeldung und der Git-Historie. Produktcode, andere Branches, laufende Systeme und Roadmaps außerhalb des Archivordners gehören nicht zu dieser Veröffentlichung.
+Die lokale Abschlussprüfung bestätigte gültige relative Dokument-/Bildlinks, geschlossene Codeblöcke, unveränderte bestehende Indexzeilen, genau einen neuen Indexeintrag und die SHA-256 beider Originalbilder. Eine zusätzliche Prüfung fand keine typischen Token-/Private-Key-Muster; die selektive Quellenübernahme und die visuelle Bildprüfung ergänzen diese begrenzte automatische Kontrolle. Die historischen und geprüften Fachaussagen wurden separat gegengelesen; insbesondere Reparaturreihenfolge, TBS-Konfigurationsmigration und Zustellstatus wurden präzisiert.

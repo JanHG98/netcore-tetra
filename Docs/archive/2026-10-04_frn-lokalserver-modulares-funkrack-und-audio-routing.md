@@ -1,58 +1,60 @@
-# FRN-Lokalserver, modulares Funkrack und Audio-Routing
+# Brainstorming: FRN-Lokalserver, modulares Funkrack und Audio-Routing
 
-## 1. Metadaten und Aussagegrenzen
+**Stand der Notizen und ergänzenden Prüfungen: 2026-10-04.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
+
+**Zielbild:** Lokales FRN mit Windows-Server, physischen Pi-Funkgateways, modularen Funk-Einschüben und Raumrouting. Die Architektur ist eine Idee; Softwarewahl, Audio/PTT, Crosslinks und autarker Betrieb sind noch zu prüfen.
+
+## 1. Kontext und Quellenlage
 
 | Feld | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Lokales Free Radio Network (FRN), Windows-Server, Raspberry-Pi-Funkgateways und modulares Rack |
-| Ursprünglicher Chattitel | Nicht zugänglich; kein Titel wird aus der ersten Frage erfunden |
-| Ursprünglicher Chatlink | Nicht zugänglich |
-| Historische Datierung | Ergänzende Verlaufssuche ordnet die Kernnachrichten dem 12.10.2025 zu; kein vollständiger Originalexport vorhanden |
+| Historische Datierung | Kernkonzept vom 12.10.2025; Zuordnung aus ergänzenden Unterlagen, vollständiger Originalexport fehlt. |
 | Erstellung und Repository-Prüfung | 04.10.2026, Europe/Berlin |
 | Geprüftes Repository | https://github.com/JanHG98/netcore-tetra |
-| Geprüfter und ausschließlich beschriebener Zielbranch | `Archiving` |
+| Geprüfter Repository-Branch | `Archiving` |
 | Geprüfter Ausgangscommit | `83ebe448243ddf07fb9e3d31730a52680dd5d747` |
 | Archivpfad | `Docs/archive/2026-10-04_frn-lokalserver-modulares-funkrack-und-audio-routing.md` |
 | Umfang | Historische Konzeptdokumentation mit getrenntem Repository-Abgleich; keine FRN-Implementierung |
 
-Der Commit, der dieses Archiv ablegt, ist über die Git-Historie dieser Datei nachvollziehbar. Der obige Ausgangscommit bezeichnet den vor dem Schreiben geprüften Stand, nicht den späteren Archivcommit.
+Der Ausgangscommit fixiert den Repository-Stand für den technischen Abgleich.
 
-**Auswertungslücke:** Direkt verfügbar waren vier historische Nutzernachrichten. Die damaligen Assistentenantworten wurden nicht als Volltext übergeben. Eine ergänzende Personal-Context-Verlaufssuche lieferte passende Auszüge mit Raum- und Crosslink-Vorschlägen, aber keinen vollständigen Chat, keine vollständige Konfiguration und keinen Chatlink. Diese Dokumentation beansprucht daher keine lückenlose Vollauswertung. Andere Projektchats und allgemeine Projekt-Erinnerungen werden nicht als Entscheidungen dieses FRN-Chats ausgegeben.
+**Quellenlage:** Das frühe Konzept und ergänzende Raum-/Crosslink-Ideen sind nur in Auszügen erhalten. Vollständige FRN-Konfiguration und Installationsnachweise fehlen.
 
 ## 2. Ziel, Ausgangslage und rekonstruierter Verlauf
 
-Jan fragte zunächst nach Kenntnissen zu FRN. Im weiteren Verlauf bestätigte er, dass die Interpretation richtig war. Die ergänzende Verlaufssuche identifiziert FRN als **Free Radio Network**.
+FRN bezeichnet hier **Free Radio Network**.
 
-Die konkrete Ausgangsfrage lautete sinngemäß: Kann ein lokales System aus einem Router, einem Windows-Rechner mit laufendem Server und mehreren Raspberry Pis als Clients für Relais aufgebaut werden? Anschließend entwickelte Jan daraus die Idee eines universellen modularen Racks mit Einschüben für **CB-Funk, TETRA, Amateurfunk (AFU), PMR, LPD und weitere Funkarten**. Als Bedien-/Routingkonzept nannte er die verschiedenen Räume eines Servers.
+Ziel ist ein lokales System mit Router, Windows-Rechner als Server und mehreren Raspberry Pis als Relais-/Funkclients. Daraus entstand die Idee eines universellen modularen Racks mit Einschüben für **CB-Funk, TETRA, Amateurfunk (AFU), PMR, LPD und weitere Funkarten**. Mehrere Serverräume sollen die Bedienung und Audiozuordnung ermöglichen.
 
-Die vier direkt verfügbaren Kernnachrichten behandeln:
+Das Konzept umfasst vier Themen:
 
 1. Kenntnis und Einordnung von FRN.
 2. Lokalen Router, Windows-Server und mehrere Raspberry-Pi-Clients für Relais.
 3. Ein universelles Rack mit getrennten Funk-Einschüben.
 4. Audio-Routing über mehrere Serverräume.
 
-Eine ergänzende historische Assistentenantwort schlug mehrere Räume/Channels und gezielte Crosslinks über einen zusätzlichen Client beziehungsweise einen Pi mit zwei FRN-Instanzen vor. Die erhaltenen Beispielnamen sind `CB-Lokal`, `PMR-Cluster`, `TETRA-Link`, `HAM-Bridge` und `CrossBridge`. Dies sind **Vorschläge**, keine nachgewiesen eingerichteten Räume.
+Als Erweiterung sind mehrere Räume/Channels und gezielte Crosslinks über einen zusätzlichen Client oder einen Pi mit zwei FRN-Instanzen vorgeschlagen. Beispielnamen: `CB-Lokal`, `PMR-Cluster`, `TETRA-Link`, `HAM-Bridge` und `CrossBridge`. Die Räume sind nicht nachgewiesen eingerichtet.
 
 ## 3. Status und endgültig erhaltene Anforderungen
 
 | Gegenstand | Status | Beleg und Grenze |
 |---|---|---|
-| Lokales FRN-System | Idee / gewünschtes Zielbild | Nutzer stellt Machbarkeitsfrage; keine Installation belegt |
-| Router als lokales Netz | Beschlossen/geplant als Konzeptbestandteil | Vom Nutzer im Zielbild genannt; Modell, Adressen und Konfiguration fehlen |
+| Lokales FRN-System | Idee / gewünschtes Zielbild | Machbarkeit noch zu prüfen; keine Installation belegt |
+| Router als lokales Netz | Beschlossen/geplant als Konzeptbestandteil | Im Zielbild festgelegt; Modell, Adressen und Konfiguration fehlen |
 | Windows-Rechner als FRN-Server | Beschlossen/geplant als Zielaufbau | Keine Auswahl von Serverprodukt, Version oder Windows-Version belegt |
 | Mehrere Raspberry Pis als Funk-/Relaisclients | Beschlossen/geplant als Zielaufbau | Anzahl, Modelle, Betriebssystem und Software offen |
 | Modulare Rack-Einschübe | Idee / ausdrücklicher Wunsch | CB, TETRA, AFU, PMR, LPD und weitere Funkarten genannt |
 | Trennung und Zuordnung über Räume | Gewünschtes Routingkonzept | Keine eingerichtete Raummatrix oder Abnahme belegt |
-| Crosslinks / zwei FRN-Instanzen auf einem Pi | Idee, historischer Assistentenvorschlag | Technische Machbarkeit mit konkretem Client nicht geprüft |
+| Crosslinks / zwei FRN-Instanzen auf einem Pi | Historische Idee | Technische Machbarkeit mit konkretem Client nicht geprüft |
 | FRN-Code in NetCore-Tetra | Nicht nachgewiesen implementiert | Repository-Treffer betreffen Ausbauplanung und Handbücher |
 | FRN-Hardware und Audio/PTT | Nicht nachgewiesen getestet | Keine Messwerte, Fotos, Logs oder Erfolgsberichte verfügbar |
 | Produktiver lokaler FRN-Betrieb | Nicht im Betrieb bestätigt | Keine Betriebsbestätigung verfügbar |
 
-Erhaltene Begründungen: Der Nutzer bewertet die Modularität positiv, weil unterschiedliche Funkarten in einem gemeinsamen universellen Rack untergebracht werden könnten. Räume sollen die logische Audiozuordnung ermöglichen. Eine Kosten-, Verfügbarkeits- oder Latenzentscheidung ist nicht überliefert.
+Die Modularität soll unterschiedliche Funkarten in einem universellen Rack zusammenführen. Räume sollen die logische Audiozuordnung ermöglichen. Kosten-, Verfügbarkeits- und Latenzvorgaben sind noch offen.
 
-Es gibt keine erhaltene ausdrückliche Korrektur, die Windows oder Pis aus diesem Konzept entfernt. Ein späterer Hinweis aus einem anderen Chat nennt die Raspberry Pis als physische Schnittstellen zwischen Funkgerät und Netzwerk, nicht als Container, und enthält die **Namensidee** `SRV-H-RPi-FRN01` (08.12.2025). Dies ist ergänzender Projektkontext und kein Nachweis einer real eingerichteten Maschine oder einer Namensfestlegung in diesem Chat.
+Windows-Server und Pi-Clients bleiben das Zielbild. Ein ergänzender Stand vom 08.12.2025 beschreibt die Raspberry Pis als physische Schnittstellen zwischen Funkgerät und Netzwerk und enthält die **Namensidee** `SRV-H-RPi-FRN01`. Weder eine eingerichtete Maschine noch eine verbindliche Namensfestlegung ist damit belegt.
 
 ## 4. Architektur und Komponenten
 
@@ -75,7 +77,7 @@ Ein TETRA-Einschub ist gewünscht. Nicht festgelegt ist, ob die Kopplung über e
 
 ## 5. Historischer Entwicklungs- und Betriebsstand
 
-Der verfügbare Chat endet auf der Konzeptstufe. Es liegen keine erfolgreich ausgeführten FRN-Installationen, keine angelegten Räume, keine eingerichteten Pi-Clients und keine Funkabnahme vor. Eine vorhandene NetCore-TETRA-Anlage aus anderen Chats ist kein Beleg für dieses FRN-Rack.
+Der historische Stand bleibt ein Konzept. Erfolgreiche FRN-Installation, angelegte Räume, eingerichtete Pi-Clients und Funkabnahme sind nicht dokumentiert. Bestehende NetCore-TETRA-Installationen bestätigen dieses FRN-Rack nicht.
 
 Es fehlen insbesondere Stückliste, Rackmaße, Einschubhöhe, Verkabelungsplan, Strombudget, Audiopegel, PTT-/GPIO-Belegung und eine Liste verwendeter Funkgeräte. Für das Wort „Relais“ ist nicht abschließend geklärt, ob ein vorhandenes Funkrelais angebunden oder ein Gateway mit angeschlossenem Funkgerät gemeint war.
 
@@ -96,9 +98,9 @@ Die textuelle Suche nach `FRN` beziehungsweise `Free Radio Network` im ausgechec
 
 Der vorhandene Media Switch verwendet laut README ausschließlich `security.mode = "open_lab"`. Seine Beschreibung ist kein Nachweis eines abgesicherten FRN-Gateways. Es wurden keine Builds und keine Live-Tests dieser Dienste durchgeführt.
 
-### Historie gegenüber heutigem Befund
+### Historie gegenüber geprüftem Befund
 
-Es ist kein Widerspruch zwischen dem frühen modularen Rackwunsch und der heutigen FRN-Ausbauplanung sichtbar. Der heutige Backend-Medientransport ist gegenüber dem frühen Konzept konkreter, löst aber die FRN-Kopplung nicht nachweislich. Alte Raum-/Crosslink-Vorschläge sind weiterhin unbestätigte Ideen. Eine inzwischen erfolgreich behobene FRN-Störung ist weder im Chat noch in der Prüfung belegt.
+Es ist kein Widerspruch zwischen dem frühen modularen Rackwunsch und der geprüften FRN-Ausbauplanung sichtbar. Der ergänzende Backend-Medientransport ist gegenüber dem frühen Konzept konkreter, löst aber die FRN-Kopplung nicht nachweislich. Alte Raum-/Crosslink-Vorschläge sind weiterhin unbestätigte Ideen. Eine inzwischen erfolgreich behobene FRN-Störung ist weder im Entwurf noch in der Prüfung belegt.
 
 ## 7. Technische Parameter, Konfigurationen und Dienste
 
@@ -107,7 +109,7 @@ Es ist kein Widerspruch zwischen dem frühen modularen Rackwunsch und der heutig
 | FRN-Serverport / Transport | Nicht festgelegt oder verifiziert; keine Standardwerte erfunden |
 | FRN-Server-IP, Hostname, Bind-Adresse | Nicht festgelegt |
 | Clientsoftware / Serverdistribution / Versionsstände | Nicht erhalten |
-| Pi-Betriebssystem | Nicht festgelegt; RaspiOS aus anderen Themen ist keine Entscheidung dieses Chats |
+| Pi-Betriebssystem | Nicht festgelegt; RaspiOS aus anderen Themen ist keine Entscheidung dieser Planung |
 | Audioformat, Codec, Samplingrate | Für FRN offen; NetCore-Medienframes nicht damit gleichsetzen |
 | Audio-Schnittstelle / PTT / COS / COR / VOX | Auswahl, elektrische Pegel und Logik offen |
 | Funkfrequenzen, Leistung und Betriebsart | Für dieses Rack nicht festgelegt |
@@ -137,7 +139,7 @@ Diese Befehle prüfen Repository und Dokumentationsbasis. Sie installieren keine
 
 ## 9. Fehler, Diagnose und Tests
 
-Im FRN-Chat sind keine konkreten Fehlerbilder, Logs, Diagnosen oder funktionierenden Reparaturen erhalten. Ein störungsfreier Betrieb kann daraus ebenfalls nicht abgeleitet werden.
+Konkrete FRN-Fehlerbilder, Logs, Diagnosen und erfolgreiche Reparaturen fehlen. Ein störungsfreier Betrieb ist nicht bestätigt.
 
 Durchgeführte Prüfungen für dieses Archiv: Zielbranch und Commit bestimmt, vorhandenen Archivindex und Dateinamen geprüft, FRN-Texttreffer ausgewertet, vorhandenen Media-Switch-Code und Dokumentation gelesen, 25 PDF-Titelseiten inventarisiert. Das sind Dokumentationsprüfungen, keine Funk-, Audio-, Last- oder Sicherheitsabnahme.
 
@@ -149,13 +151,13 @@ Keine ausdrücklich verworfene Architektur ist erhalten. Windows-Server, Pi-Clie
 
 ## 11. Offene Aufgaben und Roadmap-Kandidaten
 
-Die folgenden Schritte sind eine aus den offenen Punkten abgeleitete Fortsetzungsplanung, **keine nachträglich behauptete Vereinbarung**. Im Chat wurde keine verbindliche Priorität oder Frist festgelegt. Die Repository-Roadmap ordnet FRN nach Hardware-I/O, Workflows und dem zurückgestellten SIP-Switch ein; dieser Eintrag wurde hier nicht geändert.
+Die folgenden Schritte bilden einen **Vorschlag für die weitere Planung**; verbindliche Prioritäten und Fristen fehlen. Die Repository-Roadmap ordnet FRN nach Hardware-I/O, Workflows und dem zurückgestellten SIP-Switch ein.
 
 1. **Konzept konkretisieren:** gewünschte Funkmodule, Zahl der Pi-Gateways, Bedeutung von „Relais“, getrennte Räume und erlaubte Brücken festlegen. Physische Funkgeräte gegenüber nativer TETRA-Backendkopplung entscheiden.
 2. **Software auswählen:** konkrete Windows-Server- und Pi-Clientimplementierungen samt Version und Lizenz identifizieren. Vollständig lokalen Betrieb ohne WAN/Masterserver, mehrere Räume und zwei Instanzen auf einem Pi anhand der gewählten Software prüfen.
 3. **Einmodul-Prototyp:** zunächst Server plus ein Pi plus ein Funkmodul. Audio-Ein-/Ausgänge, PTT und Empfangssignal spezifizieren; Verbindung, Pegel, Verzögerung und saubere Sendefreigabe messen.
 4. **Raumkonzept abnehmen:** Beispielräume auf tatsächlichen Bedarf reduzieren, Zuordnung und Raumwechsel testen. Crosslinks separat prüfen; Schleifen, Rückkopplung und unbeabsichtigtes Dauersenden verhindern. Verhalten bei gleichzeitigem Empfang/Sprechen festlegen.
-5. **Rack mechanisch und elektrisch planen:** Einschubformat, modularer Steckerstandard, Spannungen, Sicherungen, Kühlung, Antennenanschlüsse, Beschriftung und Wartungszugang festlegen. Keine Maße aus anderen Rackchats ungeprüft übernehmen.
+5. **Rack mechanisch und elektrisch planen:** Einschubformat, modularer Steckerstandard, Spannungen, Sicherungen, Kühlung, Antennenanschlüsse, Beschriftung und Wartungszugang festlegen. Maße anderer Rackentwürfe müssen zum konkreten Aufbau passen.
 6. **NetCore-Integration entwerfen:** Medienkonvertierung, Ruf-/Gruppenzuordnung und Sprechrechtsvermittlung definieren. Vorhandene Media-/Hardware-/IoT-Dienste auf Wiederverwendung prüfen; keine direkte Kompatibilität mit FRN voraussetzen.
 7. **Betrieb abnehmen:** Server-/Pi-Neustarts, Verbindungsabbruch, WAN-Ausfall, Recovery und Mehrmodulbetrieb prüfen. Ergebnisse mit Softwareständen, Konfiguration ohne Secrets, Messwerten und Logs sichern.
 
@@ -165,8 +167,8 @@ Erhaltene Nebenideen: Erweiterbarkeit auf weitere Funkarten („und Co“), geme
 
 ### Historische Quellen
 
-- Vier direkt bereitgestellte Nutzernachrichten zum FRN-Lokalnetz, modularen Rack und Raumrouting.
-- Ergänzende Personal-Context-Verlaufssuche: passende Kernnachrichten vom 12.10.2025 und Assistentenvorschlag mit fünf Raumbeispielen und Crosslink-Idee.
+- Frühes Konzept vom 12.10.2025: FRN-Lokalnetz, modulares Rack und Raumrouting.
+- Ergänzende Raum-/Crosslink-Ideen: fünf Raumbeispiele und möglicher Brückenclient; nur in Auszügen erhalten.
 - Separater Kontext vom 08.12.2025 zu physischen Pi-Funkinterfaces und `SRV-H-RPi-FRN01`; ausdrücklich keine Implementierungsbestätigung.
 - Keine spezifischen FRN-Commits oder FRN-PRs im zugänglichen Verlauf.
 
@@ -185,7 +187,7 @@ Die relativen Links wurden gegen den ausgecheckten Repository-Baum geprüft.
 
 ### Verfügbare Anhänge
 
-Für diesen Turn wurden 25 ETSI-PDFs bereitgestellt. Die Titelseiten wurden per `pdftotext` auf Inhalt und Bezug geprüft. Sie behandeln TETRA-Netzdesign, Air Interface, Security, PEI, ISI, Zusatzdienste, SIM/UICC und Codec; **keine ist eine FRN-Server-/Clientdokumentation**. Eine vollständige Normprüfung ist nicht erfolgt. Normative Aussagen zur FRN-Machbarkeit werden daraus nicht abgeleitet. Die Dateien wurden nicht erneut ins Git kopiert; der Auftrag verlangt Chatbilder, und diese PDFs sind keine eigenständigen Chatbilder.
+25 ETSI-PDFs wurden anhand ihrer Titelseiten mit `pdftotext` eingeordnet. Sie behandeln TETRA-Netzdesign, Air Interface, Security, PEI, ISI, Zusatzdienste, SIM/UICC und Codec; **keine ist eine FRN-Server-/Clientdokumentation**. Eine vollständige Normprüfung ist nicht erfolgt. Aussagen zur FRN-Machbarkeit lassen sich daraus nicht ableiten.
 
 Anhanginventar:
 
@@ -217,8 +219,8 @@ Anhanginventar:
 
 `ETSI.pdf` und `en_300812v020101p.pdf` zeigen auf der Titelseite dieselbe Normkennung EN 300 812 V2.1.1; vollständige Dateigleichheit wurde nicht geprüft.
 
-**Bilder:** Im bereitgestellten FRN-Verlauf und den verfügbaren Anhängen sind keine eigenständigen historischen Chatbilder vorhanden. Deshalb wurden keine fremden Projektbilder übernommen und keine Ersatzbilder erzeugt. Sollten im Originalchat Bilder existieren, sind sie eine verbleibende Auswertungslücke und können erst mit Zugriff auf die Originaldateien nacharchiviert werden.
+**Bilder:** Eigenständige historische FRN-Bilder sind nicht vorhanden. Falls Originalbilder wieder verfügbar werden, können sie die noch fehlende Aufbau- und Schnittstellendokumentation ergänzen.
 
 ## 13. Abschluss und Fortsetzungsgrenze
 
-Das technische Ergebnis dieses Chats ist ein lokales FRN-/Funkrack-Konzept mit Windows-Server, physischen Pi-Gateways, modularen Funk-Einschüben und Raumrouting. Der Repository-Abgleich bestätigt FRN als Ausbauidee, nicht als implementiertes oder getestetes Gateway. Für eine Fortsetzung sind zuerst konkrete Software, Funkinterfaces und Routinganforderungen festzulegen. Änderungen dieses Archivauftrags bleiben ausschließlich in `Docs/archive/`.
+Arbeitsstand ist ein lokales FRN-/Funkrack-Konzept mit Windows-Server, physischen Pi-Gateways, modularen Funk-Einschüben und Raumrouting. Der Repository-Abgleich bestätigt FRN als Ausbauidee; ein implementiertes oder getestetes Gateway ist nicht nachgewiesen. Zuerst konkrete Software, Funkinterfaces und Routinganforderungen festlegen.

@@ -1,8 +1,10 @@
-# Technische Abschlussdokumentation: Codex-Auftrag für WAP/IP-Mehrgerätebetrieb und Korrektur der Logdiagnose
+# Brainstorming: WAP/IP-Mehrgerätebetrieb, Entwicklungsaufträge und Logdiagnose
 
-> **Zentraler Archivbefund:** Gewünscht ist ein echter, stabiler WAP/IP-Dienst für mehrere TETRA-Endgeräte. Im historischen Chat wurden dafür Entwicklungsaufträge formuliert, aber keine Implementierung oder erfolgreiche Endgeräteabnahme nachgewiesen. Die damalige Schlussfolgerung aus `packet_data_flag: false` war zu weitgehend: Die vorgelegte Nachricht lässt sich anhand ihres Präfixes als **MLE / D-NWRK-BROADCAST** einordnen. Sie ist kein Nachweis dafür, dass die gesamte Basisstation keinen Paketdatendienst unterstützt. Im heute geprüften NetCore-Quellstand existiert bereits umfangreiche SNDCP-/WAP-/IP-Gateway- und Mehrgeräte-Ressourcenlogik. Diese beiden Zeitstände dürfen nicht vermischt werden.
+**Stand der Notizen und ergänzenden Prüfungen: 2026-10-04.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
 
-## 1. Metadaten, Geltungsbereich und Nachweisstufen
+> **Arbeitsstand:** Ziel ist stabiler echter WAP/IP-Betrieb mehrerer TETRA-Endgeräte. Historisch liegen Entwicklungsaufträge und ein Logauszug vor; Implementierung und Endgeräteabnahme sind nicht belegt. `packet_data_flag: false` wurde zunächst überinterpretiert: Das Präfix gehört zu **MLE / D-NWRK-BROADCAST** und widerlegt keine generelle Paketdatenunterstützung. Am Repository-Prüfstand vom 2026-10-04 ist umfangreiche SNDCP-/WAP-/IP-Gateway- und Mehrgerätelogik vorhanden.
+
+## 1. Kontext und Nachweisstufen
 
 | Feld | Wert |
 |---|---|
@@ -11,18 +13,15 @@
 | Zielbranch | Ausschließlich `Archiving` |
 | Ablage dieser Datei | `Docs/archive/2026-10-04_codex-wap-ip-mehrgeraetebetrieb-und-logdiagnose.md` |
 | Thema | Codex als Implementierungswerkzeug; stabiler WAP/IP-Dienst auf mehreren TETRA-Geräten; Packet Data/SNDCP; Bewertung eines LLC-/UMAC-Logs |
-| Ursprünglicher Chattitel | Nicht zuverlässig verfügbar. Der Titel dieser Datei ist ein beschreibender Archivtitel. |
-| Chatlink | Nicht verfügbar; kein Link rekonstruiert oder erfunden. |
-| Eindeutiger Gesprächsanker | Erste sichtbare Nutzerfrage: „wie gut ist dein Codex?“ mit Verweis auf `MidnightBlueLabs/tetra-bluestation`; später der fünfzeilige Logauszug mit `llc_bs_ms.rs:806` und `dltime: 3/20/01/1`. |
+| Historischer Ausgangspunkt | `MidnightBlueLabs/tetra-bluestation`; Logausschnitt mit `llc_bs_ms.rs:806` und `dltime: 3/20/01/1`. |
 | Erstellungsdatum | **2026-10-04**, Datum in `Europe/Berlin` |
-| Historische Datierung | Eine ergänzende Verlaufssuche ordnet die Zielfestlegung dem 09.04.2026 und den Logauszug dem 19.04.2026 zu. Im unmittelbar sichtbaren Gespräch fehlen vollständige Zeitstempel; diese Einordnung ersetzt keinen Chat-Export. |
+| Historische Datierung | Zielfestlegung ergänzend dem 09.04.2026, Logauszug dem 19.04.2026 zugeordnet. Vollständige Zeitstempel fehlen. |
 | Zu Beginn gelesener Archivbranch | `68d41aa4a039563ccc3feca6b486b5cd91f75998` |
 | Zugehöriger Archiv-Tree | `50246e4565c5abb51e34ccc53b2ae6aef3d86abd` |
 | Zusätzlich ermittelter aktueller NetCore-`main` | `7137e0dd69877e1b604bf89148fd8b6b590c1a97` |
 | Zugehöriger `main`-Tree | `e68558c4df13d3d8b56df8c3611ac682b02889c1` |
 | Gelesener Upstream | `MidnightBlueLabs/tetra-bluestation`, `main`, Commit `09d4e0d9a0b8cf6c881e77353db325df9a4715aa` |
 | Historisch laufendes Repository / Branch / Binary | Nicht aus dem vorgelegten Log bestimmbar. Der Upstream-Link ist keine eindeutige Identifikation der tatsächlich installierten Binärdatei. |
-| Speichercommit dieser Dokumentation | Der tatsächlichen Git-Dateihistorie und der Abschlussmeldung zu entnehmen. Nicht mit dem oben genannten geprüften Ausgangscommit verwechseln. |
 | Freigabe | Keine neue Betriebs-, Interoperabilitäts- oder ETSI-Konformitätsfreigabe. Dieser Auftrag verändert keine Funk- oder Dienstimplementierung. |
 
 ### 1.1 Statusbegriffe
@@ -33,43 +32,43 @@
 - **Getestet:** eine konkret benannte Prüfung wurde mit nachvollziehbarem Ergebnis durchgeführt. Ein Testplan oder vorhandener Testcode genügt nicht.
 - **Im Betrieb bestätigt:** die betreffende Funktion ist durch reale Betriebsbeobachtung oder eine ausdrückliche Betreiberbestätigung belegt. Eine erfolgreiche Initialisierung, ein Logeintrag oder eine Konfiguration allein reichen nicht.
 
-**Ein Wunsch im Chat, ein generierter Prompt, ein vorhandener Codepfad, ein erfolgreicher Build und ein erfolgreicher Funkgerätetest sind unterschiedliche Nachweisstufen.**
+**Eine Anforderung, ein Arbeitsauftrag, ein vorhandener Codepfad, ein erfolgreicher Build und ein erfolgreicher Funkgerätetest sind unterschiedliche Nachweisstufen.**
 
 ### 1.2 Umfang der Auswertung
 
-Berücksichtigt wurden die vier sichtbaren historischen Nutzeranliegen und die zugehörigen Assistentenantworten: Machbarkeit, vollständiger Codex-Auftrag, Logdiagnose und nachgeschärfter Codex-Auftrag. Hinzu kommen der Archivierungsauftrag, die in dieser Sitzung zugänglichen 25 PDF-/Projektquellen sowie die ausdrücklich separat vorgenommenen heutigen Repository- und Normenprüfungen.
+Die historischen Unterlagen umfassen Machbarkeitseinschätzung, zwei Codex-Arbeitsaufträge und Logdiagnose. Zusätzlich sind 25 PDF-Quellen inventarisiert sowie Repository- und Normenbefunde vom 2026-10-04 getrennt erfasst.
 
-Die PDFs wurden vollständig als Dateien inventarisiert, aber **nicht vollständig inhaltlich Seite für Seite auditiert**. Vertieft geprüft wurden die für WAP/IP, SNDCP, Basic Link und das Packet-Data-Flag unmittelbar relevanten Stellen. Eine automatische Bereitstellung von Projekt-PDFs beweist nicht, dass jedes Dokument im historischen WAP-Gespräch einzeln hochgeladen oder besprochen wurde.
+Die PDFs sind vollständig inventarisiert, jedoch **nicht Seite für Seite auditiert**. Vertieft geprüft wurden WAP/IP, SNDCP, Basic Link und Packet-Data-Flag. Verfügbarkeit als Projektquelle belegt keine historische Einzelentscheidung.
 
-Andere Projektchats sind keine stillschweigend übernommenen Umsetzungsnachweise. Ein bereits vorhandenes, thematisch verwandtes Archiv wird nur als separate Fortsetzungsquelle verlinkt; es wird nicht überschrieben.
+Das verwandte WAP-/Multi-PDCH-Archiv beschreibt eine andere Entwicklungsphase und dient als Querverweis; seine Ergebnisse gelten nicht automatisch für diesen Stand.
 
 ## 2. Ziel, Ausgangslage und Verlauf
 
-### 2.1 Verbindliches Nutzerziel
+### 2.1 Verbindliches Ziel
 
-Der Nutzer präzisierte ausdrücklich:
+**Festgelegtes Ziel:**
 
-> „echter WAP/IP-Dienst auf mehreren Geräten stabil“
+Stabiler echter WAP/IP-Dienst für mehrere Endgeräte.
 
-Das ist das maßgebliche Ziel. Ein einzelner erfolgreicher Seitenaufruf auf einem einzigen Gerät, ein SDS-Bot oder ein isolierter Parser wäre keine vollständige Erfüllung. Die Nutzeranfragen zielten darauf, Codex einen ausreichend vollständigen Implementierungsauftrag zu geben, nicht lediglich eine grobe Ideensammlung zu erhalten.
+Ein Seitenaufruf auf nur einem Gerät, ein SDS-Bot oder ein isolierter Parser erfüllt das Ziel nicht. Der Entwicklungsauftrag muss Architektur, Integration und reale Mehrgeräteabnahme abdecken.
 
 Nicht festgelegt wurden konkrete Endgerätemodelle, Firmwarestände, Gerätezahlen, Browserprofile, Dienstadressen, Durchsatz-/Latenzziele, Abnahmedauer oder ein Featurebranch. Diese Angaben bleiben offen.
 
-### 2.2 Chronologie des sichtbaren Chats
+### 2.2 Entwicklung der Arbeitsaufträge
 
 | Stufe | Inhalt | Ergebnis und Grenze |
 |---|---|---|
-| A: Machbarkeit | Frage nach Codex und WAP-Erweiterung von `MidnightBlueLabs/tetra-bluestation` | Der Assistent hielt das grundsätzlich für machbar, aber für ein größeres Stack-/Interop-Projekt. Das war eine qualitative Einschätzung, kein Benchmark und kein ausgeführter Code-Audit. |
-| B: Zielschärfung | Nutzer wählte ausdrücklich stabilen echten Mehrgeräte-WAP/IP-Betrieb und verlangte einen vollständigen Codex-Auftrag | Ein umfangreicher Phasenprompt wurde geliefert: Bestandsaufnahme, Architektur, Implementierung, Interoperabilität, Tests und Dokumentation. |
-| C: Alternative Arbeitsweise | Der Assistent schlug zusätzlich einen reinen Analyseauftrag und einen anschließenden Implementierungsauftrag vor | Nur vorgeschlagene Aufteilung; keine nachgewiesene Codex-Ausführung und kein bestätigter Entwicklungsfortschritt. |
-| D: Laufzeitbeobachtung | Nutzer zeigte fünf DEBUG-Zeilen und berichtete, dass ihm von der Basisstation für WAP noch nichts angeboten werde | Ein Ausschnitt aus dem Downlink-Sendeweg wurde dokumentiert. Ein erfolgreicher Paketdaten- oder Browserdialog ist nicht enthalten. |
-| E: Historische Diagnose | Der Assistent deutete `packet_data_flag: false`, Broadcast-Adresse und fehlende Zuteilungsfelder als starke Hinweise auf einen fehlenden Paketdatenpfad | Diese Diagnose war in dieser Sicherheit nicht durch den Ausschnitt gedeckt. Die Korrektur steht in Abschnitt 6. |
-| F: Zweiter Codex-Auftrag | Nutzer bat erneut um einen Auftrag, der die fehlende Funktion einbauen solle | Ein zweiter Prompt fokussierte den vermeintlich falschen Datenpfad und einen minimalen Labor-Paketdatenpfad. Seine technische Ausgangsannahme muss korrigiert werden. |
-| G: Archivierung | Verlauf, Quellen und heutige Abweichungen sichern | Nur Archivdokumentation und Index; keine Implementierung, kein Deployment und kein Merge. |
+| A: Machbarkeit | WAP-Erweiterung von `MidnightBlueLabs/tetra-bluestation` mit Codex betrachten | Als größeres Stack-/Interop-Projekt eingeschätzt; Benchmark und Codeaudit fehlen. |
+| B: Zielschärfung | Stabilen echten Mehrgeräte-WAP/IP-Betrieb festlegen | Phasenauftrag umfasst Bestandsaufnahme, Architektur, Implementierung, Interoperabilität, Tests und Dokumentation. |
+| C: Arbeitsweise | Analyse und anschließende Implementierung getrennt durchführen | Vorschlag; Codex-Ausführung und Entwicklungsfortschritt nicht belegt. |
+| D: Laufzeitbeobachtung | Fünf DEBUG-Zeilen; WAP wird nach Betreiberbeobachtung nicht angeboten | Downlink-Sendeweg dokumentiert; erfolgreicher Paketdaten-/Browserdialog fehlt. |
+| E: Erste Diagnose | `packet_data_flag: false`, Broadcast-Adresse und fehlende Zuteilungsfelder als Hinweise auf fehlenden Datenpfad | Zu weitgehend; Korrektur in Abschnitt 6. |
+| F: Zweiter Arbeitsauftrag | Vermeintlich falschen Datenpfad korrigieren und Labor-Paketdatenpfad aufbauen | Ausgangsannahme des Auftrags muss anhand der Logkorrektur überarbeitet werden. |
+| G: Archivierung | Verlauf, Quellen und ergänzende Abweichungen sichern | Nur Archivdokumentation und Index; keine Implementierung, kein Deployment und kein Merge. |
 
 ### 2.3 Einordnung der früheren Codex-Bewertung
 
-Die Einschätzung „geeignet für Analyse, Implementierung und Tests“ war eine Empfehlung des Assistenten. Im Chat wurden weder ein konkretes Codex-Modell noch dessen Version, Ausführungsumgebung, Berechtigungen oder Arbeitsresultate nachgewiesen. Eine spätere Fortsetzung darf daraus keine Zusage ableiten, dass ein einzelner Prompt ohne Iterationen und reale Endgerätetests interoperablen Funkbetrieb erzeugt.
+Die Codex-Eignung war eine qualitative Einschätzung. Konkretes Modell, Version, Umgebung, Berechtigungen und Arbeitsresultate sind nicht dokumentiert. Interoperabler Funkbetrieb erfordert iterative Umsetzung und reale Endgerätetests.
 
 Die ursprüngliche Einordnung von BlueStation als Alpha-Basis wird durch die eingesehene Upstream-README gestützt. Die weitergehende Aussage, wie viel Arbeit ein stabiler Mehrgerätebetrieb genau erfordert, blieb eine Schätzung. Eine belastbare Aufwandsschätzung setzt die konkrete Ausgangsversion und den tatsächlich zu unterstützenden Geräte-/Protokollumfang voraus. [S1, S2]
 
@@ -77,20 +76,19 @@ Die ursprüngliche Einordnung von BlueStation als Alpha-Basis wird durch die ein
 
 | ID | Anforderung / Entscheidung | Status und Herkunft |
 |---|---|---|
-| R1 | Echter WAP/IP-Dienst über die TETRA-Infrastruktur | **Beschlossen/geplant**, ausdrücklich vom Nutzer gewünscht. |
+| R1 | Echter WAP/IP-Dienst über TETRA | **Beschlossen/geplant**, ausdrücklich gewählt. |
 | R2 | Stabiler Betrieb mit mehreren Endgeräten | **Beschlossen/geplant**; Zahl und Modelle nicht benannt. |
 | R3 | Nicht bei einem Proof of Concept oder SDS-Ersatz stehen bleiben | Aus der expliziten Zielschärfung ableitbar. Ein PoC darf ein Zwischenschritt, aber nicht die Endabnahme sein. |
-| R4 | Codex soll alle für den gewählten Umfang notwendigen Schichten berücksichtigen | **Beschlossen/geplant** als Entwicklungsauftrag; Ausführung im Chat nicht belegt. |
+| R4 | Codex soll alle für den gewählten Umfang notwendigen Schichten berücksichtigen | **Beschlossen/geplant** als Entwicklungsauftrag; Ausführung im Entwurf nicht belegt. |
 | R5 | Vor Änderungen Bestand und Lücken bestimmen | Im Agentenprompt vorgeschlagene Arbeitsweise, nicht historisch ausgeführt. |
 | R6 | Control Plane, Nutzdaten, Ressourcen, Lebenszyklus und Fehlerbehandlung gemeinsam betrachten | Im Agentenprompt vorgesehen; technische Ausgestaltung offen. |
-| R7 | Mehrgerätebetrieb, konkurrierende Sessions, Paketverluste, Duplikate, Timeouts und Wiederanmeldung testen | Im Agentenprompt vorgesehen; keine entsprechenden Testresultate im Chat. |
+| R7 | Mehrgerätebetrieb, konkurrierende Sessions, Paketverluste, Duplikate, Timeouts und Wiederanmeldung testen | Im Agentenprompt vorgesehen; keine entsprechenden Testresultate im Entwurf. |
 | R8 | Kleine logische Commits, verständliche Rust-APIs, Fehlerbehandlung, Formatierung und Clippy | Vorgeschlagene Engineering-Regeln; keine historischen Commits nachgewiesen. |
 | R9 | Annahmen und echte Blocker dokumentieren, unfertige Teile nicht als fertig ausgeben | Vorgeschlagene und für die Fortsetzung wichtige Qualitätsanforderung. |
-| R10 | Aktuelle Archivierung nur auf `Archiving` und nur unter `Docs/archive/` | **Ausdrücklich autorisierter Umfang dieses Archivauftrags.** Kein Auftrag für Änderungen am Funkstack. |
 
 ### 3.1 Keine stillschweigende Herabstufung des Ziels
 
-Der zweite Assistentenprompt sprach von einer „minimalen“ Laborlösung. Der Nutzer hat sein zuvor ausdrücklich gewähltes Ziel eines stabilen Mehrgeräte-WAP/IP-Dienstes jedoch nicht zurückgenommen. Deshalb gilt:
+Der zweite Arbeitsauftrag sah eine minimale Laborstufe vor. Das Ziel eines stabilen Mehrgeräte-WAP/IP-Dienstes bleibt bestehen:
 
 **Minimaler testbarer Datenpfad = möglicher Meilenstein. Stabiler Mehrgerätebetrieb = weiterhin Endziel.**
 
@@ -98,11 +96,11 @@ Die Abnahmekriterien der damaligen Prompts waren dafür zu schwach: „Repo baut
 
 ### 3.2 Grenzen der historischen Agentenprompts
 
-Die Prompts begrenzten die vorgeschlagene Arbeit auf ein autorisiertes Labornetz und schlossen unautorisierte Netznutzung, Sicherheitsumgehung, Identitätsfälschung, Angriffe, fremde Geheimnisse sowie Kryptographie-/Key-Handling-Arbeiten aus. Diese Formulierungen waren vom Assistenten eingefügte Grenzen des jeweiligen Agentenauftrags, keine gesonderte umfassende Architekturentscheidung des Nutzers für das gesamte NetCore-Projekt.
+Die historischen Arbeitsaufträge sind auf ein autorisiertes Labornetz begrenzt; Kryptographie und Schlüsselverwaltung liegen außerhalb ihres Umfangs. Diese Auftragsgrenze ist keine umfassende Architekturfestlegung für das gesamte NetCore-Projekt.
 
-Die Bereitstellung von Security- oder SIM-Spezifikationen ist ebenfalls keine automatische Freigabe zur Entwicklung aller darin beschriebenen Funktionen. Für diesen Archivauftrag werden weder Zugangsdaten noch Schlüssel übernommen.
+Security- und SIM-Spezifikationen begründen keine automatische Erweiterung des Funktionsumfangs.
 
-## 4. Architektur: historischer Entwurf und heutige fachliche Einordnung
+## 4. Architektur: historischer Entwurf und ergänzende fachliche Einordnung
 
 ### 4.1 Historisch vorgesehene Komponenten
 
@@ -117,7 +115,7 @@ Der erste Prompt sollte folgende Bereiche untersuchen und, soweit erforderlich, 
 7. Konfiguration, Timer, Wiederholungen, Telemetrie und Diagnose.
 8. Tests und dokumentierte Endgeräte-Interoperabilität.
 
-Das war ein Anforderungskatalog. Der Chat enthielt noch keinen verabschiedeten detaillierten Modulvertrag oder vollständigen Zustandsautomaten.
+Dies ist ein Anforderungskatalog; detaillierter Modulvertrag und vollständiger Zustandsautomat sind noch nicht verabschiedet.
 
 ### 4.2 Fachliche Präzisierung aus den beigefügten Quellen
 
@@ -139,7 +137,7 @@ MAC / Funkzugriff                              UMAC / Scheduler / Ressourcen
 Funk / AI-1               <--- Luft --->        LMAC / PHY / SDR
 ```
 
-Dieses Bild ist eine heutige fachliche Einordnung, kein im historischen Chat bereits implementiertes Systemdiagramm.
+Dieses Bild ist eine ergänzende fachliche Einordnung, kein im historischen Planungsstand bereits implementiertes Systemdiagramm.
 
 ### 4.3 Drei getrennte Fragen bei „Die Basisstation bietet kein WAP an“
 
@@ -159,13 +157,13 @@ Daraus folgt: **Nicht „Basic Link abschaffen“, sondern die für die jeweilig
 
 ### 4.5 WAP/IP und WAP über SDS unterscheiden
 
-Der Nutzer hat hier ausdrücklich die IP-Variante gewählt. Die beigefügte Norm enthält daneben in Abschnitt 29.5.8 eine WAP-Einordnung im SDS-Anwendungskontext. Das widerlegt eine pauschale Aussage „WAP braucht immer und ausschließlich IP“, macht aber SDS nicht zum Ersatz für das hier gewählte Ziel. Geräteprofile und Transportvarianten müssen separat dokumentiert werden. [N1, S. 1220]
+Gewählt ist die IP-Variante. EN 300 392-2, Abschnitt 29.5.8, behandelt daneben WAP im SDS-Anwendungskontext. WAP benötigt deshalb nicht grundsätzlich ausschließlich IP; SDS ersetzt jedoch nicht das festgelegte Ziel. Geräteprofile und Transportvarianten getrennt dokumentieren. [N1, S. 1220]
 
 ## 5. Historischer Laufzeitbefund
 
 ### 5.1 Betreiberbeobachtung
 
-Der Nutzer schrieb sinngemäß, dass von der Basisstation für WAP noch nichts angeboten werde. Das ist der einzige konkrete negative Betriebsbefund dieses Chats. Es fehlt eine genaue Beschreibung der Geräteanzeige, des Browsermenüs, einer Fehlermeldung, des ausgewählten Profils und des Zeitpunkts eines Verbindungsversuchs.
+**Betreiberbefund:** Die Basisstation bietet offenbar noch keine WAP-Funktion an. Geräteanzeige, Browsermenü, Fehlermeldung, ausgewähltes Profil und genauer Verbindungszeitpunkt sind nicht dokumentiert.
 
 ### 5.2 Vollständiger verfügbarer Logauszug
 
@@ -192,11 +190,11 @@ Mle -> TlaSap / TlaTlUnitdataReqBl -> Llc
 
 Eine 78-Bit-TL-SDU wird in eine 82-Bit-LLC-PDU eingebettet. Die angezeigte Ziel-SSI beträgt `16777215`, also `0xFFFFFF`. Die gezeigte Nachricht enthält keine Kanalzuteilung und keine Slot-Granting-Erweiterung. Der Ausschnitt reicht bis zum internen Enqueue-/Ausgabepfad; er beweist nicht einmal für diese Nachricht einen erfolgreichen Empfang auf einem realen MS.
 
-`dltime: 3/20/01/1` ist eine interne TDMA-Zeitdarstellung, kein Kalenderdatum. Die historischen Dateizeilen `806`, `208`, `763`, `419` und `75` identifizieren ohne Source-/Buildversion keine heutigen Codezeilen.
+`dltime: 3/20/01/1` ist eine interne TDMA-Zeitdarstellung, kein Kalenderdatum. Die historischen Dateizeilen `806`, `208`, `763`, `419` und `75` identifizieren ohne Source-/Buildversion keine geprüften Codezeilen.
 
 ## 6. Ausdrückliche Korrektur der historischen Diagnose
 
-### 6.1 Heute nachgeprüfte Einordnung des PDU-Präfixes
+### 6.1 PDU-Präfix, geprüft am 2026-10-04
 
 Die TL-SDU beginnt mit:
 
@@ -214,7 +212,7 @@ Damit ist die Nachricht anhand des vorliegenden Präfixes als **MLE / D-NWRK-BRO
 
 Der aktuelle Upstream-Code in `mle/components/broadcast.rs` erzeugt für seinen Netzwerkzeit-Broadcast genau die auffällige Kombination aus `Gssi 0xFFFFFF`, `link_id: 0`, `endpoint_id: 0`, `packet_data_flag: false` und `chan_alloc: None`. `mle_bs.rs` löst den Broadcast bei Multiframe 20, Frame 1 und Timeslot 1 aus. Das passt zusätzlich zu `3/20/01/1`. [S5, S6]
 
-**Nachweisgrenze:** Die Zuordnung des PDU-Typs ist anhand der Bits und Enums nachvollziehbar. Die konkrete historische Binärversion und der vollständige Zeitwert wurden nicht rekonstruiert. Die Übereinstimmung mit dem heutigen Netzwerkzeitpfad ist ein starkes Indiz für dessen Herkunft, aber kein Binary-Provenienznachweis.
+**Nachweisgrenze:** Die Zuordnung des PDU-Typs ist anhand der Bits und Enums nachvollziehbar. Die konkrete historische Binärversion und der vollständige Zeitwert wurden nicht rekonstruiert. Die Übereinstimmung mit dem geprüften Netzwerkzeitpfad ist ein starkes Indiz für dessen Herkunft, aber kein Binary-Provenienznachweis.
 
 ### 6.2 Korrekturtabelle
 
@@ -224,7 +222,7 @@ Der aktuelle Upstream-Code in `mle/components/broadcast.rs` erzeugt für seinen 
 | `TlaTlUnitdataReqBl` / Basic Link spreche grundsätzlich gegen echten Paketdatenbetrieb | **Falsch verallgemeinert.** Basic-Link-Dienste werden auch von SNDCP verwendet. | PDU-/profilgerechte Linkauswahl statt Abschaffung oder Umgehung des Basic Link. |
 | Die Broadcast-Adresse beweise, dass individuelle Datensessions fehlen | **Nicht ableitbar.** Sie charakterisiert diese Nachricht; individuelle Kontexte könnten daneben existieren. | Broadcast und individuellen Sessionverlauf getrennt untersuchen. |
 | `chan_alloc: None` und fehlende Grants belegten fehlende Ressourcenverwaltung | **Nicht für das Gesamtsystem ableitbar.** Diese konkrete Broadcast-Nachricht muss keinen neuen Bearer zuteilen. | Zuteilungsereignisse und deren Lebenszyklus im vollständigen Trace prüfen. |
-| Der komplette Paketdatenpfad fehle oder werde nicht benutzt | **Aus fünf Zeilen nicht beweisbar.** Der heute gelesene reine Upstream hat tatsächlich einen SNDCP-Stub; NetCore besitzt dagegen umfangreichen Code. | Codebefund an Repository und Commit binden, nicht aus einem Broadcastlog generalisieren. |
+| Der komplette Paketdatenpfad fehle oder werde nicht benutzt | **Aus fünf Zeilen nicht beweisbar.** Der am 2026-10-04 gelesene reine Upstream hat tatsächlich einen SNDCP-Stub; NetCore besitzt dagegen umfangreichen Code. | Codebefund an Repository und Commit binden, nicht aus einem Broadcastlog generalisieren. |
 | „Warum landet alles im generischen Unitdata-Pfad?“ sei ziemlich sicher das Hauptproblem | **Unbelegte Verallgemeinerung.** Gezeigt wurde nur eine Nachricht, nicht „alles“. | Problem wieder ergebnisoffen untersuchen. |
 | Ein `packet_data_flag: true` würde als zentraler Erfolgsnachweis genügen | **Nein.** Ein gesetztes Flag ersetzt weder Kontextaufbau noch IP-/WAP-Antwort oder Endgeräteabnahme. | Ende-zu-Ende-Kriterien verwenden. |
 
@@ -265,9 +263,9 @@ Am Upstream-Commit `09d4e0d9a0b8cf6c881e77353db325df9a4715aa` enthält `crates/t
 
 In dem gelesenen Abschnitt von `mle_bs.rs` baut der SNDCP-Discriminator-Zweig zwar ein `LtpdMleUnitdataInd`, verpackt es aber mit `Sap::LcmcSap` und `dest: TetraEntity::Cmce`. Diese Kombination wäre bei einem Ausbau des reinen Upstreams ausdrücklich zu prüfen. Sie ist ein statischer Codebefund, kein in diesem Lauf reproduzierter Fehler mit Funkgerät. [S6]
 
-Die aktuell abgerufene Release-Liste beginnt mit **`v0.5.10-09d4e0d`**, veröffentlicht am **09.07.2026**. Die frühe Chatnennung einer damals neuesten Veröffentlichung vom 29.03.2026 wird daher nicht als heutiger Stand übernommen. Ihre damalige zeitpunktbezogene Richtigkeit wurde nicht rückwirkend rekonstruiert. [S10]
+Die am Prüfdatum abgerufene Release-Liste beginnt mit **`v0.5.10-09d4e0d`**, veröffentlicht am **09.07.2026**. Die frühere Bezugnahme auf eine Veröffentlichung vom 29.03.2026 beschreibt nicht diesen Prüfstand; ihre damalige Aktualität ist nicht rückwirkend rekonstruiert. [S10]
 
-### 7.3 NetCore ist heute nicht mehr dieser Stub
+### 7.3 NetCore ist am 2026-10-04 nicht mehr dieser Stub
 
 Am geprüften NetCore-Archivcommit wurden unter anderem folgende konkrete Strukturen und Logik gelesen:
 
@@ -295,15 +293,15 @@ Die aktuelle `main`-Codesuche fand in `sec_cell.rs` die gemeinsame Profilbedingu
 self.sndcp_service && (self.wap_ip.enabled || self.packet_data_gateway.enabled)
 ```
 
-In `umac_bs.rs` wird dieses Prädikat für die Profilankündigung herangezogen; im am Archivcommit gelesenen SNDCP-Code ruft `profile_enabled()` dieselbe benannte Funktion auf. Das ist der relevante Einstieg für eine heutige Konfigurations-/Ankündigungsprüfung. Es ist nicht gleichbedeutend mit der tatsächlich geladenen Konfiguration eines laufenden Senders. [S8, S11]
+In `umac_bs.rs` wird dieses Prädikat für die Profilankündigung herangezogen; im am Archivcommit gelesenen SNDCP-Code ruft `profile_enabled()` dieselbe benannte Funktion auf. Das ist der relevante Einstieg für eine ergänzende Konfigurations-/Ankündigungsprüfung. Es ist nicht gleichbedeutend mit der tatsächlich geladenen Konfiguration eines laufenden Senders. [S8, S11]
 
 **Neuer Review-Kandidat, kein bestätigter Betriebsfehler:** Das am Archivcommit gelesene `queue_ltpd_to` setzt `packet_data_flag: true` im gemeinsamen Sendepfad. Bei der Fortsetzung sollte geprüft werden, ob die Klassifikation für Steuer-PDUs und Nutzdaten an dieser Stelle die beabsichtigte SAP-Semantik erfüllt. Die zuvor erläuterte Normstelle zum MS darf dabei nicht ohne Prüfung der Rollen und weiteren Verarbeitung als pauschaler SwMI-Bugnachweis angewendet werden. Weder ein blindes globales `true` noch ein blindes globales `false` ist eine sachgerechte Reparatur. [S11; N1]
 
 ### 7.5 Dokumentationsdrift ist bereits sichtbar
 
-`Docs/SNDCP_COMPLETE.md` trägt im Inhalt den Stand 21.07.2026. Es beschreibt unter anderem einen einzelnen PDCH auf Hauptcarrier-TS2 und führt allgemeines TUN-/NAT-Routing als noch nicht angekündigte Funktion auf. Der heute gelesene Code enthält dagegen einen dynamischen PDCH-Pool und einen TUN-Gatewaypfad. [S14; S11, S12]
+`Docs/SNDCP_COMPLETE.md` trägt im Inhalt den Stand 21.07.2026. Es beschreibt unter anderem einen einzelnen PDCH auf Hauptcarrier-TS2 und führt allgemeines TUN-/NAT-Routing als noch nicht angekündigte Funktion auf. Der am 2026-10-04 gelesene Code enthält dagegen einen dynamischen PDCH-Pool und einen TUN-Gatewaypfad. [S14; S11, S12]
 
-Daher sind die Aussagen dieser älteren Dokumentationsstufe nicht ungeprüft als vollständige Beschreibung des aktuellen Codes zu übernehmen. Auch das Wort „complete“ im Dateititel beweist weder heutige Vollständigkeit noch eine Endgeräteabnahme. Die Bereinigung dieser Dokumentationsdrift ist ein Roadmap-Kandidat, aber **nicht** Teil der hier ausschließlich unter `Docs/archive/` erlaubten Änderungen.
+Daher sind die Aussagen dieser älteren Dokumentationsstufe nicht ungeprüft als vollständige Beschreibung des aktuellen Codes zu übernehmen. Auch das Wort „complete“ im Dateititel beweist weder ergänzende Vollständigkeit noch eine Endgeräteabnahme. Die Bereinigung dieser Dokumentationsdrift ist ein Roadmap-Kandidat, aber **nicht** Teil der hier ausschließlich unter `Docs/archive/` erlaubten Änderungen.
 
 ### 7.6 Verwandtes Archiv ausdrücklich getrennt halten
 
@@ -311,15 +309,15 @@ Bereits vorhanden ist:
 
 [WAP/SNDCP, IP-Gateway, Multi-PDCH und Control Room – separates Archiv vom 03.10.2026](2026-10-03_wap-sndcp-ip-gateway-multi-pdch-und-control-room.md)
 
-Dessen eingesehener Anfang behandelt einen anderen, späteren Verlauf mit ZIP-Auslieferungen, einem R1-Compilerfix, Multi-PDCH, Dashboard und Legacy-WAP. Es ist **nicht** die Abschlussdatei dieses Codex-/Logdiagnose-Chats. Seine historischen Buildangaben werden hier nicht zu eigenen Testergebnissen umetikettiert. Die Datei bleibt unverändert. [S15]
+Das verwandte Archiv behandelt ZIP-Auslieferungen, R1-Compilerfix, Multi-PDCH, Dashboard und Legacy-WAP einer späteren Phase. Seine Buildangaben sind keine Testergebnisse der hier dokumentierten Logdiagnose. [S15]
 
 ## 8. Relevante Dateien, Schnittstellen und Parameter
 
 ### 8.1 Historisch genannte Workspace-Bausteine
 
-Die frühere Antwort nannte `tetra-core`, `tetra-saps`, `tetra-pdus`, `tetra-config`, `tetra-entities` sowie `bluestation-bs`, `bluestation-control`, `bluestation-telemetry` und `pdu-tool`. Das waren Strukturhinweise zur Analyse, kein Nachweis eines vollständig funktionierenden Datendienstes.
+Frühere Strukturhinweise umfassen `tetra-core`, `tetra-saps`, `tetra-pdus`, `tetra-config`, `tetra-entities`, `bluestation-bs`, `bluestation-control`, `bluestation-telemetry` und `pdu-tool`. Die Bausteinliste ist kein Nachweis eines funktionierenden Datendienstes.
 
-Die maßgeblichen im Log sichtbaren Schnittstellen sind `TlaSap`, `TlaTlUnitdataReqBl`, `BlUdata`, `TmaUnitdataReq` und `MacResource`. Für den heutigen SNDCP-Pfad kommen unter anderem `TlpdSap`, `LtpdMleUnitdataReq`, `ContextKey`, `ContextTable`, `PacketGateway` und `ControlEndpoint` hinzu.
+Die maßgeblichen im Log sichtbaren Schnittstellen sind `TlaSap`, `TlaTlUnitdataReqBl`, `BlUdata`, `TmaUnitdataReq` und `MacResource`. Für den geprüften SNDCP-Pfad kommen unter anderem `TlpdSap`, `LtpdMleUnitdataReq`, `ContextKey`, `ContextTable`, `PacketGateway` und `ControlEndpoint` hinzu.
 
 ### 8.2 Gezielt geprüfte Repository-Dateien
 
@@ -333,11 +331,11 @@ Alle NetCore-Angaben dieser Tabelle beziehen sich, soweit nicht anders angegeben
 | `crates/tetra-config/src/bluestation/sec_cell.rs` | 1–200; WAP-Konfiguration, Defaults und Gateway-Typen | `dfaf4bbaa609da79506f5b4adf73b061698cd65e` |
 | `Docs/SNDCP_COMPLETE.md` | Protokollprofil, historische Grenzen und vorgeschlagene Prüfkommandos | `692cce7653ac0ac5368ea059c591cde23f8c944d` |
 | `Docs/archive/README.md` | Vorhandenen Index gelesen; vorhandene Einträge erhalten | Ausgangsblob `e748626e12f9e003dd6d0110dcb0d96c081a61ca` |
-| Separates WAP-/Multi-PDCH-Archiv | Anfang zur Abgrenzung der Gespräche gelesen | Keine Gleichsetzung mit diesem Chat |
+| WAP-/Multi-PDCH-Archiv | Anfang zur zeitlichen Einordnung gelesen | Eigene Entwicklungsphase, kein Testergebnis dieses Stands |
 
 Weitere durch aktuelle Codesuche gefundene Ansatzpunkte sind `sndcp/protocol.rs`, `sndcp/state.rs`, `sndcp/ip.rs`, `sndcp/fragment.rs`, `sndcp/wap_portal.rs`, `sndcp/mod.rs`, `umac/umac_bs.rs`, `net_control_room/protocol.rs`, `Docs/WAP_INTEGRATION.md` und `Docs/wap-port-spec.md`. Ihre Nennung ist **kein vollständiger Audit dieser Dateien**. Auch ein gleichnamiger SNDCP-Pfad unter `ms-mode/` wurde gefunden; Suchtreffer dort dürfen nicht mit dem Basisstationspfad im Hauptworkspace verwechselt werden.
 
-### 8.3 Heute gelesene WAP-Defaults – keine bestätigte Live-Konfiguration
+### 8.3 WAP-Defaults am Prüfstand – keine bestätigte Live-Konfiguration
 
 Aus `CfgWapIp::default()` am Archivcommit: [S16]
 
@@ -370,15 +368,15 @@ Der DTO-Kommentar nennt den Konfigurationsblock `[cell_info.wap_ip]`; unbekannte
 
 `wap_ip.rs` enthält eine `WSP_SDU_CAP` von 545. Das ist eine lokale Codebegrenzung, keine in diesem Archiv behauptete universelle TETRA- oder WAP-MTU. [S13]
 
-Die historische Unterhaltung legte **keine** Service-Unit, keinen Installationspfad, kein Deployment-Ziel, keine reale Dienst-IP, keine DNS-Konfiguration und keine konkrete Funkfrequenz für diesen WAP-Test fest. Solche Werte dürfen nicht aus anderen Projektchats ergänzt und als hier getestet ausgegeben werden.
+Service-Unit, Installationspfad, Deployment-Ziel, Dienst-IP, DNS und Funkfrequenz sind für den historischen WAP-Test nicht festgelegt. Werte anderer Projektstände ersetzen keine reale Testkonfiguration.
 
 ## 9. Befehle, Arbeitsabläufe und tatsächlicher Ausführungsstand
 
 ### 9.1 Historisch tatsächlich ausgeführt
 
-Im sichtbaren historischen Gespräch wurde kein Shell-Befehl, Build, Patch, Commit, Push, Installations- oder Reparaturlauf mit Ergebnis dokumentiert. Der Nutzer lieferte Laufzeitlogs, aber nicht den zugehörigen Startbefehl.
+Historisch sind keine Shell-Befehle, Builds, Patches, Commits, Pushes oder Installations-/Reparaturläufe mit Ergebnis dokumentiert. Vorhanden sind Laufzeitlogs ohne zugehörigen Startbefehl.
 
-Die Assistentenantworten enthielten ausformulierte Arbeitsaufträge, keine nachgewiesenen Codex-Ausführungen. Ein fertiger Codex-CLI-Befehl wurde angeboten, aber im verfügbaren Verlauf nicht mehr geliefert. Es gibt deshalb keine belastbar zu archivierenden CLI-Flags oder eine angeblich erfolgreiche Agentensitzung.
+Die ausformulierten Codex-Arbeitsaufträge sind keine Ausführungsprotokolle. Ein fertiger Codex-CLI-Aufruf wurde nicht geliefert; CLI-Flags und erfolgreiche Agentenläufe sind nicht belegt.
 
 ### 9.2 Historisch vorgeschlagene Suchbegriffe
 
@@ -433,9 +431,9 @@ Dieser Ablauf ist keine Erlaubnis, im Archivbranch neue Funkfunktionen zu implem
 
 ### 10.1 Was gesichert ist
 
-Gesichert ist die Betreiberbeobachtung „noch kein WAP-Angebot“ zusammen mit dem beschriebenen Downlink-Broadcastlog. Gesichert ist ferner, dass die historische Antwort daraus eine zu starke systemweite Diagnose ableitete.
+Gesichert sind die Betreiberbeobachtung eines fehlenden WAP-Angebots und das Downlink-Broadcastlog. Die erste systemweite Diagnose ging über diese Befunde hinaus.
 
-**Keine funktionierende Reparatur ist in diesem Chat nachgewiesen.** Es gibt weder eine bestätigte Änderung an `packet_data_flag` noch einen nachfolgenden erfolgreichen Browseraufruf oder eine erfolgreiche Mehrgeräteprüfung.
+**Keine funktionierende Reparatur ist in diesem Planungsstand nachgewiesen.** Es gibt weder eine bestätigte Änderung an `packet_data_flag` noch einen nachfolgenden erfolgreichen Browseraufruf oder eine erfolgreiche Mehrgeräteprüfung.
 
 ### 10.2 Offene Ursachen – keine davon durch den Ausschnitt bewiesen
 
@@ -450,13 +448,13 @@ Gesichert ist die Betreiberbeobachtung „noch kein WAP-Angebot“ zusammen mit 
 | WAP-Profil oder Inhalt inkompatibel | Tatsächliche Requests/Responses, Zieladresse/Port, WTP/WSP- beziehungsweise Geräteprofil |
 | Mehrgeräte-Kollisionen oder Ressourcenreste | Paralleltrace mit eindeutiger Teilnehmer-/Kontextkorrelation und Ressourcenbilanz |
 
-Die heutige Upstream-Stubbeobachtung kann erklären, warum dieser konkrete reine Upstream keinen vollständigen Dienst liefert. Sie identifiziert aber nicht rückwirkend die Ursache in einer unbekannten historischen Laufzeitversion und erst recht nicht automatisch im heutigen NetCore-Fork.
+Die ergänzende Upstream-Stubbeobachtung kann erklären, warum dieser konkrete reine Upstream keinen vollständigen Dienst liefert. Sie identifiziert aber nicht rückwirkend die Ursache in einer unbekannten historischen Laufzeitversion und erst recht nicht automatisch im geprüften NetCore-Fork.
 
 ## 11. Tests und ihre Grenzen
 
 ### 11.1 Historischer Nachweisstand
 
-| Prüfung | Ergebnis im historischen Chat |
+| Prüfung | Ergebnis im historischen Planungsstand |
 |---|---|
 | Codex hat den Auftrag tatsächlich ausgeführt | Nicht belegt |
 | Rust-Build nach WAP-Änderungen | Nicht belegt |
@@ -472,20 +470,19 @@ Die heutige Upstream-Stubbeobachtung kann erklären, warum dieser konkrete reine
 | Prüfung | Ergebnis | Grenze |
 |---|---|---|
 | GitHub-Lesezugriff und Branchidentität | Zielbranch und Ausgangscommit gelesen; `main` und Upstream getrennt ermittelt | Keine Aussage über installierte Systeme |
-| Vorhandener Archivindex | Vorhandene Einträge gelesen; anderes WAP-Archiv erkannt | Kein Zusammenführen unterschiedlicher Gesprächshistorien |
+| Vorhandener Archivindex | Einträge und verwandtes WAP-Archiv gelesen | Entwicklungsphasen bleiben getrennt |
 | Ziel-Dateiname vor Schreiben | Abruf meldete `404 Not Found` | Keine vorhandene gleichnamige Zusammenfassung überschreiben |
 | Gezielt gelesene Codebereiche | Upstream-Stub, Broadcastpfad, NetCore-Zustands-/Gateway-/Ressourcenlogik gefunden | Kein vollständiger Stack-Audit |
 | Bitfolgenprüfung | 78/82 Bits; `0010`-Präfix; Restgleichheit; `101/010`-Einordnung | Kein On-Air-Test |
 | PDF-Inventar | 25 Dateien erfolgreich geöffnet, Seitenzahlen und SHA-256 berechnet | Kein vollständiger semantischer Normenaudit |
 | PDF-Abbildungen / Tabellen | Seiten 1022, 1081 und 1082 lokal gerendert und angesehen | Keine vollständige visuelle Prüfung aller PDFs |
 | Lokaler Repository-Clone | Fehlgeschlagen: DNS-Auflösung von GitHub nicht möglich | Daher kein lokaler Gesamtbuild |
-| Abschlussprüfung der Git-Ablage | Ergebnis und tatsächlicher Commit werden in der Abschlussmeldung angegeben | Kein vorweggenommenes Testergebnis in dieser Datei |
 
 Bei der abschließenden erneuten Abfrage des beweglichen Archivrefs und des Index traten vorübergehend GitHub-Connector-ReadTimeouts auf. Eine Branchsuche bestätigte weiterhin `Archiving`. Der zuletzt erfolgreich gelesene Index und sein Blob-SHA sind oben festgehalten. Schreiboperationen müssen diese Fassung mit Konfliktschutz berücksichtigen; ein Timeout ist kein Beleg, dass ein Commit stattgefunden hat.
 
 ### 11.3 Weiterhin erforderliche Abnahmematrix
 
-Die historischen Prompts verlangten bereits Unit-, Integrations-, Property-orientierte und Fixture-/Replay-Tests sowie einen lokalen End-to-End-Harness. Für das tatsächliche Nutzerziel müssen diese durch eine reale Interop-Matrix ergänzt werden.
+Die historischen Prompts verlangten bereits Unit-, Integrations-, Property-orientierte und Fixture-/Replay-Tests sowie einen lokalen End-to-End-Harness. Für das tatsächliche Ziel müssen diese durch eine reale Interop-Matrix ergänzt werden.
 
 Zu erfassen sind mindestens Endgerätemodell, Firmware, aktiviertes Browser-/Datendienstprofil, getesteter Code-/Konfigurationsstand, Kontextaufbau, Adresszuweisung, beidseitiger Datentransfer, konkreter Seiteninhalt, Parallelbetrieb und Recovery. Die Zielwerte für Laufzeit, Fehlerrate, Antwortzeit und Teilnehmerzahl sind noch zu vereinbaren.
 
@@ -495,7 +492,7 @@ Wichtige Fehlerfälle bleiben: konkurrierende Aufbauten, unterschiedliche Retrie
 
 **Zu verwerfen als Diagnosegrundlage:** ein globaler Schluss aus `packet_data_flag: false`; die Gleichsetzung Basic Link = kein Packet Data; die Annahme, jede relevante Nachricht müsse eine Kanalzuteilung enthalten; die Aussage, sämtliche Daten würden aufgrund dieses Ausschnitts im falschen Pfad landen.
 
-**Nicht als aktuelle Implementierungsstrategie übernehmen:** den heutigen NetCore-Fork so behandeln, als sei er noch der reine Upstream-Stub; vorhandene SNDCP-/Gatewaykomponenten erneut parallel bauen; alte Promptpfade oder alte Dokumentationsgrenzen ungeprüft zur aktuellen Architektur erklären.
+**Nicht als aktuelle Implementierungsstrategie übernehmen:** den geprüften NetCore-Fork so behandeln, als sei er noch der reine Upstream-Stub; vorhandene SNDCP-/Gatewaykomponenten erneut parallel bauen; alte Promptpfade oder alte Dokumentationsgrenzen ungeprüft zur aktuellen Architektur erklären.
 
 **Weiter gültig:** erst den konkreten Ausgangsstand verstehen; Normbezug an PDU-/SAP-/Timerentscheidungen angeben; in begrenzten, testbaren Schritten arbeiten; erwartete Fehlerfälle explizit behandeln; tatsächliche Endgeräteinteroperabilität messen; Teilstände ehrlich kennzeichnen.
 
@@ -503,7 +500,7 @@ Wichtige Fehlerfälle bleiben: konkurrierende Aufbauten, unterschiedliche Retrie
 
 ## 13. Offene Aufgaben und Roadmap-Kandidaten
 
-Die folgende Reihenfolge ist eine **bei dieser Archivierung vorgeschlagene Priorisierung**. Im historischen Chat wurden keine verbindlichen Termine oder vollständigen Prioritätsstufen vereinbart. Es wurden keine externen Roadmap-Dateien oder Issues geändert.
+Die folgende Reihenfolge ist ein **Priorisierungsvorschlag aus dem Abgleich**. Verbindliche Termine und historische Prioritätsstufen fehlen.
 
 | Priorität | Arbeitspaket | Abhängigkeit / Abnahmekriterium | Status |
 |---|---|---|---|
@@ -516,9 +513,9 @@ Die folgende Reihenfolge ist eine **bei dieser Archivierung vorgeschlagene Prior
 | P1 | Ressourcen-/Recovery-Abnahme | Keine verwaisten Slots/Kontexte nach Fehlern, Zeitabläufen und Neustarts | Offen |
 | P1 | Packet-Data-Flag-Semantik im gemeinsamen NetCore-Sendepfad prüfen | Steuer-/Nutzdaten und MS-/SwMI-Rollen anhand der konkreten SAP-Verträge unterscheiden | Neuer Review-Kandidat |
 | P1 | TUN-/Routing-/Firewall- und WAP-Profilgrenzen abnehmen | Vorhandenen Code mit tatsächlicher Umgebung prüfen, nicht nur Konfigurationsfelder zählen | Offen |
-| P2 | Dokumentationsdrift bereinigen | Ein-Slot-/kein-TUN-Aussagen mit aktuellem Code und Capability-Profil abgleichen | Offen; außerhalb dieses Archivauftrags |
+| P2 | Dokumentationsdrift bereinigen | Ein-Slot-/kein-TUN-Aussagen mit Code und Capability-Profil abgleichen | Offen |
 | P2 | Replay-/Fehlerlast-/Dauertests und reproduzierbare Ergebnisablage | Exakte Versionen, Testdaten, Logs und Pass/Fail-Kriterien | Geplant in früheren Prompts, nicht belegt |
-| P2 | Observability vervollständigen | Korrelation zwischen Teilnehmer, Kontext, Link, Ressource, IP-/WAP-Transaktion und Fehlerursache | Geplant; heutiger Teilcode vorhanden |
+| P2 | Observability vervollständigen | Korrelation zwischen Teilnehmer, Kontext, Link, Ressource, IP-/WAP-Transaktion und Fehlerursache | Geplant; geprüfter Teilcode vorhanden |
 | Nach Bedarf | Weitere Geräteprofile, Optimierungen und optionale Protokollfunktionen | Erst nach belastbarer Kernabnahme und zusätzlicher Umfangsentscheidung | Idee |
 
 ### 13.1 Kleine, weiterhin relevante Wünsche und Nebenideen
@@ -557,7 +554,7 @@ Er sollte erklären, warum vermeintlich Paketdaten über einen generischen Broad
 
 Ein Zusatzprompt wiederholte die Logfelder und verlangte die exakte Lokalisierung der vermeintlich fehlenden Paketdaten-Auswahl.
 
-**Für die Fortsetzung zu ersetzen ist die vorweggenommene Fehlerursache.** Richtig ist ein ergebnisoffener Auftrag: den Broadcast korrekt einordnen, den tatsächlich vorhandenen SNDCP-Pfad prüfen, Lücken mit Code und vollständigen Laufzeitdaten belegen und erst danach gezielt ergänzen. Das Nutzerziel bleibt stabiler Mehrgeräte-WAP/IP-Betrieb.
+**Für die Fortsetzung zu ersetzen ist die vorweggenommene Fehlerursache.** Richtig ist ein ergebnisoffener Auftrag: den Broadcast korrekt einordnen, den tatsächlich vorhandenen SNDCP-Pfad prüfen, Lücken mit Code und vollständigen Laufzeitdaten belegen und erst danach gezielt ergänzen. Das Ziel bleibt stabiler Mehrgeräte-WAP/IP-Betrieb.
 
 ### 14.3 Damals vorgeschlagene Dokumentpfade
 
@@ -566,7 +563,7 @@ Ein Zusatzprompt wiederholte die Logfelder und verlangte die exakte Lokalisierun
 | WAP/IP-Gesamtauftrag | `docs/wap_ip_gap_analysis.md`, `docs/wap_ip_design.md`, `docs/wap_ip_lab_setup.md`, `docs/wap_ip_troubleshooting.md`, `docs/wap_ip_interop_matrix.md` |
 | Logbezogener Paketdatenauftrag | `docs/packet_data_gap_analysis.md`, `docs/packet_data_design.md`, `docs/packet_data_lab_setup.md`, `docs/packet_data_troubleshooting.md`, `docs/packet_data_known_limits.md` |
 
-Diese kleingeschriebenen `docs/`-Pfade waren Vorschläge der historischen Prompts. Der Chat belegt keine damalige Erstellung. Sie werden durch diesen Archivauftrag nicht angelegt. Die aktuelle Archivvorgabe lautet ausdrücklich **`Docs/archive/`**; Groß-/Kleinschreibung ist zu beachten.
+Die kleingeschriebenen `docs/`-Pfade stammen aus den historischen Arbeitsaufträgen. Eine damalige Erstellung ist nicht belegt; die Schreibweise beim späteren Abgleich beachten.
 
 ## 15. Anhänge und PDF-Quelleninventar
 
@@ -574,7 +571,7 @@ Diese kleingeschriebenen `docs/`-Pfade waren Vorschläge der historischen Prompt
 
 In der Arbeitsumgebung waren **25 PDF-Dateien mit zusammen 8.061 Dateiseiten** verfügbar: 24 Einzeldateien mit zusammen 3.961 Seiten und die 4.100-seitige Zusammenstellung `ETSI.pdf`. Das ist eine Dateiseitenzählung, keine Zahl einzigartiger Normseiten; Überschneidungen sind möglich und wurden nicht vollständig dedupliziert.
 
-Alle Dateien ließen sich zur Inventarisierung öffnen. Erfasst wurden Dateiname, Seitenzahl, Titelseite und SHA-256. Eine vollständige inhaltliche Auswertung sämtlicher Normen oder eine Prüfung ihrer heute jeweils neuesten Fassung wurde nicht vorgenommen. Die unten genannten Versionen bezeichnen die **bereitgestellten Dokumente**, nicht pauschal die aktuellsten ETSI-Ausgaben.
+Alle Dateien ließen sich zur Inventarisierung öffnen. Erfasst wurden Dateiname, Seitenzahl, Titelseite und SHA-256. Eine vollständige inhaltliche Auswertung sämtlicher Normen oder eine Prüfung ihrer am 2026-10-04 jeweils neuesten Fassung wurde nicht vorgenommen. Die unten genannten Versionen bezeichnen die **bereitgestellten Dokumente**, nicht pauschal die aktuellsten ETSI-Ausgaben.
 
 ### 15.2 Inventar und Relevanz
 
@@ -583,16 +580,16 @@ Alle Dateien ließen sich zur Inventarisierung öffnen. Erfasst wurden Dateiname
 | `en_30039201v010601p.pdf` | EN 300 392-1 V1.6.1, 2020-04; General network design | 182 | Direkt relevant: Adressierung/Broadcast; gezielte Prüfung von 7.7.7–7.7.8. |
 | `en_30039202v030801p.pdf` | EN 300 392-2 V3.8.1, 2016-08; Air Interface | 1445 | Hauptquelle für Packet-Data-Flag, SNDCP, Linkauswahl und WAP-Abgrenzung; gezielte Abschnittsprüfung. |
 | `en_30039205v020701p.pdf` | EN 300 392-5 V2.7.1, 2020-04; PEI | 320 | Referenz für externe Terminal-/IP-Anbindung; kein Nachweis eines eingebauten Browserprofils. Titel/Inhaltsübersicht berücksichtigt. |
-| `en_30039207v030501p.pdf` | EN 300 392-7 V3.5.1, 2019-07; Security | 216 | Kontextquelle; keine Kryptographie-/Schlüsselimplementierung aus diesem Archivauftrag. |
+| `en_30039207v030501p.pdf` | EN 300 392-7 V3.5.1, 2019-07; Security | 216 | Kontextquelle; keine Kryptographie-/Schlüsselimplementierung aus diesem Themenumfang. |
 | `en_30039401v030301p.pdf` | EN 300 394-1 V3.3.1, 2015-04; Conformance testing, Radio | 169 | Mögliche spätere Funkprüfgrundlage; hier kein Konformitätstest durchgeführt. |
 | `ets_30039214e01v.pdf` | Final draft prETS 300 392-14, 1997-09; PICS proforma | 61 | Historische Referenz für strukturierte Implementierungserklärungen; nicht als aktuelle vollständige SNDCP-Checkliste verwendet. |
 | `en_3003920308v010401p.pdf` | EN 300 392-3-8 V1.4.1, 2020-04; ISI Generic Speech Format | 22 | ISI-/Sprachtransport, nicht die fehlende WAP-Funkimplementierung; inventarisiert. |
 | `en_3003920304v010301p.pdf` | EN 300 392-3-4 V1.3.1, 2010-08; ANF-ISISDS | 28 | SDS-Interworking; kein Ersatz für den gewählten IP-Dienst. |
-| `en_3003920303v010301p.pdf` | EN 300 392-3-3 V1.3.1, 2011-11; ANF-ISIGC | 251 | Gruppenruf-/ISI-Hintergrund; keine neue Anforderung aus dem WAP-Chat. |
+| `en_3003920303v010301p.pdf` | EN 300 392-3-3 V1.3.1, 2011-11; ANF-ISIGC | 251 | Gruppenruf-/ISI-Hintergrund; keine neue Anforderung der WAP-Planung. |
 | `en_3003920313v010201p.pdf` | EN 300 392-3-13 V1.2.1, 2020-04; transportunabhängiges ANF-ISIGC | 191 | Gruppenruf-/ISI-Hintergrund; inventarisiert. |
 | `en_3003920315v010500a.pdf` | Draft EN 300 392-3-15 V1.5.0, 2026-04; ANF-ISIMM | 380 | Im bereitgestellten Dokument ausdrücklich Entwurf; nicht als abschließend verabschiedete Spezifikation ausgegeben. |
 | `en_30039209v010701p.pdf` | EN 300 392-9 V1.7.1, 2020-04; supplementary services | 46 | Zusatzdienst-Rahmen; inventarisiert. |
-| `en_3003921006v010401p.pdf` | EN 300 392-10-6 V1.4.1, 2006-08; CAD, Stage 1 | 20 | Dispatcherfreigabe; kein Auftrag zur Umsetzung aus diesem Chat. |
+| `en_3003921006v010401p.pdf` | EN 300 392-10-6 V1.4.1, 2006-08; CAD, Stage 1 | 20 | Dispatcherfreigabe; kein Auftrag zur Umsetzung aus diesem Planungsstand. |
 | `en_3003921018v010301p.pdf` | EN 300 392-10-18 V1.3.1, 2003-10; BOC, Stage 1 | 17 | Rufsperre; inventarisiert. |
 | `en_3003921101v010201p.pdf` | EN 300 392-11-1 V1.2.1, 2004-01; Call Identification, Stage 2 | 44 | Zusatzdienst-Hintergrund; inventarisiert. |
 | `en_3003921201v010202p.pdf` | EN 300 392-12-1 V1.2.2, 2007-08; Call Identification, Stage 3 | 56 | Zusatzdienst-Hintergrund; inventarisiert. |
@@ -640,9 +637,9 @@ ac716ca18082cc0fd2ee768a14f03deb48fa78a77e83751b1a6b319c7fc2106a  en_30039502v01
 
 ### 15.4 Bilder und tatsächlicher Ablageumfang
 
-Im historischen Gespräch und unter den vorgefundenen Originaldateien war **kein eigenständiges Chatbild** vorhanden. Die sichtbaren Bilder im Quellenkontext sind gerenderte PDF-Seiten. Es wurden deshalb keine Bilder anderer Chats übernommen und keine fehlenden Screenshots rekonstruiert.
+Eigenständige historische Bilder fehlen. Sichtbare Quellenbilder sind gerenderte PDF-Seiten, keine Originalscreenshots des WAP-Betriebs.
 
-Für die heutige Quellenprüfung wurden drei Seiten der vorhandenen Air-Interface-PDF lokal gerendert. Das sind neu erzeugte Arbeitsansichten, keine historischen Chatbilder. Sie werden nicht als solche ausgegeben.
+Für die ergänzende Quellenprüfung wurden drei Seiten der vorhandenen Air-Interface-PDF lokal gerendert. Das sind neu erzeugte Arbeitsansichten, keine historischen Bilder. Sie werden nicht als solche ausgegeben.
 
 Die PDF-Dateien selbst werden hier als Quellen mit Version, Seitenzahl und Hash inventarisiert, nicht als vollständige Binärkopien ins Repository aufgenommen. Die Archivdatei bewahrt ihre relevanten Aussagen und Fundstellen. Damit ist transparent: **Dieses Archiv enthält keinen vollständigen Spiegel aller bereitgestellten PDF-Dateien.**
 
@@ -650,7 +647,7 @@ Die PDF-Dateien selbst werden hier als Quellen mit Version, Seitenzahl und Hash 
 
 ### 16.1 Historische Primärquelle
 
-**[H1]** Der in dieser Sitzung sichtbare Gesprächsverlauf, insbesondere die ausdrückliche Zielschärfung des Nutzers und der in Abschnitt 5 unverändert erhaltene Logauszug. Die Codex-Prompts sind historische Assistentenvorschläge, keine Ausführungsprotokolle.
+**[H1]** Historische Zielschärfung und unveränderter Logauszug in Abschnitt 5. Die Codex-Arbeitsaufträge sind Planungsvorlagen, keine Ausführungsprotokolle.
 
 ### 16.2 Bereitgestellte normative Quellen
 
@@ -658,7 +655,7 @@ Die PDF-Dateien selbst werden hier als Quellen mit Version, Seitenzahl und Hash 
 
 **[N2]** `en_30039201v010601p.pdf`, ETSI EN 300 392-1 V1.6.1 (2020-04): 7.7.7–7.7.8/S. 37–38, unadressierte Broadcast-MAC-PDUs und reservierte Broadcast-SSI. Weitere bereitgestellte Quellen und ihre Auswertungsgrenzen stehen im Inventar.
 
-### 16.3 Repository-Quellen der zusätzlichen heutigen Prüfung
+### 16.3 Repository-Quellen der zusätzlichen geprüften Prüfung
 
 - **[S1]** [BlueStation-Repository und README](https://github.com/MidnightBlueLabs/tetra-bluestation): Alpha-Einordnung; die README ist keine vollständige Fähigkeitsprüfung.
 - **[S2]** [Upstream-SNDCP-Stub am geprüften Commit](https://github.com/MidnightBlueLabs/tetra-bluestation/blob/09d4e0d9a0b8cf6c881e77353db325df9a4715aa/crates/tetra-entities/src/sndcp/sndcp_bs.rs).
@@ -673,17 +670,17 @@ Die PDF-Dateien selbst werden hier als Quellen mit Version, Seitenzahl und Hash 
 - **[S12]** [NetCore Packet Gateway am Archiv-Ausgangscommit](https://github.com/JanHG98/netcore-tetra/blob/68d41aa4a039563ccc3feca6b486b5cd91f75998/crates/tetra-entities/src/sndcp/packet_gateway.rs).
 - **[S13]** [NetCore WAP/IP-Adapter am Archiv-Ausgangscommit](https://github.com/JanHG98/netcore-tetra/blob/68d41aa4a039563ccc3feca6b486b5cd91f75998/crates/tetra-entities/src/sndcp/wap_ip.rs).
 - **[S14]** [Ältere SNDCP-Profildokumentation im geprüften Baum](https://github.com/JanHG98/netcore-tetra/blob/68d41aa4a039563ccc3feca6b486b5cd91f75998/Docs/SNDCP_COMPLETE.md).
-- **[S15]** [Separates Archiv des späteren WAP-/IP-/Multi-PDCH-Chats](2026-10-03_wap-sndcp-ip-gateway-multi-pdch-und-control-room.md).
+- **[S15]** [Spätere WAP-/IP-/Multi-PDCH-Entwicklung](2026-10-03_wap-sndcp-ip-gateway-multi-pdch-und-control-room.md).
 - **[S16]** [NetCore WAP-Konfiguration und Defaults am Archiv-Ausgangscommit](https://github.com/JanHG98/netcore-tetra/blob/68d41aa4a039563ccc3feca6b486b5cd91f75998/crates/tetra-config/src/bluestation/sec_cell.rs), Zeilen 1–200 gelesen.
 
-Die früheren Antworten verlinkten zusätzlich allgemeine TETRA-Informationen bei Wikipedia, eine Motorola-/PEI-Seite bei hamtetra und das Upstream-`Cargo.toml`. Diese damaligen Verweise sind kein Beleg für konkrete Endgerätekompatibilität oder den damals installierten Code. Die heutige technische Korrektur stützt sich auf die bereitgestellten ETSI-Quellen und die bezeichneten Primärdateien.
+Weitere historische Quellenverweise waren allgemeine TETRA-Informationen bei Wikipedia, Motorola-/PEI-Angaben bei hamtetra und das Upstream-`Cargo.toml`. Sie belegen weder Endgerätekompatibilität noch installierten Code. Die ergänzende Korrektur stützt sich auf bereitgestellte ETSI-Quellen und bezeichnete Primärdateien.
 
 ### 16.4 Noch fehlende Informationen für eine belastbare Fortsetzung
 
-Es fehlen weiterhin der ursprüngliche Chattitel und Chatlink, ein vollständiger datierter Chat-Export, die historische und aktuelle installierte Binärversion, die aktive Konfiguration, konkrete Endgerätedaten, vollständige Uplink-/Downlink-Traces, Codex-Ausführungsprotokolle und reale Interop-/Dauerlastnachweise. Der vollständige Inhalt aller 8.061 PDF-Dateiseiten wurde nicht ausgewertet.
+**Offene Nachweise:** installierte Binärversion, aktive Konfiguration, Endgerätedaten, vollständige Uplink-/Downlink-Traces, Codex-Ausführung sowie Interop-/Dauerlasttests. Die 8.061 Seiten der PDF-Quellen sind nicht vollständig ausgewertet.
 
 Der nächste Entwicklungsauftrag sollte deshalb **nicht** „alles neu bauen, weil `packet_data_flag` falsch ist“ lauten. Er sollte vom vorhandenen NetCore-Stand ausgehen, den fehlenden realen Dienstnachweis systematisch lokalisieren und die tatsächlich verbleibenden Lücken bis zur Mehrgeräteabnahme schließen.
 
 ---
 
-**Abschluss des technischen Inhalts:** Historisches Ergebnis = Ziel und Agentenaufträge plus negativer Betreiberbefund, keine nachgewiesene Reparatur. Zusätzlicher heutiger Befund = korrigierte Broadcastdiagnose und bereits vorhandener NetCore-Paketdatenquellcode. Offenes Endziel = nachvollziehbar getesteter, stabiler WAP/IP-Betrieb mit mehreren realen TETRA-Endgeräten.
+**Abschluss des technischen Inhalts:** Historisches Ergebnis = Ziel und Agentenaufträge plus negativer Betreiberbefund, keine nachgewiesene Reparatur. Zusätzlicher geprüfter Befund = korrigierte Broadcastdiagnose und bereits vorhandener NetCore-Paketdatenquellcode. Offenes Endziel = nachvollziehbar getesteter, stabiler WAP/IP-Betrieb mit mehreren realen TETRA-Endgeräten.

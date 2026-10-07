@@ -1,12 +1,12 @@
 # Historisches Bildarchiv: NetCore UI-Redesign
 
-[Zur technischen Abschlussdokumentation](../../2026-10-06_netcore-ui-redesign-basisstation-dienste-rf-dark-mode-und-builddiagnose.md)
+[Zu den Design- und Entwicklungsnotizen](../../2026-10-06_netcore-ui-redesign-basisstation-dienste-rf-dark-mode-und-builddiagnose.md)
 
-118 unveränderte PNG-Originaldateien, insgesamt 156.331.258 Bytes: 116 generierte Designvorschauen und zwei hochgeladene Referenzen. Die Nummerierung folgt den Erstellungszeiten und bewahrt auch ersetzte Entwürfe. Die Dateien wurden aus dem passenden Projektordner und Zeitfenster 02./03.10.2026 wiedergefunden. Eine vollständige Zuordnung jeder Datei zu ihrer ursprünglichen einzelnen Chatnachricht ist nicht verfügbar.
+118 unveränderte PNG-Originaldateien, insgesamt 156.331.258 Bytes: 116 generierte Designvorschauen und zwei hochgeladene Referenzen. Die Nummerierung folgt den Erstellungszeiten und bewahrt auch ersetzte Entwürfe. Die Dateien wurden aus dem passenden Projektordner und Zeitfenster 02./03.10.2026 wiedergefunden. Die Entwurfsfolge ist zeitlich dokumentiert; eine vollständige Zuordnung zu einzelnen Review-Schritten fehlt.
 
 **Keine Betriebsbelege:** Bildwerte sind Entwurfs-/Beispieldaten. Frühere dunkle Seitenleistenentwürfe wurden durch das helle Grunddesign mit horizontaler Navigation abgelöst; der später implementierte Dark Mode ist eine Variante dieses gemeinsamen Grunddesigns. Aus abgebildeten Watt-, dBm-, Zell-/Slot-, Schlüssel- oder Statuswerten keine Ist-Konfiguration oder Funktionsabnahme ableiten.
 
-Dateinamen mit „korrigiert“ oder „überarbeitet“ sowie die Zeitfolge helfen beim Vergleich; sie allein beweisen keine individuelle finale Freigabe. Die technischen Festlegungen und der Quellcodeabgleich stehen in der Abschlussdokumentation.
+Dateinamen mit „korrigiert“ oder „überarbeitet“ sowie die Zeitfolge helfen beim Vergleich; sie allein beweisen keine individuelle finale Freigabe. Die technischen Festlegungen und der Quellcodeabgleich stehen in den Design- und Entwicklungsnotizen.
 
 Alle fünf Kontaktbögen und 14 besonders sensible Originalansichten wurden visuell geprüft. Es wurden keine unmaskierten Zugangsdaten erkannt. Passwort-/Tokenfelder sind gepunktet; Security-/KMF-Ansichten zeigen gekürzte Fingerprints. Die Kontaktbogenprüfung ist keine hochauflösende Prüfung jedes Pixels aller Bilder. Originaldateien wurden weder rekonstruiert noch umgestaltet.
 

@@ -1,63 +1,62 @@
-# Abschlussdokumentation: USB-Signatur, Hybrid-Control, BREW-Health, Backups und Receipt-Server
+# Brainstorming: USB-Signatur, Hybrid-Control, BREW-Health, Backups und Receipt-Server
 
-<!-- archive-chat-key: usb-ed25519-multi-stick-hybrid-control-brew-health-backup-receipts-apr2026 -->
+**Stand der Notizen und ergänzenden Prüfungen: 2026-10-03.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
 
-## 1. Metadaten, Quellenumfang und Leseregeln
+**Arbeitsrichtung:** Signierte USB-Konfiguration als abgesicherter Startpfad, zentraler Control-Server mit Netzwerk-vor-USB-Priorität, BREW-Health, Netzwerkbackups und begrenzter Thermobondruck. USB-Signaturprüfung und einzelne Betriebsfunktionen sind bestätigt; Hybrid-Manager, Readiness und Restore bleiben offen.
+
+## 1. Kontext und Quellenlage
 
 | Feld | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Signierte USB-Konfiguration; Mehrfach-Stick-Verwaltung; Netzwerkbackup; zentraler Control-Server; Netzwerk-vor-USB-Hybridmodell; BREW-Backend und Health; intelligenter Thermobondruck |
-| Ursprünglicher Chattitel | Nicht im zugänglichen Verlauf enthalten; auch die gezielte Rücksuche lieferte keinen belastbaren Titel. Der Titel dieses Dokuments ist eine Themenbeschreibung. |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link rekonstruiert oder erfunden. |
-| Historischer Zeitraum | Nutzerlogs vom 18. April 2026 und 27. April 2026; weitere Beispiele enthalten den 28. April. Nicht jede Nachricht besitzt einen sichtbaren Zeitstempel. Beispieldaten sind keine Datierung der gesamten Unterhaltung. |
+| Historischer Zeitraum | Betriebslogs vom 18. und 27. April 2026; weitere Beispiele enthalten den 28. April. Beispieldaten datieren nicht automatisch die gesamte Entwicklung. |
 | Tatsächliches Erstellungsdatum | 2026-10-03, Europe/Berlin |
 | Repository | `JanHG98/netcore-tetra` |
-| Ausschließlicher Schreibbranch | `Archiving` |
+| Repository-Branch des Abgleichs | `Archiving` |
 | Für den Inhaltsabgleich fixierter Commit | `2b08bababf8b72bd2cb82d780a7ba0e526e1f1a9` |
 | Zugehöriger Root-Tree | `65913124d84998a680781cc9c1f89c0d93b31979` |
 | Ergänzend gelesener Defaultbranch-Ref | `main` → `7137e0dd69877e1b604bf89148fd8b6b590c1a97` |
 | Ablage | `Docs/archive/2026-10-03_usb-signatur-hybrid-control-brew-backup-und-receipt-server.md` |
-| Umfang des Archivauftrags | Dieses Dokument und sein Eintrag in `Docs/archive/README.md`; keine Betriebs-, App-, Schlüssel-, Firmware-, Roadmap- oder Dienständerungen. |
 
 **Wichtigste Übergabe:** Der signierte USB-Start wurde im damaligen Betrieb bestätigt. Ein veränderter Konfigurationsinhalt wurde tatsächlich abgelehnt. Daraus folgt weder Klonschutz für einen normalen USB-Stick noch die Abnahme eines vollständig abgesicherten Systems. Der später gelieferte Netzwerk-/USB-Entwurf war ein unvollständiger Einmalabruf, kein dauerhaft laufender Hybrid-Manager. Die Control-WebUI zeigt einen signierten **Sollzustand**, nicht bereits einen bewiesenen tatsächlichen Sendebetrieb. Der hinzugefügte BREW-Health-Endpunkt liefert im gezeigten Code selbst bei Problemen mit `nodes.json` weiterhin `status: ok`. Diese Grenzen müssen bei der Fortsetzung erhalten bleiben. (C01–C13)
 
 ### 1.1 Auswertungsgrundlage und Lücken
 
-Ausgewertet wurden die in dieser Unterhaltung zugänglichen Nutzerangaben, sämtliche sichtbaren aufeinanderfolgenden Skriptfassungen und Korrekturen, Terminalausgaben, der Control-UI-Screenshot, das Original-Logo und die beiden generierten Bonentwürfe. Die Dateien waren in der Arbeitsumgebung tatsächlich vorhanden; Bildmaße und Prüfsummen wurden zusätzlich ermittelt. Die angehängten 25 PDF-Dateien wurden als Anlagenbestand mit Titel-/Versionsangaben und Seitenzahlen inventarisiert. Ihre teilweise mehrere Tausend Seiten umfassenden Inhalte wurden **nicht vollständig normativ ausgewertet**: Im sichtbaren Arbeitsverlauf wurden daraus keine konkreten Anforderungen an den USB-/Control-/Druckeraufbau hergeleitet.
+Die Quellen umfassen Betriebsangaben, Skriptfassungen und Korrekturen, Terminalausgaben, Control-UI-Screenshot, Original-Logo und zwei Bonentwürfe. Bildmaße und Prüfsummen wurden zusätzlich ermittelt. Die 25 PDF-Anhänge sind mit Titel, Version und Seitenzahlen inventarisiert; ihre Inhalte wurden **nicht vollständig normativ ausgewertet**. Konkrete Anforderungen an USB, Control und Drucker wurden daraus nicht abgeleitet.
 
-Nicht vorhanden sind ein vollständiger Chat-Metadatenexport mit Originaltitel und URL, ein unveränderlicher Export der zuletzt tatsächlich auf allen drei Rechnern installierten Dateien, der komplette reale Inhalt der signierten `config.toml`, echte Schlüsseldateien, ein vollständig abgenommener Hybrid-Agent sowie Daten eines tatsächlich gekauften Druckers. Das ist kein Anlass, diese Informationen zu erfinden.
+**Fehlende Nachweise:** unveränderlicher Export der zuletzt auf allen drei Rechnern installierten Dateien, kompletter realer Inhalt der signierten `config.toml`, tatsächliche Schlüsseldateien, vollständig abgenommener Hybrid-Agent und Daten eines gekauften Druckers.
 
-Der heutige Repository-Abgleich ist eine **gezielte Stichprobe**, keine Vollprüfung jedes Pfades, jeder historischen Commitversion oder jedes laufenden Containers. Große Baumantworten waren teilweise in der Werkzeugausgabe gekürzt. Der lokale Git-Clone scheiterte an der DNS-Auflösung der Arbeitsumgebung; lesender und schreibender GitHub-Connectorzugriff war dagegen verfügbar. Es bestand kein Zugriff auf das reale Verwaltungsnetz, die TBS, die beiden Anwendungsserver oder den Backup-LXC. Eine vorhandene spätere Android-/Control-Archivdatei wurde ausschließlich als separate Fortsetzungsquelle gelesen, nicht als Ersatz für fehlende Primärbelege dieses Chats. (R01–R11)
+Der Repository-Abgleich ist eine **gezielte Stichprobe**. TBS, Anwendungsserver, Backup-LXC und Verwaltungsnetz wurden nicht direkt erreicht. Die Android-/Control-Notiz beschreibt eine spätere Phase und dient als sekundäre Fortsetzungsquelle. (R01–R11)
 
 ### 1.2 Statusbegriffe
 
 | Kennzeichnung | Bedeutung |
 |---|---|
 | Idee | Besprochen, aber weder fertig spezifiziert noch umgesetzt nachgewiesen. |
-| Beschlossen/geplant | Vom Nutzer verlangt oder ausdrücklich festgelegt; kein automatischer Implementierungsbeleg. |
-| Implementiert im Chatcode | Konkreter Quelltext wurde geliefert bzw. vom Nutzer gepostet. Das sagt zunächst nichts über Git oder die tatsächlich installierte letzte Fassung aus. |
+| Beschlossen/geplant | Gefordert oder ausdrücklich festgelegt; kein automatischer Implementierungsbeleg. |
+| Implementiert im Beispielcode | Konkreter Quelltext liegt vor. Git-Zuordnung und tatsächlich installierte letzte Fassung sind gesondert nachzuweisen. |
 | Implementiert im Repository | Im angegebenen Commit konkret nachweisbarer Quelltext; Prüfumfang wird genannt. |
-| Getestet | Konkreter Test mit Ergebnis; historische Nutzertests und isolierte Archivprüfungen bleiben getrennt. |
-| Im Betrieb bestätigt | Nutzerbeobachtung oder Terminal-/Bildbeleg zeigt die damalige Funktion. Kein Nachweis dauerhafter Fehlerfreiheit oder des heutigen Deployments. |
+| Getestet | Konkreter Test mit Ergebnis; historische Betriebstests und isolierte Archivprüfungen bleiben getrennt. |
+| Im Betrieb bestätigt | Betriebsbeobachtung oder Terminal-/Bildbeleg zeigt die damalige Funktion. Kein Nachweis dauerhafter Fehlerfreiheit oder des geprüften Deployments. |
 | Unbestätigt / überholt | Fehlender Nachweis oder durch spätere Angaben ersetzter Vorschlag. |
 
-**Quellenkonvention:** `Cxx` bezeichnet Beleggruppen aus diesem Chat, `Axx` Anlagen, `Rxx` die heutige Repositoryprüfung und `Exx` extern nachgelesene technische Grundlagen. Die Zuordnung steht in Abschnitt 17. Neue technische Bewertungen sind ausdrücklich als **Archivprüfung** bzw. **Vorschlag für die Fortsetzung** markiert und keine nachträglich erfundenen Entscheidungen des Nutzers.
+**Quellenkonvention:** `Cxx` bezeichnet Planungs- und Betriebsbelege, `Axx` Anlagen, `Rxx` den ergänzenden Repository-Abgleich und `Exx` technische Primärquellen. Die Zuordnung steht in Abschnitt 17. Zusätzliche Bewertungen sind als **Prüfbefund** oder **Fortsetzungsvorschlag** gekennzeichnet.
 
 ## 2. Ergebnisübersicht
 
 | Teilbereich | Historisch letzter belastbarer Stand | Grenze |
 |---|---|---|
-| Signierte USB-Konfiguration | Gültige Config startet; veränderte Config wird zurückgewiesen; Entfernen des Sticks beendet nach Nutzerbeobachtung das Senden | Kein Klon-, Mehrfach-Stick-, Race- oder umfassender Hardware-/Angriffstest |
-| Restart-Verhalten | Nutzer bestätigt ausdrücklich `Restart=no` | Gilt für `bluestation.service`, nicht pauschal für alle späteren Dienste |
+| Signierte USB-Konfiguration | Gültige Config startet; veränderte Config wird zurückgewiesen; Entfernen des Sticks beendet nach Betriebsbeobachtung das Senden | Kein Klon-, Mehrfach-Stick-, Race- oder umfassender Hardware-/Angriffstest |
+| Restart-Verhalten | `Restart=no` ausdrücklich bestätigt | Gilt für `bluestation.service`, nicht pauschal für spätere Dienste |
 | Mehrere UUIDs und Menü | Array-/udev-Verwaltung als Code vorhanden; USB-Erkennung nach Korrektur wieder funktionsfähig; nach Wiederherstellung des richtigen Startskripts läuft die BS wieder | Kein vollständiger Test aller Menüfunktionen oder zweier gleichzeitiger erlaubter Sticks |
-| Automount | Nutzer bestätigt deaktiviert; vorher konkreter RW-/RO-Mountkonflikt | Globales Maskieren von UDisks hatte Nebenwirkungen; sauberere gerätespezifische Lösung offen |
-| Backup | Manueller Config-/Setup-Upload mit erfolgreichem Log; täglicher und wöchentlicher Cron-Eintrag laut Nutzer gesetzt | Vollimage-Erfolg, Cron-Ausführung, Rotation und Restore nicht nachgewiesen |
+| Automount | Deaktivierung bestätigt; vorher konkreter RW-/RO-Mountkonflikt | Globales Maskieren von UDisks hatte Nebenwirkungen; gerätespezifische Lösung offen |
+| Backup | Manueller Config-/Setup-Upload mit Erfolgslog; täglicher und wöchentlicher Cron-Eintrag als gesetzt bestätigt | Vollimage-Erfolg, Cron-Ausführung, Rotation und Restore nicht nachgewiesen |
 | Backupkapazität | Backup-LXC auf 70 GB erweitert | Keine reale Imagegröße oder dauerhafte Kapazitätsrechnung belegt |
-| Control-Server | Flask-/Gunicorn-Umgebung nach Reparatur vorhanden; WebUI mit RUN/STOP und Downloadlinks sichtbar; Nutzer akzeptiert Mehrstations-UI | Letzte komplette Datei nicht aus dem laufenden Server zurückgelesen; keine vollständige Abnahme aller CRUD-/Lock-Aktionen |
+| Control-Server | Flask-/Gunicorn-Umgebung nach Reparatur vorhanden; WebUI mit RUN/STOP und Downloadlinks sichtbar; Mehrstations-UI als passend bewertet | Letzte Datei nicht aus dem laufenden Server zurückgelesen; vollständige CRUD-/Lock-Abnahme fehlt |
 | Config-Verteilung | Routen und Ablage vorgesehen; zunächst 404 wegen fehlender Dateien | Erfolgreiche spätere Ablage eines bytegenau passenden Config-/Signaturpaars nicht ausdrücklich bestätigt |
-| BREW-Systemdienst / Health | Aiohttp-Quelle vollständig bekannt; Nutzer bestätigt funktionierende Health-Erweiterung | Keine Protokoll-/Readiness-/Autostart-/Lastabnahme daraus ableitbar |
-| BREW-Lampe im Control-UI | Finale vollständige Pythonfassung auf `/health` und JSON-Auswertung umgestellt | Funktionsumfang der Lampe implementiert im Chatcode; kein eigener belegter Fehlerfalltest |
+| BREW-Systemdienst / Health | Vollständige aiohttp-Quelle vorhanden; Health-Erweiterung im Betrieb bestätigt | Keine Protokoll-/Readiness-/Autostart-/Lastabnahme daraus ableitbar |
+| BREW-Lampe im Control-UI | Finale vollständige Pythonfassung auf `/health` und JSON-Auswertung umgestellt | Funktionsumfang der Lampe implementiert im Beispielcode; kein eigener belegter Fehlerfalltest |
 | Hybridbetrieb | Netzwerk zuerst, USB bei fehlender Netzwerkverfügbarkeit ausdrücklich gewünscht | Gelieferte Shellkombination ist nicht vollständig; kein laufender Polling-/Supervisorbetrieb bestätigt |
 | Thermodrucker | Kurze Startinfo und wichtige Fehler mit Kommentar, Original-Logo, Log-QR und Auto-Cutter gewünscht; erst USB, später intelligenter Pi-Receiver/Netzwerk | Kein Gerätekauf, kein ESC/POS-Test, kein fertiger Receipt-Dienst oder verifizierter QR |
 
@@ -69,14 +68,14 @@ Die Basisstation startete zunächst, sobald ein Stick mit bestimmter Dateisystem
 
 Die ursprüngliche UUID war zunächst im Skript als Platzhalter dargestellt; die udev-Regeln nannten `6263-60C0`. Nach der Neuformatierung wurde **`D000-334F`** tatsächlich ausgegeben und anschließend als richtige UUID verwendet. Sie ist ein Selektor, kein geheimzuhaltender Schlüssel.
 
-### 3.2 Verbindliche Nutzervorgaben
+### 3.2 Verbindliche Festlegungen
 
 | Vorgabe | Bedeutung für eine Fortsetzung |
 |---|---|
 | Nur `config.toml` als fachliche Konfiguration | Andere Inhalte eines Sticks sollen ignoriert werden. Die später ergänzte `.sig` ist notwendige Prüfmetadatei, kein weiterer frei auszuwertender Inhalt. |
 | TOML fachlich nicht umbauen | Zusätzliche Geräte-/Versionsinformationen nur als Kommentare; keine willkürlichen neuen TOML-Schlüssel in den bestehenden Parser einführen. |
 | Hauptrechner Windows 11, kein vorausgesetztes OpenSSL | Erzeugung und Signieren mit Python; umgesetzt wurde `cryptography`, nicht PyNaCl. |
-| Manuelle Übertragung per Strg+C / Strg+V | Keine SCP-/CP-Dateiübertragung zwischen Windows und Linux in den Anleitungen voraussetzen. Spätere SCP-Beispiele der Assistenz widersprachen dieser Vorgabe. |
+| Manuelle Übertragung per Strg+C / Strg+V | Anleitungen müssen ohne SCP-/CP-Dateiübertragung zwischen Windows und Linux auskommen. Spätere SCP-Beispiele waren mit dieser Vorgabe unvereinbar. |
 | Ganze Dateien und konkrete Pfade | Wiederholt vollständige `.sh` bzw. `.py` statt einzusetzender Fragmente verlangt. Ausführungsbenutzer, Arbeitsverzeichnis und venv müssen eindeutig sein. |
 | Gültiger Stick startet, Entfernen stoppt | Ursprüngliches und getestetes USB-Verhalten; im Hybridmodell muss die Quellenzuständigkeit neu sauber definiert werden. |
 | Weitere autorisierte Sticks | Beispielsweise für einen weiteren Bediener; komfortabel über ein mit `sudo` gestartetes Menü verwalten. |
@@ -135,7 +134,7 @@ Separater BREW-Server 10.0.1.163
     :8081 ISSI-WebUI + /health + /api/status
 ```
 
-Nicht alle Pfeile sind implementiert: Insbesondere kontinuierliches Hybrid-Polling, gesicherte Rückmeldung des tatsächlichen Senderzustands und Receipt-Events wurden nur entworfen. Die Control-LXC-IP wurde in diesem Chat nicht belastbar genannt; Platzhalter wie `10.0.1.XXX` sind keine realen Konfigurationswerte.
+Nicht alle Pfeile sind implementiert: Insbesondere kontinuierliches Hybrid-Polling, gesicherte Rückmeldung des tatsächlichen Senderzustands und Receipt-Events wurden nur entworfen. Die Control-LXC-IP wurde in diesem Planungsstand nicht belastbar genannt; Platzhalter wie `10.0.1.XXX` sind keine realen Konfigurationswerte.
 
 ### 4.2 Rechner und Ports
 
@@ -143,8 +142,8 @@ Nicht alle Pfeile sind implementiert: Insbesondere kontinuierliches Hybrid-Polli
 |---|---|---|
 | Basisstation | Prompt `jan@SRV-M-RPi-TBS01`; Linux auf SD/eMMC-Blockgerät `mmcblk0` | Lokale systemd-/udev-Steuerung; VPN vorgesehen, dessen Produkt/Port hier nicht eingerichtet oder nachgewiesen |
 | Control-Server | LXC `CT-H-DEV-04`; Dienstbenutzer `netcore` | TCP 8080, HTTP, Flask hinter Gunicorn |
-| BREW-Backend | `10.0.1.163`; Hostname in diesem Chat nicht sicher zugeordnet | TCP 8080 für HTTP/WebSocket, TCP 8081 für WebUI/Health |
-| Backupserver | Lokaler LXC `10.0.1.161`, auch für OPNsense-Backups verwendet; 70-GB-Datenträger laut Nutzer | SSH/SFTP; historischer fertiger Backupcode nutzt SSH-Remote-Befehle, nicht das SFTP-Subsystem |
+| BREW-Backend | `10.0.1.163`; Hostname in diesem Planungsstand nicht sicher zugeordnet | TCP 8080 für HTTP/WebSocket, TCP 8081 für WebUI/Health |
+| Backupserver | Lokaler LXC `10.0.1.161`, auch für OPNsense-Backups verwendet; 70-GB-Datenträger als Bestand angegeben | SSH/SFTP; fertiger historischer Backupcode verwendet SSH-Remote-Befehle, nicht das SFTP-Subsystem |
 | Receipt-Server | Künftiger Pi, kein konkretes Gerät/IP festgelegt | HTTP-Event-API geplant; ESC/POS per USB, später ggf. TCP 9100, jeweils druckermodellabhängig |
 
 **Korrektur der früheren Zuordnung:** Aus dem Kontonamen und dem bereits vorhandenen OPNsense-Backup folgt nicht, dass `10.0.1.161` die OPNsense-Firewall selbst ist. Die spätere Angabe eines LXC mit 70 GB spricht für einen separaten Backupdienst. Die genaue Distribution dieses LXC wurde nicht nachgewiesen.
@@ -161,7 +160,7 @@ Nicht alle Pfeile sind implementiert: Insbesondere kontinuierliches Hybrid-Polli
 | `/usr/local/lib/bluestation/venv/bin/python` | Historisch vorgesehener Interpreter mit `cryptography`; `tomllib` erfordert Python 3.11 oder neuer |
 | `/etc/bluestation/signing_pubkey.pem` | Öffentlicher Config-Verifikationsschlüssel; kein Schlüsselmaterial im Archiv |
 | `/etc/bluestation/device_id` | Erwartete Geräte-ID; Beispiel bzw. Anfangszuordnung `bs01` |
-| `/var/lib/bluestation/last_version` | In diesem Chat ausdrücklich gezeigter Versionsstand als reine Dezimalzahl, kein JSON |
+| `/var/lib/bluestation/last_version` | In diesem Planungsstand ausdrücklich gezeigter Versionsstand als reine Dezimalzahl, kein JSON |
 | `/run/bluestation-usb` | Vom Dienst verwendeter USB-Mountpunkt |
 | `/run/bluestation/config.toml` | Lokale übernommene Config mit Modus 0600 |
 | `/etc/udev/rules.d/99-bluestation.rules` | Start-/Stop-Ereignisse für freigegebene UUIDs |
@@ -227,13 +226,13 @@ Zusätzliche Dateien, etwa Windows-`System Volume Information`, sind irrelevant.
 
 Diese Kommentare gehören zu den signierten Bytes. Der gelieferte Verifier sucht die Metadaten mit regulären Ausdrücken im gesamten dekodierten Text. Die tatsächlichen Ausdrücke erlauben Leerraum um `#`, Schlüssel und `=`; die spätere Behauptung, keinerlei Leerzeichen seien erlaubt, war daher falsch. Bei mehrfach vorhandenen passenden Kommentaren wird jeweils der erste Treffer verwendet; doppelte oder widersprüchliche Metadaten werden nicht explizit beanstandet.
 
-**Signaturformat:** Ed25519 über den unveränderten Datei-Byteinhalt, nicht über normalisiertes TOML. Private PEM-Serialisierung als PKCS8 mit `NoEncryption()`, Public Key als SubjectPublicKeyInfo. Die `.sig` enthält Base64-ASCII und einen abschließenden Zeilenumbruch. Eine 64-Byte-Ed25519-Signatur ergibt 88 Base64-Zeichen bzw. 89 Bytes mit LF. Die vom Nutzer gelistete Datei hatte genau 89 Bytes; das passt zum Format, ersetzt aber keine kryptografische Prüfung. (C02, C04; E01)
+**Signaturformat:** Ed25519 über unveränderte Dateibytes, nicht über normalisiertes TOML. Private PEM-Serialisierung als PKCS8 mit `NoEncryption()`, Public Key als SubjectPublicKeyInfo. Die `.sig` enthält Base64-ASCII und abschließenden Zeilenumbruch. Eine 64-Byte-Signatur ergibt 88 Base64-Zeichen beziehungsweise 89 Bytes mit LF. Die dokumentierte Datei hatte 89 Bytes; dies bestätigt die Formatplausibilität, keine kryptografische Prüfung. (C02, C04; E01)
 
 **Folge für Copy/Paste:** Änderungen an Kommentaren, Einrückung, Zeilenenden, BOM oder abschließendem Zeilenumbruch können die Signatur ungültig machen. Eine in `nano` neu angelegte, optisch gleiche Datei ist nicht automatisch bytegleich zur auf Windows signierten Datei. Maßgeblich ist immer das tatsächlich verteilte Dateipaar. (Archivprüfung, T-A02)
 
 ### 5.2 Windows-Werkzeuge
 
-Historisch vorgesehener Arbeitsordner: `C:\bluestation-signing`. Dort wurden `generate_keys.py`, `sign_config.py`, eine `.venv` sowie Config-Private-/Public-Keydateien vorgesehen. `sign_config.py` nimmt einen Configpfad als Argument, liest den Private Key aus dem aktuellen Arbeitsverzeichnis und legt daneben `config.toml.sig` an. Signieren und Verifizieren verwenden die Pythonbibliothek `cryptography`. Die anfänglich genannten OpenSSL-, minisign-, signify- und PyNaCl-Varianten wurden nicht zum endgültigen in diesem Chat verwendeten Verfahren.
+Historisch vorgesehener Arbeitsordner: `C:\bluestation-signing`. Dort wurden `generate_keys.py`, `sign_config.py`, eine `.venv` sowie Config-Private-/Public-Keydateien vorgesehen. `sign_config.py` nimmt einen Configpfad als Argument, liest den Private Key aus dem aktuellen Arbeitsverzeichnis und legt daneben `config.toml.sig` an. Signieren und Verifizieren verwenden die Pythonbibliothek `cryptography`. Die anfänglich genannten OpenSSL-, minisign-, signify- und PyNaCl-Varianten wurden nicht zum endgültigen in diesem Planungsstand verwendeten Verfahren.
 
 Relevante historische Befehle, ohne Nachweis jedes einzelnen Installationsschritts:
 
@@ -350,9 +349,9 @@ Das Nachladen von Regeln ist nicht identisch mit einem erneuten Einsteckereignis
 
 ### 6.1 Tatsächlich beobachtete Reihenfolge
 
-Der Nutzer zeigte zunächst `blkid` ohne USB-Eintrag. Später meldete `dmesg` einen rund 4-GB-Stick als `sda`, während Fehler beim Unmount eines `sdb` auftraten. Die Assistenz erklärte daraus vorschnell einen defekten Stick bzw. eine zerstörte Partitionierung und behauptete zusätzlich eine nie vom Nutzer genannte Ventoy-/Rufus-Vorgeschichte. Diese Diagnose und Vorgeschichte waren **nicht belegt**.
+`blkid` enthielt zunächst keinen USB-Eintrag. Später meldete `dmesg` einen rund 4-GB-Stick als `sda`, während Unmountfehler ein `sdb` betrafen. Ein defekter Stick oder eine zerstörte Partitionierung ließ sich daraus nicht ableiten. Auch die zwischenzeitlich angenommene Ventoy-/Rufus-Vorgeschichte war **unbelegt**.
 
-Der Nutzer führte anschließend `fdisk /dev/sda` aus. Das Programm warnte ausdrücklich, dass der Datenträger benutzt wurde. Trotzdem wurde eine neue DOS-Partitionstabelle und eine Partition geschrieben. `mkfs.vfat -F 32 /dev/sda1` scheiterte zunächst an `Device or resource busy`. Die darauf folgenden Vorschläge `partprobe`, `partx`, `wipefs` und wiederholte Formatierung sind nicht sämtlich als ausgeführt dokumentiert. Schließlich lieferte der Nutzer:
+Anschließend wurde `fdisk /dev/sda` ausgeführt. Trotz Warnung vor einem benutzten Datenträger wurden DOS-Partitionstabelle und Partition neu geschrieben. `mkfs.vfat -F 32 /dev/sda1` scheiterte zuerst an `Device or resource busy`. Die folgenden Vorschläge `partprobe`, `partx`, `wipefs` und erneute Formatierung sind nicht sämtlich als ausgeführt dokumentiert. Danach lag folgende Ausgabe vor:
 
 ```text
 /dev/sda1: UUID="D000-334F" BLOCK_SIZE="512" TYPE="vfat" PARTUUID="0d6e3151-01"
@@ -379,7 +378,7 @@ sda1: Can't mount, would change RO state
 
 **Belegte Ursache in diesem Schritt:** bereits vorhandener Desktop-Mount und Konflikt beim Read-only-Zustand. Die vorherige pauschale Erklärung, Windows habe die Dateien mit 99 Prozent Wahrscheinlichkeit nicht geschrieben oder falsch benannt, wurde nicht belegt und wird nicht übernommen.
 
-Der Nutzer entschied sich für das Deaktivieren des Automounts. Vorgeschlagen waren `systemctl mask udisks2.service` sowie Stop/Unmount. Das funktionierte als Teil des USB-Ablaufs, war aber eine globale Änderung. Später erkannte der SD Card Copier die Backupkarte nicht. Ob dessen konkrete Störung durch UDisks-Abschaltung, Mounts oder andere Faktoren verursacht wurde, wurde nicht abschließend diagnostiziert. Die Aussagen, der Copier erkenne ausschließlich bestimmte Removable-Geräte und `dd` sei immer besser, waren zu pauschal.
+**Festlegung:** Automount deaktivieren. Vorgesehen waren `systemctl mask udisks2.service` sowie Stop/Unmount. Der USB-Ablauf funktionierte danach, allerdings als Folge einer globalen Änderung. Später erkannte SD Card Copier die Backupkarte nicht. Ob UDisks-Abschaltung, Mountzustand oder andere Faktoren die Ursache waren, blieb offen. Die pauschalen Annahmen zu Removable-Geräten und der generellen Überlegenheit von `dd` sind nicht belastbar.
 
 ### 6.3 UUID-Wechsel und Restart-Schleife
 
@@ -396,7 +395,7 @@ sudo udevadm control --reload-rules
 sudo systemctl daemon-reload
 ```
 
-Die damaligen Ausgaben wurden nicht bei jedem Einzelbefehl gepostet; die nachfolgende Nutzerbestätigung ist der Betriebsnachweis des Gesamtwegs. Das zwischenzeitlich angebotene Beispiel mit `StartLimitIntervalSec` und `StartLimitBurst` im Abschnitt `[Service]` war falsch eingeordnet; diese Parameter gehören in `[Unit]`. Die abschließende Wahl `Restart=no` ersetzt diesen Zwischenvorschlag. (E06)
+Einzelbefehle sind nicht durchgehend mit Ausgaben belegt; der Gesamtweg wurde im Betrieb bestätigt. Der Zwischenentwurf mit `StartLimitIntervalSec` und `StartLimitBurst` in `[Service]` war falsch: Beide gehören in `[Unit]`. Die abschließende Wahl `Restart=no` ersetzt diesen Ansatz. (E06)
 
 ### 6.4 Menüumfang und Datenhaltung
 
@@ -419,9 +418,9 @@ Zunächst verwendete die USB-Erkennung:
 lsblk -rpno NAME,TRAN,TYPE | awk '$2=="usb" && $3=="part" {print $1}'
 ```
 
-Das setzt voraus, dass `TRAN=usb` direkt in der Partitionszeile erscheint. Die korrigierte Variante ermittelte zuerst USB-**Disk**-Geräte mit `lsblk -dpno NAME,TRAN,TYPE`, danach deren `part`-Kinder. Der Nutzer bestätigte: „jetzt findet er ihn wieder“. Der tatsächliche Ursache-Nachweis mittels gepostetem `lsblk` fehlt, aber der Erfolg nach der Änderung ist belegt.
+Die erste Variante setzte `TRAN=usb` in der Partitionszeile voraus. Die Korrektur sucht zunächst USB-**Disk**-Geräte mit `lsblk -dpno NAME,TRAN,TYPE`, dann deren `part`-Kinder. Danach wurde die Stickerkennung wieder bestätigt; ein vollständiger `lsblk`-Ursachennachweis fehlt.
 
-Danach startete die BS nicht: Der Nutzer stellte selbst fest, das Menü versehentlich in `import_and_start.sh` gespeichert zu haben. Nach der erneuten Ausgabe und Wiederherstellung des Startskripts meldete er **„geht wieder“**. Diese konkrete Fehlerursache ersetzt die zuvor spekulierten Funk-/Config-/Binary-Ursachen. (C06)
+Der anschließende fehlende BS-Start hatte eine konkrete Ursache: Das Menü war versehentlich in `import_and_start.sh` gespeichert. Nach Wiederherstellung des Startskripts funktionierte der Ablauf wieder. Vermutungen zu Funk, Konfiguration und Binary sind für diesen Fehler damit überholt. (C06)
 
 ### 6.5 Grenzen des Menücodes — Archivprüfung
 
@@ -441,9 +440,9 @@ Weitere offene Punkte:
 
 ### 7.1 Gewünschter und tatsächlich benutzter Weg
 
-Nach den Schwierigkeiten mit dem SD Card Copier wollte der Nutzer die Basisstation in den bereits für OPNsense verwendeten Backupbereich sichern. Zielunterordner: **`netcore-tetra`**. Ein privater SSH-Schlüssel war vorhanden; dessen Inhalt ist nicht Bestandteil des Chats oder dieses Archivs.
+Nach den Problemen mit SD Card Copier wurde das vorhandene OPNsense-Backupziel für die Basisstation gewählt, mit Unterordner **`netcore-tetra`**. Ein privater SSH-Schlüssel war vorhanden; sein Inhalt ist nicht dokumentiert.
 
-Zuerst schlug der interaktive SSH-Zugang mit `This account is currently not available` fehl. Die Assistenz vermutete eine `nologin`-Shell und schlug eine Shelländerung vor. Welcher konkrete serverseitige Befehl ausgeführt wurde, ist nicht sichtbar. Der Nutzer bestätigte anschließend, dass ein SSH-Aufruf mit einem einfachen Remote-`echo` funktioniert. Damit ist **Remote-Command-Ausführung** bestätigt, nicht eine angebliche zeitliche Blockierung des Kontos durch OPNsense.
+Der interaktive SSH-Zugang scheiterte zunächst mit `This account is currently not available`. Eine `nologin`-Shell war als Ursache vermutet; der konkrete serverseitige Änderungsbefehl ist nicht erhalten. Anschließend funktionierte SSH mit einfachem Remote-`echo`. Bestätigt ist somit **Remote-Command-Ausführung**; eine zeitliche Kontosperre durch OPNsense ist nicht belegt.
 
 Die fertige Backuplösung überträgt einen Standardausgabestrom mit `ssh ... "cat > ..."`. Das ist **kein SFTP-Upload**, obwohl derselbe Server über SFTP angesprochen werden kann. Ein reines SFTP-Konto ohne Remote-Shell würde diesen Code nicht ausführen können. Der frühere Vorschlag `tar ... | sftp user@host:/datei` ist kein gültiger entsprechender Streaming-Upload und wurde ersetzt.
 
@@ -492,7 +491,7 @@ Der gelieferte `cleanup()`-Trap ist leer; die temporäre Liste wird nur nach erf
 
 ### 7.3 Tatsächlich bestätigter Upload
 
-Vom Nutzer geposteter Ablauf am 18. April 2026:
+Dokumentierter Betriebsablauf vom 18. April 2026:
 
 ```text
 22:25:20 Start für SRV-M-RPi-TBS01
@@ -508,7 +507,7 @@ Die beiden `tar`-Hinweise über entfernte führende Schrägstriche waren keine g
 
 ### 7.4 Cron — letzte ausdrücklich bestätigte Festlegung
 
-Der Nutzer bestätigte, dass **beide** Einträge vorhanden sind. Die abschließende Anleitung verwendete die Root-Crontab, nicht die anfangs irrtümlich vorgeschlagene normale Benutzer-Crontab:
+Beide Cron-Einträge wurden als vorhanden bestätigt. Die abschließende Variante verwendet die Root-Crontab statt der zuerst betrachteten normalen Benutzer-Crontab:
 
 ```cron
 0 3 * * * /usr/local/sbin/backup-bluestation.sh >> /var/log/bluestation-backup.log 2>&1
@@ -527,7 +526,7 @@ sudo DO_FULL_BACKUP=true /usr/local/sbin/backup-bluestation.sh
 
 **70 GB sind eine bestätigte LXC-Größe, keine bestätigte ausreichende Aufbewahrungskapazität.** Die früher genannten Imagegrößen von etwa 4–12 bzw. 5–10 GB waren Schätzungen ohne gemessene SD-/Imagegröße. Ein Rohimage umfasst auch nicht aktuell belegte Sektoren; deren Inhalt ist nicht zwingend gut komprimierbar. Der belegte Dateisystemplatz allein bestimmt deshalb die gzip-Größe nicht.
 
-Für die Planung müssen mindestens gleichzeitig aufbewahrte Vollimages, Platz für das nächste Image, tägliche Archive, vorhandene OPNsense-Backups, LXC-Systembedarf und Reserve berücksichtigt werden. Eine mögliche Rechenhilfe ist: `(behaltene Images + 1) × gemessene Imagegröße + übrige Daten + Reserve`. Das ist eine neue Planungsableitung, keine Messung aus diesem Chat.
+Für die Planung müssen mindestens gleichzeitig aufbewahrte Vollimages, Platz für das nächste Image, tägliche Archive, vorhandene OPNsense-Backups, LXC-Systembedarf und Reserve berücksichtigt werden. Eine mögliche Rechenhilfe ist: `(behaltene Images + 1) × gemessene Imagegröße + übrige Daten + Reserve`. Das ist eine neue Planungsableitung, keine Messung aus diesem Planungsstand.
 
 Die vorgeschlagenen Retentionwerte wechselten: 14 Tage insgesamt, später getrennte Fristen, zeitweise 3–4 bzw. 7 Images, zuletzt 30 Tage für Configs und mehr als 14 Tage für Vollimages bzw. optional fünf Images. **Eine endgültig ausgewählte, installierte und getestete Rotation wurde nicht bestätigt.** Die breite Variante `find ... -type f -mtime ... -delete` darf nicht ungeprüft in einen gemeinsam mit anderen Sicherungen genutzten Pfad übernommen werden.
 
@@ -558,7 +557,7 @@ status=203/EXEC
 
 Nach fehlgeschlagener Aktivierung versuchte der folgende nackte `pip install` das System-Python zu ändern und traf auf `externally-managed-environment`. Die richtige Korrektur war die tatsächliche Erstellung des venv und Installation darin, nicht `--break-system-packages`. Später zeigte `ls` die vorhandene ausführbare `venv/bin/gunicorn` mit Besitzer `netcore` und 192 Bytes. (C09; E02, E03)
 
-Dann fehlten PEM-/State-Dateien. `generate_state_keys.py` lag zunächst unter `/home/netcore`, wurde aber in `/opt/netcore-tetra-control` aufgerufen. Zusätzlich wurde `python` außerhalb des aktivierten venv nicht gefunden und `python3` konnte dort `cryptography` nicht importieren. Diese Fehler wurden durch inkonsistente Anleitungen zu Arbeitsverzeichnis und Interpreter verursacht; sie dürfen nicht als mangelnde Befolgung durch den Nutzer umgedeutet werden. Nach einem vollständigen Copy/Paste-Block mit Dateierzeugung am richtigen Ort meldete der Nutzer, dass es zu laufen scheint.
+Danach fehlten PEM-/State-Dateien. `generate_state_keys.py` lag unter `/home/netcore`, wurde jedoch in `/opt/netcore-tetra-control` aufgerufen. Außerhalb des aktivierten venv war `python` nicht verfügbar; `python3` konnte dort `cryptography` nicht importieren. Die Ursache waren inkonsistente Arbeitsverzeichnisse und Interpreter. Nach Dateierzeugung am richtigen Ort und konsistentem venv-Aufruf wurde ein offenbar laufender Dienst gemeldet; eine vollständige Abnahme fehlt.
 
 ### 8.2 Historische systemd-Unit
 
@@ -629,7 +628,7 @@ Sperren setzt `locked=true` und erzwingt STOP. Ein RUN-Versuch für eine gesperr
 
 **Nicht gleichsetzen:** `state.version` ist die Version des Sollzustands; `CONFIG_VERSION` gehört zur Konfiguration. Keine der beiden Zahlen ist die Rust-/Firmware-/Git-Version. Beispielwerte wie Configversion 42 auf einem Bon sind keine Betriebswerte.
 
-### 8.5 HTTP-Vertrag der letzten in diesem Chat gelieferten Control-App
+### 8.5 HTTP-Vertrag der letzten in diesem Planungsstand gelieferten Control-App
 
 | Methode und Pfad | Zweck / Einschränkung |
 |---|---|
@@ -648,15 +647,15 @@ Sperren setzt `locked=true` und erzwingt STOP. Ein RUN-Versuch für eine gesperr
 | `GET /api/backend-status` | Ergebnis der BREW-Health-Abfrage |
 | `GET /health` | Control-Status, Anzahl Nodes, eingebetteter BREW-Status, Zeitstempel |
 
-Die Datei-Routen begrenzen die Dateinamen auf die genannten festen Namen. Ein Aufruf der Links ist nicht automatisch ein erzwungener Download, weil `send_from_directory` nicht mit `as_attachment=True` aufgerufen wurde. Der Nutzerwunsch war ein komfortabler Zugriff ohne Serververzeichnisnavigation; sichtbare Links wurden bestätigt. Die frühere Behauptung, fehlende Links lägen zu 99 Prozent am Browsercache, war nicht belegt.
+Die Datei-Routen begrenzen die Dateinamen auf die genannten festen Namen. Ein Aufruf der Links ist nicht automatisch ein erzwungener Download, weil `send_from_directory` nicht mit `as_attachment=True` aufgerufen wurde. Der Anforderung war ein komfortabler Zugriff ohne Serververzeichnisnavigation; sichtbare Links wurden bestätigt. Die frühere Behauptung, fehlende Links lägen zu 99 Prozent am Browsercache, war nicht belegt.
 
-**API-Versionsgrenze:** Eine später vorhandene Android-/Control-Archivdatei dokumentiert bereits ein Pluginlayout und `/stations/set/...`. Das ist eine andere historische Entwicklungsphase. Die hier dokumentierte Route `/set/...` darf nicht als Beweis für den heutigen Live-Endpunkt verwendet werden. Sie ist der Vertrag der in **diesem** Chat ausgegebenen monolithischen App. (R11)
+**API-Versionsgrenze:** Eine spätere Android-/Control-Phase verwendet Pluginlayout und `/stations/set/...`. Die hier enthaltene Route `/set/...` gehört zur historischen monolithischen App und ist kein Nachweis des Live-Endpunkts. (R11)
 
 ### 8.6 UI und Nachweise
 
-Die dunkle Oberfläche zeigt Stationskarten, Soll-RUN/STOP, Device-ID, State-Version, Erstellungs-/Änderungszeit, Start/Stop, Lock/Unlock, Edit-/Deleteformulare sowie Links bzw. Fehlanzeigen zu State und Config. Der Nutzer bestätigte, dass die erweiterte Oberfläche zunächst passt.
+Die dunkle Oberfläche zeigt Stationskarten, Soll-RUN/STOP, Device-ID, State-Version, Erstellungs-/Änderungszeit, Start/Stop, Lock/Unlock, Edit-/Deleteformulare und State-/Config-Links beziehungsweise Fehlanzeigen. Die erweiterte Oberfläche wurde als passend bewertet.
 
-Der vorhandene Screenshot zeigt die frühe Einzelstationsfassung mit `TBS01 (bs01)`, RUN, Version 12, Änderungszeit `2026-04-27T23:29:37.958040+00:00` sowie Links auf die vier Dateien. Er beweist Darstellung und vorhandene Links, nicht die erfolgreiche Auslieferung aller Dateien oder tatsächliches Senden. Später meldete der Nutzer ausdrücklich 404 für Config und Signatur, weil diese noch nicht auf dem Server lagen. (A01, C10)
+Der Screenshot zeigt die frühe Einzelstationsfassung mit `TBS01 (bs01)`, RUN, Version 12, Änderungszeit `2026-04-27T23:29:37.958040+00:00` und vier Dateilinks. Er belegt Darstellung und Links, keine erfolgreichen Downloads oder tatsächliches Senden. Später gemeldete 404 für Config und Signatur wurden auf fehlende Serverdateien zurückgeführt. (A01, C10)
 
 Die letzte App nutzt HTML-Meta-Refresh alle 15 Sekunden. Das aktualisiert die gesamte Seite und kann noch nicht abgeschickte Formulareingaben verwerfen. Ein gezieltes asynchrones Statusupdate wäre eine künftige Verbesserung.
 
@@ -669,13 +668,13 @@ Die Config-Dateien gehören historisch unter:
 /opt/netcore-tetra-control/static/configs/<node_id>/config.toml.sig
 ```
 
-Der Nutzer wollte die Config zunächst per `nano` erstellen. Dafür fehlt ohne Config-Private-Key weiterhin eine neue passende Signatur. Der bevorzugte Weg bleibt: am Administrationsrechner signieren, exakte Bytes und zugehörige Base64-Signatur verteilen. Alternativ kann ein bereits gültiges Paar vom vorhandenen Stick verwendet werden, ohne einen neuen Schlüssel zu erzeugen. Dies setzt tatsächliche Dateiverfügbarkeit und unveränderte Bytes voraus.
+Eine Config-Erstellung per `nano` war vorgesehen. Ohne Config-Private-Key fehlt dafür jedoch eine passende neue Signatur. Bevorzugt wird das Signieren am Administrationsrechner und die Verteilung exakter Bytes mit zugehöriger Base64-Signatur. Alternativ kann ein unverändertes gültiges Dateipaar vom vorhandenen Stick verwendet werden; Voraussetzung ist die tatsächliche Verfügbarkeit.
 
 Die vorgeschlagenen SCP-Befehle widersprachen dem manuellen Copy/Paste-Wunsch. Der optionale serverseitige Config-Signer setzt einen Config-Private-Key auf dem Server voraus und ist **nicht** als gewählt oder erfolgreich ausgeführt dokumentiert. Der State-Key darf nicht stillschweigend zum Config-Key umgewidmet werden.
 
 ### 8.8 Sicherheits- und Integritätsbefunde der Archivprüfung
 
-Die folgenden Punkte betreffen den konkret gelieferten monolithischen Chatcode, nicht automatisch jeden heutigen Serverstand:
+Die folgenden Punkte betreffen den konkret gelieferten monolithischen Beispielcode, nicht automatisch jeden geprüften Serverstand:
 
 1. **Keine Authentifizierung oder Rollenprüfung.** Erreichbarkeit im LAN/VPN allein autorisiert keinen Bediener. Jede erreichbare Person bzw. jeder kompromittierte Client könnte administrative Routen benutzen.
 2. **Zustandsändernde GETs und fehlender CSRF-Schutz.** Start, Stop und Sperren dürfen nicht allein durch Aufruf eines Links erfolgen. Eine künftige Reparatur braucht konsistente POST-/CSRF-/Authentifizierungsregeln; nicht nur eine versteckte Schaltfläche. (E07)
@@ -694,7 +693,7 @@ Diese Punkte werden hier dokumentiert, aber nicht außerhalb von `Docs/archive/`
 
 ### 9.1 Tatsächlich gelieferte Anwendung
 
-Der Nutzer stellte die vollständige `/var/opt/brew-server/app.py` bereit. Sie verwendet **aiohttp und asyncio**, nicht Flask. Sie startet zwei `web.Application`-Instanzen über `AppRunner` und `TCPSite` in einem Prozess. Der vorher pauschal angebotene Gunicorn-Befehl `app:app` passt nicht automatisch zu diesem Programmaufbau.
+Die vollständige `/var/opt/brew-server/app.py` verwendet **aiohttp und asyncio**. Zwei `web.Application`-Instanzen laufen über `AppRunner` und `TCPSite` in einem Prozess. Der zuvor angebotene Gunicorn-Befehl `app:app` passt nicht automatisch zu diesem Aufbau.
 
 Konfiguration des geposteten Codes:
 
@@ -739,7 +738,7 @@ Service-Typen: Query subscribers 1, Subscriber profiles 2, Allowed-ISSIs request
 
 Call-State-Konstanten: Group TX 2, Group Idle 3, Setup Request 4, Setup Accept 5, Setup Reject 6, Call Alert 7, Connect Request 8, Connect Confirm 9, Call Release 10, Short Transfer 11, Simplex Granted 12, Simplex Idle 13. Der gezeigte Dispatcher verarbeitet davon Setup Request, Connect Request, Release und Group TX. Frame-Typen: Traffic 0, SDS Transfer 1, SDS Report 2, DTMF 3, Packet Data 4.
 
-**Grenze:** Das Vorhandensein dieser Konstanten ist kein Beweis für vollständige BREW- oder ETSI-Konformität. Sprachframes werden im gezeigten Backend im Wesentlichen protokolliert; ein vollständiger Mehrstations-Medienrouter ist dort nicht implementiert. Setup/Connect werden einfach beantwortet, Calls lokal vermerkt, Release entfernt den Eintrag und Group TX führt zur Group-Idle-Antwort. Keine reale Interoperabilitätsabnahme wurde in diesem Chat gezeigt.
+**Grenze:** Das Vorhandensein dieser Konstanten ist kein Beweis für vollständige BREW- oder ETSI-Konformität. Sprachframes werden im gezeigten Backend im Wesentlichen protokolliert; ein vollständiger Mehrstations-Medienrouter ist dort nicht implementiert. Setup/Connect werden einfach beantwortet, Calls lokal vermerkt, Release entfernt den Eintrag und Group TX führt zur Group-Idle-Antwort. Keine reale Interoperabilitätsabnahme wurde in diesem Planungsstand gezeigt.
 
 ### 9.3 Node-Reload und WebUI
 
@@ -768,7 +767,7 @@ connection_id, issi, registered, affiliated_groups,
 active_calls, connected_at
 ```
 
-Der Nutzer bestätigte nach der vollständigen neuen `app.py`: **„klappt“**. Das ist der historische Funktionsnachweis des Endpunkts, nicht jeder Eigenschaft seiner Daten oder der systemd-Startkette.
+Nach Einspielen der vollständigen neuen `app.py` wurde der Endpunkt als funktionierend bestätigt. Dies belegt nicht sämtliche Dateninhalte oder die vollständige systemd-Startkette.
 
 ### 9.5 Health-Grenzen — wichtig für die Lampe
 
@@ -808,7 +807,7 @@ Die Oberfläche und `/api/backend-status` verwenden diese Funktion; `/health` de
 
 Die Basisstation soll per VPN/LAN den Heimserver erreichen, von dort Konfiguration und signierten Sollzustand selbst abrufen und bei fehlendem Netzwerk auf eine gültige USB-Konfiguration zurückgreifen. Im UI soll Start/Stop bzw. Sperren je Station bedienbar sein. Die lokale Prüfung bleibt zwingend; eine gültige VPN-Verbindung allein ersetzt sie nicht.
 
-Der Nutzer korrigierte die zuvor angebotene Priorität ausdrücklich auf **Netzwerk → USB**. Zunächst wurden Funktionen am Server priorisiert. Fortlaufendes Polling, Iststatusmeldungen, automatische Erstbereitstellung und ein vollständiges Supervisor-Modell waren noch nicht umgesetzt nachgewiesen.
+**Korrigierte Priorität: Netzwerk → USB.** Zunächst sollten die Serverfunktionen fertiggestellt werden. Fortlaufendes Polling, Iststatusmeldungen, automatische Erstbereitstellung und ein vollständiges Supervisor-Modell sind noch nicht nachgewiesen umgesetzt.
 
 ### 11.2 Was der gelieferte Shellentwurf tatsächlich tut
 
@@ -832,9 +831,9 @@ Die Umbenennungs-/Kopieranleitung war zusätzlich in falscher Reihenfolge formul
 - Alte udev-Remove-Regeln würden weiterhin die globale Unit stoppen, auch bei Netzwerkbetrieb.
 - Ein globaler persistenter Configversionsstand kann einen älteren gültigen USB-Fallback nach einem neueren Netzwerkupdate berechtigt ablehnen. Dafür fehlt eine festgelegte Pflege-/Freigabepolitik.
 
-### 11.4 Erforderliche Zustandsentscheidung — neue Ableitung, noch freizugeben
+### 11.4 Offene Zustandsentscheidung — ergänzender Entwurf
 
-Die im Chat teilweise verwendete Kurzform „Netzwerk nicht verfügbar oder ungültig → USB“ ist sicherheitlich zu ungenau. Für die Fortsetzung sollte mindestens folgende Fallunterscheidung spezifiziert und getestet werden:
+Die im Entwurf teilweise verwendete Kurzform „Netzwerk nicht verfügbar oder ungültig → USB“ ist sicherheitlich zu ungenau. Für die Fortsetzung sollte mindestens folgende Fallunterscheidung spezifiziert und getestet werden:
 
 | Eingang | Vorzuschlagende Behandlung |
 |---|---|
@@ -856,7 +855,7 @@ Ein zukünftiger Agent braucht getrennten Manager- und Senderdienst, Zeitlimits,
 
 Aus einer bewusst humorvollen Nebenidee wurde ein klares Bedienkonzept: kurze Startinfo und relevante Fehler sollen einen kleinen Bon erzeugen, mit Original-Logo, technischem Kontext, kurzem frechen Kommentar und QR-Verweis auf das passende Log. Es soll **nicht jeder normale Vorgang** gedruckt werden.
 
-Gewünschte Hardwareeigenschaften sind USB für den ersten Aufbau, automatische Schneideeinheit statt bloßer Abrisskante und später Netzwerkfähigkeit. Ein Pi als USB-Druckserver wurde akzeptiert; der Nutzer entschied ausdrücklich, ihn dann als **intelligenten Receiver** zu verwenden und nicht nur als rohe Netzwerk-/USB-Brücke.
+Gewünschte Hardware: zunächst USB, automatische Schneideeinheit statt Abrisskante und später Netzwerkfähigkeit. Ein Pi als USB-Druckserver ist vorgesehen; er soll als **intelligenter Receiver** die Empfangs-, Filter- und Drucklogik übernehmen.
 
 Es wurde kein Drucker gekauft oder ein konkretes Modell festgelegt. Genannte Marken-/Serienbeispiele waren Epson TM-T20/TM-T88, Bixolon SRP-350 und Star TSP100 sowie preiswerte Alternativen. Das waren unüberprüfte Suchideen, keine nachgewiesene Gerätekompatibilität oder verbindliche Einkaufsliste. Modellvarianten unterscheiden sich bei USB/LAN, ESC/POS-Emulation, Bild-/QR-Unterstützung, Cutter und Zeichensätzen. Die damaligen Preisannahmen sind nicht als aktuelle Marktpreise zu verwenden.
 
@@ -878,13 +877,13 @@ Als Eventfelder wurden `type`, `node`, `source`, `version`, `message` und option
 
 ### 12.3 Druckpolitik
 
-Die belastbare Nutzervorgabe ist: **kurzer Startbon, wichtige Fehler, begrenztes Volumen**. Anfangs sehr weitreichend vorgeschlagenes Drucken jeder ISSI-Anmeldung oder jedes Rufbeginns ist damit überholt. Normale Logs und Funkframes gehören ins digitale Log.
+**Festlegung: kurzer Startbon, wichtige Fehler, begrenztes Volumen.** Der frühere Vorschlag, jede ISSI-Anmeldung oder jeden Rufbeginn zu drucken, ist überholt. Normale Logs und Funkframes bleiben digital.
 
 Als neue technische Umsetzungsempfehlung: Start/Config/Signatur/VPN/BREW-Ergebnis in einem einzigen Betriebsbeginnbon bündeln; gleiche Fehler über Event-ID bzw. Fehlerklasse deduplizieren; Wiederholungen zählen statt sofort erneut drucken; Schwellen und Beruhigungszeiten für Netz-/Temperaturflattern; Statusbericht nur manuell oder selten. Ein ausgefallener Drucker darf die Senderfreigabe weder blockieren noch selbst erteilen. Ein Bon ist ein Beobachtungsartefakt, kein manipulationssicheres Auditarchiv.
 
 ### 12.4 Erhaltene Bon-Ideen und Kommentare
 
-Die folgende Sammlung konserviert alle 35 im Chat konkret nummerierten Motive. **Sie ist eine Vorlagenbibliothek, keine automatische Druck-Whitelist.** Die Kommentare sind Beispiele; wichtige technische Befunde dürfen nicht durch Humor ersetzt oder als falsche Sicherheitsgarantie formuliert werden.
+Die folgende Sammlung konserviert alle 35 im Entwurf konkret nummerierten Motive. **Sie ist eine Vorlagenbibliothek, keine automatische Druck-Whitelist.** Die Kommentare sind Beispiele; wichtige technische Befunde dürfen nicht durch Humor ersetzt oder als falsche Sicherheitsgarantie formuliert werden.
 
 | Nr. | Motiv / Ereignis | Historischer Kommentar bzw. Motivtext | Einordnung |
 |---|---|---|---|
@@ -936,7 +935,7 @@ Für den späteren Thermodruck sind Invertieren auf schwarze Bildanteile vor wei
 
 Auf die Bitte um eine passende Bildfassung wurden zwei generierte Gesamtbon-Mockups geliefert, keine nachgewiesene exakte 1-Bit-Konvertierung des Original-Logos. Die Mockups sind **Gestaltungsartefakte**, kein fertiger Drucktreiber, kein realer Testausdruck und kein bewiesen funktionsfähiger QR. Diese unerledigte Produktionsaufbereitung bleibt offen. (A02–A04)
 
-## 13. Überholte oder zu korrigierende Assistenzansätze
+## 13. Überholte oder zu korrigierende Entwürfe
 
 Diese Tabelle verhindert, dass die Archivierung frühere Fehlanleitungen nachträglich legitimiert:
 
@@ -947,7 +946,7 @@ Diese Tabelle verhindert, dass die Archivierung frühere Fehlanleitungen nachtr�
 | Nur root dürfe Public Key lesen | Nicht erforderlich für seine Vertraulichkeit; Integrität/Schreibschutz ist entscheidend. Die späteren Dateien hatten 0644. |
 | Fehlender `blkid`-Eintrag beweist fehlendes Blockdevice | Nicht belegt; Cache, Rechte, Signatur und tatsächliche Geräteübersicht müssen unterschieden werden |
 | `sda`/`sdb`-Fehler beweisen kaputte Partitionstabelle oder Flashdefekt | Nicht ausreichend; alte/entfernte Geräte und Mountzustand waren nicht getrennt geprüft |
-| Nutzer habe Ventoy/Rufus verwendet | Erfundene Vorgeschichte; verwerfen |
+| Ventoy-/Rufus-Vorgeschichte angenommen | Unbelegte Annahme; verworfen |
 | Formatieren trotz Warnung sei vollständig richtig gewesen | Warnung war real; keine Freigabe zur Wiederholung ohne Identifikation und Unmount |
 | Leere Anzeige beweise fehlende Windows-Dateien | Hier durch späteren Mount-/Dateibeleg widerlegt |
 | UDisks global abzuschalten sei generell die einzig saubere Lösung | Für den damaligen Test gewählt, aber Nebenwirkungen/gezielte Ausnahmeregel offen |
@@ -964,22 +963,22 @@ Diese Tabelle verhindert, dass die Archivierung frühere Fehlanleitungen nachtr�
 | Sichtbares RUN bedeute reales Senden | Nein, Sollzustand ohne nachgewiesene Telemetrie |
 | BREW-`status: ok` sei vollständige Gesundheit | Der gezeigte Handler setzt es konstant; Dateifehler werden nicht zur Nichtbereitschaft |
 | Alle Drucker einer genannten Serie hätten USB+LAN+ESC/POS | Modellvariante ungeprüft; keine Kaufgarantie |
-| ASCII/Unicode sei die finale Logoform | Vom Nutzer ausdrücklich verworfen |
+| ASCII/Unicode sei die finale Logoform | Ausdrücklich verworfen |
 | Generierter Bon-QR sei bereits ein nutzbarer Loglink | Keine Decodier-/Endpunktprüfung; nur Mockup |
 
-## 14. Heutiger Repository-Stand — separat geprüft
+## 14. Geprüfter Repository-Stand — separat geprüft
 
 ### 14.1 Branchprüfung und Reichweite
 
-Der Live-GitHub-Connector bestätigte das öffentliche Repository und den bereits vorhandenen Branch `Archiving`. Der Inhaltsabgleich wurde auf `2b08bababf8b72bd2cb82d780a7ba0e526e1f1a9` fixiert. Der vorhandene Archivindex und bereits vorhandene Dokumente wurden gelesen; eine diesem Chat eindeutig zugeordnete Archivdatei war am vorgesehenen Pfad noch nicht vorhanden. Andere Chatarchive bleiben unverändert.
+Der Abgleich erfolgte auf `Archiving` bei `2b08bababf8b72bd2cb82d780a7ba0e526e1f1a9`. Archivindex und vorhandene Dokumentation dienten der Einordnung; dies war keine Prüfung der laufenden Installation.
 
 Der ergänzende Defaultbranch-Ref lautet `main` bei `7137e0dd69877e1b604bf89148fd8b6b590c1a97`. GitHub meldete beim Vergleich **diverged**, 20 Commits auf der Archiving-Seite und einen auf der Main-Seite, gemeinsamen Merge-Base `2fe2a1939a8795db3816d45973282781dae856f0`. Die Archiving-seitige Compare-Dateiliste enthielt Dokumentations-/Archivdateien; der umgekehrte Vergleich zeigte keine main-seitigen Dateiänderungen. Diese Angaben sind ein Ref-/Compare-Befund und kein Anlass zum Mergen oder Branchwechsel. Vor dem Speichern muss der dann aktuelle Archiving-Head erneut berücksichtigt werden. (R01–R03)
 
-Codesuchen nach `import_and_start` und `signing_pubkey` ergaben keine Treffer. Laut Werkzeugvertrag beziehen sich diese Suchfunktionen auf den Defaultbranch; daraus folgt **keine vollständige Abwesenheit auf allen Branches oder an allen Pfaden**. Große rekursive Baumantworten waren gekürzt. Die damaligen lokalen Python-/Shell-Dateien konnten in diesem Prüfpass keinem autoritativen aktuellen Repositorypfad sicher zugeordnet werden. Es wird deshalb nicht behauptet, der Chatcode sei bereits im Hauptrepository implementiert oder inzwischen gelöscht.
+Codesuchen nach `import_and_start` und `signing_pubkey` ergaben keine Treffer. Laut Werkzeugvertrag beziehen sich diese Suchfunktionen auf den Defaultbranch; daraus folgt **keine vollständige Abwesenheit auf allen Branches oder an allen Pfaden**. Große rekursive Baumantworten waren gekürzt. Die damaligen lokalen Python-/Shell-Dateien konnten in diesem Prüfpass keinem autoritativen aktuellen Repositorypfad sicher zugeordnet werden. Es wird deshalb nicht behauptet, der Beispielcode sei bereits im Hauptrepository implementiert oder inzwischen gelöscht.
 
 ### 14.2 Tatsächlich gelesene aktuelle Dateien
 
-| Repositorydatei | Festgestellter Inhalt | Abgrenzung zum Chat |
+| Repositorydatei | Festgestellter Inhalt | Abgrenzung zum historischen Entwurf |
 |---|---|---|
 | `install/update-basisstation.sh`, Zeilen 1–180 | Root-Updater; Cargo absichtlich als aufrufender Benutzer; Default-Configpfad `/etc/netcore/config.toml`; Suche nach konfiguriertem Dienstnamen sowie `tetra.service`, `bluestation.service`, `tetra-bluestation.service`, `bluestation-bs.service`; tatsächliches Binary über PID/ExecStart ermitteln | Kein Beweis, dass der historische USB-/Hybridmanager aktualisiert wurde; sein Pfad darf nicht blind ersetzt werden |
 | `system-backend/tbs-connect/README.md` | Bestehender TBS-Backendbaustein; langfristige Überführung oder Abgrenzung gegenüber Node Gateway; eigene UI geplant | Kein vollständiger Konfigurationssignatur-/USB-Manager |
@@ -990,7 +989,7 @@ Codesuchen nach `import_and_start` und `signing_pubkey` ergaben keine Treffer. L
 | `system-backend/hardware-gateway/README.md` | MQTT-/HTTP-Telemetrie, Geräte-/Heartbeatregistry, Temperatur-/Feuchte-/Spannungsschwellen, persistente Ereignisse, Port 8250; Hardwareausgänge standardmäßig deaktiviert | Mögliche Anbindung für spätere Bonereignisse; kein dort nachgewiesener Receipt-Druckdienst |
 | `system-backend/provisioning-core/README.md` | Zentrale Geräte-/ISSI-, Gruppen-/GSSI- und Mitgliedschaftsverwaltung; Port 8125; verwendet Subscriber Core 8100 und Group Core 8110; OPEN LAB | Verwaltung ist inzwischen breiter beschrieben, aber nicht identisch mit dem Control-LXC auf 8080 oder BREW-`nodes.json` |
 
-### 14.3 Heutige Schnittstellen, die eine Fortsetzung berücksichtigen sollte
+### 14.3 Ergänzende Schnittstellen, die eine Fortsetzung berücksichtigen sollte
 
 Der gelesene Node-Gateway-Code implementiert unter anderem:
 
@@ -1016,32 +1015,32 @@ Auch bei diesen neueren Healthrouten darf Readiness nicht überinterpretiert wer
 
 ### 14.4 Spätere, separate Fortsetzungsquelle
 
-Bereits vorhanden ist [Android-Control-App, Flask-API und Hybrid-Manager](2026-10-03_android-control-app-flask-api-und-hybrid-manager.md). In den gelesenen Abschnitten beschreibt dieses spätere Archiv ein Pluginlayout unter `/opt/netcore-tetra-control/plugins`, eine Route `/stations/set/...` und einen als `bluestation_hybrid_manager.sh` bezeichneten späteren Manager. Das sind **sekundäre Hinweise aus einem anderen Chatarchiv**, keine in diesem Lauf direkt aus der damaligen Liveinstallation gelesenen Dateien.
+[Android-Control-App, Flask-API und Hybrid-Manager](2026-10-03_android-control-app-flask-api-und-hybrid-manager.md) beschreibt eine spätere Phase mit `/opt/netcore-tetra-control/plugins`, `/stations/set/...` und `bluestation_hybrid_manager.sh`. Dies sind **sekundäre Hinweise**, keine direkt aus der Liveinstallation gelesenen Dateien.
 
 Für die Fortsetzung ist der Hinweis dennoch wichtig: Nicht die hier konservierte monolithische April-App ungeprüft über eine spätere Plugininstallation kopieren. Ebenso kann die hier im frühen Verifier belegte Datei `/var/lib/bluestation/last_version` nicht ohne Quellenabgleich auf jeden späteren Manager übertragen werden. Keiner der offenen Security-/Hybrid-/Backup-Punkte wird allein aufgrund eines ähnlich benannten neueren Bausteins als behoben markiert.
 
 ## 15. Tests und ihre Grenzen
 
-### 15.1 Historische Nutzertests und Betriebsbestätigungen
+### 15.1 Historische Betriebstests und Betriebsbestätigungen
 
 | Test / Beobachtung | Ergebnis | Beleggrenze |
 |---|---|---|
 | Neuer FAT-Stick nach Formatierungsphase | UUID `D000-334F`, TYPE vfat, Partition `sda1` sichtbar | Keine vollständige Medienintegritätsprüfung |
 | Dateiliste unter richtigem Mount | Config 7064 Bytes, Signatur 89 Bytes vorhanden | Dateiexistenz, nicht Signaturvalidität |
-| USB einstecken / entfernen | Nutzer bestätigt Start bzw. Ende des Sendens | Damalige Einzelstationsbeobachtung, kein HF-Messprotokoll |
+| USB einstecken / entfernen | Start beziehungsweise Ende des Sendens im Betrieb bestätigt | Einzelstationsbeobachtung, kein HF-Messprotokoll |
 | Configkommentar ohne Neusignierung verändert | Journal meldet Signaturprüfung fehlgeschlagen; Dienst endet mit Fehler | Konkreter Manipulationsfall bestätigt, kein vollständiger Securitytest |
 | Passende Config wiederhergestellt | Start/Stop per Stick funktioniert wieder | Bestätigt |
-| `Restart=no` | Nutzer bestätigt eingetragen | Genaue geladene Unit nicht noch einmal als Dump geliefert |
+| `Restart=no` | Als eingetragen bestätigt | Geladene Unit nicht erneut als Dump geprüft |
 | USB-Menü-Erkennung nach Disk-/Partitionskorrektur | Stick wird wieder gefunden | Kein vollständiger Mehrgeräte-Test |
 | Falsche Datei mit Menü überschrieben | Nach Wiederherstellung `import_and_start.sh`: „geht wieder“ | Ursache und Reparatur konkret bestätigt |
-| SSH-Remote-Befehl zum Backupserver | Nutzer bestätigt Erfolg | Shelländerungsbefehl selbst nicht belegt |
+| SSH-Remote-Befehl zum Backupserver | Erfolg bestätigt | Shelländerungsbefehl nicht belegt |
 | Manueller Configbackup-Lauf | Erfolgslog vom 18. April 22:25:20–23 | Kein Restore, kein Vollimage |
-| Zwei Cron-Einträge | Nutzer: beide drin | Kein Nachweis eines späteren automatischen Laufs |
-| Backup-LXC | Nutzer: 70 GB Datenträger | Keine Belegungs-/Retentionmessung |
+| Zwei Cron-Einträge | Als vorhanden bestätigt | Automatische Ausführung nicht nachgewiesen |
+| Backup-LXC | 70-GB-Datenträger als Bestand angegeben | Keine Belegungs-/Retentionmessung |
 | Gunicorn-Datei | Executable im richtigen venv mit `ls` nachgewiesen | App/Keys mussten danach noch ergänzt werden |
-| Control-UI | Screenshot mit RUN, Version und Links; spätere Mehrstations-UI vom Nutzer akzeptiert | Kein Nachweis der tatsächlichen Senderwirkung oder aller CRUD-Aktionen |
-| Config-Download | 404 vom Nutzer gemeldet; fehlende Serverdateien erkannt | Späterer erfolgreicher Download nicht bestätigt |
-| BREW-Health | Nutzer bestätigt „klappt“ | Keine Readiness-Negativtests |
+| Control-UI | Screenshot mit RUN, Version und Links; Mehrstations-UI als passend bewertet | Senderwirkung und sämtliche CRUD-Aktionen nicht nachgewiesen |
+| Config-Download | 404 gemeldet; fehlende Serverdateien erkannt | Späterer erfolgreicher Download nicht bestätigt |
+| BREW-Health | Endpunkt im Betrieb bestätigt | Readiness-Negativtests fehlen |
 | Finale Control-Health-Anpassung | Vollständiger Code ausgegeben | Kein gesondertes Ergebnisprotokoll danach |
 | QR-/Logo-/Cutterdruck | Kein Hardwaretest | Ausschließlich Idee und Mockups |
 
@@ -1080,7 +1079,7 @@ Die Kennungen in dieser Tabelle sind lokale Archiv-Arbeitspakete, keine angelegt
 | P0 / SNAPSHOT | Tatsächlich installierte TBS-, Control- und BREW-Dateien mit Units, Interpreter und Dateihashes erfassen | Offen; vor erneutem Kopieren einer alten Gesamtdatei nötig, insbesondere wegen späterem Plugin-/Managerstand |
 | P0 / CONTROL-TRUST | Anmeldung/RBAC, POST-Aktionen, CSRF, sichere IDs/Pfadgrenzen und geringere Schreibrechte entwerfen und implementieren | Nicht durch April-App erledigt; berechtigte und unberechtigte Zugriffe testen |
 | P0 / STATE-STORE | Registry/State atomar und mehrworkersicher speichern; konsistente Generation für Daten und Signatur ausliefern | Offen; parallele Toggles, Fehler beim Schreiben und Neustart testen |
-| P0 / HYBRID-POLICY | Netzwerkabwesenheit, ungültige Daten, STOP, Lock, Löschung, Lease, Offlinefreigabe und Bootzustand ausdrücklich unterscheiden | Nutzerfreigabe zur endgültigen Policy fehlt |
+| P0 / HYBRID-POLICY | Netzwerkabwesenheit, ungültige Daten, STOP, Lock, Löschung, Lease, Offlinefreigabe und Bootzustand unterscheiden | Endgültige Policy noch nicht festgelegt |
 | P0 / HYBRID-AGENT | Dauerhafter Agent/Supervisor mit getrenntem Senderdienst, Polling, Timeouts, exakten verifizierten Bytes, Versionpersistenz und Quellenverfolgung | Einmalabruf ersetzen; kein Doppelprozess; spätere UI-Aktionen im Betrieb nachweisen |
 | P0 / USB-LIFECYCLE | Verifikation auf lokaler Stagingkopie, atomare Versiondatei, definiertes Mountcleanup und passende udev-Zuständigkeit | Einzelsticktest reicht nicht; zwei Sticks, Widerruf und Netzwerkbetrieb abnehmen |
 | P0 / BACKUP-RESTORE | Archivinhalt, fehlende Pfade, konsistente Systemrettung und Wiederherstellung testen | Erfolgreiche Übertragung allein nicht ausreichend |
@@ -1105,11 +1104,11 @@ Die frühe Idee einer ungeprüften oder automatisch beliebigen Fallback-Config w
 
 ## 17. Quellen und Anhänge
 
-### 17.1 Chatbelege
+### 17.1 Planungs- und Betriebsbelege
 
 | ID | Sichtbarer Belegkomplex |
 |---|---|
-| C01 | Ursprüngliches USB-Startskript und udev-Regeln; Frage nach UUID-/Configfälschung |
+| C01 | Ursprüngliches USB-Startskript und udev-Regeln; Ziel der Absicherung gegen UUID-/Configfälschung |
 | C02 | Windows-11-/Copy-Paste-/Kommentarvorgaben; Schlüssel-, Signier- und Verifiercode |
 | C03 | `blkid`, `dmesg`, `fdisk` und Busy-/Formatierungsphase; neue UUID `D000-334F` |
 | C04 | Dateiliste 7064/89 Bytes, fehlender Mount, konkreter Automount-/RO-Konflikt und Entscheidung Automount aus |
@@ -1120,12 +1119,12 @@ Die frühe Idee einer ungeprüften oder automatisch beliebigen Fallback-Config w
 | C09 | Hybridwunsch und korrigierte Netzwerkpriorität; Server zuerst; LXC-/venv-/Gunicorn-/Keypfad-Reparaturen |
 | C10 | UI-Screenshot, Downloadlinks, Config-404 und ungeklärter erfolgreicher Configsignaturtransfer |
 | C11 | Vollständige Control-Appfassungen mit Nodes, Bearbeiten/Löschen/Sperren, State-Signieren und API; UI zunächst akzeptiert |
-| C12 | Vom Nutzer vollständig gepostete BREW-aiohttp-Quelle; vollständige Health-Erweiterung; „klappt“ |
+| C12 | Vollständige BREW-aiohttp-Quelle und Health-Erweiterung; Endpunktfunktion bestätigt |
 | C13 | Vollständige finale Control-App mit JSON-Health-Auswertung für `10.0.1.163:8081/health` |
 | C14 | Thermobondrucker, wenige relevante Ereignisse, Auto-Cutter, USB zuerst, Netzwerk später, intelligenter Receiver |
 | C15 | 35 nummerierte Bonmotive, Original-Logo, abgelehnte ASCII-Versuche und zwei generierte Bildentwürfe |
 
-Mangels Original-Chat-URL gibt es keine erfundenen Deep-Links auf diese Nachrichten. Diese Beleggruppen dienen der eindeutigen fachlichen Zuordnung innerhalb des erhaltenen Gesprächs.
+Die lokalen Beleggruppen ordnen Planungsschritte, Artefakte und Betriebsbestätigungen zu.
 
 ### 17.2 Repositoryquellen der Archivprüfung
 
@@ -1141,9 +1140,9 @@ Alle nachfolgenden Quelltextlinks sind auf den Prüfcommit fixiert, soweit nicht
 - R08: [Node Gateway service_monitor.rs](https://github.com/JanHG98/netcore-tetra/blob/2b08bababf8b72bd2cb82d780a7ba0e526e1f1a9/system-backend/node-gateway/src/service_monitor.rs), Blob `9e9de386b3b42f83a688a6fd5999e34001f7299e`.
 - R09: [Hardware Gateway README](https://github.com/JanHG98/netcore-tetra/blob/2b08bababf8b72bd2cb82d780a7ba0e526e1f1a9/system-backend/hardware-gateway/README.md), Blob `78d0ee441373e1fdee7048d4bc4cc1f8e04938ff`; [Provisioning Core README](https://github.com/JanHG98/netcore-tetra/blob/2b08bababf8b72bd2cb82d780a7ba0e526e1f1a9/system-backend/provisioning-core/README.md), Blob `f44a48815437da922091f3c820274601b569a20a`.
 - R10: [TBS Connect README](https://github.com/JanHG98/netcore-tetra/blob/2b08bababf8b72bd2cb82d780a7ba0e526e1f1a9/system-backend/tbs-connect/README.md), Blob `7b80ca3eee81053d0a83f1248688f1a0e68857b8`.
-- R11: [Separates Android-/Control-/Hybrid-Archiv](2026-10-03_android-control-app-flask-api-und-hybrid-manager.md), insbesondere die gelesenen Bereiche 1–160 und 360–480; ausdrücklich sekundäre Fortsetzungsquelle aus einem anderen Chat.
+- R11: [Android-/Control-/Hybrid-Archiv](2026-10-03_android-control-app-flask-api-und-hybrid-manager.md), geprüfte Bereiche 1–160 und 360–480; sekundäre Quelle zur späteren Entwicklungsphase.
 
-In diesem Chat wurde kein bestimmter damaliger Featurebranch, PR oder Implementierungscommit für die USB-/Flask-/Brew-/Receipt-Skripte verlässlich genannt. Es werden deshalb keine nachträglichen PR-Nummern oder Implementierungs-SHAs erfunden.
+In diesem Planungsstand wurde kein bestimmter damaliger Featurebranch, PR oder Implementierungscommit für die USB-/Flask-/Brew-/Receipt-Skripte verlässlich genannt. Es werden deshalb keine nachträglichen PR-Nummern oder Implementierungs-SHAs erfunden.
 
 ### 17.3 Externe Grundlagen für die ausdrücklich getrennte Archivprüfung
 
@@ -1154,7 +1153,7 @@ Diese Quellen wurden zur Einordnung einzelner Mechanismen nachgelesen. Sie sind 
 - E03: [PyPA: Externally Managed Environments](https://packaging.python.org/en/latest/specifications/externally-managed-environments/) — distributionsverwaltetes Python und virtuelle Umgebungen.
 - E04: [GNU Bash: Bourne Shell Builtins](https://www.gnu.org/software/bash/manual/html_node/Bourne-Shell-Builtins.html) — `exec` und `EXIT`-Trap; zusätzlicher isolierter Test in Abschnitt 15.
 - E05: [Ubuntu-Paketdokumentation: systemd.device](https://manpages.ubuntu.com/manpages/bionic/man5/systemd.device.5.html) — Geräteaktivierung und `SYSTEMD_WANTS`; ältere, ausdrücklich versionsgebundene Dokumentation für den hier relevanten Mechanismus, keine Aussage zur installierten Pi-Version.
-- E06: [Debian-Paketdokumentation: systemd.unit](https://manpages.debian.org/bullseye/systemd/systemd.unit.5.en.html) — Startlimitparameter im Unit-Kontext; keine Behauptung, Debian bullseye sei auf dem Nutzergerät installiert.
+- E06: [Debian-Paketdokumentation: systemd.unit](https://manpages.debian.org/bullseye/systemd/systemd.unit.5.en.html) — Startlimitparameter im Unit-Kontext; kein Nachweis einer bullseye-Installation auf dem Zielgerät.
 - E07: [Flask: Security Considerations](https://flask.palletsprojects.com/en/stable/web-security/) — CSRF, Webzugriff und anwendungsseitige Sicherheitsverantwortung.
 
 ### 17.4 Bildanlagen
@@ -1163,7 +1162,7 @@ Die Anlagen wurden nicht zusätzlich als Binärdateien in diesen Archivcommit ko
 
 | ID | Datei | Maße | Einordnung |
 |---|---|---|---|
-| A01 | `3d16b22e-41d3-41ae-90ca-344d06d79a42.png` | 1920 × 686 | Nutzer-Screenshot der frühen Control-WebUI mit TBS01/RUN/Version 12 und Dateilinks |
+| A01 | `3d16b22e-41d3-41ae-90ca-344d06d79a42.png` | 1920 × 686 | Screenshot der frühen Control-WebUI mit TBS01/RUN/Version 12 und Dateilinks |
 | A02 | `Dunkles Design plus Text.png` | 2048 × 2048 | Original-Logo; maßgebliche Quelle statt ASCII oder neu gezeichneter Symbole |
 | A03 | `a_clean_black_and_white_receipt_printout_style_ima.png` | 1024 × 1536 | Generierter vertikaler Bonentwurf mit Startdaten, Kommentar und QR-Motiv |
 | A04 | `a_clean_black_and_white_graphic_logo_image_on_a_wh.png` | 1254 × 1254 | Zweiter generierter Entwurf mit Logo-/Bonlayout und Schlusszeile |
@@ -1215,6 +1214,6 @@ Die Normen liefern in dieser Dokumentation **keinen** Nachweis dafür, dass das 
 
 Der damalige praktische Erfolg bleibt erhalten: signierter USB-Start/Stop funktionierte, eine manipulierte Config wurde abgelehnt, der Configbackup-Upload lief durch, die Control-WebUI wurde aufgebaut und der BREW-Health-Endpunkt antwortete. Ebenso bleiben die offenen Punkte erhalten: Hybridmanager statt Einmalabruf, belastbare Sperr-/Offlinepolitik, abgesicherte und atomare Serververwaltung, echte Readiness, vollständiger Restore sowie Druckerbeschaffung und Receipt-Implementierung.
 
-Bei einer Wiederaufnahme zuerst den **tatsächlich installierten heutigen Stand** sichern und mit diesem Archiv sowie dem separaten späteren Control-/Android-Archiv vergleichen. Keine alte komplette `app.py` über eine neuere Plugininstallation schreiben, keine Schlüssel neu erzeugen, um Pfad-/venv-Fehler zu kaschieren, und keine Mindestversion pauschal auf 0 setzen. Vor einer erneuten RF-Aktivierung die definierte Freigabe- und Stopkette unter kontrollierten Testbedingungen abnehmen.
+Bei einer Wiederaufnahme zuerst den **tatsächlich installierten geprüften Stand** sichern und mit diesem Archiv sowie dem separaten späteren Control-/Android-Archiv vergleichen. Keine alte komplette `app.py` über eine neuere Plugininstallation schreiben, keine Schlüssel neu erzeugen, um Pfad-/venv-Fehler zu kaschieren, und keine Mindestversion pauschal auf 0 setzen. Vor einer erneuten RF-Aktivierung die definierte Freigabe- und Stopkette unter kontrollierten Testbedingungen abnehmen.
 
-Dieser Archivauftrag verändert nur Dokumentation unter `Docs/archive/`. Er stellt keinen neuen Betriebsstand her, führt keinen Dienstneustart durch, legt keine produktiven Schlüssel an und enthält keine Zugangsdaten. Der konkrete Speichercommit ergibt sich aus der Git-Historie dieser Datei und wird in der Abschlussmeldung genannt; eine zirkuläre Selbstreferenz im Dateiinhalte-Commit wird vermieden.
+Der Dokumentationsstand ersetzt keine Betriebsabnahme. Die konkrete installierte Fassung, Schlüsseltrennung, Hybrid-Policy und Restorefähigkeit bleiben zu prüfen.

@@ -1,77 +1,67 @@
-# Technische Abschlussdokumentation: WERMA-Signalleuchte per API auf separatem Relais-Pi mit Bootanzeige
+# Brainstorming: WERMA-Signalleuchte – Relais-Pi, API und Bootanzeige
 
-> **Ergebnis dieses Chats:** Jan besitzt eine WERMA-Leuchte mit Rot, Orange, Grün, Blau und Weiß. Ausdrücklich übernommen wurden die Farbbedeutungen mit Prioritäten und die Architektur eines **eigenen Raspberry Pi mit Relaiskarten und API-Steuerung**. REST/FastAPI, optionale MQTT-Anbindung, TTL, Blinkmuster, Override und sehr frühe Bootanzeige wurden als technische Ausgestaltung diskutiert.
+> **Ergebnis der Planung:** Vorhanden ist eine WERMA-Leuchte mit Rot, Orange, Grün, Blau und Weiß. Ausdrücklich übernommen wurden die Farbbedeutungen mit Prioritäten und die Architektur eines **eigenen Raspberry Pi mit Relaiskarten und API-Steuerung**. REST/FastAPI, optionale MQTT-Anbindung, TTL, Blinkmuster, Override und sehr frühe Bootanzeige wurden als technische Ausgestaltung diskutiert.
 >
 > **Nachweisstand:** Im verfügbaren Fachverlauf wurde weder eine fertige Anwendung geliefert noch eine Installation, ein Hardwaretest oder ein produktiver Betrieb bestätigt. Der damalige Python-Kern ist ein unvollständiges, fehlerhaftes Prinzipbeispiel. Am 04.10.2026 wurden relevante Repository-Komponenten geprüft; vorhandene Telemetrie, Health, IoT-Kommandos und Hardware-Gateway sind Integrationsbausteine, aber kein Nachweis einer fertig implementierten WERMA-Ausgangssteuerung.
 
-## 1. Metadaten, Quellenbasis und Grenzen
+## Zielbild und Festlegungen
+
+- Fünffarbige WERMA-Leuchte auf **separatem Raspberry Pi mit Relaiskarten**; API-Steuerung aus Basisstation/Zentrale.
+- Festgelegt sind Farbbedeutungen und Prioritäten. REST/MQTT sollen dieselbe Zustandsmaschine nutzen.
+- TTL, Blinkmuster, Override und frühe Bootanzeige sind Entwurfsbestand; 24 V und konkrete GPIOs sind noch zu verifizieren.
+- Das Python-Prinzipbeispiel ist fehlerhaft. Offen sind funktionsfähige Treiber/API, GPIO-Übergabe beim Boot und Hardwareabnahme.
+
+## 1. Arbeitsstand und Quellenbasis
 
 | Feld | Inhalt |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Fünffarbige WERMA-Leuchte; eigener Pi mit Relais; REST/MQTT; Priorität/TTL; Blinkmuster; Override; frühe Bootanzeige und Bereitschaftsübergabe |
-| Ursprünglicher Chattitel | Nicht verfügbar. Der Dokumenttitel ist eine nachträgliche Sachbezeichnung. |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link konstruiert. |
-| Historische Datierung | Eine zusätzliche Kontextsuche ordnet die konkrete Farb-/Pi-Abstimmung und Bootantwort dem **17.10.2025 UTC / 18.10.2025 Europe/Berlin** zu. Die sichtbare übergebene Nachrichtenfolge enthält selbst keine Originalzeitstempel; dies ist keine Prüfung eines vollständigen Exports. |
+| Historische Datierung | Eine zusätzliche Kontextsuche ordnet die konkrete Farb-/Pi-Abstimmung und Bootentwurf dem **17.10.2025 UTC / 18.10.2025 Europe/Berlin** zu. Die verfügbaren Planungsnotizen enthalten keine vollständigen Originalzeitstempel; dies ist keine Prüfung eines vollständigen Exports. |
 | Erstellungsdatum dieser Dokumentation | **2026-10-04**, Europe/Berlin; lokales Ausführungsdatum geprüft. |
 | Zielrepository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
-| Ausschließlicher Schreibbranch | **Archiving** |
 | Geprüfter Eingangscommit von Archiving | **11136de497f939bf3056dbccc4004a58ca99f344** |
 | Tree dieses Commits | **2574924c5585cc0ad490a91738e5ce44fa6ff89b** |
 | Zusätzlich lesend geprüfter Default-Branch | **main** bei **7137e0dd69877e1b604bf89148fd8b6b590c1a97** |
 | Tree von main | **e68558c4df13d3d8b56df8c3611ac682b02889c1** |
 | Ablage | **Docs/archive/2026-10-04_werma-signalleuchte-api-relais-pi-und-bootanzeige.md** |
 | Index | **Docs/archive/README.md** |
-| Umfang des Archivauftrags | Dokumentation und Index unter Docs/archive/; keine Implementierung, Geräteinstallation oder Änderung außerhalb des Archivs. |
-
-Der tatsächliche Archivcommit wird durch die Git-Historie dieser Datei und die Abschlussmeldung nachgewiesen. Er ist vom oben genannten **geprüften Codecommit** zu unterscheiden. Die eigene Commit-ID lässt sich nicht sinnvoll in denselben Commit einschreiben.
 
 ### 1.1 Zugänglicher Verlauf
 
-Ausgewertet wurde die vollständig übergebene, fachliche Nachrichtenfolge dieses WERMA-API-Chats:
+Die Planung umfasst fünf WERMA-Farben, ein Prioritätsmodell und die Festlegung auf einen **separaten Raspberry Pi mit Relaiskarten und API-Steuerung**. Das Implementierungsbriefing enthält GPIO-Beispiel, Endpunkte, Konfiguration, Treiberabstraktion, Zustandsmaschine, systemd-Dienst und Akzeptanzkriterien.
 
-1. Die zweimal enthaltene Ausgangsfrage nach einer realistischen Integration der fünf WERMA-Farben in die Basisstation.
-2. Die Frage nach API-Steuerung und die darauf folgende REST/MQTT-Skizze einschließlich Python-Prinzipbeispiel.
-3. Die Frage, ob der Chat in Codex zur Implementierung kopiert werden kann.
-4. Die anschließende Festlegung der Farben und Prioritäten.
-5. Jans ausdrückliche Übernahme des Farb-/Prioritätsmodells für einen eigenen Pi mit Relaiskarten und API.
-6. Die Präzisierung, dass eine Zusammenfassung als **Implementierungsbriefing für Codex** gewünscht ist.
-7. Das daraus entstandene Briefing mit GPIO-Beispiel, Endpunkten, Config, Treiber, State-Engine, Dienst und Akzeptanzkriterien.
-8. Die spätere Frage nach einer tief im Bootprozess verankerten Ein-/Ausschaltung und die Antwort mit Device Tree, systemd und rc.local.
+Als Erweiterung wurden Bootanzeige und deren Übergabe an den Lampendienst mit Device-Tree-GPIO-Hog, systemd-early und `rc.local` untersucht. Die Farb-/Pi-Festlegung lässt sich dem **17.10.2025 UTC / 18.10.2025 Europe/Berlin** zuordnen; vollständige Originalzeitstempel fehlen. Ein zusätzlicher Umsetzungs- oder Testbericht liegt nicht vor.
 
-Die doppelte Eingangsfrage wird als Wiederholung derselben Anforderung behandelt. Es wird keine zusätzliche Hardware oder zweite Lampe daraus abgeleitet. Die übergebene Folge enthält nicht zu jeder Nutzerzwischenfrage eine eigene Assistenzantwort; ob ursprünglich weitere Antworten existierten, ist unbekannt.
-
-Die zusätzliche Kontextsuche bestätigte die ausdrückliche Farb-/Pi-Festlegung und lieferte keinen belastbaren Originaltitel, Chatlink oder zusätzlichen Umsetzungs-/Testbericht. Inhalte anderer Projektchats wurden nicht zu historischen Beschlüssen dieses Chats gemacht.
-
-### 1.2 Auswertungslücken und Anhänge
+### 1.2 Quellenlücken und Anhänge
 
 Nicht verfügbar beziehungsweise nicht belegt sind:
 
-- Ein vollständiger Originalexport mit Chat-ID, Titel, Link und allen Zeitstempeln.
+- Ein vollständiger Entwurfsbestand mit verlässlichen Zeitstempeln.
 - WERMA-Artikelnummer, Typenschild, Anschlussplan, tatsächliche Versorgungsspannung, Lastströme und interne Blinkfunktion.
 - Pi-Modell, Betriebssystemversion, Relaiskartentyp, Eingangsschaltung, active-high/active-low und echte Verdrahtung.
 - Installierte Anwendung, Konfiguration, systemd-Status, GPIO-Line-Belegung und API-/MQTT-Laufzeitdaten.
 - Ein tatsächlich geliefertes Skeleton-ZIP, ein Device-Tree-Overlay oder eine kompilierte DTBO-Datei.
 - Ein spezifischer historischer WERMA-Implementierungscommit oder eine zugehörige PR.
-- Eigenständige Bilder dieses Chats. In der sichtbaren fachlichen Nachrichtenfolge sind keine Bilder enthalten; die bereitgestellten lokalen Anhänge sind 25 PDFs, keine Bilddateien.
+- Eigenständige Bilder dieser Planung. Die verfügbaren Planungsunterlagen enthalten keine Bilder; die bereitgestellten lokalen Anhänge sind 25 PDFs, keine Bilddateien.
 
 Die 25 PDFs wurden lokal geöffnet beziehungsweise über Textauszug/Metadaten geprüft. **Deckblätter und Seitenzahlen** wurden erfasst; die Dokumente wurden **nicht vollständig normativ durchgearbeitet**. Ihre Themen betreffen TETRA, ISI, SIM/UICC, Zusatzdienste, Luftschnittstelle, Security, Codec und Konformität. Sie sind keine gerätespezifischen WERMA-/Relais-Anschlussunterlagen. Das Deckblatt von ETSI.pdf identifiziert nur den ersten enthaltenen Standard; bei 4100 Seiten wird das Gesamt-PDF nicht als einzelner 156-seitiger Standard behandelt.
 
 Aus den PDFs wurden keine projektspezifischen Lampenfarben, GPIO-Pins oder Bootverfahren als normativ vorgeschrieben abgeleitet. TETRA-Funkrufpriorität, beispielsweise PPC, ist nicht die lokale Anzeigepriorität 90/70/60/50/40.
 
-**Bildarchiv:** Für diesen Chat konnten keine eigenständigen Bilder nach Git übernommen werden, weil keine entsprechenden Bildquellen verfügbar sind. Bilder aus anderen Archivchats wurden nicht diesem Gespräch zugeschrieben. Eingebettete Normgrafiken wurden nicht als vermeintliche Chatbilder extrahiert.
+**Bildarchiv:** Für diese Planung konnten keine eigenständigen Bilder nach Git übernommen werden, weil keine entsprechenden Bildquellen verfügbar sind. Bilder aus anderen Projektarchiven wurden nicht dieser Planung zugeschrieben. Eingebettete Normgrafiken wurden nicht als vermeintliche Originalbilder extrahiert.
 
 ### 1.3 Statusbegriffe
 
 | Status | Verwendung in dieser Dokumentation |
 |---|---|
 | **Idee** | Vorgeschlagen oder erfragt; keine ausdrückliche endgültige Umsetzungsauswahl. |
-| **Beschlossen/geplant** | Expliziter Nutzerwunsch beziehungsweise übernommene Anforderung; noch kein Code- oder Betriebsnachweis. |
+| **Beschlossen/geplant** | Expliziter Planungsziel beziehungsweise übernommene Anforderung; noch kein Code- oder Betriebsnachweis. |
 | **Implementiert** | An einem benannten Repository-Stand als Code/Konfiguration vorhanden; noch kein Funktions- oder Deploymentnachweis. |
 | **Getestet** | Ein bestimmter Test wurde tatsächlich durchgeführt und sein Ergebnis erfasst. |
-| **Im Betrieb bestätigt** | Konkreter erfolgreicher Betrieb ist durch Laufzeitdaten oder eine entsprechende Nutzerbestätigung belegt. |
+| **Im Betrieb bestätigt** | Konkreter erfolgreicher Betrieb ist durch Laufzeitdaten oder eine entsprechende Betriebsbestätigung belegt. |
 
-Eine Assistenzempfehlung ist kein automatisch verbindlicher Nutzerbeschluss. Ein beschriebenes Akzeptanzkriterium ist kein bestandener Test.
+Eine Empfehlung ist kein automatisch verbindlicher Projektbeschluss. Ein beschriebenes Akzeptanzkriterium ist kein bestandener Test.
 
 ## 2. Ziel, Ausgangslage und behandelte Themen
 
@@ -84,20 +74,20 @@ Die später ausdrücklich gewählte Trennung ist:
 - Die tatsächliche Ausgabe und Blinktaktung laufen auf diesem I/O-Pi.
 - Das Lampenverhalten wird über Priorität, TTL und definierte Zustände geregelt.
 
-Dies vermeidet eine Abhängigkeit der physischen Lampenausgänge von frei verfügbaren GPIOs des SDR-/Basisstations-Pi. Der Chat liefert allerdings keinen Vergleichstest zur Ausfallisolation und keinen Nachweis einer sicherheitsgerichteten Anzeige.
+Dies vermeidet eine Abhängigkeit der physischen Lampenausgänge von frei verfügbaren GPIOs des SDR-/Basisstations-Pi. Die Planung liefert allerdings keinen Vergleichstest zur Ausfallisolation und keinen Nachweis einer sicherheitsgerichteten Anzeige.
 
-Behandelt wurden: Farbmodell, automatische Trigger, REST, optionale MQTT-Steuerung, Authentifizierung, Rollen, manuelle Eingriffe, Konfliktauflösung, GPIO-Treiber, Konfiguration, systemd-Betrieb, Codex-Übergabe und sehr frühe Bootsignalisierung.
+Behandelt wurden: Farbmodell, automatische Trigger, REST, optionale MQTT-Steuerung, Authentifizierung, Rollen, manuelle Eingriffe, Konfliktauflösung, GPIO-Treiber, Konfiguration, systemd-Betrieb, Implementierungsübergabe und sehr frühe Bootsignalisierung.
 
 ## 3. Verlauf und endgültige Festlegungen
 
 | Reihenfolge | Aussage/Änderung | Verbindlichkeit und Ergebnis |
 |---|---|---|
-| Ausgang | WERMA mit Rot, Orange, Grün, Blau, Weiß realistisch integrieren. | Nutzerziel; Lampenbesitz und Farben genannt. |
+| Ausgang | WERMA mit Rot, Orange, Grün, Blau, Weiß realistisch integrieren. | Planungsziel; Lampenbesitz und Farben genannt. |
 | API-Frage | API-Steuerung wird gewünscht/geprüft. | Später ausdrücklich Teil der gewählten Lösung. |
-| Erste Antwort | Lokaler Node-Dienst; REST/MQTT; JWT/TLS; TTL; Lock-Stack; Fernsteuerung. | Assistenzentwurf. Begriffe Node/Lighthouse/Watchtower sind keine hier eingerichteten Dienste. |
-| Farbgespräch | Fünf Farben mit konkreten Prioritäten und Blinkmustern. | Von Jan anschließend ausdrücklich übernommen. |
+| Erste API-Skizze | Lokaler Node-Dienst; REST/MQTT; JWT/TLS; TTL; Lock-Stack; Fernsteuerung. | Entwurf. Begriffe Node/Lighthouse/Watchtower sind keine hier eingerichteten Dienste. |
+| Farbmodell | Fünf Farben mit konkreten Prioritäten und Blinkmustern. | Als Farb-/Prioritätsmodell festgelegt. |
 | Hardwarekorrektur | Eigener Pi mit Relaiskarten, API-Steuerung. | **Beschlossen/geplant**; ersetzt die anfängliche Interpretation eines GPIO-Dienstes direkt auf der Funk-Node. |
-| Übergabeformat | Zusammenfassung soll Codex die Implementierung ermöglichen. | Briefing geliefert; keine Implementierung dadurch nachgewiesen. |
+| Übergabeformat | Zusammenfassung soll die Implementierung ermöglichen. | Briefing geliefert; keine Implementierung dadurch nachgewiesen. |
 | Spätere Bootfrage | Beim Booten früh einschalten; nach fertigem Start wieder ausschalten. | **Gewünschte Erweiterung**. Keine abschließende Auswahl zwischen Device Tree, systemd und rc.local. |
 
 ### 3.1 Ausdrücklich übernommenes Farbmodell
@@ -112,21 +102,21 @@ Behandelt wurden: Farbmodell, automatische Trigger, REST, optionale MQTT-Steueru
 
 **Grundregel:** Rot > Orange > Blau > Grün > Weiß. Die höher priorisierte Anzeige soll die niedriger priorisierte verdrängen; Rot soll die anderen Farben abschalten.
 
-Die Bedeutungen sind projektspezifisch. Der Name **orange** bleibt in diesem Chat erhalten. Das abweichende gelb/blue/white-Modell eines anderen Rack-Gesprächs wird nicht stillschweigend hier hineingemischt.
+Die Bedeutungen sind projektspezifisch. Der Name **orange** bleibt in dieser Entwicklungsphase erhalten. Das abweichende gelb/blue/white-Modell eines anderen Rack-Entwurfs wird nicht stillschweigend hier hineingemischt.
 
 ### 3.2 Begründungen und noch offene Semantik
 
 - Rot vermittelt einen Zustand mit unmittelbarem Klärungsbedarf und soll nicht gleichzeitig durch grünes „OK“ widersprochen werden.
 - Orange zeigt Aktivität; Blau eine vorübergehende Betriebsphase; Grün den gesunden Normalzustand; Weiß den noch laufenden Start.
 - TTL soll veraltete, nicht erneuerte Anzeigen begrenzen und nach Ablauf den weiterhin gültigen Grundzustand freigeben.
-- Ein manueller Override soll gezielte Bedienung ermöglichen. Seine Priorität **100** wurde im Assistenzbriefing vorgeschlagen, vom Nutzer aber nicht separat hinsichtlich Alarmunterdrückung geklärt.
+- Ein manueller Override soll gezielte Bedienung ermöglichen. Seine Priorität **100** wurde im Implementierungsbriefing vorgeschlagen, aber nicht separat hinsichtlich Alarmunterdrückung geklärt.
 - MQTT soll optional bleiben; API-Steuerung ist gesetzt, die technische Ausführung mit FastAPI/Uvicorn ist der historische Implementierungsvorschlag.
 
 **Widerspruch beim Booten:** Ein festes Weiß von fünf Sekunden beweist keinen fertigen Start. Die spätere Frage verlangt eine Bereitschaftsabhängigkeit. Daher darf die 5-s-TTL nicht als endgültiges Kriterium für Bootabschluss übernommen werden. Ob sie als zusätzlicher Kurztest oder Fallback bleiben soll, ist offen.
 
 **Widerspruch bei Rot/Override:** Ein Override mit 100 kann Rot mit 90 verdecken; zugleich fordert der Entwurf „Rot blockiert alles bis quittiert“. Vor Umsetzung ist zu entscheiden, welche Eingriffe einen aktiven Alarm verdecken dürfen. Quittierung, Fehlerbeseitigung, Override-Ende und globales Ausschalten sind verschiedene Aktionen.
 
-**Widerspruch bei TX:** Das Farbschema nennt sowohl „TX aktiv“ als auch „Sprachruf“. TETRA-Sendeträger/MCCH, ein bestehender Call, aktuelles Sprechrecht und echte Sprachframes sind verschiedene Zustände. Ein dauernd sendender Träger darf nicht versehentlich dauernd die Aktivitätsanzeige auslösen, wenn Orange eigentlich Sprachaktivität bedeuten soll.
+**Widerspruch bei TX:** Das Farbschema nennt sowohl „TX aktiv“ als auch „Sprachruf“. TETRA-Sendeträger/MCCH, ein bestehender Call, momentanes Sprechrecht und echte Sprachframes sind verschiedene Zustände. Ein dauernd sendender Träger darf nicht versehentlich dauernd die Aktivitätsanzeige auslösen, wenn Orange eigentlich Sprachaktivität bedeuten soll.
 
 ### 3.3 Historische TTL-Empfehlungen und ihre Grenzen
 
@@ -144,9 +134,9 @@ Die 5–10-s-Angabe für Orange ist erhaltene historische Empfehlung, keine bere
 
 ### 4.1 Geplante Komponenten
 
-| Komponente | Aufgabe | Nachweisstand dieses Chats |
+| Komponente | Aufgabe | Nachweisstand dieser Planung |
 |---|---|---|
-| Basisstation / Statusadapter | Health-, TX-, Wartungs- und Bootereignisse auf Lampenaufträge abbilden | Integration geplant, nicht implementiert nachgewiesen. |
+| Basisstation / Statusadapter | Health-, TX-, Wartungs- und Bootereignisse auf Lampenaufträge abbilden | Integration geplant; Implementierung nicht belegt. |
 | Separater Raspberry Pi | Lampendienst und GPIO/Relais-Ausgabe | Ausdrücklich gewählte Architektur, Hardwarestand unbekannt. |
 | FastAPI + Uvicorn | REST-API unter /api/lamp | Historischer Vorschlag; kein fertiger Dienst geliefert. |
 | State-Engine | Zustände, Priorität, TTL, Muster, Override und Rückfall | Spezifiziert; damaliger Kern unvollständig und fehlerhaft. |
@@ -159,7 +149,7 @@ Die 5–10-s-Angabe für Orange ist erhaltene historische Empfehlung, keine bere
 
 Der geplante Datenweg lautet: **NetCore-Statusquelle → REST oder optional MQTT → State-Engine auf Relais-Pi → ein GPIO-Treiber → Relaisausgänge → WERMA-Farbkanäle**.
 
-REST und MQTT sollten dieselbe Zustandsmaschine bedienen. Separate konkurrierende GPIO-Schreiber für REST, MQTT und Blinkthreads würden das Prioritätsmodell unterlaufen. Ein solcher gemeinsamer Schreiber ist ein heutiger Implementierungshinweis, kein im Chat nachgewiesener Code.
+REST und MQTT sollten dieselbe Zustandsmaschine bedienen. Separate konkurrierende GPIO-Schreiber für REST, MQTT und Blinkthreads würden das Prioritätsmodell unterlaufen. Ein solcher gemeinsamer Schreiber ist ein geprüfter Implementierungshinweis, kein in der Planung nachgewiesener Code.
 
 ### 4.2 Historisch gewünschte Treiberabstraktion
 
@@ -177,7 +167,7 @@ class LampDriver:
 
 Als Backends wurden **RPi.GPIO oder gpiozero** sowie ein Mock genannt. Für das tatsächlich gewählte Pi-/OS-Modell ist die Backend-Kompatibilität zu prüfen; diese Alternativen sind keine bestätigte Installationsauswahl.
 
-**Heutiger Prüfhinweis:** Die Musterhoheit sollte bei der State-Engine beziehungsweise einem einzelnen Ausgabetaktgeber liegen. Ein unabhängig weiterlaufendes driver.pattern darf weder Rot übergehen noch nach /off erneut Ausgänge einschalten. Driver-Aufrufe benötigen außerdem definierte Fehlerbehandlung und einen kontrollierten Stopp.
+**Geprüfter Prüfhinweis:** Die Musterhoheit sollte bei der State-Engine beziehungsweise einem einzelnen Ausgabetaktgeber liegen. Ein unabhängig weiterlaufendes driver.pattern darf weder Rot übergehen noch nach /off erneut Ausgänge einschalten. Driver-Aufrufe benötigen außerdem definierte Fehlerbehandlung und einen kontrollierten Stopp.
 
 ### 4.3 Statusquellen und automatische Trigger
 
@@ -197,9 +187,9 @@ Die frühen Beispiele nannten **Temperatur > 70 °C** als Automation. Dieser Wer
 
 ### 5.1 Gesichert versus angenommen
 
-**Gesichert aus dem Nutzerverlauf:** fünf WERMA-Farben; separater Pi mit Relaiskarten.
+**Festgehaltene Ausgangslage:** fünf WERMA-Farben; separater Pi mit Relaiskarten.
 
-**Nur aus dem Assistenzbriefing:** **24 V DC** aus separatem Netzteil. Jan nannte im verfügbaren Verlauf keinen Typ und bestätigte die Betriebsspannung nicht. 24 V bleibt eine **Planungsannahme** bis zur Prüfung des Typenschilds und Anschlussplans.
+**Nur aus dem Implementierungsbriefing:** **24 V DC** aus separatem Netzteil. Typ und Betriebsspannung sind nicht bestätigt. 24 V bleibt eine **Planungsannahme** bis zur Prüfung des Typenschilds und Anschlussplans.
 
 Die vorgeschlagene Signalkette war Pi-GPIO → Relaiskarte → Versorgungseingang je Farbe. Sie ist kein fertiger Verdrahtungsplan. Gemeinsam geschalteter Plus/Minus, Kontaktart, Steuereingangspegel und Versorgung der Relaiskarte fehlen.
 
@@ -221,7 +211,7 @@ Diese Werte sind keine geprüfte Verdrahtung. BCM-Nummern, physische Headerposit
 
 ### 5.3 Blinken über Relais
 
-Jan hat Relaiskarten gewählt. Diese Vorgabe bleibt erhalten; ein Halbleiterausgang wurde in diesem Chat nicht als endgültiger Ersatz beschlossen.
+Relaiskarten sind als Ausgangstreiber festgelegt. Diese Vorgabe bleibt erhalten; ein Halbleiterausgang wurde in dieser Entwicklungsphase nicht als endgültiger Ersatz beschlossen.
 
 Für mechanische Relais ist die Schalthäufigkeit technisch relevant:
 
@@ -282,9 +272,9 @@ Historisch vorgesehen:
 - Debounce für häufige Pattern-Updates.
 - Manuelle API-Aufträge sollen als Eingriffsquelle von automatischen Zustandsursachen unterscheidbar sein.
 
-Nicht spezifiziert wurden Signaturalgorithmus, Schlüsselbereitstellung/Rotation, zentrale Ausstellerintegration, Claim-/Rollenzuordnung, maximale TTL, zulässige Prioritäten und Rate-Limit-Geltungsbereich. sys.core.master ist durch seine Erwähnung keine nachgewiesene Rolle der heutigen Software.
+Nicht spezifiziert wurden Signaturalgorithmus, Schlüsselbereitstellung/Rotation, zentrale Ausstellerintegration, Claim-/Rollenzuordnung, maximale TTL, zulässige Prioritäten und Rate-Limit-Geltungsbereich. sys.core.master ist durch seine Erwähnung keine nachgewiesene Rolle der geprüften Software.
 
-**Heutiger Prüfhinweis:** source und priority aus einer Payload sind keine vertrauenswürdige Identität/Berechtigung. Erlaubte Prioritäten und Eingriffe müssen serverseitig an den authentifizierten Aufrufer gebunden sein. Frei vergebbare Priorität 100 kann das übernommene Alarmmodell aushebeln.
+**Geprüfter Prüfhinweis:** source und priority aus einer Payload sind keine vertrauenswürdige Identität/Berechtigung. Erlaubte Prioritäten und Eingriffe müssen serverseitig an den authentifizierten Aufrufer gebunden sein. Frei vergebbare Priorität 100 kann das übernommene Alarmmodell aushebeln.
 
 Die historischen cURL-Beispiele ohne Authorization-Header widersprechen jwt_required: true. Es waren vereinfachte Anwendungsbeispiele, keine erfolgreich ausgeführten Requests.
 
@@ -336,7 +326,7 @@ Die erste Skizze verwendete teilweise 3000 ms statt 10000 ms; dies waren Beispie
 
 Nicht festgelegt: node-id des I/O-Pi versus beobachtete TBS, QoS, Retain, Last Will, Client-Authentifizierung, Command-ID, Deduplizierung, ACK, Reconnect, Uhr-/TTL-Behandlung und Verhalten gegenüber verspäteten Nachrichten.
 
-### 7.2 Heutiger Repository-Abgleich
+### 7.2 Geprüfter Repository-Abgleich
 
 Der vorhandene IoT-Vertrag nutzt inzwischen **netcore/v1**, unter anderem:
 
@@ -351,7 +341,7 @@ Nach der gelesenen Vertragsdokumentation sind Discovery-/Zustandsnachrichten ret
 
 Die Beispielkonfiguration enthält QoS 1, Command-Policy mit default_deny, Verbot retained Commands, Default-TTL 30 s, Maximal-TTL 300 s und Lifecycle-ACKs. Das sind **vorhandene IoT-Gateway-Beispielwerte**, keine hier nachträglich beschlossenen Lampenparameter. [R08]
 
-**Abweichung:** Historische nct-Topics und heutige netcore/v1-Topics sind nicht identisch. Vor Lampenimplementierung muss ein Adapter oder ein einheitlicher neuer Vertrag beschlossen werden. Die Archivierung ändert keinen MQTT-Vertrag.
+**Abweichung:** Historische nct-Topics und zusätzliche netcore/v1-Topics sind nicht identisch. Vor Lampenimplementierung muss ein Adapter oder ein einheitlicher neuer Vertrag beschlossen werden. Die Dokumentation ändert keinen MQTT-Vertrag.
 
 Der vorhandene Befehl **virtual.relay.set** aktualisiert einen virtuellen Gerätezustand. Der gelesene Handler greift nicht auf GPIO zu und liefert keine physische Lampenbestätigung. Ein ACK für dieses virtuelle Kommando beweist kein geschaltetes WERMA-Relais. [R06]
 
@@ -396,7 +386,7 @@ Bei einer blinkenden dominanten Anzeige soll die Pause nicht automatisch die nie
 
 Diese Fehler sind **nicht durch diese Archivarbeit im Anwendungsrepository behoben** worden. Sie sollen verhindern, dass das Prinzipbeispiel später als fertige Implementation kopiert wird.
 
-### 8.3 Heutige Implementierungsleitplanken, noch nicht beschlossen oder umgesetzt
+### 8.3 Zusätzliche Implementierungsleitplanken, noch nicht beschlossen oder umgesetzt
 
 - Ein serialisierter Scheduler/State-Owner führt Zustandsänderungen, Expiry und Blinkphasen zusammen.
 - Ausgabe bei jeder Berechnung aus definierten Defaults neu bilden; abgelaufene Ursachen tatsächlich entfernen.
@@ -410,7 +400,7 @@ Diese Fehler sind **nicht durch diese Archivarbeit im Anwendungsrepository behob
 - Netzwerkverlust, Prozessabsturz, Relaisfehler und Shutdown benötigen definierte Ausgangszustände.
 - Status soll Grundzustand, dominante Ursache, TTL, Override, gewünschte Ausgabe und verfügbare Hardware-Rückmeldung auseinanderhalten.
 
-Dies sind technische Prüfhinweise des Archivlaufs, keine behauptete nachträgliche Nutzerfreigabe eines geänderten API-Vertrags.
+Dies sind technische Prüfhinweise des Prüflaufs, keine behauptete nachträgliche Freigabe eines geänderten API-Vertrags.
 
 ## 9. Dateien, Config und Systemdienst des Briefings
 
@@ -472,17 +462,17 @@ Fehlende Umsetzungsteile: Paket-/Interpreterumgebung, Konfigurationsladen, tats�
 
 network.target garantiert keine betriebsbereite Verbindung zur entfernten TBS und kein aktives VPN. Auch ein gestarteter Uvicorn-Prozess beweist noch keine valide Statusquelle oder funktionierende Relais.
 
-Ein venv, ein eigener Dienstbenutzer, explizite GPIO-Berechtigungen und eine definierte Restart-/Shutdown-Strategie sind noch auszuarbeiten; sie wurden im Chat nicht fertig bereitgestellt.
+Ein venv, ein eigener Dienstbenutzer, explizite GPIO-Berechtigungen und eine definierte Restart-/Shutdown-Strategie sind noch auszuarbeiten; sie wurden in der Planung nicht fertig bereitgestellt.
 
-## 10. Bootanzeige: ursprüngliche Ansätze und heutige Prüfung
+## 10. Bootanzeige: ursprüngliche Ansätze und zusätzliche Prüfung
 
 ### 10.1 Wunsch und Geltungsbereich
 
-Jan fragte nach einem tief im Booten verankerten Befehl: Lampe beim Boot einschalten und nach abgeschlossenem Start ausschalten. Die Assistenz beschrieb drei Ebenen und empfahl damals systemd-early als wartbaren Weg.
+Die gewünschte Bootanzeige soll früh eingeschaltet und nach dem Start abgeschaltet beziehungsweise an den Lampendienst übergeben werden. Drei Ebenen wurden vorgeschlagen; systemd-early war der bevorzugte wartbare Ansatz.
 
 **Offene Kernfrage bei zwei Rechnern:** Soll Weiß den Boot des **Relais-Pi** oder den der **Basisstation** darstellen?
 
-Ein lokaler GPIO auf dem Relais-Pi kann dessen eigenen Start anzeigen. Ein Kernel-Hook der entfernten TBS kann deren fremde GPIOs nicht direkt ohne funktionsfähigen Transport schalten. Ein früher API-Aufruf benötigt bereits laufende Netzwerk- und API-Komponenten. Diese Trennung wurde in der ursprünglichen Antwort nicht geklärt.
+Ein lokaler GPIO auf dem Relais-Pi kann dessen eigenen Start anzeigen. Ein Kernel-Hook der entfernten TBS kann deren fremde GPIOs nicht direkt ohne funktionsfähigen Transport schalten. Ein früher API-Aufruf benötigt bereits laufende Netzwerk- und API-Komponenten. Diese Trennung wurde im ursprünglichen Entwurf nicht geklärt.
 
 Für eine TBS-Bootanzeige wären daher ein definierter Remote-Lebenszyklus/Heartbeat, eine unabhängige elektrische Verbindung oder eine andere separat zu planende Signalisierung erforderlich. Welche Variante gewünscht ist, bleibt offen.
 
@@ -492,7 +482,7 @@ Historischer Vorschlag: einen GPIO als gpio-hog mit output-high initialisieren; 
 
 **Technische Korrektur:** Ein GPIO-Hog setzt nicht nur einen Startwert. Er **fordert die GPIO-Line während des Controller-Probes an und hält sie im Kernel**. Ein normaler GPIO-Character-Device-Treiber im Userspace kann denselben bereits reservierten Ausgang nicht automatisch übernehmen. Die Aussage „Hog setzen, danach Userspace übernimmt einfach“ ist deshalb unvollständig. Linux-Binding und gpiod_hog-Implementation belegen die Reservierung. [E01][E02]
 
-Ein solcher Ansatz benötigt eine ausdrücklich getestete Freigabe-/Übergabestrategie oder eine andere GPIO-Verwaltung. Eine fertige Übergabelösung wurde im Chat nicht ausgearbeitet.
+Ein solcher Ansatz benötigt eine ausdrücklich getestete Freigabe-/Übergabestrategie oder eine andere GPIO-Verwaltung. Eine fertige Übergabelösung wurde in der Planung nicht ausgearbeitet.
 
 Auch output-high ist nur unter bekannter Polarität richtig. Bei active-low, vorgeschalteten Invertierungen oder abweichendem elektrischen Design darf daraus kein pauschales „Weiß an“ abgeleitet werden.
 
@@ -554,7 +544,7 @@ Wesentliche Probleme:
 
 1. **Laufender gpioset-Prozess und Type=oneshot:** Der historische --mode=signal-Modus hält den Prozess am Leben. Eine oneshot-Unit gilt erst nach Prozessende als gestartet. Zusammen mit Before=sysinit.target kann der frühe Dienst die nachfolgenden Startschritte blockieren, solange gpioset weiterläuft. RemainAfterExit repariert diesen laufenden Startprozess nicht. [E03][E04]
 2. **Exklusive Line-Besitzer:** Der frühe gpioset-Aufruf fordert alle fünf Lines an, auch ausgeschaltete. Ein zweiter gpioset oder der API-Treiber kann Weiß/Grün nicht gleichzeitig anfordern, solange der erste Prozess Eigentümer ist. Eine ausdrücklich koordinierte Übergabe fehlt.
-3. **Versionsabhängige CLI:** --mode=signal und die Positionssyntax entsprechen dem älteren Toolmodell. Die heute gelesene libgpiod-Dokumentation beschreibt gpioset mit --chip/-c und anderen Optionen. Installierte Version und --help müssen vor Anwendung geprüft werden; v1-/v2-Kommandos nicht mischen. [E03]
+3. **Versionsabhängige CLI:** --mode=signal und die Positionssyntax entsprechen dem älteren Toolmodell. Die am Prüfdatum gelesene libgpiod-Dokumentation beschreibt gpioset mit --chip/-c und anderen Optionen. Installierte Version und --help müssen vor Anwendung geprüft werden; v1-/v2-Kommandos nicht mischen. [E03]
 4. **Ausgang nach Prozessende:** Laut libgpiod ist das Halten des Pegels nach Ende des anfordernden Prozesses nicht garantiert. Ein oneshot-Kurzaufruf ist damit keine pauschale dauerhafte Bootanzeige. [E03]
 5. **Geräte-/Dateisystembereitschaft:** DefaultDependencies=no und frühe Startreihenfolge sichern nicht allein, dass GPIO-Character-Device, Binary und zugehörige Rechte bereits verfügbar sind.
 6. **Keine echte Anwendungsbereitschaft:** multi-user.target und network-online.target beweisen nicht, dass SDR, TBS, Statusdaten und Lampentreiber gesund sind. Grün darf nicht allein aufgrund erreichter Targets gesetzt werden.
@@ -577,7 +567,7 @@ exit 0
 
 Mit einem bis zum Signal laufenden ersten gpioset erreicht das Script den sleep- und Ausschaltteil nicht normal. Außerdem kommt rc.local später als ein expliziter früher Startpfad. Dieser Entwurf wurde nicht als funktionsfähiger Fallback bestätigt.
 
-### 10.5 Weiterer heutiger Prüfhinweis, kein historischer Beschluss
+### 10.5 Weiterer geprüfter Prüfhinweis, kein historischer Beschluss
 
 Die offizielle Raspberry-Pi-Dokumentation beschreibt **gpio=...=op,dh** beziehungsweise op,dl in config.txt als Boot-Vorkonfiguration. Diese kann später durch Device-Tree-Pinctrl oder GPIO-Nutzung überschrieben werden und wirkt erst nach einer Startverzögerung. Sie ist eine zu prüfende Alternative zu einem dauerhaft reservierenden Hog, kein hier getesteter Ersatz und keine Garantie für Anzeige ab Einschalten der Versorgung. [E06]
 
@@ -585,25 +575,25 @@ Zu prüfen ist auch der tatsächliche config.txt-Pfad: moderne Raspberry-Pi-OS-I
 
 **Planungsrichtung für eine Fortsetzung:** Ein einzelner zuständiger GPIO-Besitzer soll die Ausgabe durchgehend halten; Bootzustand und Betriebszustand werden über definierte Ereignisse umgestellt. Eine Firmware-Vorkonfiguration oder ein sehr früher Hilfsprozess benötigt eine nachgewiesene Übergabe an diesen Besitzer. Der konkrete Mechanismus bleibt auszuwählen und zu testen.
 
-## 11. Historischer Entwicklungs-/Betriebsstand und heutiger Repository-Stand
+## 11. Historischer Entwicklungs-/Betriebsstand und geprüfter Repository-Stand
 
-### 11.1 Stand am Ende des Fachchats
+### 11.1 Stand am Ende der Planungsphase
 
 | Gegenstand | Historischer Status |
 |---|---|
-| Lampenbesitz/Farben | Nutzerseitig genannt. |
+| Lampenbesitz/Farben | Als Ausgangslage dokumentiert. |
 | Farbbedeutungen/Prioritäten | **Beschlossen/geplant**. |
 | Separater Pi mit Relais/API | **Beschlossen/geplant**. |
 | FastAPI-/MQTT-/TTL-Design | **Entwurf/geplant**, keine fertige Installation. |
-| Python-Kern | Assistenz-Prinzipbeispiel mit Platzhaltern und Fehlern. |
-| config.yaml und Dienstunit | In der Antwort beschrieben, nicht als installierte Dateien nachgewiesen. |
-| Codex-Implementierung | Gewünschter späterer Arbeitsauftrag; nur Briefing geliefert. |
+| Python-Kern | unvollständiges Prinzipbeispiel mit Platzhaltern und Fehlern. |
+| config.yaml und Dienstunit | Im Entwurf beschrieben, nicht als installierte Dateien nachgewiesen. |
+| Implementierung | Gewünschter späterer Arbeitsauftrag; nur Briefing geliefert. |
 | Frühe Bootanzeige | **Idee/gewünschte Erweiterung**, konkrete Auswahl offen. |
 | Physische Ansteuerung | Keine bestätigte Implementation. |
-| Funktionstests/API-/GPIO-/MQTT-Tests | Keine im Fachchat dokumentierten Ergebnisse. |
+| Funktionstests/API-/GPIO-/MQTT-Tests | Keine in der Planungsphase dokumentierten Ergebnisse. |
 | Produktiver Betrieb | **Nicht bestätigt**. |
 
-### 11.2 Methode und Grenzen der heutigen Repository-Prüfung
+### 11.2 Methode und Grenzen der geprüften Repository-Prüfung
 
 Die GitHub-Referenz **refs/heads/Archiving** und der zugehörige Commit/Tree wurden gelesen. Zusätzlich wurde **main** nur lesend geprüft. Beide rekursiven Trees waren vollständig geliefert, jeweils truncated=false.
 
@@ -618,7 +608,7 @@ Geprüft wurden Dateinamen und gezielt Quelltexte der relevanten Komponenten. Es
 
 ### 11.3 Tatsächlich vorhandene Integrationsbausteine
 
-| Bereich | Heutiger Befund | Bedeutung für WERMA |
+| Bereich | Geprüfter Befund | Bedeutung für WERMA |
 |---|---|---|
 | Basisstations-Fanout | telemetry-fanout verteilt Ereignisse u. a. an Dashboard, Alerts/Snom und Control-Room-/Netztelemetrie. [R01] | Vorhandener Einstieg für Adapter; kein GPIO-Lampentreiber. |
 | TelemetryEvent | GroupCallStarted/Ended, GroupCallSpeakerChanged, IndividualCallStarted/Ended, TsVoiceActivity, TxVisual/TxQuality, SdrHealth, SysHealth, BrewConnected, EmergencyAlarm/Cancel. [R02] | Geeignete Quellen, fachliche Abbildung noch zu definieren. |
@@ -631,7 +621,7 @@ Geprüft wurden Dateinamen und gezielt Quelltexte der relevanten Komponenten. Es
 
 Der direkte Dateinamensabgleich beider Trees lieferte keinen eigenen lamp_api-Dienst, keinen WERMA-Treiberpfad und keine werma-boot.dts/DTBO. In Archiving existiert zusätzlich die **andere WERMA-Rack-Archivdatei**, die selbst kein Implementierungsnachweis ist.
 
-### 11.4 Hardware-Gateway: konkrete heutige Parameter
+### 11.4 Hardware-Gateway: konkrete zusätzliche Parameter
 
 Aus der gelesenen Beispielconfig und dem Handler: [R05][R09]
 
@@ -656,7 +646,7 @@ Die Hardware-Gateway-Healthhandler geben in den gelesenen Routen status=ok aus; 
 
 Andere Beispielschwellen dieses Gateways (Temperatur 40/55 °C, Feuchte 75/90 %, Versorgung 11,5/10,8 V) gehören zu seinem allgemeinen Beispielprofil. Sie ersetzen weder den früher genannten 70-°C-Entwurf noch die Hardwareprüfung einer möglicherweise mit 24 V betriebenen Leuchte.
 
-### 11.5 Relevante aktuelle Dateien und Blob-Identitäten
+### 11.5 Relevante am Prüfdatum vorliegende Dateien und Blob-Identitäten
 
 | Datei | Blob-SHA am geprüften Eingangsstand |
 |---|---|
@@ -674,16 +664,16 @@ Es wurde keine konkrete Implementierungs-PR für die Leuchte nachgewiesen. Der e
 
 ### 12.1 Historisch beobachtete Fehler
 
-Im Fachchat wurden keine echten Installationsfehler, Relaisfehler, API-Fehlermeldungen oder Messergebnisse vorgelegt. Deshalb existiert keine historisch als erfolgreich bestätigte Reparatur. Die oben genannten Fehler stammen aus dem heutigen Code-/Entwurfsreview und aus isolierten Prüfungen des sichtbaren Beispiels.
+In der Planungsphase wurden keine echten Installationsfehler, Relaisfehler, API-Fehlermeldungen oder Messergebnisse vorgelegt. Deshalb existiert keine historisch als erfolgreich bestätigte Reparatur. Die oben genannten Fehler stammen aus dem geprüften Code-/Entwurfsreview und aus isolierten Prüfungen des sichtbaren Beispiels.
 
 Die damals suggerierten automatischen TTL-/Prioritäts-/Bootübergänge dürfen nicht als „hat funktioniert“ archiviert werden.
 
-### 12.2 Tatsächlich durchgeführte Prüfungen im Archivlauf
+### 12.2 Tatsächlich durchgeführte Prüfungen im Prüflauf
 
 | Prüfung | Tatsächliches Ergebnis | Grenzen |
 |---|---|---|
-| Branch-/Commit-/Tree-Abruf | Archiving und main erreichbar; Commit-/Tree-IDs erfasst; vollständige Trees. | Momentaufnahme, keine Verbindung zu Jans Geräten. |
-| Archivbestand | Vorhandener README-Index gelesen; andere WERMA-Rack-Datei als anderes Gespräch identifiziert. | Keine stillschweigende Umdeutung ihrer Farbentscheidungen. |
+| Branch-/Commit-/Tree-Abruf | Archiving und main erreichbar; Commit-/Tree-IDs erfasst; vollständige Trees. | Momentaufnahme, kein Zugriff auf Zielgeräte. |
+| Archivbestand | Vorhandener README-Index gelesen; andere WERMA-Rack-Datei als anderer Projektentwurf identifiziert. | Keine stillschweigende Umdeutung ihrer Farbentscheidungen. |
 | Code-/Konfigurationsreview | Vorhandene Integrationsbausteine und fehlende Lampen-Schaltstellen an den aufgeführten Dateien nachvollzogen. | Kein kompletter Build, keine vollständige Analyse aller Blobs/Branches. |
 | PDF-Inventar | Alle 25 lokalen PDFs mit pdftotext/pdfinfo geprüft; Seitenzahlen erfasst. | Deckblatt-/Bestandsprüfung, keine vollständige Normauswertung. |
 | Bildbestand | Keine eigenständigen Bilddateien in den bereitgestellten Anhängen gefunden. | Ein früheres nicht übergebenes Bild wäre damit nicht ausgeschlossen. |
@@ -703,7 +693,7 @@ Die relevanten historischen Funktionen wurden mit denselben Schlüssel-/Auswahlr
 | Fehlende TTL, exp=now+(None or 0) bei 1000 ms | exp=1000; green bleibt 0 | Fehlende TTL wird nicht als unbefristet gespeichert. |
 | Grüner Auto-Lock plus blauer Override, danach override_off | Alle Farben 0; Lock-Liste leer | Override-Ende löscht Autozustand. |
 
-Alle vier Fehler wurden reproduziert. Das ist **kein Bestehen der Akzeptanzkriterien**, sondern ein Nachweis, dass der historische Kern korrigiert werden muss. Eine reparierte Anwendung wurde im Rahmen des Archivauftrags nicht geschrieben.
+Alle vier Fehler wurden reproduziert. Das ist **kein Bestehen der Akzeptanzkriterien**, sondern ein Nachweis, dass der historische Kern korrigiert werden muss. Eine reparierte Anwendung wurde im Rahmen des Dokumentationslaufs nicht geschrieben.
 
 ### 12.4 Historische Akzeptanzkriterien, noch offen
 
@@ -726,13 +716,13 @@ Nach Implementierung sind unter anderem echte Prioritäts-/Mehrursachen-, Ablauf
 
 Besonders relevant sind: Alarm während TX/OTA/Override; TTL ohne weiteren API-Request; Stoppen eines Musters ohne spätes Wiederanschalten; API-/MQTT-Verbindungsverlust; Lampen-Pi-/TBS-Neustart in unterschiedlicher Reihenfolge; active-low-Startzustände; GPIO-Busy-/Driverfehler; Wiederanlauf mit alten Zustandsdaten.
 
-Das sind nächste Tests, **keine in diesem Chat bereits bestandenen Prüfungen**.
+Das sind nächste Tests, **keine in dieser Entwicklungsphase bereits bestandenen Prüfungen**.
 
 ## 13. Ersetzte, verworfene und unbestätigte Ansätze
 
 | Ansatz/Aussage | Historischer Kontext | Archivierte Einordnung |
 |---|---|---|
-| GPIO-Dienst direkt auf der Node | Erste API-Skizze | Durch Jans ausdrücklichen eigenen Relais-Pi als Zielarchitektur ersetzt. |
+| GPIO-Dienst direkt auf der Node | Erste API-Skizze | Durch separaten Relais-Pi als Zielarchitektur ersetzt. |
 | /lamp ohne /api | Frühe Routenbeispiele | Späteres Briefing verwendet /api/lamp. |
 | colors.yaml separat | Frühes Angebot | Nicht geliefert; späterer zusammenhängender Config-Entwurf heißt config.yaml. |
 | Per-Farbe-Lock-Gewinner | Früher Kern / Engine-Beschreibung | Unvereinbar mit globaler Farbpriorität; vor Umsetzung zu ersetzen/korrigieren. |
@@ -740,7 +730,7 @@ Das sind nächste Tests, **keine in diesem Chat bereits bestandenen Prüfungen**
 | Override-Ende = alles aus | Früher Beispielcode | Widerspricht gewünschtem Rückfall; als fehlerhaft archiviert. |
 | Fünf Sekunden = Boot fertig | Frühe Boot-Triggeridee | Durch späteren Readinesswunsch unzureichend. |
 | GPIO-Hog danach einfach im Userspace schalten | Frühe Kernelantwort | Übergabe fehlt, Kernel reserviert Line. |
-| Zwei signal-haltende gpioset-OneShots | Frühe systemd-Antwort | Nicht als funktionsfähiger Bootablauf übernehmen. |
+| Zwei signal-haltende gpioset-OneShots | Früher systemd-Entwurf | Nicht als funktionsfähiger Bootablauf übernehmen. |
 | rc.local mit signal-gpioset und sleep | Späte Alternative | Erster Aufruf blockiert die nachfolgenden Schritte. |
 | „Keine Flackerei“ durch --mode=signal | Frühere Aussage | Hält nur während Prozesslaufzeit; kein Handover-/Bootmessnachweis. |
 | RPi.GPIO oder gpiozero beliebig | Treiberempfehlung | Backend muss zum konkreten Pi/OS passen, noch nicht ausgewählt/getestet. |
@@ -768,7 +758,7 @@ Die kleinen Nebenideen bleiben erhalten, ohne sie als Umsetzung zu behaupten:
 - Kernel-/Device-Tree-Bootanzeige mit angebotenem DTS/DTBO.
 - Optional Grün beim Bootabschluss.
 
-Für SDS/API-Brücke, App, WebSocket, ITTT, Shadow-Sync und Hard-Fault-Muster wurden keine aktuellen Implementierungsstellen oder fertigen Verträge dieses Chats nachgewiesen. Sie sind **Ideen**, nicht automatisch Teil der ersten Abnahme.
+Für SDS/API-Brücke, App, WebSocket, ITTT, Shadow-Sync und Hard-Fault-Muster wurden keine am Prüfdatum vorliegenden Implementierungsstellen oder fertigen Verträge dieser Planung nachgewiesen. Sie sind **Ideen**, nicht automatisch Teil der ersten Abnahme.
 
 ### 14.2 Prioritäten und Abhängigkeiten der Fortsetzung
 
@@ -784,19 +774,19 @@ Es gab keine nutzerseitig vereinbarte Lieferfrist, Sprintzuordnung oder Roadmap-
 | 6 | Konfigurierbaren Relay-/GPIO-Treiber und systemd-Lebenszyklus umsetzen. | Hardware-/Polaritätskenntnis; Verhalten bei Driverfehler/Shutdown. |
 | 7 | NetCore-Health/TX/Wartung anbinden und die Datenfrische prüfen. | Nur echte beobachtete Zustände steuern Grün/Orange/Rot. |
 | 8 | Bootpfad mit Owner-Übergabe und expliziter Anwendungsreadiness implementieren. | Einheitliche GPIO-Verantwortung; eigenständiger Reboot-/Ausfalltest. |
-| 9 | Optional MQTT auf aktuellen NetCore-Vertrag abbilden. | Topic-/Command-ID-/ACK-/Retain-/TTL-Entscheidung und zentrale Policy. |
+| 9 | Optional MQTT auf am Prüfdatum vorliegenden NetCore-Vertrag abbilden. | Topic-/Command-ID-/ACK-/Retain-/TTL-Entscheidung und zentrale Policy. |
 | 10 | Physische und End-to-End-Abnahme; Bedien-/Betriebsdokumentation. | Erst danach „getestet“ bzw. „im Betrieb bestätigt“ vergeben. |
 | Später | WebUI/App, SDS-Brücke, zusätzliche Muster und Automationskomfort. | Auf funktionierender Kernsteuerung aufbauen. |
 
-Alle Roadmap-Kandidaten bleiben in dieser Zusammenfassung. In diesem Archivauftrag wird keine außerhalb Docs/archive/ liegende Roadmap geändert.
+Die Reihenfolge ist ein Arbeitsvorschlag für die noch ausstehende Implementierung und Abnahme.
 
 ## 15. Quellen, Anhänge und verwandte Archive
 
-### 15.1 Gesprächsquellen
+### 15.1 Arbeitsgrundlagen
 
-- Die in diesem Auftrag übergebene WERMA-API-Nachrichtenfolge einschließlich späterer expliziter eigener-Pi-Festlegung und Bootfrage.
-- Ergänzende gezielte Kontextsuche zu genau diesem Gespräch; nur bestätigte Festlegungen und qualifizierte Datierung verwendet.
-- Keine vertraulichen Zugangsdaten aus Chat oder Repository übernommen.
+- Farb-/Prioritätsmodell, API-Implementierungsbriefing und Bootanzeige-Entwurf.
+- Ergänzende Quellenfragmente zur Festlegung auf einen eigenen Pi und zur historischen Datierung.
+- Technische Parameter und Quellenbelege; keine Zugangsdaten.
 
 ### 15.2 Repository-Quellen, auf den geprüften Commit fixiert
 
@@ -812,7 +802,7 @@ Alle Roadmap-Kandidaten bleiben in dieser Zusammenfassung. In diesem Archivauftr
 
 Zusätzlich gelesen: Hardware-/IoT-Gateway-READMEs, IoT-http.rs/mqtt.rs/model.rs/state.rs, Control-Room-state.rs/ws.rs, Health-Types/-Config sowie Docs/MQTT_PHASE4_COMMAND_ACK_POLICY_OPENLAB.md. Daraus wird kein zusätzlicher Lampen-Betriebsnachweis abgeleitet.
 
-**Verwandtes, aber anderes Gespräch:** [WERMA-Racksignalisierung, BPI-R4 Pro und Rack-Architektur](2026-10-03_werma-racksignalisierung-bpi-r4-pro-und-rack-architektur.md). Dort stehen andere Farbideen und ein zentraler Indicator-/Rack-Agent-Entwurf. Diese Datei wird unverändert bewahrt. Bei einer späteren gemeinsamen Implementation sind die unterschiedlichen Entwürfe ausdrücklich zu konsolidieren; keiner wird durch bloße Archivnähe als globale Entscheidung behandelt.
+**Verwandtes, aber anderer Projektentwurf:** [WERMA-Racksignalisierung, BPI-R4 Pro und Rack-Architektur](2026-10-03_werma-racksignalisierung-bpi-r4-pro-und-rack-architektur.md). Dort stehen andere Farbideen und ein zentraler Indicator-/Rack-Agent-Entwurf. Diese Datei wird unverändert bewahrt. Bei einer späteren gemeinsamen Implementation sind die unterschiedlichen Entwürfe ausdrücklich zu konsolidieren; keiner wird durch bloße Archivnähe als globale Entscheidung behandelt.
 
 ### 15.3 Externe technische Primärquellen
 
@@ -825,11 +815,11 @@ Am 04.10.2026 gelesen; externe master-/Dokumentationsseiten können später geä
 - [E05: systemd v255 Target-Default-Reihenfolge][E05]
 - [E06: Raspberry-Pi-Dokumentation, config.txt GPIO][E06]
 
-Die Freedesktop-HTML-Manpages waren bei einem zusätzlichen Abruf nicht zugänglich (HTTP 403); für systemd wurde die offizielle Projektquelle gelesen. Ein zunächst vermuteter Linux-Binding-YAML-Pfad war nicht vorhanden; die Prüfung erfolgte an der tatsächlich abrufbaren v6.12-GPIO-Dokumentation und Implementation. Das sind Recherchegrenzen, keine Fehler von Jans Anlage.
+Die Freedesktop-HTML-Manpages waren bei einem zusätzlichen Abruf nicht zugänglich (HTTP 403); für systemd wurde die offizielle Projektquelle gelesen. Ein zunächst vermuteter Linux-Binding-YAML-Pfad war nicht vorhanden; die Prüfung erfolgte an der tatsächlich abrufbaren v6.12-GPIO-Dokumentation und Implementation. Das sind Recherchegrenzen, keine beobachteten Anlagenfehler.
 
 ### 15.4 Anhangsinventar
 
-Seitenzahlen sind tatsächlich per PDF-Metadaten erfasst. Titel/Versionen stammen aus Deckblättern. Für diesen Lampenchat handelt es sich um allgemeinen Projekt-Referenzbestand, nicht um einen Nachweis einer dort spezifizierten Lampenhardware.
+Seitenzahlen sind tatsächlich per PDF-Metadaten erfasst. Titel/Versionen stammen aus Deckblättern. Für diesen Lampenentwurf handelt es sich um allgemeinen Projekt-Referenzbestand, nicht um einen Nachweis einer dort spezifizierten Lampenhardware.
 
 | Datei | Seiten | Identifikation am Deckblatt |
 |---|---:|---|
@@ -859,15 +849,9 @@ Seitenzahlen sind tatsächlich per PDF-Metadaten erfasst. Titel/Versionen stamme
 | en_30039202v030801p.pdf | 1445 | EN 300 392-2 V3.8.1; Air Interface |
 | ETSI.pdf | 4100 | Sammel-/Groß-PDF; beginnt mit EN 300 812 V2.1.1, übriger Gesamtinhalt nicht vollständig geprüft |
 
-Die PDFs werden für diesen Lampenchat nicht als angebliche WERMA-Entwicklungsartefakte ins Git dupliziert. Die ursprünglichen bereitgestellten Quellen bleiben unverändert.
+Die PDFs werden für diesen Lampenentwurf nicht als angebliche WERMA-Entwicklungsartefakte ins Git dupliziert. Die ursprünglichen bereitgestellten Quellen bleiben unverändert.
 
-## 16. Speicherung und Wiederaufnahme
-
-Für diesen Auftrag ist ausschließlich die genannte Archivdatei neu anzulegen und der bestehende Archivindex zu ergänzen. Bestehende Einträge und das separate Rack-Archiv sind zu bewahren.
-
-Vor dem Remote-Schreiben ist Archiving erneut zu laden. Der Archivcommit wird auf dem dann aktuellen Branchkopf mit genau einem Parent erstellt; zwischenzeitliche Archivänderungen anderer Chats werden erhalten. Der Branch wird nur per Fast-Forward aktualisiert, ohne Force-Push oder Merge.
-
-Die Speicherung gilt erst dann als bestätigt, wenn der Branchkopf beziehungsweise sein Nachfolger den neuen Commit enthält und Dokumentation/Index mit den geschriebenen Blob-Inhalten zurückgelesen wurden. Die Abschlussmeldung nennt den tatsächlichen Commit und den GitHub-Link.
+## 16. Wiederaufnahme
 
 Bei Fortsetzung zuerst Abschnitt 3, 8, 10, 11 und 14 lesen: Sie enthalten die übernommenen Entscheidungen, Fehler des früheren Beispielcodes, Bootübergabeprobleme, vorhandene Integrationsbausteine und konkrete nächste Schritte.
 

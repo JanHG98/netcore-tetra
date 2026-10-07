@@ -1,56 +1,45 @@
-# Motorola CPS: WAP-Browser über NetCore-Tetra SNDCP
+# Brainstorming: Motorola-CPS-Profil für WAP über NetCore-SNDCP
 
-Technische Abschlussdokumentation zum in diesem Chat behandelten Motorola-CPS-Setup für den NetCore-Tetra-WAP-Browser. Historischer Gesprächsstand, hochgeladener Repository-Snapshot und am 5. Oktober 2026 erneut geprüfter Repository-Stand werden getrennt behandelt. Aussagen im Chat werden nicht automatisch als implementiert oder im Funkbetrieb bestätigt gewertet.
+Ziel ist ein passendes Motorola-CPS-Profil für den integrierten WAP-Browser über TETRA-Paketdaten. Das historische Profil und der ZIP-Snapshot werden mit dem am **05.10.2026** geprüften Repository-Stand abgeglichen. Ein erfolgreicher On-Air-Seitenabruf nach dem CPS-Setup ist noch nicht belegt.
 
-## 1. Metadaten und Quellenumfang
+## 1. Rahmen und Quellenumfang
 
 | Merkmal | Wert |
 |---|---|
 | Repository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
 | Zielbranch dieses Archivs | `Archiving` |
-| Zusammenfassung erstellt | **2026-10-05**, Europe/Berlin |
-| Ursprünglicher Chattitel | Im zugänglichen Gesprächskontext **nicht verfügbar**; nicht erfunden |
-| Chatlink / Chat-ID | Im zugänglichen Gesprächskontext **nicht verfügbar** |
+| Notizstand | **2026-10-05**, Europe/Berlin |
 | Hauptthema | Motorola-CPS-Parameter für TETRA-Paketdaten, CHAP und WAP/WSP gegen NetCore-Tetra |
-| Vom Nutzer im Chat referenzierter Entwicklungsbranch | `swmi`; dieser Branch war bei der heutigen GitHub-Prüfung **nicht mehr vorhanden** |
+| Historischer Entwicklungsbranch | `swmi`; bei der Prüfung vom 05.10.2026 nicht mehr als Remote-Branch vorhanden |
 | Zielbranch vor Beginn der Archivänderung | [`a76f0f5ae264e42aac2a244f3c2e32c09e7886bb`](https://github.com/JanHG98/netcore-tetra/commit/a76f0f5ae264e42aac2a244f3c2e32c09e7886bb) |
-| Zusätzlich geprüfter heutiger Default-Branch | `main` bei [`7137e0dd69877e1b604bf89148fd8b6b590c1a97`](https://github.com/JanHG98/netcore-tetra/commit/7137e0dd69877e1b604bf89148fd8b6b590c1a97) |
+| Zusätzlich geprüfter Default-Branch | `main` bei [`7137e0dd69877e1b604bf89148fd8b6b590c1a97`](https://github.com/JanHG98/netcore-tetra/commit/7137e0dd69877e1b604bf89148fd8b6b590c1a97) |
 | Hochgeladener Quell-Snapshot | `netcore-tetra-swmi(7).zip`, 31.391.861 Byte, 1.672 ZIP-Einträge |
 | SHA-256 des ZIP | `665511c63b163cd85690d454fadf0c234b4cdcf9163722904e7bfaa9bd5b5031` |
 | Archivdatei | `Docs/archive/2026-10-05_motorola-cps-wap-browser-konfiguration.md` |
-| Chatbild-Archiv | `Docs/archive/assets/2026-10-05_motorola-cps-wap-browser/motorola-cps-wap-screenshots.svg` |
+| Referenzbild-Archiv | `Docs/archive/assets/2026-10-05_motorola-cps-wap-browser/motorola-cps-wap-screenshots.svg` |
 
 ### 1.1 Evidenzklassen
 
 Diese Dokumentation verwendet folgende Statusbegriffe bewusst streng:
 
 - **Idee**: im Gespräch vorgeschlagene Möglichkeit ohne Beschluss oder Umsetzungsnachweis.
-- **Beschlossen/geplant**: im Chat als gewünschter Zielzustand festgelegt; noch kein Implementierungsnachweis.
+- **Beschlossen/geplant**: als gewünschter Zielzustand festgelegt; noch kein Implementierungsnachweis.
 - **Implementiert**: durch aktuell gelesenen Repository-Quelltext oder Konfiguration belegt.
 - **Getestet**: ein konkreter Test wurde nachweislich ausgeführt und ein Ergebnis liegt vor.
 - **Im Betrieb bestätigt**: Verhalten wurde am realen Funkgerät beziehungsweise On-Air mit der konkreten CPS-Konfiguration nachgewiesen.
-- **Historisch/überholt**: frühere Dokumentation oder Aussage, die gegenüber dem heutigen Quellstand eingeschränkt oder ersetzt ist.
+- **Historisch/überholt**: frühere Dokumentation oder Aussage, die gegenüber dem geprüften Quellstand eingeschränkt oder ersetzt ist.
 
-Für diesen Chat ist besonders wichtig: **Es gibt keinen im Chat dokumentierten erfolgreichen Browser-On-Air-Test nach dem CPS-Setup.** Die Konfiguration wurde hergeleitet und vorgeschlagen, aber nicht durch einen anschließenden Live-Log oder einen sichtbaren Seitenabruf bestätigt.
+**Offener Nachweis:** erfolgreicher Browser-On-Air-Test nach dem CPS-Setup. Das hergeleitete Profil ist bislang nicht durch einen Live-Log oder sichtbaren Seitenabruf bestätigt.
 
-### 1.2 Zugängliche Quellen und Lücken
+### 1.2 Arbeitsgrundlage
 
-Vollständig zugänglich waren:
+Sechs CPS-Screenshots liefern die sichtbaren Ausgangswerte. Das Mapping wurde gegen `netcore-tetra-swmi(7).zip` und die relevanten Dateien des `main`-Standes geprüft. Der historische Branch `swmi` war am Prüftag nicht mehr als Remote-Branch vorhanden; der ZIP-Snapshot enthält die WAP-/SNDCP-Dateien.
 
-1. die aktuelle Nutzerfrage mit sechs Motorola-CPS-Screenshots;
-2. die darauf folgende technische Antwort mit vorgeschlagenem CPS-Mapping;
-3. der aktuelle Archivierungsauftrag;
-4. der hochgeladene ZIP-Snapshot `netcore-tetra-swmi(7).zip`;
-5. die über GitHub zugänglichen Dateien des heutigen `main`-Standes;
-6. die bereits vorhandene Archivindexdatei `Docs/archive/README.md`.
+Die Prüfung ist auf WAP/SNDCP, Paketdaten und Konfiguration begrenzt. Ein vollständiges Audit aller 1.672 ZIP-Einträge sowie ein anschließender On-Air-Test fehlen.
 
-Nicht verfügbar waren ein ursprünglicher Chattitel, eine Chat-ID/ein Chatlink sowie ein nachfolgender On-Air-Test. Der historisch vom Nutzer genannte GitHub-Branch `swmi` existierte bei der Archivprüfung nicht mehr und konnte daher nicht als Remote-Branch erneut geprüft werden. Der hochgeladene ZIP-Snapshot trägt jedoch den entsprechenden Namen und enthält die relevanten WAP/SNDCP-Dateien.
+### 1.3 Referenzbilder
 
-Der ZIP-Inhalt wurde **themenbezogen** auf WAP/SNDCP, Paketdaten und Konfiguration untersucht; es wird kein vollständiges Audit aller 1.672 Einträge behauptet.
-
-### 1.3 Chatbilder
-
-Sechs originale PNG-Screenshots waren im Chat sichtbar. Die vorhandene GitHub-Schreibschnittstelle konnte für diesen Auftrag UTF-8-Dateien direkt committen, aber die lokalen PNG-Binärdateien nicht als Repository-Dateien übernehmen. Deshalb wurde eine textnative SVG-Archivdarstellung mit allen sechs sichtbaren CPS-Panels unter `Docs/archive/assets/...` angelegt. Sie ist **kein pixelidentisches Original**, sondern eine nachvollziehbare visuelle Transkription.
+Die sechs CPS-Panels sind als textnative SVG-Darstellung unter `Docs/archive/assets/...` gesichert. Diese ist eine visuelle Transkription und **kein pixelidentisches Original**. Die folgenden Prüfsummen beziehen sich auf die damaligen PNGs.
 
 Zur Integritätsreferenz der tatsächlich sichtbaren Original-PNGs wurden lokal folgende Werte ermittelt:
 
@@ -69,7 +58,7 @@ Archivdarstellung: [Motorola-CPS-WAP-Screenshots](assets/2026-10-05_motorola-cps
 
 ## 2. Ziel und Ausgangslage
 
-Der Nutzer hatte in NetCore-Tetra bereits WAP-Unterstützung integriert und wollte wissen, **welche Werte in den einzelnen Motorola-CPS-Masken einzutragen sind, damit der integrierte Funkgerätebrowser über TETRA-Paketdaten funktioniert**.
+Ausgangspunkt war die vorhandene WAP-Unterstützung in NetCore-Tetra. Zu klären war, **welche Werte in den einzelnen Motorola-CPS-Masken einzutragen sind, damit der integrierte Funkgerätebrowser über TETRA-Paketdaten funktioniert**.
 
 Die sichtbaren CPS-Seiten deckten sechs Bereiche ab:
 
@@ -91,17 +80,17 @@ Auf NetCore-Seite war im historischen WAP-Profil bereits ein lokaler WAP-Endpunk
 - WTP/WSP über IPv4/UDP
 - SNDCP/PDP-Aktivierung mit Motorola-/DIMETRA-kompatiblem CHAP-Erfolgspfad.
 
-Die Aufgabe dieses Chats war **keine neue Implementierung des WAP-Stacks**, sondern die Zuordnung der vorhandenen NetCore-Eigenschaften zu den Motorola-CPS-Feldern.
+Die Aufgabe dieser Planung war **keine neue Implementierung des WAP-Stacks**, sondern die Zuordnung der vorhandenen NetCore-Eigenschaften zu den Motorola-CPS-Feldern.
 
 ---
 
-## 3. Historischer Chatstand: vorgeschlagenes Motorola-CPS-Mapping
+## 3. Historischer Arbeitsstand: vorgeschlagenes Motorola-CPS-Mapping
 
 ### 3.1 Paketdaten / IP
 
 Der erste Screenshot zeigte bereits folgende Werte:
 
-| CPS-Feld | Sichtbarer Ausgangswert | Im Chat empfohlener Zielwert | Status |
+| CPS-Feld | Sichtbarer Ausgangswert | Vorgeschlagener Zielwert | Status |
 |---|---|---|---|
 | Benutzerauthentisierung | aktiviert | aktiviert lassen | **beschlossen/geplant**, nicht On-Air bestätigt |
 | Authentifikatorname | `DIMETRA_P` | `DIMETRA_P` | **beschlossen/geplant** |
@@ -125,16 +114,16 @@ Der zweite Screenshot zeigte:
 - Benutzername: leer
 - Kennwort: leer
 
-Der Chat legte CHAP als kompatiblen Weg fest. NetCore besitzt einen CHAP-Success-Pfad für die Motorola-/DIMETRA-Kompatibilität.
+CHAP wurde als kompatibler Weg gewählt. NetCore besitzt einen CHAP-Success-Pfad für die Motorola-/DIMETRA-Kompatibilität.
 
-Eine frühere Antwort in diesem Chat nannte zusätzlich beispielhafte Zugangsdaten. Diese Werte waren **nicht durch Repository oder Screenshot belegt** und werden in dieser Abschlussdokumentation bewusst **nicht als Zugangsdaten übernommen**. Sie sind weder als Produktiv-Credential noch als technischer Standard zu behandeln. Der Nutzer hat für das Archiv ausdrücklich vorgegeben, keine Passwörter oder Tokens zu übernehmen.
+Frühe exemplarische Zugangsdaten waren weder durch Repository noch Screenshot belegt. Sie sind **keine technische Festlegung** und wurden nicht übernommen.
 
 Belastbare Aussage:
 
 - **CHAP als Protokolltyp:** geplant und durch NetCore-Kompatibilitätscode plausibel.
-- **konkrete CPS-Benutzerkennung/Kennwort:** in diesem Chat nicht belastbar festgelegt; nicht archiviert.
+- **konkrete CPS-Benutzerkennung/Kennwort:** nicht belastbar festgelegt; nicht archiviert.
 - Historische `Docs/WAP_INTEGRATION.md` beschreibt CHAP als Kompatibilitätspfad und sagt, dass der Hash dort nicht als eigene Zugangskontrolle validiert wird.
-- Der heutige Quellstand enthält weiterhin `PPP_PROTO_CHAP = 0xC223`, `CHAP_CODE_SUCCESS = 3` und erzeugt bei vorhandenem CHAP-Identifier ein CHAP-Success-PCO-Element. Das bestätigt den Mechanismus, ersetzt aber keinen vollständigen Security-Audit der aktuellen PCO-Verarbeitung.
+- Der geprüfte Quellstand enthält weiterhin `PPP_PROTO_CHAP = 0xC223`, `CHAP_CODE_SUCCESS = 3` und erzeugt bei vorhandenem CHAP-Identifier ein CHAP-Success-PCO-Element. Das bestätigt den Mechanismus, ersetzt aber keinen vollständigen Security-Audit der aktuellen PCO-Verarbeitung.
 
 ### 3.3 WAP allgemein
 
@@ -177,7 +166,7 @@ Vorgeschlagen wurde:
 
 Die technisch wichtigste Korrektur war der Port: **NetCore verwendet 9200**, nicht einen eventuell aus anderen WAP-Umgebungen bekannten Standardwert. Der Endpunkt und der Zielport werden durch NetCore selbst definiert; falscher Port würde am WAP-Endpunkt als falsches Ziel verworfen.
 
-Der SAR-Hinweis war **nur ein Startwert/Troubleshooting-Vorschlag**. Es gibt in diesem Chat keinen On-Air-Nachweis, dass die konkrete Motorola-Firmware mit „SAR erzwingen = an, Gruppengröße 3“ optimal funktioniert. Falls Connect/Reply trotz erfolgreichem PDP-Kontext hängen bleibt, sollte diese Option gezielt gegengeprüft werden.
+Der SAR-Hinweis war **nur ein Startwert/Troubleshooting-Vorschlag**. Es fehlt ein On-Air-Nachweis, dass die konkrete Motorola-Firmware mit „SAR erzwingen = an, Gruppengröße 3“ optimal funktioniert. Falls Connect/Reply trotz erfolgreichem PDP-Kontext hängen bleibt, sollte diese Option gezielt gegengeprüft werden.
 
 ### 3.5 WAP-Träger
 
@@ -188,9 +177,9 @@ Der sichtbare Träger war:
 - WDP B-Typ: `0`
 - Max. Anforderungszeit: `45` s
 
-Der Chat empfahl, diese Werte unverändert zu lassen und den Proxy mit **Trägerindex 0** auf diesen Eintrag zu verweisen.
+Empfohlen ist, diese Werte unverändert zu lassen und den Proxy mit **Trägerindex 0** auf diesen Eintrag zu verweisen.
 
-Status: **beschlossen/geplant**, aber nicht durch einen realen erfolgreichen Browseraufruf in diesem Chat bestätigt.
+Status: **beschlossen/geplant**, aber nicht durch einen realen erfolgreichen Browseraufruf bestätigt.
 
 ### 3.6 Access Point
 
@@ -203,7 +192,7 @@ Der sechste Screenshot zeigte eine leere AP-Tabelle:
 - AP-Kennwort
 - AP-Skript
 
-Der Chat entschied: **für den lokalen NetCore-WAP/SNDCP-Pfad zunächst leer lassen**. Die Adresse `10.0.0.1` gehört nicht als klassischer APN/Access-Point in diese Tabelle, sondern in das WAP-Gateway/Proxy-Ziel.
+Festlegung: **für den lokalen NetCore-WAP/SNDCP-Pfad zunächst leer lassen**. Die Adresse `10.0.0.1` gehört nicht als klassischer APN/Access-Point in diese Tabelle, sondern in das WAP-Gateway/Proxy-Ziel.
 
 Status: **beschlossen/geplant**, nicht im Livebetrieb bestätigt.
 
@@ -252,7 +241,7 @@ Ein Fehler auf einer Ebene kann sich am Gerät nur als „Browser geht nicht“ 
 
 ### 4.2 Historisches NetCore-WAP-Profil
 
-Die historische `Docs/WAP_INTEGRATION.md` im ZIP und im heutigen Repository nennt:
+Die historische `Docs/WAP_INTEGRATION.md` im ZIP und im geprüften Repository nennt:
 
 - `sndcp_service = true`
 - `advanced_link = true`
@@ -272,7 +261,7 @@ Die historische `Docs/WAP_INTEGRATION.md` im ZIP und im heutigen Repository nenn
 
 Diese Dokumentation ist als historische WAP-Baseline weiterhin sehr nützlich.
 
-### 4.3 Heutiger Quellstand ist weiter als die alte WAP-Dokumentation
+### 4.3 Geprüfter Quellstand ist weiter als die alte WAP-Dokumentation
 
 Die WAP-Dokumentation vom 21.07.2026 enthält inzwischen **überholte Einschränkungen**. Dort steht unter anderem:
 
@@ -296,17 +285,17 @@ Der am 05.10.2026 geprüfte `main`-Stand zeigt dagegen bereits zusätzliche Infr
 
 Daraus folgt:
 
-> Die alte Datei `Docs/WAP_INTEGRATION.md` beschreibt zuverlässig die ursprüngliche lokale WAP-Integration, aber **nicht mehr den gesamten heutigen Packet-Data-Funktionsumfang**.
+> Die alte Datei `Docs/WAP_INTEGRATION.md` beschreibt zuverlässig die ursprüngliche lokale WAP-Integration, aber **nicht mehr den gesamten geprüften Packet-Data-Funktionsumfang**.
 
-Diese heutige Erweiterung ändert die für den lokalen Motorola-Browser wesentlichen Werte `10.0.0.1:9200` nicht. Sie bedeutet lediglich, dass die alte Aussage „NetCore hat keinen allgemeinen IP-Gateway-Pfad“ nicht mehr als aktueller Gesamtzustand verwendet werden darf.
+Diese geprüfte Erweiterung ändert die für den lokalen Motorola-Browser wesentlichen Werte `10.0.0.1:9200` nicht. Sie bedeutet lediglich, dass die alte Aussage „NetCore hat keinen allgemeinen IP-Gateway-Pfad“ nicht mehr als aktueller Gesamtzustand verwendet werden darf.
 
-Ob sämtliche neueren Packet-Data-Funktionen am konkreten Motorola-Zielgerät bereits On-Air abgenommen wurden, wurde für diese Archivierung **nicht** nachgewiesen.
+Ob sämtliche neueren Packet-Data-Funktionen am konkreten Motorola-Zielgerät bereits On-Air abgenommen wurden, wurde bei der Bestandsaufnahme **nicht** nachgewiesen.
 
 ---
 
 ## 5. Relevante Konfigurationen und technische Parameter
 
-### 5.1 Heutiger `main`-Stand
+### 5.1 Geprüfter `main`-Stand
 
 Am geprüften Commit `7137e0dd69877e1b604bf89148fd8b6b590c1a97` enthält `config.toml` unter anderem:
 
@@ -342,7 +331,7 @@ max_total_contexts = 64
 strict_source_address = true
 ```
 
-Zusätzlich ist heute ein allgemeiner Packet-Data-Gateway-Block vorhanden:
+Zusätzlich ist am Prüfstand 05.10.2026 ein allgemeiner Packet-Data-Gateway-Block vorhanden:
 
 ```toml
 [cell_info.packet_data_gateway]
@@ -366,7 +355,7 @@ Die DNS-Adressen sind hier reine Repository-Konfiguration; für den lokalen WAP-
 
 ### 5.2 WAP/WSP-Protokollbausteine
 
-Der heutige `crates/tetra-entities/src/sndcp/wap_ip.rs` enthält unter anderem:
+Der geprüfte `crates/tetra-entities/src/sndcp/wap_ip.rs` enthält unter anderem:
 
 - WTP Invoke, ACK und Abort;
 - WSP Connect, Reply, Resume und GET;
@@ -380,20 +369,20 @@ Damit ist der WAP-Stack nicht nur in Dokumentation beschrieben, sondern **im akt
 
 ### 5.3 CHAP/PCO
 
-Der heutige `sndcp_bs.rs` enthält:
+Der geprüfte `sndcp_bs.rs` enthält:
 
 - `PPP_PROTO_CHAP = 0xC223`
 - `CHAP_CODE_SUCCESS = 3`
 - PCO-Verarbeitung
 - Erzeugung eines CHAP-Success-Elements bei erkanntem CHAP-Identifier.
 
-Das ist ein **Implementierungsnachweis** für den Kompatibilitätspfad. Es ist kein Beleg dafür, dass beliebige CPS-Credentials als echte Zugangskontrolle ausgewertet werden. Die alte WAP-Dokumentation sagt ausdrücklich, dass der Hash im ursprünglichen Profil nicht als eigene Zugangskontrolle validiert wurde. Diese Aussage sollte für den heutigen erweiterten Packet-Data-Code bei Bedarf noch separat vollständig geprüft werden.
+Das ist ein **Implementierungsnachweis** für den Kompatibilitätspfad. Es ist kein Beleg dafür, dass beliebige CPS-Credentials als echte Zugangskontrolle ausgewertet werden. Die alte WAP-Dokumentation sagt ausdrücklich, dass der Hash im ursprünglichen Profil nicht als eigene Zugangskontrolle validiert wurde. Diese Aussage sollte für den geprüften erweiterten Packet-Data-Code bei Bedarf noch separat vollständig geprüft werden.
 
 ---
 
 ## 6. Hochgeladener ZIP-Snapshot `netcore-tetra-swmi(7).zip`
 
-Der Snapshot wurde lokal geöffnet und enthält die für diesen Chat relevanten Dateien:
+Der Snapshot wurde lokal geöffnet und enthält die für diesen Arbeitsstand relevanten Dateien:
 
 - `netcore-tetra-swmi/Docs/WAP_INTEGRATION.md`
 - `netcore-tetra-swmi/Docs/wap-port-spec.md`
@@ -413,7 +402,7 @@ Einige lokale SHA-256-Werte des Snapshots:
 
 Der ZIP-Snapshot ist bereits **weiter entwickelt als seine eigene alte WAP-Dokumentation**: Seine `config.toml` enthält ebenfalls `packet_data_gateway`, `max_pdch_bearers = 0` und `prefer_secondary_carrier = true`; sein `sndcp_bs.rs` enthält `PacketGateway`, `SECONDARY_CARRIER_HINT` und CHAP-Success. Das ist ein weiterer Hinweis darauf, dass `Docs/WAP_INTEGRATION.md` als historische Baseline zu lesen ist.
 
-Der ZIP-Snapshot wurde in diesem Archiv **nicht vollständig in das Repository kopiert**, da der Auftrag Änderungen ausschließlich unter `Docs/archive/` erlaubt und eine technische Abschlussdokumentation, nicht die Aufnahme eines kompletten Quellbaums, verlangt.
+Der ZIP-Snapshot ist die historische Quellreferenz. Er wurde nicht als vollständiger Quellbaum in das Repository übernommen.
 
 ---
 
@@ -435,13 +424,13 @@ In der damaligen Interpretation bedeuten diese Stufen grob:
 3. **type 6**: Data-Transmit-Anforderung/Bearer-Aufbau.
 4. **type 4**: SN-UNITDATA mit IP-/WAP-Nutzdaten.
 
-Im Chat wurde als Diagnosebefehl vorgeschlagen:
+Vorgeschlagener Diagnosebefehl:
 
 ```bash
 sudo journalctl -u tetra -f | grep -Ei 'SNDCP|PDP|PDCH|WAP|CHAP'
 ```
 
-Status dieses Befehls: **nur vorgeschlagen**, nicht im zugänglichen Chat ausgeführt.
+Status dieses Befehls: **nur vorgeschlagen**, keine dokumentierte Ausführung.
 
 ### 7.1 Empfohlene Diagnose-Reihenfolge für die Fortsetzung
 
@@ -466,7 +455,7 @@ Diese Reihenfolge trennt CPS-, SNDCP-, Radio-Ressourcen-, IP- und WAP-Probleme s
 
 ## 8. Tests und Ergebnisse
 
-### 8.1 Im Chat tatsächlich ausgeführt
+### 8.1 Historisch geprüfte Konfiguration
 
 Für die konkrete Motorola-CPS-Konfiguration: **keine nachgewiesenen Live-Tests**.
 
@@ -491,16 +480,16 @@ cargo test -p tetra-config
 
 sowie einen vollständigen Release-Build.
 
-Diese Befehle sind im Repository dokumentiert, wurden **für diesen Archivauftrag nicht erneut ausgeführt**. Es gibt daher hier keinen neuen Build-/Testnachweis.
+Die Befehle sind Repository-Referenzen. Ein neuer Build-, Cargo-Test- oder RF-Nachweis vom 05.10.2026 liegt nicht vor.
 
-Der heutige Quellstand wurde über GitHub gelesen, aber nicht lokal kompiliert oder auf RF-Hardware ausgeführt.
+Der geprüfte Quellstand wurde über GitHub gelesen, aber nicht lokal kompiliert oder auf RF-Hardware ausgeführt.
 
 ### 8.3 Grenzen der Aussagekraft
 
 - Eine syntaktisch plausible CPS-Konfiguration ist kein On-Air-Nachweis.
 - Die Existenz von Quellcode ist kein Beweis dafür, dass die aktuell auf der Basisstation laufende Binary denselben Commit enthält.
 - Ein historischer Testvektor ist kein Nachweis für eine konkrete Motorola-Firmware/CPS-Version.
-- Die Motorola-CPS-Feldsemantik wurde in diesem Archiv nicht gegen eine exakt passende Motorola-Programmierhandbuch-Version neu validiert.
+- Die CPS-Feldsemantik wurde nicht gegen eine exakt passende Motorola-Programmierhandbuch-Version neu validiert.
 
 ---
 
@@ -508,13 +497,13 @@ Der heutige Quellstand wurde über GitHub gelesen, aber nicht lokal kompiliert o
 
 ### 9.1 „Nur lokaler WAP-Statusdienst, kein Internet-Gateway“
 
-**Historisch korrekt für die erste WAP-Integration, heute als Gesamtaussage überholt.**
+**Historisch korrekt für die erste WAP-Integration, am Prüfstand 05.10.2026 als Gesamtaussage überholt.**
 
-Heute existiert zusätzlich ein allgemeiner Packet-Data-Gateway-Pfad mit TUN, Forwarding und optional NAT. Für den lokalen Browser-Endpunkt bleibt `10.0.0.1:9200` dennoch gültig.
+Am Prüfstand 05.10.2026 existiert zusätzlich ein allgemeiner Packet-Data-Gateway-Pfad mit TUN, Forwarding und optional NAT. Für den lokalen Browser-Endpunkt bleibt `10.0.0.1:9200` dennoch gültig.
 
 ### 9.2 „Genau ein PDCH auf Main-Carrier TS2“
 
-**Historische WAP-MVP-Grenze, nicht mehr als allgemeiner heutiger Paketdatenstand verwenden.**
+**Historische WAP-MVP-Grenze, nicht mehr als allgemeiner geprüfter Paketdatenstand verwenden.**
 
 Die aktuelle Konfiguration enthält dynamische PDCH-Kapazität und bevorzugten Secondary Carrier. Eine vollständige On-Air-Abnahme dieses erweiterten Modells wurde hier nicht durchgeführt.
 
@@ -522,11 +511,11 @@ Die aktuelle Konfiguration enthält dynamische PDCH-Kapazität und bevorzugten S
 
 **Historische Einschränkung.**
 
-Im heutigen SNDCP-Quellstand sind entsprechende Protokoll-/Fragmentierungsbausteine sichtbar. Diese Archivprüfung bewertet nicht deren vollständige Conformance.
+Im geprüften SNDCP-Quellstand sind entsprechende Protokoll-/Fragmentierungsbausteine sichtbar. Diese Archivprüfung bewertet nicht deren vollständige Conformance.
 
 ### 9.4 Konkrete CHAP-Benutzerkennung und Kennwort
 
-Die frühere Chatantwort nannte exemplarische Werte. Sie waren nicht aus dem Repository abgeleitet und sind **verworfen als technische Festlegung**. Keine Passwörter werden archiviert.
+Die frühere Analyse nannte exemplarische Werte. Sie waren nicht aus dem Repository abgeleitet und sind **verworfen als technische Festlegung**. Keine Passwörter werden archiviert.
 
 ### 9.5 WAP-Port 9201/9203 als möglicher Motorola-Standard
 
@@ -599,7 +588,7 @@ Wichtige Punkte:
 
 - CHAP-Success-Kompatibilität ist nicht gleich starke Zugangskontrolle.
 - Der WAP-Endpunkt sollte nur von registrierten/zulässigen SNDCP-Kontexten erreichbar sein.
-- `strict_source_address = true` ist im heutigen Profil sinnvoll und aktiv.
+- `strict_source_address = true` ist im geprüften Profil sinnvoll und aktiv.
 - Das allgemeine Packet-Data-Gateway hat eine eigene Firewall-/Forwarding-Verantwortung.
 - `allow_unsolicited_inbound = false` ist im aktuellen Beispiel eine wichtige Default-Grenze.
 - WAP-Statusdaten sollten keine Geheimnisse, Schlüssel oder unnötige Betriebsdetails offenlegen.
@@ -607,7 +596,7 @@ Wichtige Punkte:
 
 ---
 
-## 12. Erreichter Stand nach diesem Chat
+## 12. Erreichter Stand nach diesem Arbeitsstand
 
 ### Implementiert im Repository
 
@@ -618,9 +607,9 @@ Wichtige Punkte:
 - dynamischer Adresspool.
 - CHAP-Success-Kompatibilitätspfad.
 - SNDCP-/Advanced-Link-Konfiguration.
-- heute zusätzlich allgemeines Packet-Data-Gateway und erweiterte PDCH-/SNDCP-Bausteine.
+- am Prüfstand 05.10.2026 zusätzlich allgemeines Packet-Data-Gateway und erweiterte PDCH-/SNDCP-Bausteine.
 
-### Beschlossen/geplant im Chat
+### Beschlossen/geplant
 
 - Motorola auf dynamische IP-Anforderung.
 - Sprache & Daten als Standard-Paketdatenmodus.
@@ -634,13 +623,13 @@ Wichtige Punkte:
 
 ### Getestet
 
-- **Nicht in diesem Chat:** die konkrete CPS-Konfiguration am realen Motorola-Gerät.
-- **Nicht in diesem Archivauftrag:** Rust-Build, Cargo-Test oder RF-Test.
+- **Nicht praktisch nachgewiesen:** die konkrete CPS-Konfiguration am realen Motorola-Gerät.
+- **Nicht bei der Bestandsaufnahme:** Rust-Build, Cargo-Test oder RF-Test.
 - Repository und ZIP wurden statisch gelesen und gegeneinander eingeordnet.
 
 ### Im Betrieb bestätigt
 
-- **Nichts aus dem konkreten Motorola-Browser-Setup ist durch diesen Chat als im Betrieb bestätigt belegt.**
+- **Nichts aus dem konkreten Motorola-Browser-Setup ist durch diesen Arbeitsstand als im Betrieb bestätigt belegt.**
 
 ---
 
@@ -672,7 +661,7 @@ Wichtige Punkte:
 16. Für CHAP klar dokumentieren, ob und wo aktuelle Credentials tatsächlich validiert werden oder ob der Pfad weiterhin reine Kompatibilitätsantwort ist.
 17. WAP und allgemeines IP-Gateway in der Dokumentation sauber trennen.
 
-### Kleine Nebenideen aus dem Chat
+### Kleine Nebenideen aus den Entwicklungsnotizen
 
 - WML als konservative Defaultseite für ältere OpenWave-Clients beibehalten.
 - XHTML als zweites Profil testen.
@@ -683,7 +672,7 @@ Wichtige Punkte:
 
 ## 14. Konkreter Fortsetzungsplan
 
-Empfohlene Reihenfolge für den nächsten technischen Chat:
+Empfohlene Reihenfolge für die Fortsetzung:
 
 ```text
 1. Motorola-Modell + Firmware + CPS-Version notieren
@@ -704,24 +693,24 @@ Ziel ist, den nächsten Stand von **„beschlossen/geplant“** auf **„geteste
 
 ## 15. Relevante Repository-Dateien und stabile Links
 
-Heutiger geprüfter `main`-Commit: [`7137e0dd69877e1b604bf89148fd8b6b590c1a97`](https://github.com/JanHG98/netcore-tetra/commit/7137e0dd69877e1b604bf89148fd8b6b590c1a97)
+Geprüfter `main`-Commit: [`7137e0dd69877e1b604bf89148fd8b6b590c1a97`](https://github.com/JanHG98/netcore-tetra/commit/7137e0dd69877e1b604bf89148fd8b6b590c1a97)
 
 - [`Docs/WAP_INTEGRATION.md`](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/Docs/WAP_INTEGRATION.md) – historische WAP-MVP-Dokumentation.
 - [`Docs/wap-port-spec.md`](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/Docs/wap-port-spec.md) – Wire-/Port-Spezifikation.
 - [`config.toml`](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/config.toml) – aktuelles Beispielprofil für SNDCP, WAP und Packet-Data-Gateway.
 - [`crates/tetra-entities/src/sndcp/wap_ip.rs`](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/crates/tetra-entities/src/sndcp/wap_ip.rs) – WTP/WSP-Adapter.
 - [`crates/tetra-entities/src/sndcp/sndcp_bs.rs`](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/crates/tetra-entities/src/sndcp/sndcp_bs.rs) – PDP-Kontexte, CHAP/PCO, Gateway- und Bearerlogik.
-- [Frühere thematisch breitere WAP-/SNDCP-Archivdokumentation](2026-10-03_wap-sndcp-ip-gateway-multi-pdch-und-control-room.md) – anderer Chat, daher **nicht überschrieben**.
+- [Frühere thematisch breitere WAP-/SNDCP-Archivdokumentation](2026-10-03_wap-sndcp-ip-gateway-multi-pdch-und-control-room.md) – eigenständige technische Planung.
 
 ### Relevante ETSI-Quellen aus dem Projektkontext
 
-Im Projekt sind unter anderem ETSI EN 300 392-2 (Air Interface) und EN 300 392-5 (PEI) als Referenzen vorhanden. Für SNDCP/WAP ist insbesondere der Air-Interface-/SNDCP-Kontext relevant. Dieser Archivauftrag führt keine vollständige Neuauswertung der 1.445-seitigen Air-Interface-Norm durch.
+ETSI EN 300 392-2 (Air Interface) und EN 300 392-5 (PEI) sind Projektreferenzen. Für SNDCP/WAP ist vor allem der Air-Interface-/SNDCP-Kontext relevant. Eine vollständige erneute Prüfung der 1.445-seitigen Air-Interface-Norm erfolgte nicht.
 
 ---
 
 ## 16. Abschlussbewertung
 
-Der Chat hat das **Motorola-CPS-seitige Anschlussstück** zwischen dem vorhandenen NetCore-SNDCP/WAP-Stack und einem realen Browserprofil festgelegt. Die zentrale technische Zuordnung ist belastbar:
+Das Profil bildet das **Motorola-CPS-seitige Anschlussstück** zwischen dem vorhandenen NetCore-SNDCP/WAP-Stack und dem Funkgerätebrowser. Die zentrale technische Zuordnung ist belastbar:
 
 ```text
 MS-Adresse:     dynamisch aus 10.0.0.2..254
@@ -739,4 +728,4 @@ AP-Tabelle:     für lokalen Pfad zunächst leer
 
 Die **wichtigste verbleibende Lücke** ist nicht mehr die theoretische CPS-Zuordnung, sondern der reale End-to-End-Nachweis mit genau dem Motorola-Gerät und seiner Firmware. Erst danach sollten SAR, Browserpfad und etwaige CPS-Sonderfelder als endgültig „getestet“ dokumentiert werden.
 
-Die heutige Repository-Prüfung zeigt außerdem, dass NetCore-Tetra beim Packet-Data-Unterbau inzwischen deutlich weiter ist als die ursprüngliche WAP-MVP-Dokumentation. Eine spätere Fortsetzung sollte deshalb nie pauschal die alten Grenzen „nur TS2 / kein Internet-Gateway / kein RECONNECT / keine Fragmentierung“ wieder einführen.
+Die geprüfte Repository-Prüfung zeigt außerdem, dass NetCore-Tetra beim Packet-Data-Unterbau inzwischen deutlich weiter ist als die ursprüngliche WAP-MVP-Dokumentation. Eine spätere Fortsetzung sollte deshalb nie pauschal die alten Grenzen „nur TS2 / kein Internet-Gateway / kein RECONNECT / keine Fragmentierung“ wieder einführen.

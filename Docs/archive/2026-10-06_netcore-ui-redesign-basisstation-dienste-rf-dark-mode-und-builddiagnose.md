@@ -1,70 +1,66 @@
-# NetCore-Tetra: UI-Redesign für Basisstation und Dienste, RF-Arbeitsbereich, Dark Mode und Builddiagnose
+# Brainstorming: UI-Redesign für Basisstation und Dienste, RF-Arbeitsbereich, Dark Mode und Builddiagnose
 
-## Metadaten und Geltungsbereich
+Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
+
+## Projektstand und Geltungsbereich
 
 | Feld | Wert |
 |---|---|
 | Thema | Gemeinsames NetCore-Design für alle Basisstationsansichten und Dienst-WebUIs; Übernahme der RF-Referenz; vollständiger Dark Mode; Git-/Cargo-Fehler bei der Vorbereitung des TBS-Rollouts |
-| Ursprünglicher Chattitel | Im zugänglichen Verlauf und in der ergänzenden Gesprächssuche nicht eindeutig verfügbar. Der Titel dieses Dokuments ist ein beschreibender Archivtitel. |
-| Ursprünglicher Chatlink | Nicht verfügbar. Die eingeblendete GitHub-Dokumentationsadresse und PR #59 sind keine Chatlinks. |
-| Historischer Gesprächszeitraum | Designarbeit und Builddiagnose 02./03.10.2026, soweit aus sichtbaren Nachrichten, wiedergefundenen Bildern und datierten Gesprächsauszügen rekonstruierbar; Archivauftrag 06.10.2026 |
+| Historischer Arbeitszeitraum | Designarbeit und Builddiagnose 02./03.10.2026, soweit aus sichtbaren Nachrichten, wiedergefundenen Bildern und datierten Arbeitsnotizen rekonstruierbar; Quellenprüfung 06.10.2026 |
 | Erstellungsdatum | **2026-10-06**, Europe/Berlin |
 | Repository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
-| Ausschließlicher Archiv-Zielbranch | **`Archiving`**, Groß-/Kleinschreibung beibehalten |
+| Archivbranch | **`Archiving`**, Groß-/Kleinschreibung beibehalten |
 | Geprüfter Archiv-Ausgangscommit | `c90a7312172c2a1bd9725a2a4e5117b5f3c4ebd2` |
-| Zusätzlich geprüfter heutiger Runtime-Stand | **`main@9116c15d645458f99e236712b67a1ad970432791`** |
-| Historischer Designbranch | `feat/netcore-dashboard-design`; heute nicht mehr als Remote-Branch angeboten |
+| Zusätzlich geprüfter Runtime-Stand | **`main@9116c15d645458f99e236712b67a1ad970432791`** |
+| Historischer Designbranch | `feat/netcore-dashboard-design`; zum Prüfstand vom 06.10.2026 nicht mehr als Remote-Branch angeboten |
 | Verifizierter letzter Designhead | `2fe2a1939a8795db3816d45973282781dae856f0` |
 | Verifizierter UI-PR / Merge | [PR #59](https://github.com/JanHG98/netcore-tetra/pull/59), am 03.10.2026 um **05:37:28 UTC / 07:37:28 CEST** gemergt; Mergecommit `7137e0dd69877e1b604bf89148fd8b6b590c1a97` |
 | Reale TBS im Fehlerbericht | `SRV-M-TBS-01`, Checkout `/opt/netcore-tetra`, Benutzer `jan`, anschließend Root-Shell |
 | Ablage dieser Zusammenfassung | `Docs/archive/2026-10-06_netcore-ui-redesign-basisstation-dienste-rf-dark-mode-und-builddiagnose.md` |
 | Bildarchiv | [118 Original-PNGs mit Index und Prüfsummen](assets/2026-10-06_netcore-ui-redesign/README.md) |
 
-Der tatsächliche Archivcommit steht in der Git-Historie und der Abschlussmeldung. Ein Dokument kann seine eigene spätere Commitkennung nicht schon vor deren Erzeugung als geprüften Inhalt enthalten. Der oben genannte Archiv-Ausgangscommit bezeichnet die zu Beginn geladene Grundlage; unmittelbar vor dem Speichern wird der aktuelle Branchstand erneut berücksichtigt.
-
 ## Ergebnis und Nachweisstufen
 
-**Ergebnis dieses Chats:** Jan entschied sich nach mehreren Bildvorschauen für ein gemeinsames helles NetCore-Grunddesign mit Original-Logo, horizontaler Navigation und blau-weißen Akzenten. Die RF-Arbeitsfläche sollte das gewünschte Spektrum-/Wasserfalllayout übernehmen. Basisstation, sämtliche vorhandenen Dienstoberflächen und anschließend Dark Mode wurden gemeinsam auf `feat/netcore-dashboard-design` beauftragt und freigegeben. Der spätere Versuch, die neue Basisstation auf dem realen Host vorzubereiten, scheiterte zunächst am Git-Fetch und danach an nicht auffindbarem Cargo. Der letzte Reparaturblock wurde vorgeschlagen, sein Erfolg ist nicht bestätigt.
+**Gestaltungsentscheidung:** Nach mehreren Bildvorschauen wurde ein gemeinsames helles NetCore-Grunddesign mit Original-Logo, horizontaler Navigation und blau-weißen Akzenten ausgewählt. Die RF-Arbeitsfläche sollte das gewünschte Spektrum-/Wasserfalllayout übernehmen. Basisstation, sämtliche vorhandenen Dienstoberflächen und anschließend Dark Mode wurden gemeinsam auf `feat/netcore-dashboard-design` beauftragt und freigegeben. Der spätere Versuch, die neue Basisstation auf dem realen Host vorzubereiten, scheiterte zunächst am Git-Fetch und danach an nicht auffindbarem Cargo. Der letzte Reparaturblock wurde vorgeschlagen, sein Erfolg ist nicht bestätigt.
 
-**Zusätzlich überprüfter Stand vom 06.10.2026:** Die Implementierung ist durch PR #59 in `main` enthalten. Historische CI-Läufe des Designheads konnten nachträglich erfolgreich geprüft werden; seit diesem Head wurden bis zum geprüften heutigen `main` keine UI-, Runtime- oder Testdateien geändert. Die beiden Design-Update-Anleitungen verweisen weiterhin auf den nicht mehr angebotenen Featurebranch und benötigen eine spätere Korrektur. Ein realer Host-Rollout wird durch Merge oder CI nicht belegt.
+**Zusätzlich überprüfter Stand vom 06.10.2026:** Die Implementierung ist durch PR #59 in `main` enthalten. Historische CI-Läufe des Designheads konnten nachträglich erfolgreich geprüft werden; seit diesem Head wurden bis zum geprüften `main` keine UI-, Runtime- oder Testdateien geändert. Die beiden Design-Update-Anleitungen verweisen weiterhin auf den nicht mehr angebotenen Featurebranch und benötigen eine spätere Korrektur. Ein realer Host-Rollout wird durch Merge oder CI nicht belegt.
 
 | Nachweisstufe | Bedeutung in diesem Archiv | Einordnung des UI-Vorhabens |
 |---|---|---|
 | **Idee** | Vorschau oder denkbarer Ausbau ohne belegten Implementierungsauftrag | Frühe Bildvarianten; vollständige Hilfe und weitere spätere Fachausbauten |
-| **Beschlossen / geplant** | Ausdrückliche Nutzerentscheidung bzw. freigegebener Umfang | Einheitliches Grunddesign, RF-Anordnung, alle Dienst-UIs, Dark Mode und gemeinsamer Branch |
+| **Beschlossen / geplant** | Ausdrückliche Projektentscheidung bzw. freigegebener Umfang | Einheitliches Grunddesign, RF-Anordnung, alle Dienst-UIs, Dark Mode und gemeinsamer Branch |
 | **Implementiert** | Durch konkrete Repositorydateien und Commits nachgewiesen | Gemeinsame Oberflächen, Theme-Code, RF-Darstellung, Zugriffsschutz und Einbettung auf dem geprüften Quellstand vorhanden |
 | **Getestet** | Ausgeführte Prüfung mit zuordenbarem Ergebnis | Verifizierte historische GitHub-CI auf `2fe2a193…`; frühere lokale Release-Builds nur als damaliger Arbeitsbericht überliefert |
-| **Im Betrieb bestätigt** | Beobachtung am realen Dienst-/Funkhost oder Endgerät | Bestätigt sind die Git-/Cargo-Probleme auf der TBS; neuer UI-Build, Binary-Austausch, Neustart und Bedienabnahme sind in diesem Chat nicht bestätigt |
+| **Im Betrieb bestätigt** | Beobachtung am realen Dienst-/Funkhost oder Endgerät | Bestätigt sind die Git-/Cargo-Probleme auf der TBS; neuer UI-Build, Binary-Austausch, Neustart und Bedienabnahme sind für diesen Entwicklungsstand nicht bestätigt |
 
 „26 Basisstationsansichten plus 29 Dienst-WebUIs“ beschreibt Komponenten-/Ansichtsabdeckung, keine Zahl von 55 einzelnen HTTP-Routen. Die Dienstvorschauen umfassten historisch 33 Ansichten; die ältere Rust-Brew-Oberfläche allein hat zehn Routen. Diese Zählungen sind keine widersprüchlichen Flotten- oder LXC-Inventare.
 
-## Quellenbasis und Auswertungslücken
+## Quellenbasis und offene Belege
 
-Ausgewertet wurden die unmittelbar sichtbaren Nutzerfreigaben, der konkrete Terminalauszug, die beiden zuletzt gegebenen Buildanleitungen, eine erhaltene verdichtete Zusammenfassung der früheren Arbeitsphase, ergänzende datierte Gesprächsauszüge, das heutige Repository sowie PR-/CI-Metadaten und historische CI-Logbefunde. Die ursprüngliche lückenlose Chattranskription steht nicht zur Verfügung.
+Quellenbasis sind die Gestaltungsanforderungen, Terminalauszüge, die beiden letzten Buildanleitungen, erhaltene Entwicklungsnotizen und datierte Entwurfsbelege. Repository, PR-/CI-Metadaten und historische CI-Logs wurden gesondert geprüft. Die frühe Entwicklung ist nicht lückenlos dokumentiert.
 
-- Der erste sichtbare Satz „ja, genau so“ setzt einen vorherigen Entwurf voraus. Frühe Assistentenbeiträge sind teilweise nur aus Zusammenfassungen, wiedergefundenen Bilddateien und ergänzenden Gesprächsauszügen rekonstruierbar.
-- Der ursprüngliche Chattitel und Chatlink konnten nicht zuverlässig ermittelt werden. Der Featurebranchname ersetzt diese Metadaten nicht.
-- 118 thematisch und zeitlich zugehörige PNG-Dateien wurden wiedergefunden und unverändert archiviert. Eine exakte Zuordnung jedes Bildes zu seiner einzelnen ursprünglichen Chatnachricht bzw. eine individuelle finale Freigabe jedes Bildes ist nicht verfügbar. Frühere und ersetzte Entwürfe bleiben als historische Varianten erhalten.
-- Der damals fehlgeschlagene Zugriff auf `…/upload/Unbenannt.png` ist eine historische lokale Zugriffslücke. Heute konnte dieselbe benannte RF-Referenz wiedergefunden und visuell geprüft werden; ihr Inhalt ist daher keine fortbestehende Bildlücke.
-- Frühere lokale Arbeitskopien, Builddateien und vollständige lokale Testlogs sind durch Workspace-Wartung nicht mehr vorhanden. Daraus folgt keine Löschung durch den Nutzer. Für historische CI stehen andere, nachträglich geprüfte Belege zur Verfügung.
+- Die frühe Designphase ist teilweise nur anhand von Entwicklungsnotizen und wiedergefundenen Bildern nachvollziehbar.
+- 118 thematisch und zeitlich zugehörige PNG-Dateien wurden wiedergefunden und unverändert archiviert. Eine exakte Zuordnung jedes Bildes zu seiner einzelnen ursprünglichen Entwurfsphase bzw. eine individuelle finale Freigabe jedes Bildes ist nicht verfügbar. Frühere und ersetzte Entwürfe bleiben als historische Varianten erhalten.
+- Der damals fehlgeschlagene Zugriff auf `…/upload/Unbenannt.png` ist eine historische lokale Zugriffslücke. Zum Prüfstand vom 06.10.2026 konnte dieselbe benannte RF-Referenz wiedergefunden und visuell geprüft werden; ihr Inhalt ist daher keine fortbestehende Bildlücke.
+- Frühere lokale Arbeitskopien, Builddateien und vollständige lokale Testlogs sind durch Workspace-Wartung nicht mehr vorhanden. Daraus folgt keine Löschung durch den Betreiber. Für historische CI stehen andere, nachträglich geprüfte Belege zur Verfügung.
 - Es gibt keinen SSH-Zugriff bzw. keine neue Liveprüfung auf `SRV-M-TBS-01`. Inhalte der dortigen Konfiguration, Unit, Binarypfade, Rustinstallation, Git-Refspecs und tatsächlich laufende Listener sind unbekannt, soweit sie nicht ausdrücklich im geposteten Auszug enthalten sind.
 - 25 ETSI-PDFs wurden diesem Projektkontext als Anhänge bereitgestellt. Für diese UI-/Git-/Cargo-Arbeit sind keine konkreten Normstellen als Entscheidungsgrundlage überliefert. Sie wurden hier nicht erneut fachlich ausgewertet oder als neu geprüfte TETRA-Konformitätsquelle ausgegeben. Die Standardsammlung gehört nicht zu den historischen Designbildern.
-- Projektideen anderer Chats, etwa zentraler IAM-/RBAC-Ausbau, Syslog, Pi-VPN-Automatik, Handover oder Drive-Plugins, werden nicht rückwirkend zu Beschlüssen dieses Designchats. Wo heutige Quelltexte eine Abhängigkeit erwähnen, ist sie ausdrücklich als heutiger Repositorykontext gekennzeichnet.
+- Projektideen anderer Arbeitsphasen, etwa zentraler IAM-/RBAC-Ausbau, Syslog, Pi-VPN-Automatik, Handover oder Drive-Plugins, werden nicht rückwirkend zu Beschlüssen dieser Designarbeit. Wo geprüfte Quelltexte eine Abhängigkeit erwähnen, ist sie ausdrücklich als geprüfter Repositorykontext gekennzeichnet.
 
 Es werden keine Passwörter, Tokens, privaten Schlüssel oder Konfigurationsgeheimnisse übernommen. Die Originalbilder wurden visuell auf sichtbare Zugangsdaten geprüft; der Prüfungsumfang und seine Grenzen stehen beim Bildarchiv.
 
-
-## Historischer Chatverlauf und damals erreichte Ergebnisse
+## Entwicklung des Entwurfs und erreichte Ergebnisse
 
 ### Historisches Ziel und Ausgangslage
 
-Dieser Chat behandelte die Neugestaltung der NetCore-Tetra-Weboberflächen und anschließend die Vorbereitung eines lokalen Basisstations-Builds. Die gewünschte Oberfläche sollte das gemeinsame Erscheinungsbild für Basisstation, Zentraldienste und weitere Dienst-WebUIs bilden. Als Einstiegspunkt für das Basisstationsdashboard nannte Jan ausdrücklich die Datei `crates/tetra-entities/src/net_dashboard/html.rs`. Der ursprünglich verlinkte Quellstand lag auf `main`; der zur Umsetzung freigegebene Design-Branch war später `feat/netcore-dashboard-design`.
+Ziel war ein gemeinsames Erscheinungsbild für Basisstation, Zentraldienste und weitere Dienst-WebUIs, anschließend die Vorbereitung eines lokalen Basisstations-Builds. Einstiegspunkt war `crates/tetra-entities/src/net_dashboard/html.rs` auf `main`; die Umsetzung erfolgte im Designbranch `feat/netcore-dashboard-design`.
 
-Die erste im verfügbaren Verlauf sichtbare Zustimmung, „ja, genau so“, setzt einen bereits besprochenen Entwurf voraus. Nicht sämtliche vorherigen Nachrichten oder Bildvorschauen stehen vollständig zur Verfügung. Die nachfolgenden Anforderungen und Freigaben sind dagegen im sichtbaren Verlauf ausdrücklich dokumentiert. Dieser historische Teil beschreibt den Chatstand und dessen Beleggrenzen; eine neue Repository-Prüfung gehört in einen getrennten Abschnitt.
+Der Entwurf war bereits gebilligt. Die ursprünglichen Bilder und Entwicklungsnotizen sind teilweise erhalten; verbindliche Folgeanforderungen und Buildfehler werden von späteren Repository-Befunden getrennt dargestellt.
 
 #### Umfang und endgültige Gestaltung
 
-Die endgültige Vorgabe war ein zusammenhängendes Designprinzip für sämtliche vorhandenen Weboberflächen. Die ursprüngliche Beschränkung auf die Basisstation wurde ausdrücklich auf die Dienst-WebUIs erweitert. Der Nutzer verlangte zuerst Bilder im Chat und nach deren Freigabe den produktiven Einbau in einem neuen Branch. Nach der Freigabe wurde die Umsetzung für alle UIs gemeinsam in `feat/netcore-dashboard-design` festgelegt. Anschließend kam Dark Mode für jedes UI im selben Branch hinzu.
+Festgelegt war ein gemeinsames Designprinzip für sämtliche Weboberflächen. Der Umfang wurde von der Basisstation auf Dienst-WebUIs erweitert. Nach Bildvorschau und Designabnahme erfolgte die Umsetzung gemeinsam in `feat/netcore-dashboard-design`; Dark Mode kam für jedes UI im selben Branch hinzu.
 
 Aus dem wiederzugänglichen historischen Entwurfszusammenhang ergibt sich folgende Gestaltung:
 
@@ -84,44 +80,40 @@ Nachbarzellen und Hilfe wurden im ursprünglichen Entwurfsverlauf zunächst als 
 
 ### Endgültige Entscheidungen und Freigaben
 
-#### Vom Nutzer ausdrücklich entschieden
+#### Festgelegte Anforderungen
 
 | Gegenstand | Endgültige Festlegung | Historischer Status |
 | --- | --- | --- |
 | Gemeinsames Design | Durch Basisstation, Zentraldienste und sämtliche Dienst-WebUIs ziehen | Beschlossen |
-| Basisstationsvorschau | Alle vorhandenen Seiten zunächst als Bilder im Chat zeigen | Beschlossen; ursprüngliche Bildmenge teilweise nicht verfügbar |
+| Basisstationsvorschau | Alle vorhandenen Seiten zunächst als Bildvorschauen zeigen | Beschlossen; ursprüngliche Bildmenge teilweise nicht verfügbar |
 | RF-Gestaltung | Gefallenden RF-Entwurf passend übernehmen | Beschlossen; ursprüngliche lokale Referenz zunächst nicht lesbar |
-| Umsetzung | Nach Freigabe in neuem Branch einbauen und Anleitung liefern | Ausdrücklich autorisiert |
+| Umsetzung | Nach Freigabe in neuem Branch einbauen und Anleitung liefern | Zur Umsetzung festgelegt |
 | Gemeinsamer Branch | Alle neuen UIs in `feat/netcore-dashboard-design` bündeln | Beschlossen |
 | Dark Mode | In demselben Branch auf jedem UI ergänzen | Beschlossen |
 | Reale TBS | Design-Branch herunterladen und Basisstation kompilieren | Verlangt; erfolgreicher Abschluss nicht bestätigt |
-| Aktuelle Archivierung | Nur `Docs/archive/` im vorhandenen Branch `Archiving` ändern | Ausdrücklich autorisiert |
 
 #### Bedeutung der Freigaben
 
-Die Zustimmung zum Einbau ersetzte die zuvor geforderte Vorschauphase für den bereits gebilligten Entwurf. Die späteren Anforderungen an Dienste und Dark Mode erweiterten den freigegebenen Umfang. Für diese bereits autorisierte Arbeit bestand im Chat kein Anlass, erneut eine allgemeine Designfreigabe einzuholen. Die Buildanfrage autorisierte dagegen nicht automatisch einen unangekündigten Austausch der laufenden Basisstationsbinary.
-
-Die abschließende Archivfreigabe ist von den früheren Implementierungsfreigaben getrennt. Sie umfasst Archivdatei, Archivindex und relevante Chatbilder unter `Docs/archive/`. Sie umfasst keine Änderung der laufenden Produktivkonfiguration und keine neuen Produktfeatures außerhalb des Archivverzeichnisses.
+Nach Abnahme des Entwurfs wurde die Umsetzung auf Dienst-WebUIs und Dark Mode erweitert. Buildvorbereitung, Austausch der aktiven Binary und Betriebsabnahme bleiben eigenständige Schritte.
 
 ### Historische Abfolge
 
-1. Jan bestätigte das zuvor besprochene Design und verlangte dessen Anwendung auf das gesamte Projekt.
-2. Für sämtliche Basisstationsseiten wurden Bildvorschauen angefordert; als Generator wurde `html.rs` verlinkt.
-3. Jan verlangte die Übernahme einer optisch gefallenden RF-Bildreferenz.
-4. Im sichtbaren Verlauf erschien ein fehlgeschlagener Zugriff auf `Unbenannt.png`.
-5. Jan erteilte die Freigabe zum Einbau in einem neuen Branch und verlangte eine Anleitung.
-6. Die Anfrage wurde auf alle Dienst-WebUIs erweitert und mehrfach bekräftigt.
-7. Jan legte fest, sämtliche neuen UIs gemeinsam in `feat/netcore-dashboard-design` einzubauen.
-8. Jan verlangte anschließend Dark Mode für jedes UI im selben Branch.
-9. Historische Arbeitsberichte meldeten Implementierungen, Tests, Commits und einen PR.
-10. Auf `SRV-M-TBS-01` scheiterte die vorgeschlagene Fetch-/Branchwechsel-Anleitung.
-11. Der Assistent ersetzte den Weg durch einen frischen Checkout mit Release-Build als `jan`.
-12. Jan meldete für diesen Befehl „cargo not found“.
-13. Der Assistent schlug einen weiteren Block vor, der Cargo unter `root` und `jan` sucht.
-14. Ein Ergebnis dieses letzten Blocks ist im verfügbaren Verlauf nicht enthalten.
-15. Jan beauftragte die technische Abschlussdokumentation und Archivierung einschließlich der Chatbilder.
+1. Das gebilligte Design wurde als Gestaltungsgrundlage für das gesamte Projekt festgelegt.
+2. Für sämtliche Basisstationsseiten waren Bildvorschauen vorgesehen; Einstiegspunkt war `html.rs`.
+3. Die RF-Bildreferenz wurde als gewünschte Layoutgrundlage ausgewählt.
+4. Der erste lokale Zugriff auf `Unbenannt.png` scheiterte.
+5. Die Umsetzung wurde für einen neuen Branch mit passender Updateanleitung festgelegt.
+6. Der Umfang wurde auf alle Dienst-WebUIs erweitert.
+7. Alle neuen UIs sollten gemeinsam in `feat/netcore-dashboard-design` entstehen.
+8. Dark Mode wurde für jedes UI im selben Branch ergänzt.
+9. Arbeitsberichte dokumentierten Implementierungen, Tests, Commits und PR.
+10. Auf `SRV-M-TBS-01` scheiterte die Fetch-/Branchwechsel-Anleitung.
+11. Als Ersatzweg entstand ein frischer Checkout mit Release-Build als `jan`.
+12. Der Release-Build scheiterte mit „cargo not found“.
+13. Der überarbeitete Buildblock sucht Cargo unter `root` und `jan`.
+14. Das Ergebnis dieses letzten Blocks ist nicht dokumentiert.
 
-Die einzelnen Implementierungsnachrichten sind nicht vollständig im sichtbaren Originalverlauf enthalten. Ihre verdichtet überlieferten Angaben sind deshalb als historische Arbeitsberichte und nicht als neu ausgeführte Prüfung zu behandeln. Der spätere Nutzerfehlerbericht hat Vorrang vor einer etwaigen allgemeinen Aussage, eine Anleitung sei bereits erfolgreich gewesen.
+Die Implementierung ist teilweise nur in verdichteten Arbeitsberichten dokumentiert. Diese Angaben gelten als historische Berichte, nicht als erneut ausgeführte Tests. Die konkreten nachfolgenden Buildfehler belegen, dass die Anleitung auf dem Zielhost noch nicht erfolgreich abgeschlossen war.
 
 ### Historisch berichtete Architektur und Implementierung
 
@@ -137,7 +129,7 @@ Die historischen Standardfeatures des Pakets waren:
 default = ["asterisk", "recording", "audio-player"]
 ```
 
-Der UI-Rollout sollte diese Standardfeatures erhalten. Ein Weglassen über `--no-default-features` war nicht als freigegebene Problemlösung dokumentiert. Aus diesem Chat ergibt sich keine neue Auswahl oder Entfernung von Funktionsfeatures.
+Der UI-Rollout sollte diese Standardfeatures erhalten. Ein Weglassen über `--no-default-features` war nicht als freigegebene Problemlösung dokumentiert. Aus dieser Arbeitsphase ergibt sich keine neue Auswahl oder Entfernung von Funktionsfeatures.
 
 #### Gemeinsamer Theme-Ansatz
 
@@ -155,10 +147,10 @@ Die frühere Zusammenfassung nennt folgende Ergebnisse:
 | Berichteter Tree | `e68558c4df13d3d8b56df8c3611ac682b02889c1` | Tree-ID, kein zusätzlicher Branch-HEAD |
 | Vorheriger Dienste-Commit | `dc70ad89b0e5de8be363211042a247811bd9d734` | Vor erneuter Prüfung historischer Bericht |
 | Früher Basisstations-Commit | `783fd556...` | Nur verkürzt überliefert; keine vollständige SHA erfinden |
-| Pull Request | [PR 59](https://github.com/JanHG98/netcore-tetra/pull/59) | Heutigen Zustand getrennt prüfen |
+| Pull Request | [PR 59](https://github.com/JanHG98/netcore-tetra/pull/59) | Geprüften Zustand getrennt prüfen |
 | Historischer PR-Titel | NetCore-Design mit Dark Mode für Basisstation und alle Dienst-WebUIs | Überliefert, nicht neu erstellt |
 
-Der PR wurde damals als offen und mergebar beschrieben. Die CI sei zum Ende des früheren Arbeitsberichts noch gelaufen. Daraus folgt weder ein späterer Merge noch ein heutiger CI-Erfolg. Diese Historie ist ebenfalls kein Nachweis, dass die reale TBS bereits den neuen Commit verwendet.
+Der PR wurde damals als offen und mergebar beschrieben. Die CI sei zum Ende des früheren Arbeitsberichts noch gelaufen. Daraus folgt weder ein späterer Merge noch ein geprüfter CI-Erfolg. Diese Historie ist ebenfalls kein Nachweis, dass die reale TBS bereits den neuen Commit verwendet.
 
 ### Historisch gemeldete Prüfungen und ihre Grenzen
 
@@ -184,14 +176,14 @@ Die Prüfgruppennamen und ihre Zählsemantik sind nicht vollständig erklärt. D
 Auch Plattform, native Abhängigkeiten und genaue Umgebung jedes historischen Laufs sind nicht vollständig überliefert.
 
 Historische erfolgreiche Entwicklungsbuilds bestätigen nicht automatisch einen erfolgreichen Build auf `SRV-M-TBS-01`.
-Für diesen Host fehlt ein erfolgreicher Release-Abschluss im Nutzerprotokoll.
+Für diesen Host fehlt ein erfolgreicher Release-Abschluss im Betriebsprotokoll.
 Es gibt außerdem keine bestätigte Sichtprüfung der neuen Oberfläche oder des Dark Mode im realen Betrieb.
 
 ### Tatsächlich beobachteter Zustand auf der Basisstation
 
 #### Host und Checkout
 
-Der Nutzer lieferte einen Terminalauszug von `SRV-M-TBS-01`.
+Als Betriebsbeleg liegt ein Terminalauszug von `SRV-M-TBS-01`.
 Er meldete sich als `jan` an und wechselte mit `sudo -i` in eine Root-Shell.
 Anschließend arbeitete er unter `/opt/netcore-tetra`.
 Zugangsdaten oder Passworteingaben werden nicht übernommen.
@@ -221,13 +213,13 @@ Die lokale Konfiguration und die übrigen Änderungen sollten für die Fortsetzu
 Nicht bestätigt sind ein erfolgreicher Branchwechsel, ein erfolgreich beendeter Cargo-Check oder ein neuer Release-Build.
 Es gibt keine bestätigte Installation der neuen Binary.
 Es gibt keinen bestätigten systemd-Neustart oder erfolgreichen Healthcheck.
-Der tatsächliche Unitname, `ExecStart`, Konfigurationspfad und installierte Binarypfad fehlen im Nutzerprotokoll.
+Der tatsächliche Unitname, `ExecStart`, Konfigurationspfad und installierte Binarypfad fehlen im Betriebsprotokoll.
 
 ### Fehler: Fetch auf alten Remote-Branch
 
 #### Tatsächlich versuchter Befehlsblock
 
-Der Nutzer zeigte folgenden ausgeführten Ablauf; er enthielt keine durchgängige Fehlerabbruchlogik:
+Das Betriebsprotokoll zeigt folgenden ausgeführten Ablauf; er enthielt keine durchgängige Fehlerabbruchlogik:
 
 ```bash
 git fetch origin --prune
@@ -258,7 +250,7 @@ Eine Ausgabe des abschließenden Cargo-Checks ist nicht vorhanden.
 
 Die vermutete Ursache war ein eingeschränkter `remote.origin.fetch`, der noch auf `katwarn/nina` zeigte.
 Ein solcher Refspace kann beim Fetch eines inzwischen fehlenden Branches die gezeigte Fehlermeldung erklären.
-Die Git-Konfiguration des realen Hosts wurde im Chat jedoch nicht gelesen.
+Die Git-Konfiguration des realen Hosts wurde im dokumentierten Arbeitsstand jedoch nicht gelesen.
 Die Hypothese ist deshalb plausibel, aber nicht als abschließend nachgewiesene Ursache zu kennzeichnen.
 
 Als gezielter technischer Weg wurde ein expliziter Ref-Spec-Abruf erwogen:
@@ -267,7 +259,7 @@ Als gezielter technischer Weg wurde ein expliziter Ref-Spec-Abruf erwogen:
 git fetch origin refs/heads/feat/netcore-dashboard-design:refs/remotes/origin/feat/netcore-dashboard-design
 ```
 
-Dieser Befehl ist im verfügbaren Nutzerverlauf nicht als erfolgreich ausgeführt belegt.
+Dieser Befehl ist im verfügbaren Betriebsprotokoll nicht als erfolgreich ausgeführt belegt.
 Er ersetzt außerdem nicht die Prüfung lokaler Änderungen vor einem späteren Checkoutwechsel.
 Ein pauschales `git reset --hard` oder ungeprüftes Verwerfen der Konfiguration wurde nicht durchgeführt.
 
@@ -279,13 +271,13 @@ Der spätere Buildvorschlag verwendete deshalb `cargo build --release --locked`.
 
 #### Zweck und Status
 
-Der Assistent schlug einen separaten Clone des Design-Branches in Jans Home vor.
+Vorgeschlagen war ein separater Clone des Designbranches im Home-Verzeichnis von `jan`.
 Dadurch sollte der problematische Fetch des alten Checkouts umgangen werden.
 Die produktive Arbeitskopie unter `/opt/netcore-tetra` mit ihren Änderungen sollte unverändert bleiben.
 Die Wahl des Buildbenutzers `jan` beruhte jedoch auf einer nicht bestätigten Annahme über dessen Rustinstallation.
 
-Der folgende Block wurde tatsächlich im Chat vorgeschlagen.
-Sein erfolgreicher Abschluss ist nicht bestätigt; die spätere Nutzerantwort meldet fehlendes Cargo.
+Der folgende Block wurde tatsächlich im dokumentierten Arbeitsstand vorgeschlagen.
+Sein erfolgreicher Abschluss ist nicht bestätigt; der spätere Fehlerbericht meldet fehlendes Cargo.
 Ein vollständig erfolgreicher Clone kann aus dieser knappen Rückmeldung nicht separat nachgewiesen werden.
 
 #### Wortgetreuer vorgeschlagener Befehlsblock
@@ -323,18 +315,18 @@ BASH
 ```
 
 Der vorgesehene Ausgabeort war `$TBS_BUILD_DIR/target/release/bluestation-bs`.
-Zwei parallele Jobs wurden vorgeschlagen, ohne eine im Chat dokumentierte Leistungs- oder Speicherbemessung.
+Zwei parallele Jobs wurden vorgeschlagen, ohne eine im dokumentierten Arbeitsstand dokumentierte Leistungs- oder Speicherbemessung.
 Der Block enthält keinen Austausch der laufenden Binary und keinen Dienstneustart.
 `set -e` sollte den Shellablauf bei einem fehlschlagenden Build beenden.
 
 ### Fehler: Cargo in der gewählten Benutzerumgebung nicht gefunden
 
-Jan antwortete: „cargo not found in deinem befehl...“.
+Der Buildversuch endete mit „cargo not found“.
 Damit ist ein erfolgreicher Abschluss des zuvor vorgeschlagenen Builds ausgeschlossen.
 Der genaue Fehlertext, Exitcode und Installationspfad wurden nicht geliefert.
 
-Der Assistent erkannte die ungesicherte Wahl von `jan` als Buildbenutzer ausdrücklich als Fehler an.
-Er wies darauf hin, dass eine unter `root` eingerichtete Rustinstallation in der anderen Benutzerumgebung fehlen könnte.
+Die feste Wahl von `jan` als Buildbenutzer war ungesichert: Eine unter `root` eingerichtete Rustinstallation kann in der Umgebung von `jan` fehlen.
+
 Diese Erklärung ist eine mögliche Ursache, keine bestätigte Inventarisierung des Hosts.
 
 Nicht nachgewiesen sind:
@@ -352,7 +344,7 @@ Eine automatische Neuinstallation oder ein destruktiver Checkoutreset war durch 
 
 #### Wortgetreuer vorgeschlagener Befehlsblock
 
-Der zuletzt im Chat gegebene Block lautet:
+Der zuletzt im dokumentierten Arbeitsstand gegebene Block lautet:
 
 ```bash
 bash <<'BASH'
@@ -417,7 +409,7 @@ Der Ausgabeort änderte sich gegenüber dem ersten Block auf `$HOME/netcore-dash
 Welches Home gemeint ist, hängt vom gewählten Buildbenutzer ab.
 Auch dieser Block installiert keine Binary und startet keinen Dienst neu.
 
-Eine Antwort oder Terminalausgabe nach diesem Vorschlag fehlt im verfügbaren Verlauf.
+Ein Ergebnis des vorgeschlagenen Buildblocks ist nicht dokumentiert.
 Der Block darf daher ausschließlich als vorgeschlagene Reparatur und nicht als funktionierende, am Host bestätigte Lösung bezeichnet werden.
 Besitzrechte, mögliche Git-Zugriffe aus Buildskripten und die native Linkerumgebung bleiben zusätzlich zu prüfen.
 
@@ -430,7 +422,7 @@ Keine dieser Dateien wurde im sichtbaren Reparaturverlauf absichtlich zurückges
 Die damalige Update-Anleitung empfahl, unter dem bisherigen Buildbenutzer zu kompilieren.
 Vor einer Installation sollten Unitname, `ExecStart`, Konfigurationspfad und tatsächlicher Binarypfad ermittelt werden.
 Mögliche Unitnamen der Anleitung waren `tetra`, `bluestation`, `tetra-bluestation` und `bluestation-bs`.
-Keiner dieser Namen ist für den im Chat gezeigten Host bestätigt.
+Keiner dieser Namen ist für den im dokumentierten Arbeitsstand gezeigten Host bestätigt.
 
 Für einen allgemeinen Updater wurden historisch `MIGRATE_LOCAL_TTS_CONFIG=0` und `DISABLE_LOCAL_PIPER=0` genannt.
 Das sind Hinweise für einen späteren Installationsweg und keine auf diesem Host beobachteten Änderungen.
@@ -447,9 +439,9 @@ Der konkrete Auftrag der Fehlersuche endete beim Herunterladen und Kompilieren.
 
 ### Offene Aufgaben und konkrete nächste Schritte
 
-1. Den heutigen Inhalt des Design-Branches, den PR-Status und die tatsächlichen UI-Routen getrennt verifizieren.
+1. Den geprüften Inhalt des Design-Branches, den PR-Status und die tatsächlichen UI-Routen getrennt verifizieren.
 2. Die historischen Bildreferenzen und Vorschauen wiederherstellen, zuordnen und unter dem Archivpfad ablegen.
-3. Fehlende Originalnachrichten oder Bilder ausdrücklich als Auswertungslücken dokumentieren.
+3. Fehlende Originalnachrichten oder Bilder ausdrücklich als Quellenlücken dokumentieren.
 4. Auf der TBS den tatsächlichen Cargo-/Rustpfad und den geeigneten Buildbenutzer feststellen.
 5. Rust Edition 2024 sowie SoapySDR-, Treiber- und Codec-Abhängigkeiten prüfen.
 6. Den Design-Branch erfolgreich als Release bauen und tatsächlich verwendeten Commit sowie Binarypfad festhalten.
@@ -460,10 +452,10 @@ Der konkrete Auftrag der Fehlersuche endete beim Herunterladen und Kompilieren.
 11. Login, öffentliche Ansichten, Theme-Persistenz und Verhalten zwischen verschiedenen Origins prüfen.
 
 Die Reihenfolge der Punkte 4 bis 7 folgt den tatsächlichen Buildproblemen.
-Eine verbindliche zeitliche Priorisierung sämtlicher Projektfeatures wurde in diesem Chat nicht vereinbart.
-Andere Projektideen aus Nachbarchats sind keine zusätzlichen Entscheidungen dieser Design- und Buildunterhaltung.
+Eine verbindliche zeitliche Priorisierung sämtlicher Projektfeatures wurde für diesen Entwicklungsstand nicht vereinbart.
+Andere Projektideen aus angrenzenden Arbeitsphasen sind keine zusätzlichen Entscheidungen dieser Design- und Buildunterhaltung.
 
-#### Roadmap-Kandidaten aus diesem Chat
+#### Roadmap-Kandidaten
 
 - Gemeinsames UI-Design dauerhaft über neue Dienste und neue Basisstationsseiten hinweg beibehalten.
 - Nachbarzellen und Hilfe anhand tatsächlicher Backend-Funktionen weiterführen; Entwurf und Implementierung unterscheiden.
@@ -472,28 +464,26 @@ Andere Projektideen aus Nachbarchats sind keine zusätzlichen Entscheidungen die
 - Release-Build, Installation und Betriebsprüfung als getrennte, nachprüfbare Phasen dokumentieren.
 - Dark Mode über alle tatsächlich ausgelieferten Seiten vollständig erhalten, einschließlich Login und öffentlicher Oberflächen.
 
-### Historische Auswertungslücken und Abschlussbewertung
+### Historische Quellenlücken und Abschlussbewertung
 
-Der ursprüngliche Chattitel und ein eindeutiger Chatlink sind nicht im sichtbaren Verlauf vorhanden.
 Nicht alle ursprünglichen Bildvorschauen und vollständigen früheren Implementierungsnachrichten sind unmittelbar verfügbar.
 Der damalige fehlgeschlagene lokale Zugriff betraf `/workspace/scratch/a884199e0958/upload/Unbenannt.png`.
 Ein fehlender Scratch-Pfad ist kein Beweis, dass eine Library-Datei ebenfalls fehlt.
 
 Historische Testlogs, sämtliche exakten Testbefehle und Plattformdetails sind nur teilweise oder gar nicht überliefert.
-Der heutige Repository-Zustand muss deshalb separat geprüft werden.
+Der geprüfte Repository-Zustand muss deshalb separat geprüft werden.
 Die verfügbaren ETSI-Anhänge wurden für die hier behandelten UI- und Buildentscheidungen nicht als normative Quelle verwendet.
-Protokollfunktionen oder Funkparameter dürfen nicht nachträglich aus diesen Anhängen in die Chatentscheidungen hineininterpretiert werden.
+Protokollfunktionen oder Funkparameter dürfen nicht nachträglich aus diesen Anhängen in die Gestaltungsentscheidungen hineininterpretiert werden.
 
-Gesichert sind die Designanforderungen, die ausdrücklichen Umsetzungsfreigaben und die zwei vom Nutzer gemeldeten Buildprobleme.
+Gesichert sind die Designanforderungen, die ausdrücklichen Umsetzungsfreigaben und die zwei durch den Betreiber gemeldeten Buildprobleme.
 Implementierungen und umfangreiche Entwicklungsprüfungen sind historisch berichtet und durch Repository-Evidenz ergänzbar.
-Ein erfolgreicher neuer Build und die Nutzung der neuen UIs auf `SRV-M-TBS-01` bleiben im verfügbaren Chat unbestätigt.
+Ein erfolgreicher neuer Build und die Nutzung der neuen UIs auf `SRV-M-TBS-01` bleiben in den erhaltenen Betriebsnotizen unbestätigt.
 
-
-## Heutiger Repository-Stand: getrennte Verifikation vom 06.10.2026
+## Geprüfter Repository-Stand: getrennte Verifikation vom 06.10.2026
 
 ### Branches, Commits und Ablösung des Featurebranches
 
-Die Remoteabfrage nach `Archiving`, `main` und `feat/netcore-dashboard-design` lieferte bei der Archivierung `Archiving@c90a731…` und `main@9116c15…`, aber keinen Treffer für den Designbranch. Das beweist seine heutige Nichtverfügbarkeit unter diesem Ref, nicht den genauen Zeitpunkt oder die Ursache seiner Entfernung.
+Die Remoteabfrage nach `Archiving`, `main` und `feat/netcore-dashboard-design` lieferte bei der Archivierung `Archiving@c90a731…` und `main@9116c15…`, aber keinen Treffer für den Designbranch. Das beweist seine geprüfte Nichtverfügbarkeit unter diesem Ref, nicht den genauen Zeitpunkt oder die Ursache seiner Entfernung.
 
 PR #59 heißt **„NetCore-Design mit Dark Mode für Basisstation und alle Dienst-WebUIs“**. Die PR-Metadaten bestätigen `merged = true`, den Mergezeitpunkt und folgenden Commitstapel:
 
@@ -503,15 +493,15 @@ PR #59 heißt **„NetCore-Design mit Dark Mode für Basisstation und alle Diens
 | Dienst-WebUIs | [`dc70ad89b0e5de8be363211042a247811bd9d734`](https://github.com/JanHG98/netcore-tetra/commit/dc70ad89b0e5de8be363211042a247811bd9d734) | Gemeinsames Design für alle Dienst-WebUIs |
 | Persistenter Dark Mode | [`2fe2a1939a8795db3816d45973282781dae856f0`](https://github.com/JanHG98/netcore-tetra/commit/2fe2a1939a8795db3816d45973282781dae856f0) | Vollständiger gespeicherter Dark Mode für die NetCore-WebUIs |
 | Integration nach main | [`7137e0dd69877e1b604bf89148fd8b6b590c1a97`](https://github.com/JanHG98/netcore-tetra/commit/7137e0dd69877e1b604bf89148fd8b6b590c1a97) | Tatsächlicher Merge der PR am 03.10.2026 |
-| Heutiger überprüfter main | [`9116c15d645458f99e236712b67a1ad970432791`](https://github.com/JanHG98/netcore-tetra/commit/9116c15d645458f99e236712b67a1ad970432791) | Zusätzlich späterer Dokumentations-/Roadmapstand; kein neuer UI-Runtimecode gegenüber dem Designhead |
+| Geprüfter main | [`9116c15d645458f99e236712b67a1ad970432791`](https://github.com/JanHG98/netcore-tetra/commit/9116c15d645458f99e236712b67a1ad970432791) | Zusätzlich späterer Dokumentations-/Roadmapstand; kein neuer UI-Runtimecode gegenüber dem Designhead |
 
-Der [Vergleich des Designheads mit dem überprüften heutigen main](https://github.com/JanHG98/netcore-tetra/compare/2fe2a1939a8795db3816d45973282781dae856f0...9116c15d645458f99e236712b67a1ad970432791) zeigt fünf zusätzliche Commits, keinen Rückstand und Änderungen ausschließlich an `AGENTS.md`, `Docs/CENTRAL_IDENTITY_RBAC_ROADMAP.md`, `Docs/NETCORE_DRIVE_ROADMAP.md`, `README.md`, `ROADMAP.md`, `system-backend/roadmap.md` und `wiki/Roadmap.md`. UI-, Runtime- und Testdateien des geprüften Designheads sind bis zu diesem Snapshot unverändert enthalten.
+Der [Vergleich des Designheads mit dem geprüften main](https://github.com/JanHG98/netcore-tetra/compare/2fe2a1939a8795db3816d45973282781dae856f0...9116c15d645458f99e236712b67a1ad970432791) zeigt fünf zusätzliche Commits, keinen Rückstand und Änderungen ausschließlich an `AGENTS.md`, `Docs/CENTRAL_IDENTITY_RBAC_ROADMAP.md`, `Docs/NETCORE_DRIVE_ROADMAP.md`, `README.md`, `ROADMAP.md`, `system-backend/roadmap.md` und `wiki/Roadmap.md`. UI-, Runtime- und Testdateien des geprüften Designheads sind bis zu diesem Snapshot unverändert enthalten.
 
 Auch die relevanten Code-/Designdateien im zu Beginn geladenen `Archiving` entsprechen dem geprüften main. Die Archivierung integriert keinen Featurebranch erneut und verändert keinen Runtimecode.
 
 ### Basisstationsarchitektur und Build-Assets
 
-Der ursprünglich verlinkte Pfad `crates/tetra-entities/src/net_dashboard/html.rs` bleibt der Rust-Einstieg für eingebettete Oberflächen. Heute enthält er nicht mehr die gesamte Oberfläche als einen monolithischen HTML-String, sondern diese Build-Asset-Zuordnung:
+Der ursprünglich verlinkte Pfad `crates/tetra-entities/src/net_dashboard/html.rs` bleibt der Rust-Einstieg für eingebettete Oberflächen. Zum Prüfstand vom 06.10.2026 enthält er nicht mehr die gesamte Oberfläche als einen monolithischen HTML-String, sondern diese Build-Asset-Zuordnung:
 
 ```rust
 pub const DASHBOARD_HTML: &str = include_str!("ui/dashboard.html");
@@ -557,11 +547,11 @@ Quelle ist die am überprüften Stand vorhandene `Docs/BASISSTATION-DESIGN.md`, 
 | Verwaltung | System; Konfiguration; WLAN; Asterisk SIP; Audio-Zentrale; Aufzeichnungen; Telegram; Hilfe | Aufzeichnungen getrennt von Medien/Aussendung; WLAN weiterhin abhängig von NetworkManager; Hilfe mit Platzhalterinhalt |
 | Interne Integrationen | DAPNET; EchoLink; MeshCom; GeoAlarm | Vorhandene sitzungsabhängige Sichtbarkeitsregeln und Aktionen bleiben maßgeblich |
 
-Die in dieser Designbeschreibung genannte **17-Dienste-Matrix** der TBS ist ein anderer Ausschnitt als die **29 gestalteten Dienst-WebUIs**. Sie darf nicht als heutige Gesamtzahl real betriebener LXCs oder Backendprozesse ausgegeben werden. Die aktuelle Gesamtroadmap benennt darüber hinaus Inventardrift verschiedener Kataloge; dieser Archivauftrag führt keine Flotteninventur aus.
+Die in dieser Designbeschreibung genannte **17-Dienste-Matrix** der TBS ist ein anderer Ausschnitt als die **29 gestalteten Dienst-WebUIs**. Sie darf nicht als geprüfte Gesamtzahl real betriebener LXCs oder Backendprozesse ausgegeben werden. Die aktuelle Gesamtroadmap benennt darüber hinaus Inventardrift verschiedener Kataloge; dieser Prüfdurchlauf vom 06.10.2026 führt keine Flotteninventur aus.
 
 Nachbarn sind inzwischen als konfigurationsbasierte UI implementiert. `neighbor_cell_snapshot` projiziert die vorhandene Konfiguration; die Oberfläche sagt ausdrücklich: **„Verfügbarkeit und Handover werden hier nicht gemessen.“** Das frühere „geplante Erweiterung“ ist daher für die UI-Navigation/Anzeige teilweise überholt, für eine reale Live-Handover-/Verfügbarkeitsfunktion aber weiterhin keine Umsetzungsaussage.
 
-Hilfe besitzt ebenfalls einen implementierten Navigationsplatzhalter mit **„In Vorbereitung“**. Eine vollständige integrierte Bedien-/Fachdokumentation wurde durch diesen Chat nicht fertiggestellt.
+Hilfe besitzt ebenfalls einen implementierten Navigationsplatzhalter mit **„In Vorbereitung“**. Eine vollständige integrierte Bedien-/Fachdokumentation wurde für diesen Entwicklungsstand nicht fertiggestellt.
 
 ### RF: übernommenes Layout und korrigierte Messbedeutung
 
@@ -603,7 +593,7 @@ tools/embed_edge_service_design.py
 tools/embed_workflow_service_design.py
 ```
 
-Änderungen an gemeinsamen Assets müssen in die eingebetteten Python-/HTML-Kopien synchronisiert werden. Beispielhafte Entwicklungsbefehle aus der Shared-Dokumentation, **in diesem Archivauftrag nicht ausgeführt**:
+Änderungen an gemeinsamen Assets müssen in die eingebetteten Python-/HTML-Kopien synchronisiert werden. Beispielhafte Entwicklungsbefehle aus der Shared-Dokumentation, **bei der Quellenprüfung vom 06.10.2026 nicht ausgeführt**:
 
 ```bash
 python3 tools/embed_service_design.py path/to/index.html --name "Hardware Gateway" --access open-lab
@@ -693,7 +683,7 @@ Quelle: `Docs/DIENST-WEBUI-DESIGN-UPDATE.md` auf dem überprüften Stand. Die We
 
 TTS/Piper ist Teil der Media Library und wird nicht als zusätzliche 30. Oberfläche gezählt. Die Observability-Dienstoberfläche gestaltet keine fremden Grafana-/Prometheus-UIs um. Eine WebUI-Abnahme ersetzt keine SIP-, TETRA-, SDS-, Medien- oder Hardware-Ende-zu-Ende-Abnahme.
 
-## Tests: früher berichtet, nachträglich verifiziert und heute neu geprüft
+## Tests: früher berichtet, nachträglich verifiziert und zum Prüfstand vom 06.10.2026 neu geprüft
 
 ### Verifizierte historische GitHub-Actions-Läufe
 
@@ -718,19 +708,19 @@ Zusätzlich wurden Jobmetadaten und relevante historische Logtexte überprüft:
 | Workflow-Browser | 15 Tests bestanden, 0 fehlgeschlagen | Workflowoberflächen und Zustände; keine echte SDS-Endgerätezustellung |
 | Zusätzliche Dienste | 431 Checks über fünf Dienste / 15 Ansichten bestanden | Einschließlich älterer Komponenten; nicht 431 unabhängige Produktionsfälle |
 | Hardware-/RF-Browser | PASS | Livefeld-Fixtures, Escaping, Nullwerte, Probe-/Bin-Fallbacks, Auswahl, Alarme, Leerzustände, veraltete Daten, persistenter Dark Mode, unmittelbare Canvas-Neuzeichnung, Desktop/Mobil |
-| Rust-Dienste | 155 Tests bestanden, aus den historischen Testsummary-Zeilen verifiziert | Kein neu ausgeführter heutiger Gesamtlauf |
+| Rust-Dienste | 155 Tests bestanden, aus den historischen Testsummary-Zeilen verifiziert | Kein neu ausgeführter geprüfter Gesamtlauf |
 | Rust-Brew-Dashboard | 14 Tests bestanden | Zehn Seiten und Renderer-/Dashboardverhalten |
 | Warnzentrale Python | 76 Tests im erfolgreichen Job | Vorhandene Zugriffs-/Warnlogik, keine Produktivzustellung |
 
 Die Prüfungen umfassen gespeicherte Auswahl vor Body-Erzeugung, tatsächliches Umschalten, Rückkehr zu Hell, mobile Darstellung, Textkontraste, repräsentative API-Aktionen, Fehlerzustände und gesperrten Browserspeicher. Die Browserprüfungen verwenden isolierte HTTP-/WebSocket-Fixtures; Demo-Werte werden nicht in die Produktions-Telemetrie installiert.
 
-Historische CI-Screenshotartefakte waren in den erfolgreichen Runs vorhanden: Dashboard-Artifact `11261310956` (6,51 MB) und Dienst-Artifact `11261301182` (24,53 MB; 193 Dateien). Diese CI-Ansichten sind von den hier archivierten ursprünglichen Chatentwürfen und hochgeladenen Referenzen zu unterscheiden. Eine erneute Prüfung jedes Artefaktbildes wurde im Archivauftrag nicht ausgeführt.
+Historische CI-Screenshotartefakte waren in den erfolgreichen Runs vorhanden: Dashboard-Artifact `11261310956` (6,51 MB) und Dienst-Artifact `11261301182` (24,53 MB; 193 Dateien). Diese CI-Ansichten sind von den hier archivierten ursprünglichen Designentwürfen und hochgeladenen Referenzen zu unterscheiden. Eine erneute Prüfung jedes Artefaktbildes wurde im Prüfdurchlauf vom 06.10.2026 nicht ausgeführt.
 
 ### Frühere lokale Buildberichte und bekannte Nebenbefunde
 
-Der frühere Arbeitsbericht meldete Release-Builds der **19 Rust-Dienstpakete aus dem Workspace plus des eigenständigen Rust Brew**, zusammen 20 Dienstpakete, und zusätzlich der **Basisstation** als erfolgreich: insgesamt 21 ausführbare Programme. Die vollständigen lokalen Release-Logs sind heute nicht mehr vorhanden. Dieses Ergebnis wird deshalb als **historischer lokaler Bericht**, nicht als frisch wiederholter Build auf Jans Pi, geführt.
+Der frühere Arbeitsbericht meldete Release-Builds der **19 Rust-Dienstpakete aus dem Workspace plus des eigenständigen Rust Brew**, zusammen 20 Dienstpakete, und zusätzlich der **Basisstation** als erfolgreich: insgesamt 21 ausführbare Programme. Die vollständigen lokalen Release-Logs sind zum Prüfstand vom 06.10.2026 nicht mehr vorhanden. Dieses Ergebnis wird deshalb als **historischer lokaler Bericht**, nicht als frisch wiederholter Build auf dem Ziel-Pi, geführt.
 
-PR #59 dokumentiert außerdem zwei bereits bekannte separate statische Checkerbefunde: eine fehlende ältere Recorder-Workflow-Datei und das Ausführungsbit des IoT-Installers. Die erfolgreichen UI-/Rust-Prüfungen heben diese Nebenbefunde nicht automatisch auf. Ihr heutiger Fehlerstatus wurde für diesen Archivauftrag nicht erneut reproduziert.
+PR #59 dokumentiert außerdem zwei bereits bekannte separate statische Checkerbefunde: eine fehlende ältere Recorder-Workflow-Datei und das Ausführungsbit des IoT-Installers. Die erfolgreichen UI-/Rust-Prüfungen heben diese Nebenbefunde nicht automatisch auf. Ihr geprüfter Fehlerstatus wurde für diesen Prüfdurchlauf vom 06.10.2026 nicht erneut reproduziert.
 
 ### Reproduktionsbefehle aus den vorhandenen Workflows
 
@@ -754,9 +744,9 @@ python3 -m unittest discover -s system-backend/alert-service/tests
 
 Browserabhängigkeiten in den historischen Workflows: Node 22, Playwright `1.62.1` und Chromium, mit isoliertem `NODE_PATH`. Native CI-Abhängigkeiten unter Ubuntu 24.04: SoapySDR-Entwicklungsbibliothek, GSM-Bibliothek, pkg-config, CMake, Sprachcodec aus `tetra-codec-master` und je Dienst ffmpeg. Diese installierten CI-Abhängigkeiten sind keine Prüfung der Bibliotheken auf `SRV-M-TBS-01`.
 
-Die vollständige Actions-Abfrage zum exakt heutigen `main@9116c15…` lieferte `total_count: 0`: kein diesem Commit unmittelbar zugeordneter Run. Die historischen Ergebnisse bleiben wegen unveränderter Code-/Testdateien relevante Belege, sind aber keine neuen Testausführungen vom 06.10.2026.
+Die vollständige Actions-Abfrage zum exakt geprüften `main@9116c15…` lieferte `total_count: 0`: kein diesem Commit unmittelbar zugeordneter Run. Die historischen Ergebnisse bleiben wegen unveränderter Code-/Testdateien relevante Belege, sind aber keine neuen Testausführungen vom 06.10.2026.
 
-### Prüfung des Archivauftrags selbst
+### Prüfung der Dokumentationsablage
 
 Für dieses Archiv werden die Markdownstruktur, relative Verweise, Existenz aller 118 Bilder, Originalbyte-/Hashübereinstimmung, gültige JSON-Bildmetadaten, Erhalt des bisherigen Archivindexes und die Begrenzung aller veröffentlichten Pfade auf `Docs/archive/` geprüft. Vor dem Branchupdate wird `Archiving` erneut geladen; die Veröffentlichung erfolgt als Fast-forward mit erwarteter Ausgangs-SHA, ohne Force-Push und ohne Merge. Nach dem Speichern werden Branchcommit und Dateibaum erneut überprüft.
 
@@ -764,13 +754,13 @@ Diese Archivprüfungen sind keine neue Software-, Funk-, Hardware- oder Produkti
 
 ## Installation und Betriebsfortsetzung: gültige Grenzen der alten Anleitungen
 
-### Heutiger Fehler in den beiden Update-Dokumenten
+### Geprüfter Fehler in den beiden Update-Dokumenten
 
-`Docs/BASISSTATION-DESIGN-UPDATE.md` und `Docs/DIENST-WEBUI-DESIGN-UPDATE.md` hardcoden weiterhin den inzwischen nicht mehr angebotenen Branch `feat/netcore-dashboard-design` und den Ablauf `git fetch origin --prune` plus Branchwechsel. Diese Dateien sind damit **historische Featurebranch-Rolloutanleitungen**, keine unverändert ausführbare heutige Downloadanleitung.
+`Docs/BASISSTATION-DESIGN-UPDATE.md` und `Docs/DIENST-WEBUI-DESIGN-UPDATE.md` hardcoden weiterhin den inzwischen nicht mehr angebotenen Branch `feat/netcore-dashboard-design` und den Ablauf `git fetch origin --prune` plus Branchwechsel. Diese Dateien sind damit **historische Featurebranch-Rolloutanleitungen**, keine unverändert ausführbare geprüfte Downloadanleitung.
 
-Der UI-Code ist heute in `main`. Für einen späteren Build ist ein tatsächlich verfügbarer, bewusst ausgewählter main-/Release-Stand oder ein abrufbarer unveränderlicher Commit zu verwenden. Das Archivmandat autorisiert keine Änderung der beiden Dokumente außerhalb `Docs/archive/`; die Korrektur bleibt eine konkrete Folgeaufgabe.
+Der UI-Code ist zum Prüfstand vom 06.10.2026 in `main`. Für einen späteren Build ist ein tatsächlich verfügbarer, bewusst ausgewählter main-/Release-Stand oder ein abrufbarer unveränderlicher Commit zu verwenden. Die Korrektur der beiden Update-Dokumente bleibt eine konkrete Folgeaufgabe.
 
-Der ursprüngliche Fetchfehler am alten `katwarn/nina` und die heutige Nichtverfügbarkeit des Designbranches sind unterschiedliche Befunde. Der damalige Fehler belegt nicht, dass der Designbranch zu diesem früheren Zeitpunkt schon gelöscht gewesen wäre.
+Der ursprüngliche Fetchfehler am alten `katwarn/nina` und die geprüfte Nichtverfügbarkeit des Designbranches sind unterschiedliche Befunde. Der damalige Fehler belegt nicht, dass der Designbranch zu diesem früheren Zeitpunkt schon gelöscht gewesen wäre.
 
 ### Cargo/Rust und native Abhängigkeiten
 
@@ -786,7 +776,7 @@ Eine gesonderte `--target-dir`-Angabe legt das Ausgabeverzeichnis fest. Zwei Job
 
 `cargo --version` allein genügt nicht zur Abnahme: der ausgewählte Benutzer braucht ein startbares `rustc`, eine Edition-2024-taugliche Toolchain, funktionierende native Linker-/SoapySDR-/Codec-Abhängigkeiten und passende Dateirechte. Bei rustup hängt die Toolchainauflösung an `HOME`, `CARGO_HOME` und `RUSTUP_HOME`; nur auf einen Cargo-Proxy im anderen Benutzerhome zu zeigen ist keine vollständige Lösung.
 
-Reine Diagnose für die Fortsetzung, **auf dem realen Host im verfügbaren Chat nicht ausgeführt bestätigt**:
+Reine Diagnose für die Fortsetzung, **auf dem realen Host in den erhaltenen Betriebsnotizen nicht ausgeführt bestätigt**:
 
 ```bash
 git -C /opt/netcore-tetra config --get-all remote.origin.fetch
@@ -799,7 +789,7 @@ Die Git-Ausgabe klärt die bisher nur vermutete Branchbindung. Die Benutzerprüf
 
 ### Tatsächliche Installation ist ein weiterer Schritt
 
-Der letzte Chatblock kompiliert nur. Er ersetzt keine aktive Binary und startet keinen Dienst neu. Vor einem wirklichen Austausch müssen mindestens die tatsächliche Unit, `ExecStart`, der Konfigurationspfad und der aktive Binärpfad bestimmt werden. Die Anleitung nennt mögliche Unitnamen `tetra.service`, `bluestation.service`, `tetra-bluestation.service` und `bluestation-bs.service`; keiner ist auf dem realen Host bestätigt.
+Der letzte Buildblock kompiliert nur. Er ersetzt keine aktive Binary und startet keinen Dienst neu. Vor einem wirklichen Austausch müssen mindestens die tatsächliche Unit, `ExecStart`, der Konfigurationspfad und der aktive Binärpfad bestimmt werden. Die Anleitung nennt mögliche Unitnamen `tetra.service`, `bluestation.service`, `tetra-bluestation.service` und `bluestation-bs.service`; keiner ist auf dem realen Host bestätigt.
 
 Die vorhandene Updateanleitung ermittelt bei laufendem Dienst den Binärpfad über `MainPID` und `/proc/<PID>/exe`. Ein angehängtes ` (deleted)` ist kein Bestandteil des Pfades. Die tatsächliche alte Binary und Konfiguration werden vor dem Austausch gesichert; der protokollierte Backup-Pfad ist maßgeblich. Eine Musterkonfiguration darf die vorhandene reale `config.toml` nicht ersetzen.
 
@@ -810,11 +800,11 @@ MIGRATE_LOCAL_TTS_CONFIG=0
 DISABLE_LOCAL_PIPER=0
 ```
 
-Die Defaults des allgemeinen Updaters sind hierfür nicht gleichbedeutend mit einem reinen UI-Austausch. Der Updater verändert außerdem Besitzrechte seines Buildziels und enthält eigene Test-/Build-/Backup-/Neustartschritte. Er wurde in diesem Chat nicht auf der realen TBS erfolgreich ausgeführt und darf nicht allein wegen des Cargo-Fehlers ungeprüft gestartet werden.
+Die Defaults des allgemeinen Updaters sind hierfür nicht gleichbedeutend mit einem reinen UI-Austausch. Der Updater verändert außerdem Besitzrechte seines Buildziels und enthält eigene Test-/Build-/Backup-/Neustartschritte. Er wurde für diesen Entwicklungsstand nicht auf der realen TBS erfolgreich ausgeführt und darf nicht allein wegen des Cargo-Fehlers ungeprüft gestartet werden.
 
 ### Dienstrollout nach Laufzeittyp
 
-Die vorhandene Dienstanleitung differenziert sinnvoll nach Installationsart, auch wenn ihr Branchwechsel heute überholt ist:
+Die vorhandene Dienstanleitung differenziert sinnvoll nach Installationsart, auch wenn ihr Branchwechsel zum Prüfstand vom 06.10.2026 überholt ist:
 
 | Art | Benötigter Rolloutumfang | Zu erhaltender Bestand |
 |---|---|---|
@@ -830,11 +820,11 @@ Beispielpfade wie `/usr/local/bin/netcore-rf-monitor`, `/usr/local/lib/netcore-t
 
 ## Offene Aufgaben, Roadmap-Kandidaten und nächste Schritte
 
-Die Reihenfolge in diesem Abschnitt gilt innerhalb einer Fortsetzung des UI-/Buildauftrags. Die heutige zentrale `ROADMAP.md` bleibt für die **Gesamtprojektpriorität** maßgeblich; dort steht aktuell Z01.1, der kontrollierte Deployment-/Syslog-Quellabgleich, an erster Stelle. Dieses ist ein späterer Repositoryplan und kein rückwirkender Beschluss dieses Designchats. UI ist bereits integriert; eine erneute komplette Designrunde ist dort nicht die Startaufgabe.
+Die Reihenfolge in diesem Abschnitt gilt innerhalb einer Fortsetzung des UI-/Buildauftrags. Die geprüfte zentrale `ROADMAP.md` bleibt für die **Gesamtprojektpriorität** maßgeblich; dort steht aktuell Z01.1, der kontrollierte Deployment-/Syslog-Quellabgleich, an erster Stelle. Dieses ist ein späterer Repositoryplan und kein rückwirkender Beschluss dieser Designarbeit. UI ist bereits integriert; eine erneute komplette Designrunde ist dort nicht die Startaufgabe.
 
 | Kandidat | Status | Konkreter nächster Schritt / Abhängigkeit | Abnahme |
 |---|---|---|---|
-| UI-UPDATE-DOCS | Offen; heutiger Quellbefund | Beide Anleitungen außerhalb dieses Archivauftrags später auf verfügbaren main-/Release-/Commitstand umstellen; alten Single-Branch-Fetch und Abbruchverhalten erklären | Anleitung von sauberem und branchgebundenem Checkout überprüft; keine Kopie alter nicht angebotener Refnamen |
+| UI-UPDATE-DOCS | Offen; geprüfter Quellbefund | Beide Anleitungen außerhalb dieses Prüfdurchlaufs vom 06.10.2026 später auf verfügbaren main-/Release-/Commitstand umstellen; alten Single-Branch-Fetch und Abbruchverhalten erklären | Anleitung von sauberem und branchgebundenem Checkout überprüft; keine Kopie alter nicht angebotener Refnamen |
 | TBS-CARGO-DIAG | Offen; reale Fehlermeldung bestätigt | Ausgabe der Cargo-/rustc-Prüfungen unter richtigem Benutzer und die tatsächliche Rustinstallation feststellen; nicht sofort eine zweite Toolchain installieren | Cargo und rustc unter bewusst ausgewähltem Buildkonto ausführbar; Edition 2024 unterstützt |
 | TBS-CLEAN-RELEASE | Geplant, nicht betrieblich bestätigt | Verfügbaren geprüften Quellstand in separatem sauberen Ordner bauen; native Bibliotheken und Rechte prüfen; bestehenden Dirty-Checkout erhalten | Erfolgreicher `cargo build --release --locked -p bluestation-bs`; Commit, Binarypfad und Prüfsumme dokumentiert |
 | TBS-BINARY-ROLLOUT | Offen, abhängig vom erfolgreichen Build | Tatsächliche Unit/ExecStart/Config/Binary feststellen; Sicherung und Rückweg vorbereiten; gezielt austauschen/neustarten | Dienst läuft mit neuer identifizierter Binary und weiterhin richtiger Konfiguration; Rückweg belegt |
@@ -845,11 +835,11 @@ Die Reihenfolge in diesem Abschnitt gilt innerhalb einer Fortsetzung des UI-/Bui
 | BUNDLE-PFLEGE | Dauerhafte technische Abhängigkeit | Bei weiteren Shared-Änderungen statische/Python-/Rust-Brew-Bundles synchronisieren und Generatorchecks verwenden | Keine veralteten eingebetteten Kopien, gleicher Theme-/Logo-Stand |
 | HILFE-INHALTE | Geplante Erweiterung, Navigationsplatzhalter implementiert | Tatsächliche Hilfetexte und gültige Dokumentationslinks später ergänzen | Fachlich korrekte Hilfe statt „In Vorbereitung“ |
 | NACHBARN-LIVE | Nur Idee / nicht im Design implementiert | Falls gewünscht, Live-Erreichbarkeit/Handover separat definieren; vorhandene konfigurierte Nachbarliste nicht als Messung verwenden | Eigener Schnittstellen-/Funknachweis, außerhalb dieses UI-Rollouts |
-| VORHANDENE-CHECKER | Separat dokumentierte historische Nebenbefunde | Recorder-Workflow-/IoT-Installerbefunde gezielt erneut prüfen, bevor daraus eine heutige Störung gemacht wird | Eigenständiger aktueller Befund bzw. Fix-/Testbeleg |
+| VORHANDENE-CHECKER | Separat dokumentierte historische Nebenbefunde | Recorder-Workflow-/IoT-Installerbefunde gezielt erneut prüfen, bevor daraus eine geprüfte Störung gemacht wird | Eigenständiger aktueller Befund bzw. Fix-/Testbeleg |
 
-Für die unmittelbare Wiederaufnahme dieses Chats fehlt zuerst die Rückmeldung zum zuletzt vorgeschlagenen Cargo-Erkennungsblock. Anschließend sind der heute verfügbare Quellstand und der echte Release-Build zu sichern. Build, Installation und On-Air-/Dienstabnahme werden dabei als getrennte Nachweise geführt.
+Für die unmittelbare Wiederaufnahme dieser Arbeitsphase fehlt zuerst die Rückmeldung zum zuletzt vorgeschlagenen Cargo-Erkennungsblock. Anschließend sind der zum Prüfstand vom 06.10.2026 verfügbare Quellstand und der echte Release-Build zu sichern. Build, Installation und On-Air-/Dienstabnahme werden dabei als getrennte Nachweise geführt.
 
-In diesem Chat wurden keine verbindlichen Kalendertermine für den Rollout und keine neue zentrale Auth-/RBAC-Funktion beschlossen. Die frühere Freigabe zur UI-Implementierung war bereits erteilt; sie muss nicht rückwirkend erneut eingeholt werden. Der aktuelle Archivauftrag enthält aber keine zusätzliche Runtime-/Hoständerung.
+Verbindliche Rollouttermine und eine neue zentrale Auth-/RBAC-Funktion wurden für diese Designarbeit nicht festgelegt. Die UI-Implementierung war freigegeben; ein erfolgreicher Hostrollout bleibt unbelegt.
 
 ## Quellen, Anhänge und Bildarchiv
 
@@ -858,11 +848,11 @@ In diesem Chat wurden keine verbindlichen Kalendertermine für den Rollout und k
 | Quelle | Bedeutung |
 |---|---|
 | [PR #59](https://github.com/JanHG98/netcore-tetra/pull/59) | Drei Designcommits, Beschreibung, tatsächlicher Merge, historische Validierungsangaben |
-| [Designhead → heutiges main](https://github.com/JanHG98/netcore-tetra/compare/2fe2a1939a8795db3816d45973282781dae856f0...9116c15d645458f99e236712b67a1ad970432791) | Unveränderter UI-/Runtime-/Teststand seit dem getesteten Head |
+| [Designhead → geprüftes main](https://github.com/JanHG98/netcore-tetra/compare/2fe2a1939a8795db3816d45973282781dae856f0...9116c15d645458f99e236712b67a1ad970432791) | Unveränderter UI-/Runtime-/Teststand seit dem getesteten Head |
 | [Basisstations-Design](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/Docs/BASISSTATION-DESIGN.md) | 26 Ansichten, RF, Einbettung, Zugriff und Tests |
 | [Basisstations-Update](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/Docs/BASISSTATION-DESIGN-UPDATE.md) | Historische Featurebranch-Anleitung; Buildbenutzer, echte Unit/Binary, Sicherung, TTS-Schalter und Rückweg |
-| [Dienst-Update](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/Docs/DIENST-WEBUI-DESIGN-UPDATE.md) | 29 Oberflächen, Ports und differenzierte Runtime-Rolloutwege; Branchangabe heute überholt |
-| [html.rs](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/crates/tetra-entities/src/net_dashboard/html.rs) | Der vom Nutzer ursprünglich genannte Generator-/Einbettungseinstieg |
+| [Dienst-Update](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/Docs/DIENST-WEBUI-DESIGN-UPDATE.md) | 29 Oberflächen, Ports und differenzierte Runtime-Rolloutwege; Branchangabe zum Prüfstand vom 06.10.2026 überholt |
+| [html.rs](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/crates/tetra-entities/src/net_dashboard/html.rs) | Der durch den Betreiber ursprünglich genannte Generator-/Einbettungseinstieg |
 | [Basisstations-Assets](https://github.com/JanHG98/netcore-tetra/tree/9116c15d645458f99e236712b67a1ad970432791/crates/tetra-entities/src/net_dashboard/ui) | HTML, CSS, JavaScript und originales PNG |
 | [Dashboard-Server](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/crates/tetra-entities/src/net_dashboard/server.rs) | Sitzung, Allowlist, öffentliche Projektion, RF und Nachbarn |
 | [Dashboard-Konfiguration](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/crates/tetra-config/src/bluestation/sec_dashboard.rs) | Repositorydefaults und optionale Zugriffseinstellungen |
@@ -871,22 +861,22 @@ In diesem Chat wurden keine verbindlichen Kalendertermine für den Rollout und k
 | [Basisstations-Updater](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/install/update-basisstation.sh) | Buildkonto/Cargo, Build-/Backup-/TTS-/Neustartablauf |
 | [Dashboard-CI](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/.github/workflows/dashboard-ui-tests.yml) | Browser- und Dashboardbackendprüfungen |
 | [Dienst-CI](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/.github/workflows/service-ui-tests.yml) | Bundles, sechs Dienstbrowsersuiten, Rust, Brew und Warnzentrale |
-| [Heutige Gesamtroadmap](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md) | Spätere Gesamtprioritäten; UI integriert, Hostrollout und Funktionsprüfung offen |
+| [Geprüfte Gesamtroadmap](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md) | Spätere Gesamtprioritäten; UI integriert, Hostrollout und Funktionsprüfung offen |
 
-Benachbarte Archivdokumente sind eigenständige Chats, keine Ersatztranskription dieses Verlaufs: [frühere Dashboard-/Integrationsarbeit](2026-10-03_basisstation-dashboard-deutsch-integrationen-wiki-dgna-gruppennamen.md) und [spätere Roadmap-/UI-/RBAC-/Restorepflege](2026-10-06_roadmap-ui-dark-mode-zentrale-rbac-und-cmce-restore.md). Die Inhalte wurden nicht überschrieben.
+Ergänzende Projektunterlagen: [frühere Dashboard-/Integrationsarbeit](2026-10-03_basisstation-dashboard-deutsch-integrationen-wiki-dgna-gruppennamen.md) und [spätere Roadmap-/UI-/RBAC-/Restorepflege](2026-10-06_roadmap-ui-dark-mode-zentrale-rbac-und-cmce-restore.md).
 
 ### Wiedergefundene Originalbilder
 
 [Vollständiger Bildindex](assets/2026-10-06_netcore-ui-redesign/README.md) und [Prüfsummenmanifest](assets/2026-10-06_netcore-ui-redesign/image-manifest.json) enthalten **118 unveränderte Original-PNGs** mit Originalnamen, UTC-Zeit, Abmessungen, Bytezahl, SHA-256 und Git-Blob-SHA-1. Gesamtumfang: **156.331.258 Bytes**; 116 generierte Designvorschauen und zwei hochgeladene Referenzen. Dateinamen wurden für sichere relative Links normalisiert, Bildbytes nicht verändert.
 
-Die Bilder wurden anhand des passenden Projektordners, Erstellungszeitfensters und ihrer eindeutig zugehörigen NetCore-Designinhalte zugeordnet. Der ursprüngliche vollständige Nachrichtenexport fehlt; die individuelle Zuordnung jedes Bildes zu einem Chatturn bleibt deshalb offen. Die früheren Varianten sind bewusst enthalten, aber keine zusätzliche Freigabe oder aktuelle Implementierung.
+Die Bilder wurden anhand des Projektordners, Erstellungszeitfensters und ihrer eindeutig zugehörigen NetCore-Designinhalte zugeordnet. Der ursprüngliche vollständige Nachrichtenexport fehlt; die individuelle Zuordnung jedes Bildes zu einem Entwurfsstand bleibt deshalb offen. Die früheren Varianten sind bewusst enthalten, aber keine zusätzliche Freigabe oder aktuelle Implementierung.
 
 Die wichtigsten Referenzen:
 
 | Originalname | Archivdatei | Rolle |
 |---|---|---|
 | `Logo + Text + Helles Design.png` | [015-logo-text-helles-design.png](assets/2026-10-06_netcore-ui-redesign/015-logo-text-helles-design.png) | Geliefertes Original-Logo / helle Markenreferenz |
-| `Unbenannt.png` | [019-unbenannt.png](assets/2026-10-06_netcore-ui-redesign/019-unbenannt.png) | Gewünschte RF-Layoutreferenz; früher lokal nicht lesbar, heute wiedergefunden |
+| `Unbenannt.png` | [019-unbenannt.png](assets/2026-10-06_netcore-ui-redesign/019-unbenannt.png) | Gewünschte RF-Layoutreferenz; früher lokal nicht lesbar, zum Prüfstand vom 06.10.2026 wiedergefunden |
 
 ![Geliefertes Original-Logo für die helle NetCore-Gestaltung](assets/2026-10-06_netcore-ui-redesign/015-logo-text-helles-design.png)
 
@@ -894,16 +884,16 @@ Die wichtigsten Referenzen:
 
 Frühe dunkle Bilder mit Seitenleiste und anderem quadratischem Zeichen sind ersetzte Entwürfe. Sie dürfen nicht als der später implementierte Dark Mode der gemeinsamen horizontalen Shell bezeichnet werden. Spätere helle Basis- und Dienstvorschauen enthalten wiederum sichtbare Korrekturen. Beispiele: Warnzentrale ohne früheren Open-Lab-Hinweis, KMF-Beschriftung „32 Bytes“ statt „256 Bit“, korrigierte Navigation oder Mitgliedschaftstexte. Die Dateinamen und Zeitfolge dokumentieren Revisionen, beweisen aber nicht allein deren technische Implementierung oder individuelle Freigabe.
 
-Fünf Kontaktbögen aller 118 Bilder und 14 besonders sensible Originalansichten wurden visuell geprüft. Keine unmaskierten Passwörter, Tokens oder Rohschlüssel wurden erkannt. Login-/Warnzugang-/AMI-/EchoLink-Felder sowie der Telegram-Bot-Token erscheinen gepunktet; Security/KMF zeigen verkürzte Fingerprints. Sichtbare Chat-/Stations-/Funkdaten in generierten Entwürfen sind als Beispieldaten eingeordnet. Die Prüfung ist kein hochauflösender Scan jedes Pixels aller 118 Dateien.
+Fünf Kontaktbögen aller 118 Bilder und 14 besonders sensible Originalansichten wurden visuell geprüft. Keine unmaskierten Passwörter, Tokens oder Rohschlüssel wurden erkannt. Login-/Warnzugang-/AMI-/EchoLink-Felder sowie der Telegram-Bot-Token erscheinen gepunktet; Security/KMF zeigen verkürzte Fingerprints. Sichtbare Stations- und Funkdaten in generierten Entwürfen sind als Beispieldaten eingeordnet. Die Prüfung ist kein hochauflösender Scan jedes Pixels aller 118 Dateien.
 
-Fremde Suchtreffer und Bilder anderer Chats wurden nicht übernommen. Die bereitgestellten ETSI-PDFs wurden nicht als Designbilder hochgeladen oder ohne Bezug in diesen Auftrag kopiert.
+Fremde Suchtreffer und Bilder anderer Arbeitsphasen wurden nicht übernommen. Die bereitgestellten ETSI-PDFs wurden nicht als Designbilder hochgeladen oder ohne Bezug in diesen Auftrag kopiert.
 
-## Abschlussstatus und Übergabe an einen Folgechat
+## Stand und nächste Schritte
 
 **Entwicklung:** Das freigegebene Design, RF-Arbeitslayout und Dark Mode sind im überprüften Runtime-Quellstand implementiert und historisch CI-getestet. PR #59 ist tatsächlich integriert. Eine neue vollständige UI-Implementierung ist für die Wiederaufnahme nicht nötig.
 
 **Betrieb:** Auf `SRV-M-TBS-01` sind der alte Dirty-Checkout, der fehlgeschlagene Fetch und die Meldung „cargo not found“ belegt. Der erfolgreiche neue Build, der Austausch der laufenden Binary, der Neustart und die Realabnahme aller UIs fehlen als Nachweise. Die letzte Cargo-Reparaturanweisung ist eine vorgeschlagene Lösung, keine bestätigte Fehlerbehebung.
 
-**Fortsetzung:** Zuerst die echte Rust-/Cargo-Umgebung und den vorhandenen Buildordner feststellen; danach einen heute verfügbaren geprüften Quellstand als Release bauen und dokumentieren. Unit/Config/Binary, Sicherung und Rückweg vor dem Austausch verifizieren. Die Update-Dokumente anschließend in einem gesonderten Auftrag korrigieren und Basisstation/Diensthosts einschließlich Dark Mode und RF-Fachgrenzen abnehmen. Für andere Gesamtprojektarbeit zuerst die aktuelle zentrale Roadmap lesen.
+**Fortsetzung:** Zuerst die echte Rust-/Cargo-Umgebung und den vorhandenen Buildordner feststellen; danach einen zum Prüfstand vom 06.10.2026 verfügbaren geprüften Quellstand als Release bauen und dokumentieren. Unit/Config/Binary, Sicherung und Rückweg vor dem Austausch verifizieren. Die Update-Dokumente anschließend in einem gesonderten Auftrag korrigieren und Basisstation/Diensthosts einschließlich Dark Mode und RF-Fachgrenzen abnehmen. Für andere Gesamtprojektarbeit zuerst die aktuelle zentrale Roadmap lesen.
 
-Die Archivierung dieses Dokuments und der Bilder verändert ausschließlich `Docs/archive/` im Branch `Archiving`. Runtimecode, Konfiguration, aktive Dienste, Roadmaps außerhalb des Archivs und andere Branches werden durch diesen Auftrag nicht geändert. Der Nutzer archiviert den Chat nach eigener Prüfung selbst.
+Die hier erhaltenen Design- und Buildnotizen belegen keinen zusätzlichen Runtime- oder Hostrollout.

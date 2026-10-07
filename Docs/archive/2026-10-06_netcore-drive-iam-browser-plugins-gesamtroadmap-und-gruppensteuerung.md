@@ -1,57 +1,57 @@
-# NetCore Drive, IAM, Browser-Plugins, Gesamtroadmap und zentrale Gruppensteuerung
+# Brainstorming: NetCore Drive, IAM, Browser-Plugins, Gesamtroadmap und zentrale Gruppensteuerung
 
-## 1. Metadaten und Auswertungsgrenzen
+Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
+
+## 1. Projektstand und Quellenlücken
 
 | Feld | Wert |
 | --- | --- |
-| Dokumenttyp | Technische Abschlussdokumentation dieses Projektchats |
+| Dokumenttyp | Brainstorming- und Entwicklungsnotizen |
 | Erstellt | 2026-10-06, Europe/Berlin |
 | Thema | Eigene Dateicloud; zentrale und lokale Rechte; externe Ordnerfreigaben; Browser-Plugins; repositoryweite Gesamtroadmap; Ausführung zentraler Gruppenaufträge durch die TBS |
-| Ursprünglicher Chattitel | Im zugänglichen Verlauf nicht übermittelt; die Überschrift ist ein beschreibender Archivtitel |
-| Ursprünglicher Chatlink | Nicht verfügbar; keine URL rekonstruiert oder erfunden |
 | Repository | `JanHG98/netcore-tetra` |
-| Zielbranch / erlaubte Ablage | `Archiving`, ausschließlich `Docs/archive/` |
-| Heutiger geprüfter Produktstand | `main@9116c15d645458f99e236712b67a1ad970432791` |
+| Archivablage | `Archiving`, ausschließlich `Docs/archive/` |
+| Geprüfter Produktstand | `main@9116c15d645458f99e236712b67a1ad970432791` |
 | Geprüfter Archiv-Ausgangsstand | `Archiving@abe69d05e0749ea45929e1d168899445907b6af1`; vor Veröffentlichung erneut auf zwischenzeitliche Änderungen prüfen |
 | Historischer Gesamtroadmap-Ausgangsstand | `main@e5d825b33db2e1fce14bcb2cc23e73c241873a18`, `Archiving@9af2de92b120dc612d83a17f78eeee9a97f2f775` |
-| Historische gezielte Gruppenprüfung | `main@07609fb56f412ebe6e36655323e8fc6359cf90ec`; am 2026-10-06 gegen heutigen main erneut geprüft |
+| Historische gezielte Gruppenprüfung | `main@07609fb56f412ebe6e36655323e8fc6359cf90ec`; am 2026-10-06 gegen geprüften main erneut geprüft |
 | Bestehende Planungs-IDs | `NETCORE-MASTER-01`, `NETCORE-DRIVE-01`, `NETCORE-IAM-01`; Aufgaben Z01–Z11, D0–D9, M0–M8 |
 
-Ausgewertet wurden die zugänglichen Nutzeraufträge, die verfügbare Fortsetzungszusammenfassung, die noch sichtbare Antwort zur Gruppensteuerung, ergänzend auffindbarer Gesprächskontext sowie die unten genannten Repository-Dateien und Commits. Die frühen vollständigen Assistant-Antworten und ursprünglichen Designpräsentationen liegen nicht als vollständige Rohtranskription vor. Die bestätigte Designkombination und die Anforderungen sind zusätzlich in der heutigen Drive-Fachroadmap dokumentiert. Ein Kontextabruf bestätigt die frühe Assistant-Auswahl vom 2026-10-04T23:50:34Z; dies entspricht dem 05.10.2026 in Europe/Berlin. Der Abruf liefert keinen exakten Chattitel, Chatlink oder vollständigen Bildnachweis.
+Grundlagen sind die erhaltenen Planungsnotizen, die Drive-Fachroadmap sowie die unten genannten Repository-Dateien und Commits. Die bestätigte Designkombination wurde am 05.10.2026 in Europe/Berlin festgehalten; der zugehörige Zeitstempel ist 2026-10-04T23:50:34Z. Vollständige frühe Designpräsentationen und Originalbilder sind nicht erhalten.
 
-Diese Datei ist keine behauptete vollständige Wort-für-Wort-Auswertung aller möglicherweise früheren Turns. Sie bewahrt den nachvollziehbaren fachlichen Endstand, die belegten Dokumentationsänderungen und die verbleibenden Lücken. Andere Projektchats werden nur als konkret verlinkte Quellen behandelt; daraus wird kein in diesem Chat durchgeführter Test oder Deployment abgeleitet.
+Die Notizen bewahren Anforderungen, dokumentierte Änderungen und offene Aufgaben. Verlinkte Projektunterlagen ergänzen diesen Stand; deren Tests und Deployments bleiben eigenständige Nachweise.
 
 ### Statusbegriffe
 
 | Begriff | Bedeutung in diesem Archiv |
 | --- | --- |
 | Idee | Erwogen, noch ohne verbindliche technische Auswahl |
-| Beschlossen / geplant | Vom Nutzer verlangtes Ziel oder dokumentierter Arbeitsumfang; Funktion noch nicht allein dadurch vorhanden |
+| Beschlossen / geplant | Festgelegtes Ziel oder dokumentierter Arbeitsumfang; Funktion noch nicht allein dadurch vorhanden |
 | Implementiert | Konkreter Code oder Dokumentationsinhalt im angegebenen Repository-Commit vorhanden; Dokumentation und Runtime getrennt benennen |
 | Getestet | Ein ausgeführter Test mit Ergebnis ist nachgewiesen; Quelllesen ist nur statische Prüfung |
 | Im Betrieb bestätigt | Konkreter erfolgreicher Lauf an der tatsächlichen Anlage / am Endgerät belegt |
 
-Für diesen Chat sind **Roadmapdateien und Verweise implementiert und remote verifiziert**. Die neue Drive-Anwendung, zentrale IAM-Integration und Behebung der zentralen Gruppenhandler sind **geplant**, nicht durch diese Dokumentationsaufträge implementiert oder im Betrieb bestätigt.
+Zum dokumentierten Stand sind **Roadmapdateien und Verweise implementiert und remote verifiziert**. Die neue Drive-Anwendung, zentrale IAM-Integration und Behebung der zentralen Gruppenhandler sind **geplant**, nicht durch diese Dokumentationsaufträge implementiert oder im Betrieb bestätigt.
 
 ## 2. Ziel, Ausgangslage und Verlauf
 
-Jan schlug eine eigene Cloud für Dateien vor: funktional in Richtung Nextcloud, ohne MariaDB als zwingende Voraussetzung und mit eigenem NetCore-Design. Nach Annahme der Designrichtung wurde der Umfang konkretisiert: **„Funktionsumfang Nextcloud und Simplizität wie OneDrive“**. Dazu kamen gemeinsame Rechte im Ökosystem, Freigabe kompletter Ordner an externe Personen und ein eigenständiger Start, falls noch kein zentraler Identitäts-/Rechtedienst existiert.
+Ziel ist eine eigene Dateicloud in Richtung Nextcloud, ohne MariaDB als zwingende Voraussetzung und mit eigenem NetCore-Design. Die Produktleitlinie lautet: Dateifunktionen im Umfang von Nextcloud mit der einfachen Bedienung von OneDrive. Dazu gehören gemeinsame Rechte im Ökosystem, externe Freigaben kompletter Ordner und ein eigenständiger Start vor Einführung des zentralen Identitätsdienstes.
 
-Der Nutzer schrieb bei der Rückfallebene „EBAC“. Der weitere Dialog und die gespeicherten Fachroadmaps behandeln dies als die noch nicht vorhandene zentrale IAM-/RBAC-Ebene. Es wurde kein separates EBAC-Produkt, Schema oder Protokoll definiert; die originale Wortwahl darf nicht als eigenständige implementierte Komponente ausgegeben werden.
+Die Rückfallebene bezieht sich auf die noch nicht vorhandene zentrale IAM-/RBAC-Ebene. Die frühe Bezeichnung „EBAC“ definiert kein separates Produkt, Schema oder Protokoll.
 
-| Reihenfolge | Nutzerauftrag / Ergebnis |
+| Reihenfolge | Arbeitsumfang / Ergebnis |
 | --- | --- |
 | 1 | Eigene Dateicloud und Designvorschläge; bestätigte Kombination aus Core Console, Workspace und Archive Studio |
 | 2 | Zentrale Rechte im gesamten Ökosystem und externe Freigabe ganzer Ordner; Produktleitlinie Nextcloud-Dateifunktionen / OneDrive-Bedienung |
-| 3 | Drive-Plan in GitHub-Roadmaps aufnehmen; ausdrückliche Freigabe für main |
+| 3 | Drive-Plan auf main in den GitHub-Roadmaps dokumentieren |
 | 4 | Rückfallebene ohne schon vorhandenes zentrales IAM/RBAC einplanen |
 | 5 | Browser-Plugin-Plattform für PDF, Office, 3D, Schaltpläne, Vektoren, Bilder, Video und Audio ergänzen |
 | 6 | Alle Branches und das gesamte Repository für eine Gesamtfolge betrachten; zunächst ausdrücklich nur berichten, nichts ändern |
-| 7 | Diese Gesamtroadmap anschließend auf main zentral ablegen, damit neue Chats sofort den ersten Schritt finden |
+| 7 | Diese Gesamtroadmap anschließend auf main zentral ablegen, als gemeinsamen Einstieg für weitere Arbeitsphasen |
 | 8 | Ergänzen, dass die Basisstation eingehende zentrale Gruppenzuweisungen umsetzt und nicht als unbekannten / nicht unterstützten Befehl ignoriert |
-| 9 | Abschlussdokumentation und Index auf Archiving anlegen; dieser Auftrag erlaubt keine Änderungen außerhalb von Docs/archive |
+| 9 | Entwicklungsnotizen und Index auf Archiving anlegen; Ablage unter Docs/archive |
 
-Die Schreibfreigabe für main galt den vorherigen Roadmapänderungen. Der jetzige Archivauftrag hat den engeren, ausdrücklich festgelegten Zielbranch `Archiving`. Er löst keine Runtime-Implementierung, keinen Branch-Merge und kein Anlagenupdate aus.
+Roadmapänderungen wurden auf main veröffentlicht; die Archivablage erfolgt auf `Archiving`. Die Dokumentationsänderungen enthalten keine Runtime-Implementierung und belegen kein Anlagenupdate.
 
 ## 3. Endgültige Drive-Anforderungen und offene Auswahl
 
@@ -83,7 +83,7 @@ Der Satz „Funktionsumfang Nextcloud“ wurde in der Roadmap auf überprüfbare
 
 Dateiinhalt soll auf NAS / Dateispeicher liegen. Verwaltungsdaten, Rechte und Versionsinformationen werden getrennt gehalten. MariaDB ist **keine Voraussetzung**; daraus folgt nicht „ohne Metadatenbank“. Ein konkreter Drive-Mount, LXC, Port, DNS-Name, Client oder Datenbankschema wurde noch nicht ausgewählt.
 
-| Ansatz | Historische Einordnung / heutiger Status |
+| Ansatz | Historische Einordnung / geprüfter Status |
 | --- | --- |
 | Kleiner eigener Dateidienst im LXC mit NAS und lokalem SQLite | Früher Vorschlag für begrenzten Umfang; keine bestätigte Produktionsarchitektur |
 | Eigene NetCore-Oberfläche vor Nextcloud Files mit PostgreSQL | Bevorzugte Empfehlung zur Prüfung, nachdem der Umfang auf umfassende Datei-/Sync-Funktionen erweitert wurde |
@@ -156,7 +156,7 @@ Externe Nutzung benötigt einen erreichbaren HTTPS-Endpunkt. NAS-, TBS- oder son
 
 ## 6. Browser-Plugins und Formatgrenzen
 
-Der Nutzer verlangt Viewer / Player und geeignete Bearbeitung direkt im Browser. Dafür ist eine allgemeine Plugin-Plattform geplant; sie soll auch im lokalen Drive-Betrieb funktionieren und nicht auf D6 / zentrales IAM warten.
+Vorgesehen sind Viewer / Player und geeignete Bearbeitung direkt im Browser. Dafür ist eine allgemeine Plugin-Plattform geplant; sie soll auch im lokalen Drive-Betrieb funktionieren und nicht auf D6 / zentrales IAM warten.
 
 | Familie | Geplante Fähigkeiten / Kandidaten | Eigene Abnahmegrenzen |
 | --- | --- | --- |
@@ -184,11 +184,11 @@ Diese Tabelle ist eine **geplante Abnahmematrix**, keine getestete universelle F
 - Ableitungen / Vorschaudateien an Dateiversion und Rechte binden; temporäre URLs und Caches bei Widerruf / Löschung berücksichtigen.
 - Originaldatei erhalten. Editoren speichern versioniert mit Konflikt-/Sperrverfahren; verlustbehafteten Rückexport kenntlich machen.
 
-Konkrete Office-Suite, 3D-Engine, EDA-Viewer, Konverter, Codecs und Plugin-Verteilquelle wurden nicht ausgewählt. Es wurden in diesem Chat keine Pakete installiert und keine Format-Roundtrips ausgeführt.
+Konkrete Office-Suite, 3D-Engine, EDA-Viewer, Konverter, Codecs und Plugin-Verteilquelle wurden nicht ausgewählt. Es wurden für diesen Entwicklungsstand keine Pakete installiert und keine Format-Roundtrips ausgeführt.
 
 ## 7. Drive- und IAM-Meilensteine
 
-Alle nachfolgenden technischen Meilensteine sind im heute geprüften Stand **geplant / offen**. Die IDs sind Arbeitsreferenzen, keine Fertigstellungsnachweise und keine verbindlichen Kalendertermine.
+Alle nachfolgenden technischen Meilensteine sind am Prüfstand vom 06.10.2026 **geplant / offen**. Die IDs sind Arbeitsreferenzen, keine Fertigstellungsnachweise und keine verbindlichen Kalendertermine.
 
 ### 7.1 Drive D0–D9
 
@@ -227,7 +227,7 @@ Alle nachfolgenden technischen Meilensteine sind im heute geprüften Stand **gep
 
 Beschlossen und als Dokumentation umgesetzt ist **`ROADMAP.md` im Repository-Root auf main**. Sie führt `NETCORE-MASTER-01`, dauerhaft benannte Aufgaben, Abhängigkeiten, Nachweisstufen und einen konkreten nächsten Schritt. `AGENTS.md` sowie Verweise aus README, Backend-, Wiki-, IAM- und Drive-Roadmap führen dorthin.
 
-Neue Chats sollen zuerst die aktuelle main-Roadmap und relevante neue Änderungen lesen, gültige Belege bei unveränderten Inhalten wiederverwenden und die höchstpriorisierte offene, abhängigkeitsbereite Aufgabe im aktuellen Nutzerauftrag nennen. Eine Frage „Was zuerst?“ ist zunächst Auskunft, kein automatischer Runtime-Auftrag. Bereits ausdrücklich autorisierte Arbeit benötigt keine künstliche zusätzliche allgemeine Bestätigung. Dokumentationsfortschritt ist kein Implementierungsfortschritt.
+Für jede neue Arbeitsphase zuerst die zentrale main-Roadmap und relevante Änderungen prüfen. Bei unveränderten Quellen können bestehende Belege wiederverwendet werden. Die nächste Aufgabe ergibt sich aus offenen Punkten, Abhängigkeiten und dem konkreten Arbeitsumfang. Dokumentationsfortschritt und Implementierungsfortschritt werden getrennt geführt.
 
 Am geprüften Archiving-Ausgangsstand fehlen `ROADMAP.md`, `AGENTS.md` und `Docs/NETCORE_DRIVE_ROADMAP.md`. Deshalb verweisen die Quellen dieses Archivs für diese Dateien auf den geprüften **main-Commit**. Sie werden hier nicht in den Archivbranch gemergt oder außerhalb von Docs/archive nachkopiert.
 
@@ -251,19 +251,19 @@ Keine Termine oder Fertigstellungsprozente vereinbart. Z01 / Z02 fokussiert zuer
 
 ### 8.3 Aktueller erster Schritt Z01.1
 
-**Z01.1 bleibt die erste Gesamtaufgabe:** heutigen main-Tip vollständig mit dem historischen Feature-Tip `bbf039729b9b05f8d623b11195ca24a124f68d16` vergleichen und einen konkreten Integrationsplan erstellen. GitHub-Compare seit gemeinsamer Basis allein ist kein vollständiger Vergleich der beiden Tip-Bäume.
+**Z01.1 bleibt die erste Gesamtaufgabe:** geprüften main-Tip vollständig mit dem historischen Feature-Tip `bbf039729b9b05f8d623b11195ca24a124f68d16` vergleichen und einen konkreten Integrationsplan erstellen. GitHub-Compare seit gemeinsamer Basis allein ist kein vollständiger Vergleich der beiden Tip-Bäume.
 
 Zu erfassen sind fehlende Dateien, überlappende Änderungen, Konflikte, Konfigurationsübernahme, Tests und Rückweg für Deployment / Discovery, Imagebuilder / VPN und Observability / Syslog. Neue main-UI-/Fachänderungen erhalten. Repository-Inventar und zugängliche Installationsnachweise mit Hostrolle, Quell-SHA, Binaryversion und Konfiguration abgleichen; fehlende Live-Daten als unbekannt führen. Kein ungeprüftes Cherry-Pick eines alten Commitstapels.
 
 **Abnahme:** Vergleichstabelle und prüfbarer Integrationsplan mit Quellen-SHAs, Konflikten, gültigen Nachweisen und Lücken. Live-Zugriff ist für den Quellvergleich kein zwingendes Gate. Danach Z01.2 Integration, Z01.3 Inventory / Ready-Schranke / CI, Z01.4 Installation / Upgrade / Recovery mit ARM64- und echtem Pi-/SXceiver-Nachweis.
 
-Historischer Nachweis: Der am 2026-10-06 erneut abgerufene [CI-Lauf 36349402097](https://github.com/JanHG98/netcore-tetra/actions/runs/36349402097), „OpenLab deployment and discovery“, lief am 2026-09-27 für den Feature-Tip `bbf039729b9b05f8d623b11195ca24a124f68d16` mit Ergebnis `success`. Die frühere Sichtung ordnete die Imageprüfungen als Teilnachweise ein; ein vollständiger NetCore-Image-Build und physischer Pi-/SXceiver-Boot sind dadurch nicht nachgewiesen. Kein heute neu gestarteter CI-Lauf und kein Nachweis der Integration in main.
+Historischer Nachweis: Der am 2026-10-06 erneut abgerufene [CI-Lauf 36349402097](https://github.com/JanHG98/netcore-tetra/actions/runs/36349402097), „OpenLab deployment and discovery“, lief am 2026-09-27 für den Feature-Tip `bbf039729b9b05f8d623b11195ca24a124f68d16` mit Ergebnis `success`. Die frühere Sichtung ordnete die Imageprüfungen als Teilnachweise ein; ein vollständiger NetCore-Image-Build und physischer Pi-/SXceiver-Boot sind dadurch nicht nachgewiesen. Kein zum Prüfstand vom 06.10.2026 neu gestarteter CI-Lauf und kein Nachweis der Integration in main.
 
 ### 8.4 Übrige P0-Aufgaben und frühe Abnahmepfade
 
 - **Z02.1 Einzelruf-Restore:** Floor nur vergeben, wenn frei oder bereits beim anfragenden Teilnehmer; bei Simplex passenden Owner setzen. Konkurrierenden Teilnehmer und wiederholten Restore prüfen.
 - **Z02.2 Gruppenruf-Restore:** Nach Floor-Grant die untere Funksteuerung benachrichtigen und Uplink-Sprachframes überwachen. Stummen Restore, Timer, Release und Wiederverwendung prüfen.
-- **Z02.3 IP-Routenschutz:** Managementadresse / -netz und Packet-Core-Abhängigkeiten beim Schreiben, Kernel-Reconcile und Restore vor schädlichen TUN-Routen schützen; gespeicherte Alt-Konflikte behandeln. Historisches Beispiel `10.0.1.0/24 → ntc-tun0` ist keine heute neu bestätigte Störung.
+- **Z02.3 IP-Routenschutz:** Managementadresse / -netz und Packet-Core-Abhängigkeiten beim Schreiben, Kernel-Reconcile und Restore vor schädlichen TUN-Routen schützen; gespeicherte Alt-Konflikte behandeln. Historisches Beispiel `10.0.1.0/24 → ntc-tun0` ist keine zum Prüfstand vom 06.10.2026 neu bestätigte Störung.
 - **Z02.4 Runtimepfade:** Tatsächlich aktive SAP-/SNDCP-/MLE-Downlinkwege und Fähigkeiten prüfen; isolierte Two-Cell-/Restore-Bausteine nicht als integrierten Funkbetrieb melden.
 - **Z02.5 zentrale Gruppensteuerung:** Details in Abschnitt 9; unabhängige P0-Arbeit parallel zu Z01 möglich.
 
@@ -273,9 +273,9 @@ Für Z03 / Z05 sind TBS-Hello, richtige Serving-TBS / aktuelle Service-Matrix, R
 
 ### 9.1 Präziser Scope
 
-Der letzte fachliche Nutzerauftrag verlangte, dass eingehende Gruppenzuweisungen von der Basisstation umgesetzt und nicht als unbekannter Befehl ignoriert werden. Im Kontext wurde dies **als Roadmap-Ergänzung** auf main ausgeführt. Eine Runtime-Reparatur wurde dabei nicht vorgenommen. Der Nachweis bezieht sich auf die konkreten zentralen Typen `GroupAccessPolicyApply` und `GroupDgnaApply`; eine universelle Protokollnachricht `group_command` wurde nicht nachgewiesen.
+Ziel der Gruppensteuerung ist, dass die Basisstation eingehende zentrale Gruppenzuweisungen umsetzt. Die Anforderung wurde als Roadmap-Ergänzung auf main aufgenommen; eine Runtime-Reparatur steht noch aus. Der Nachweis betrifft `GroupAccessPolicyApply` und `GroupDgnaApply`. Eine universelle Protokollnachricht `group_command` ist nicht nachgewiesen.
 
-### 9.2 Heute belegter Codepfad
+### 9.2 Zum Prüfstand vom 06.10.2026 belegter Codepfad
 
 | Schritt / Komponente | Vorhanden | Verbleibende Lücke |
 | --- | --- | --- |
@@ -322,9 +322,9 @@ Diese Namen sind NetCore-interne Verträge, keine ETSI-PDU-Namen. Statische Prov
 
 **Abnahme:** Core-Auftrag → Node Gateway → MM → lokaler Gruppenstand → Funkgerät → korrelierte Rückmeldung. Zuweisung und Entziehung, wirksames Gruppenruf-/SDS-Routing, bestehendes lokales DGNA sowie sämtliche negativen / Wiederkehrfälle prüfen. Core-Sollzustand, TBS-Istzustand und Endgerätewirkung getrennt festhalten. Gezielte Handler-/Vertragstests ersetzen keine reale Funkabnahme.
 
-## 10. Erreichter Stand: Historie und heutiger Abgleich
+## 10. Erreichter Stand: Historie und geprüfter Abgleich
 
-### 10.1 Tatsächliche Dokumentationscommits dieses Chats
+### 10.1 Dokumentationscommits
 
 Die vier folgenden Commits wurden am 2026-10-06 erneut direkt über GitHub abgerufen. Dateilisten und Committexte bestätigen Dokumentationsänderungen; keine dieser Dateilisten enthält die fehlende MM-Runtime-Implementierung.
 
@@ -335,20 +335,20 @@ Die vier folgenden Commits wurden am 2026-10-06 erneut direkt über GitHub abger
 | [07609fb56f412ebe6e36655323e8fc6359cf90ec](https://github.com/JanHG98/netcore-tetra/commit/07609fb56f412ebe6e36655323e8fc6359cf90ec) | Zentrale ROADMAP.md und AGENTS.md erstellt; README / Backend / Wiki / IAM / Drive auf Masterroadmap verlinkt |
 | [9116c15d645458f99e236712b67a1ad970432791](https://github.com/JanHG98/netcore-tetra/commit/9116c15d645458f99e236712b67a1ad970432791) | Z02.5 P0 und Gruppen-End-to-End-Abnahme in ROADMAP.md / system-backend/roadmap.md ergänzt |
 
-Die letzte Änderung wurde im zugänglichen vorherigen Turn nach Ref-Update durch erneuten main-Read und exakten Inhaltsvergleich beider Dateien verifiziert. Die weiteren früheren Veröffentlichungen sind aus Fortsetzungsstand und jetzt erneut gelesenen Commits nachvollziehbar; deren damalige komplette Tooltranskription ist hier nicht vollständig vorhanden.
+Die letzte Roadmapänderung wurde nach Aktualisierung der Ref durch erneutes Lesen von main und exakten Inhaltsvergleich beider Dateien verifiziert. Die weiteren Veröffentlichungen sind anhand der erhaltenen Arbeitsnotizen und erneut gelesenen Commits nachvollziehbar; vollständige damalige Werkzeugprotokolle fehlen.
 
-### 10.2 Heutige Prüfung am 2026-10-06
+### 10.2 Quellenprüfung am 2026-10-06
 
 | Aussage / Bereich | Aktueller Befund | Nachweisgrenze |
 | --- | --- | --- |
-| Branches | main und Archiving vorhanden; gelesene Heads in Metadaten | Zeitpunktbezogene Branchliste; kein erfundener heute noch aktiver Featurebranch |
+| Branches | main und Archiving vorhanden; gelesene Heads in Metadaten | Zeitpunktbezogene Branchliste; kein erfundener zum Prüfstand vom 06.10.2026 noch aktiver Featurebranch |
 | Drive / IAM | Beide Fachroadmaps geplant; alle D0–D9 / M0–M8 offen, Design bestätigt, Backend / Betrieb offen | Planungsdateien vorhanden, kein Nachweis fertiger Anwendung / zentraler Auth |
 | Gesamtroadmap | Master und AGENTS vorhanden auf main; Z01.1 erster Schritt, Z02.5 P0 offen / parallel möglich | Dokumentation umgesetzt; technische Aufgaben bleiben offen |
-| Zentrale Gruppenhandler | Historischer Befund an 07609fb besteht an 9116c15 fort | Heute gezielt erneut Code gelesen; keine Runtime-Reparatur oder Live-Logbestätigung |
+| Zentrale Gruppenhandler | Historischer Befund an 07609fb besteht an 9116c15 fort | Zum Prüfstand vom 06.10.2026 gezielt erneut Code gelesen; keine Runtime-Reparatur oder Live-Logbestätigung |
 | Deployment / Syslog | Rekursiver main-Baum ohne system-backend/deployment-core und ohne Imagebuilder-/Syslog-/Discovery-/VPN-Policy-Dateien unter den gesuchten Namen | Unterstützt Z01-Übernahmelücke; kein neuer vollständiger inhaltlicher Vergleich mit historischem Feature-Tip |
-| Dienstinventar | inventory.example.toml enthält 25 [[services]]; generierter Katalog enthält 24 Einträge | Heute Dateiinhalte gezählt; keine Aussage zur tatsächlich installierten Dienstzahl |
+| Dienstinventar | inventory.example.toml enthält 25 [[services]]; generierter Katalog enthält 24 Einträge | Zum Prüfstand vom 06.10.2026 Dateiinhalte gezählt; keine Aussage zur tatsächlich installierten Dienstzahl |
 | UI / Dark Mode | PR #59 als gemergt in main bestätigt, Merge 7137e0dd69877e1b604bf89148fd8b6b590c1a97 | Kein neuer Hostrollout / Bedienungstest |
-| Observability-PR | PR #57 gemergt, aber Ziel feature/openlab-discovery-deployment, Merge 8573b50a22287e62a30ad34beb2abd70b262d112 | Merge in Featurebranch belegt nicht Integration in heutigen main |
+| Observability-PR | PR #57 gemergt, aber Ziel feature/openlab-discovery-deployment, Merge 8573b50a22287e62a30ad34beb2abd70b262d112 | Merge in Featurebranch belegt nicht Integration in geprüften main |
 | Live-System | Keine aktuellen Anlagen-/Binary-/Konfigurations-/Gerätelogdaten für diese Archivprüfung | Keine Behauptung einer neuen aktuellen Störung, erfolgreichen Installation oder On-Air-Funktion |
 
 Die weitere repositoryweite Beurteilung aus der früheren Gesamtroadmap-Sichtung bleibt als datierter Ausgangsbefund erhalten: zwei aktive Restore-Korrekturen, Routenguard, aktive SAP-/Downlink- und Mehrzellenintegration, lokale Control-Room-Rollen, zahlreiche schon vorhandene Fachbausteine und Open-Lab-/KMF-/Transit-Grenzen. Diese Archivierung ist **keine neue Vollprüfung des gesamten Funkstacks**. Vor technischer Umsetzung die relevanten Dateien am dann aktuellen Stand erneut prüfen.
@@ -362,7 +362,7 @@ Alle folgenden Links beziehen sich auf den geprüften main-Commit; sie bleiben d
 | Datei / Pfad | Rolle |
 | --- | --- |
 | [ROADMAP.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md) | NETCORE-MASTER-01, Reihenfolge, Aufgaben und Statuspflege |
-| [AGENTS.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/AGENTS.md) | Fortsetzungshinweise für neue Arbeitschats |
+| [AGENTS.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/AGENTS.md) | Fortsetzungshinweise für neue Arbeitsphasen |
 | [Docs/NETCORE_DRIVE_ROADMAP.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/Docs/NETCORE_DRIVE_ROADMAP.md) | Drive-Design, lokaler Betrieb, Freigaben, Plugins und D0–D9 |
 | [Docs/CENTRAL_IDENTITY_RBAC_ROADMAP.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/Docs/CENTRAL_IDENTITY_RBAC_ROADMAP.md) | IAM M0–M8, Ressourcenrechte / Ausfall / Migration |
 | [system-backend/roadmap.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/system-backend/roadmap.md) | Technische Phasenhistorie, Masterverweis, offene Z02.5-Ergänzung |
@@ -390,17 +390,15 @@ Wichtige erneut belegte Blob-SHAs: ROADMAP `457ff1796cf94584e3f373495b11aed8aa54
 | IoT / Hardware Gateway / RF Monitor | 8240 / 8250 / 8260 | netcore-iot-gateway.service / netcore-hardware-gateway.service / netcore-rf-monitor.service |
 | Control Room | 9010 | netcore-control-room.service |
 
-Das sind Repository-Beispiele mit `mode=open_lab`, keine heute bestätigten Live-Binds und keine Drive-Portauswahl. Für Drive und Identity gibt es aus diesem Chat noch keine verbindlichen Ports, Hostnamen, LXC-IDs, Mountpfade oder TOML-Schlüssel. Geplante Protokolle sind HTTPS und OIDC für Web-/Identitätswege, gegebenenfalls WebDAV / Sync je Backendwahl; TBS-Gruppenaufträge verwenden den vorhandenen NetCore-Vertrag und MM-Funksignalisierung.
+Das sind Repository-Beispiele mit `mode=open_lab`, keine zum Prüfstand vom 06.10.2026 bestätigten Live-Binds und keine Drive-Portauswahl. Für Drive und Identity gibt es aus dieser Arbeitsphase noch keine verbindlichen Ports, Hostnamen, LXC-IDs, Mountpfade oder TOML-Schlüssel. Geplante Protokolle sind HTTPS und OIDC für Web-/Identitätswege, gegebenenfalls WebDAV / Sync je Backendwahl; TBS-Gruppenaufträge verwenden den vorhandenen NetCore-Vertrag und MM-Funksignalisierung.
 
 ## 12. Befehle, Speicherung, Tests und ihre Grenzen
 
 ### 12.1 Tatsächlich ausgeführte Arbeiten
 
-Historisch wurden die vier Dokumentationsänderungen per GitHub-Datei-/Git-Objekt-Werkzeugen erstellt, auf main veröffentlicht und geprüft. Der zugängliche letzte Turn zeigt: frischen Head laden, auf dessen Tree aufsetzen, nur ROADMAP.md und system-backend/roadmap.md ändern, Commit-Dateiliste kontrollieren, main ohne Force vorziehen und beide Inhalte erneut exakt vergleichen. Es wurden dabei keine Funk-Runtime-Dateien verändert.
+Die vier Dokumentationsänderungen wurden auf main veröffentlicht und geprüft. Für die letzte Änderung wurde ein frischer HEAD als Grundlage verwendet, `ROADMAP.md` und `system-backend/roadmap.md` geändert, die Commit-Dateiliste kontrolliert und beide Inhalte nach dem Ref-Update erneut exakt verglichen. Funk-Runtime-Dateien blieben dabei unverändert.
 
-Bei dieser Archivierung wurden Branch-Refs, Commitmetadaten, rekursive Trees, Archivindex, relevante Fachroadmaps / Codepfade, Inventar / Katalog und PR #57 / #59 lesend abgerufen. PDF-Cover / Metadaten sowie wenige relevante MM-Fundstellen wurden geprüft. Eine gezielte Bildsuche lieferte keine diesem Chat sicher zuzuordnenden Originalbilder; unpassende Treffer wurden nicht als Chatbilder übernommen.
-
-Für die Veröffentlichung gilt: aktuelle Archiving-Ref erneut lesen; vorhandenen Index erhalten; nur diese Archivdatei und ihren Indexeintrag auf dem aktuellen Tree erstellen; geänderte Pfade prüfen; Commit mit genau diesem Parent erzeugen; ohne Force und mit erwarteter Ausgangs-Ref aktualisieren; Zusammenfassung / Index danach am Zielbranch lesen. Bei zwischenzeitlicher Ref-Änderung neu basieren und fremde Einträge erhalten. Der tatsächliche Archivcommit steht in der Git-Historie und Abschlussmeldung; keine Commitnummer vorab erfunden.
+Bei dieser Archivierung wurden Branch-Refs, Commitmetadaten, rekursive Trees, Archivindex, relevante Fachroadmaps / Codepfade, Inventar / Katalog und PR #57 / #59 lesend abgerufen. PDF-Cover / Metadaten sowie wenige relevante MM-Fundstellen wurden geprüft. Eine gezielte Bildsuche lieferte keine dieser Arbeitsphase sicher zuzuordnenden Originalbilder; unpassende Treffer wurden nicht als Originalbilder übernommen.
 
 ### 12.2 Reproduzierbare Lese-/Vergleichsbefehle, nicht hier als Shelllauf behauptet
 
@@ -424,12 +422,12 @@ Der letzte Diff vergleicht die explizit angegebenen historischen Tip-Commits dir
 | Prüfung | Ergebnis / Grenze |
 | --- | --- |
 | Existenz der vier historischen Commits | Direkt abgerufen; konkrete IDs / Dateilisten bestätigt |
-| Historischer Feature-CI-Lauf 36349402097 | Heute Metadaten erneut geprüft: success am 2026-09-27 auf bbf0397; keine neue Ausführung, kein vollständiger Image-/Pi-/Anlagenbeleg |
+| Historischer Feature-CI-Lauf 36349402097 | Zum Prüfstand vom 06.10.2026 Metadaten erneut geprüft: success am 2026-09-27 auf bbf0397; keine neue Ausführung, kein vollständiger Image-/Pi-/Anlagenbeleg |
 | Letzter Gruppen-Roadmap-Commit | Historisch nur zwei Dokumente; damaliger exakter Remotevergleich belegt |
 | Aktuelle Gruppen-Codeprüfung | Lücke fortbestehend; kein ausgeführter Rust-Test / Gerätestest |
 | Inventory / Katalog | 25 / 24 gezählt; kein Deploy- oder Flottencheck |
 | PDF-Anhänge | 25 Dateien inventarisiert, zielgerichtete Fundstellen; keine vollständige Norm- oder Konformitätsprüfung |
-| Drive / IAM / Plugins | Keine Installation, Build-, Login-, Rechte-, Sync-, Format-, Export- oder Restore-Abnahme in diesem Chat nachgewiesen |
+| Drive / IAM / Plugins | Keine Installation, Build-, Login-, Rechte-, Sync-, Format-, Export- oder Restore-Abnahme für diesen Entwicklungsstand nachgewiesen |
 | Funkbetrieb | Keine neue TBS-/Pi-/Endgeräte-/On-Air-Abnahme, kein Dauerlauf oder Mehrzellentest |
 
 Aufwändige Runtime-Testläufe wären für den reinen Archivcommit kein Beleg der geplanten Features. Der angemessene Archivcheck ist Vollständigkeit / Quellen / Links / Änderungsumfang / fremde Indexeinträge / Secrets-Vermeidung und exakte Remote-Präsenz.
@@ -443,17 +441,16 @@ Aufwändige Runtime-Testläufe wären für den reinen Archivcommit kein Beleg de
 | Rückfallebene heißt automatische lokale Anmeldung bei IdP-Ausfall | Eigenständiger Anfangsbetrieb und begrenzter späterer Notzugang getrennt; kein automatischer regulärer lokaler Fallback nach Migration |
 | Dienstrolle oder Link mit E-Mail ergibt automatisch Datei-/Personenrecht | Ressourcen-ACL verbindlich; bestätigte Gastidentität erforderlich für personenbezogene Freigabe |
 | Browser kann jedes Format komplett bearbeiten | Plugin-/Formatmatrix mit expliziten Viewer-/Editor-/Export- und Codecgrenzen; einzelne Integrationen abnehmen |
-| PR #57 gemergt, daher Deployment / Syslog in main | PR wurde in historischen Featurebranch gemergt; heutiger Hauptzweig enthält die fehlenden Bausteine nicht unter den geprüften Pfaden |
+| PR #57 gemergt, daher Deployment / Syslog in main | PR wurde in historischen Featurebranch gemergt; geprüfter Hauptzweig enthält die fehlenden Bausteine nicht unter den geprüften Pfaden |
 | Neues Design zuerst nochmals bauen | PR #59 ist bereits in main; vorhandene UI ausrollen / abnehmen, keine pauschale neue Designrunde als erster Schritt |
 | Gruppen-Worker-Routing oder ACK bedeutet umgesetzt | Zentrale MM-Handler fehlen; Annahme, lokaler Zustand, Aussendung und Terminalwirkung getrennt |
 | Lokales DGNA beweist vollständige zentrale Policy-/SS-DGNA-Unterstützung | Konkrete zentrale Handler / Reconcile / Ergebnisse und passende Norm-/Endgeräteabnahme fehlen |
-| Archivauftrag erlaubt neue Umsetzung im Hauptzweig | Jetzt ausschließlich Docs/archive auf Archiving; Roadmap-Kandidaten nur in dieser Zusammenfassung erfassen |
 
 ## 14. Relevante Anhänge und Bilder
 
 ### 14.1 ETSI-PDF-Inventar
 
-Alle 25 bereitgestellten PDF-Dateien waren im aktuellen Workspace vorhanden und wurden lesend nach Metadaten / Cover inventarisiert. Die folgende Tabelle verwendet die **hochgeladenen Dateinamen**, nicht die lokalen numerischen Arbeitspräfixe. Die PDFs werden durch diesen Archivauftrag nicht nochmals in Git kopiert. Sie sind weder Designmockups noch eigenständige Chatbilder.
+Alle 25 bereitgestellten PDF-Dateien waren im aktuellen Workspace vorhanden und wurden lesend nach Metadaten / Cover inventarisiert. Die folgende Tabelle verwendet die **hochgeladenen Dateinamen**, nicht die lokalen numerischen Arbeitspräfixe. Die PDFs werden durch die Quellenprüfung vom 06.10.2026 nicht nochmals in Git kopiert. Sie sind weder Designmockups noch eigenständige Originalbilder.
 
 | Hochgeladene Datei | Thema / Norm | Edition / Coverdatum | Seiten / Status |
 | --- | --- | --- | --- |
@@ -491,11 +488,11 @@ Die vorhandene Air-Interface-Ausgabe EN 300 392-2 V3.8.1 enthält gezielt geprü
 
 Diese Stellen eignen sich für späteren gezielten PDU-/ACK-/Lifetime-/Ablehnungsabgleich; sie beweisen weder aktuellen Funkbetrieb noch vollständiges SS-DGNA. **EN 300 392-12-22, die Stage-3-Spezifikation SS-DGNA, ist in den bereitgestellten Einzeldateien und identifizierten Sammlungsteilen nicht enthalten.** Die PPC-Datei 12-16 nennt DGNA lediglich als anderen Unterteil in der Übersicht; sie ist keine DGNA-Spezifikation und ausdrücklich Draft. Für eine vollständige SS-DGNA-Abnahme die benötigte Normbasis gesondert beschaffen / versionieren.
 
-### 14.3 Chatbilder und fehlende Originale
+### 14.3 Originalbilder und fehlende Originale
 
-Im derzeit sichtbaren Verlauf sind keine eigenständigen Bilder eingebettet. Die frühen Designantworten werden nur durch Fortsetzungsstand, Kontextabruf und gespeicherte Fachroadmap erschlossen. Die gezielte Suche nach Core Console / Archive Studio / NetCore Drive und passenden Zeiträumen identifizierte kein sicher zugehöriges Originalbild. Zeitnah erstellte generische Bildtreffer gehörten bei visueller Kontrolle zu einem anderen Thema und wurden ausdrücklich nicht als NetCore-Chatbilder übernommen.
+Die frühen Designentwürfe sind über Planungsnotizen und die gespeicherte Fachroadmap beschrieben. Eine gezielte Suche nach Core Console, Archive Studio und NetCore Drive ergab keine sicher zugehörigen Originalbilder.
 
-Deshalb **keine Originalbilder dieses Chats hochgeladen**. Es wurden keine Ersatzmockups oder nachgezeichneten Bilder erzeugt und als historische Originale ausgegeben. Falls originale Designbilder oder ein vollständiger Chat-Export später verfügbar werden, diese unter Docs/archive zu genau diesem Archiv ergänzen und Herkunft / unveränderte Prüfsumme dokumentieren. Die 25 PDF-Anhänge ersetzen diese Bildlücke nicht.
+Originale Designbilder fehlen. Bei späterer Verfügbarkeit unter Docs/archive ergänzen und Herkunft sowie Prüfsumme dokumentieren. Die 25 PDF-Anhänge schließen diese Bildlücke nicht.
 
 ## 15. Offene Aufgaben und konkrete Fortsetzung
 
@@ -510,17 +507,16 @@ Deshalb **keine Originalbilder dieses Chats hochgeladen**. Es wurden keine Ersat
 | D7, danach D8 / D9 | Plugin-Lifecycle und Basismodule, dann Office / technische Formate | Viewer-/Editor-/Exportumfang pro Format, Quellen / Isolation / Originalerhalt / Update / Rückweg; kein D6-Gate |
 | Später D6 | Zentraler Login / Identitätsmigration | IAM-Pilot / OIDC-Adapter, bestätigte issuer+subject-Zuordnung und Verlust-/Rechteerhalt / Ausfallabnahme |
 | Z03 / Z05 / Z07 und spätere Stränge | Fach-E2E und echte Funk-/Mehrzellen-/Hardwareabnahme | Masterreihenfolge und Eintrittskriterien verwenden, vorhandene Bausteine nicht pauschal neu bauen |
-| Quellenlücke | Frühe vollständige Assistant-Antworten, Chattitel / Link und gegebenenfalls Original-Designbilder nachsichern | Dieses Archiv ergänzen; keine fremden Chatbilder oder erfundenen Designparameter übernehmen |
 
-Bei einer neuen Frage nach „Was als Erstes?“ am dann aktuellen main die aktuelle Masterroadmap lesen und den tatsächlichen offenen Status prüfen. Am heute belegten Stand ist die Antwort **Z01.1**, mit **Z02.5 als unabhängig möglicher P0-Arbeit**. Eine neue ausdrückliche Nutzerentscheidung kann die Auswahl innerhalb des Auftrags ändern.
+Am Prüfstand vom 06.10.2026 beginnt die Gesamtfolge mit **Z01.1**; **Z02.5** ist als unabhängig bearbeitbare P0-Aufgabe möglich. Vor Umsetzung den dann gültigen main-Stand und die Masterroadmap prüfen.
 
 ## 16. Weitere Quellen und Änderungsgrenzen
 
-- [Historischer Feature-Tip bbf039729b9b05f8d623b11195ca24a124f68d16](https://github.com/JanHG98/netcore-tetra/tree/bbf039729b9b05f8d623b11195ca24a124f68d16): Ausgangsquelle für Z01, kein heute noch aktiver Branch behauptet.
+- [Historischer Feature-Tip bbf039729b9b05f8d623b11195ca24a124f68d16](https://github.com/JanHG98/netcore-tetra/tree/bbf039729b9b05f8d623b11195ca24a124f68d16): Ausgangsquelle für Z01, kein zum Prüfstand vom 06.10.2026 noch aktiver Branch behauptet.
 - [PR #57](https://github.com/JanHG98/netcore-tetra/pull/57): Observability / Discovery / Syslog, Feature-Zielbranch wie oben getrennt.
 - [PR #59](https://github.com/JanHG98/netcore-tetra/pull/59): NetCore-Design / Dark Mode, in main integriert.
 - [Deployment-/Image-/Discovery-Archiv](2026-10-05_deployment-vm-tbs-imagebuilder-und-auto-discovery.md): historische Entwicklung / Z01-Quellen.
-- [Roadmap-UI-/RBAC-/Restore-Archiv](2026-10-06_roadmap-ui-dark-mode-zentrale-rbac-und-cmce-restore.md): angrenzende frühere Fachroadmap, nicht derselbe Chat.
+- [Roadmap-UI-/RBAC-/Restore-Archiv](2026-10-06_roadmap-ui-dark-mode-zentrale-rbac-und-cmce-restore.md): angrenzende frühere Fachroadmap, eigene Arbeitsphase.
 - [Media-Library-/TTS-/IP-Gateway-Archiv](2026-10-05_media-library-tts-archivierung-basisstations-playout-und-ip-gateway-routing.md): historische Betriebs-/Routingbefunde mit eigenen Nachweisgrenzen.
 
-Dieser Auftrag ergänzt ausschließlich die eigene Datei und den Archivindex unter Docs/archive auf Archiving. Main, bestehende Fachroadmaps, AGENTS, Runtime, Konfiguration, Anlagen und andere Archivdateien werden durch die Archivierung nicht geändert. Keine Passwörter, Tokens, privaten Schlüssel oder sonstigen Zugangsdaten übernommen. Der Nutzer archiviert den Chat nach eigener Prüfung selbst.
+Zugangsdaten, Tokens und private Schlüssel sind nicht Bestandteil dieser Notizen.

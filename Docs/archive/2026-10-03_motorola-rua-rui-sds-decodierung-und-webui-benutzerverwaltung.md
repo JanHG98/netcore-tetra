@@ -1,65 +1,62 @@
-# Motorola RUA/RUI: SDS-Decodierung und Benutzerverwaltung im Basisstations-WebUI
+# Brainstorming: Motorola RUA/RUI: SDS-Decodierung und Benutzerverwaltung im Basisstations-WebUI
 
-## 1. Metadaten und Einordnung
+## 1. Rahmen und Quellenstand
 
 | Feld | Stand |
 |---|---|
 | Projekt / Repository | NetCore-Tetra / `JanHG98/netcore-tetra` |
 | Thema | Motorola Radio User Assignment / Radio User Identity, Analyse von SDS-Anmeldevorgängen und Planung einer vollständigen Funkbenutzerverwaltung im Basisstations-WebUI |
-| Ursprünglicher Chattitel | Im zugänglichen Verlauf nicht als verlässliche Metadaten vorhanden; die Überschrift dieser Datei ist ein beschreibender Archivtitel. |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link rekonstruiert oder erfunden. |
-| Erstellung der Abschlussdokumentation | 2026-10-03, Europe/Berlin |
-| Historischer Codebezug | Im früheren Chat abgerufene Repository-Dateien referenzierten Commit `41d925457bed3cc0f1207d509642f3e003303010`; seinerzeit wurde der Default-Branch untersucht. Ein installierter Binary-Stand wurde nicht ermittelt. |
-| Maßgeblicher Prüf- und Zielbranch dieser Archivierung | `Archiving`; keine Schreiboperationen an anderen Branches |
+| Notizstand | 2026-10-03, Europe/Berlin |
+| Historischer Codebezug | Im früheren Entwicklungsstand abgerufene Repository-Dateien referenzierten Commit `41d925457bed3cc0f1207d509642f3e003303010`; seinerzeit wurde der Default-Branch untersucht. Ein installierter Binary-Stand wurde nicht ermittelt. |
+| Geprüfter Branch | `Archiving`; statischer Quellcodebefund |
 | Gepinnter Prüfstand | `27996d2f494add5ae16837acaaba4f6f22f9f49d` |
 | Baum des Prüfstands | `335a3d89ce4942acf07b3da24e326188100fa8d0` |
-| Auftragsumfang | Diese Abschlussdokumentation und Ergänzung von `Docs/archive/README.md`; keine Implementierung, keine Änderungen an laufenden Diensten oder anderen Repository-Pfaden |
 | Archivkennung | `motorola-rua-rui-sds-webui-2026-10-03` |
 
-**Leseregel:** Das historische Chatergebnis, die zusätzlichen Prüfungen während der Archivierung und die vorgeschlagene weitere Entwicklung sind getrennte Ebenen. Insbesondere ist ein im Chat formulierter Parser kein Nachweis einer Repository-Implementierung.
+**Arbeitsstand:** Historische Uplink-Analyse, Repository-Befund vom 03.10.2026 und Umsetzungsentwurf sind getrennt. Parser-Skizzen sind kein Nachweis einer Repository-Implementierung.
 
 ### 1.1 Statusbegriffe
 
 | Begriff | Bedeutung in dieser Dokumentation |
 |---|---|
 | **Idee** | Diskutierter Ausbau oder technische Option, noch nicht verbindlich festgelegt |
-| **Beschlossen/geplant** | Expliziter Nutzerwunsch beziehungsweise ausgewiesener Umsetzungsvorschlag; die jeweilige Herkunft wird genannt |
+| **Beschlossen/geplant** | Explizite Anforderung beziehungsweise ausgewiesener Umsetzungsvorschlag; die jeweilige Herkunft wird genannt |
 | **Implementiert** | Am angegebenen Commit tatsächlich vorhandener Code; nicht automatisch gebaut, installiert oder funktionsfähig abgenommen |
 | **Getestet** | Ein konkret benannter Test wurde durchgeführt; Testgegenstand und Grenzen gehören zur Aussage |
-| **Im Betrieb bestätigt** | Konkrete Beobachtung an der Anlage, hier insbesondere die vom Nutzer gelieferten Empfangs- und Weiterleitungslogs; keine pauschale Bestätigung des gesamten Systems |
+| **Im Betrieb bestätigt** | Konkrete Beobachtung an der Anlage, hier insbesondere die bereitgestellten Empfangs- und Weiterleitungslogs; keine pauschale Bestätigung des gesamten Systems |
 | **Unbestätigt** | Plausible Interpretation, Literaturhinweis oder frühere Aussage ohne ausreichenden Nachweis |
 
-### 1.2 Zugangsdaten und Auswertungsgrenzen
+### 1.2 Datenumfang und Quellenlage
 
-Alle im Chat genannten PINs sind entfernt, einschließlich der einfachen Labor-PINs. Ebenso fehlen vollständige Logon-Hextelegramme, aus denen sich diese Werte zurückgewinnen ließen. Die beiden personenbezogenen Testkennungen werden als `P_A` und `P_B` bezeichnet. Synthetische Namenslängen, nicht geheime Headerwerte, Geräteadressen und Feldpositionen bleiben für die Weiterarbeit erhalten.
+Alle in den Arbeitsnotizen genannten PINs sind entfernt, einschließlich der einfachen Labor-PINs. Ebenso fehlen vollständige Logon-Hextelegramme, aus denen sich diese Werte zurückgewinnen ließen. Die beiden personenbezogenen Testkennungen werden als `P_A` und `P_B` bezeichnet. Synthetische Namenslängen, nicht geheime Headerwerte, Geräteadressen und Feldpositionen bleiben für die Weiterarbeit erhalten.
 
 Nicht Bestandteil des Archivs sind PIN-Hashes aus realen Konten, Tokens, Schlüssel, unveränderte Credential-Captures oder Zugangsdaten aus Konfigurationsdateien. Es wurde nicht nach weiteren Geheimnissen im Repository gesucht. Vorhandene Geheimnisse in alten Journals, Brew-Mitschnitten oder Sicherungen werden durch diese Dokumentation nicht entfernt; deren Bereinigung und gegebenenfalls Rotation bleiben ein eigener Betriebsauftrag.
 
-Ausgewertet wurden der hier zugängliche Gesprächsverlauf, die verfügbaren früheren Repository-Leseergebnisse, gezielte heutige Repository-Abrufe und die 25 bereitgestellten PDFs. Bei den PDFs erfolgten eine Inventarisierung und Volltextsuche sowie eine Detailprüfung ausgewählter einschlägiger Seiten, **keine vollständige fachliche Lektüre aller 8.061 Seiteninstanzen**. Fehlende Originalmetadaten, Downlink-Captures und Endgerätedaten sind in Abschnitt 16 ausdrücklich aufgeführt.
+Grundlagen sind Uplink-Beobachtungen, frühere Repository-Befunde, gezielte Repository-Abrufe vom 03.10.2026 und 25 PDFs. Die PDFs wurden inventarisiert und durchsucht; ausgewählte einschlägige Seiten wurden im Detail geprüft. Keine vollständige fachliche Lektüre aller 8.061 Seiteninstanzen. Fehlende Downlink-Captures und Endgerätedaten stehen in Abschnitt 16.
 
 ## 2. Ergebnis für die spätere Fortsetzung
 
-**Das gewünschte Ziel ist klar: Funkbenutzer direkt im vorhandenen Basisstations-WebUI verwalten und nachvollziehbar anzeigen, welcher Benutzer welches Funkgerät verwendet.** Der Chat lieferte eine brauchbare Datenbasis für einen eingeschränkten Uplink-Decoder, aber keinen funktionsfähigen RUA-Server.
+**Das gewünschte Ziel ist klar: Funkbenutzer direkt im vorhandenen Basisstations-WebUI verwalten und nachvollziehbar anzeigen, welcher Benutzer welches Funkgerät verwendet.** Die Uplink-Beobachtungen liefern eine brauchbare Datenbasis für einen eingeschränkten Uplink-Decoder, aber keinen funktionsfähigen RUA-Server.
 
-Der vom Nutzer belegte Betrieb umfasst den Empfang von SDS-Nachrichten eines Motorola-Endgeräts und deren Weiterleitung zu Brew. Eine erfolgreiche serverseitig bestätigte RUA-Anmeldung, eine Ablehnung am Funkgerät oder eine erzwungene Abmeldung wurde nicht gezeigt. Auch im für diese Archivierung untersuchten `Archiving`-Stand wurde in den geprüften Integrationspunkten keine fertige RUA-Verwaltung gefunden.
+Der belegte Betrieb umfasst den Empfang von SDS-Nachrichten eines Motorola-Endgeräts und deren Weiterleitung zu Brew. Eine erfolgreiche serverseitig bestätigte RUA-Anmeldung, eine Ablehnung am Funkgerät oder eine erzwungene Abmeldung wurde nicht gezeigt. Auch im für die Quellenprüfung vom 03.10.2026 untersuchten `Archiving`-Stand wurde in den geprüften Integrationspunkten keine fertige RUA-Verwaltung gefunden.
 
 Die wichtigsten Ergebnisse der zusätzlichen Archivprüfung sind:
 
 1. Der führende Teil `C1 00 <Referenz>` passt zum **standardisierten SDS-TL-SDS-TRANSFER-Header**. Das vermeintliche unbekannte Versions-/Flags-Byte und der vermeintlich RUA-eigene Sequenzzähler sind daher nicht als beliebige proprietäre Felder zu behandeln.
 2. Die bisherige feste Gruppierung `0x86` plus zwei Bits `10` hat eine besser begründete alternative Lesart: drei Bits mit Wert `4`, gefolgt vom sieben Bit breiten Textcodierungswert `26`. Letzterer steht in ETSI für UCS-2 mit UTF-16BE-Erweiterung. Der Bezug des Dreibitwerts auf den RUI-Identitätstyp bleibt eine Hypothese.
 3. Die geprüften Logon-Daten erlauben eine reproduzierbare Namensextraktion; die numerische PIN-Interpretation stimmt bei zwölf von dreizehn Beispielen mit der angegebenen Eingabe überein. Der erste Datensatz bleibt widersprüchlich. Das rechtfertigt **keine** Aussage „das ganze Protokoll ist vollständig geknackt“.
-4. Der heutige SDS-Pfad enthält zusätzlich einen zentralen Handoff und Ausfall-/Spool-Pfade. Die alte Empfehlung „vor Brew abfangen“ muss zu „vor unkontrolliertem Logging und vor jedem generischen Weiterleitungs-/Spool-Pfad klassifizieren“ erweitert werden.
+4. Der geprüfte SDS-Pfad enthält zusätzlich einen zentralen Handoff und Ausfall-/Spool-Pfade. Die alte Empfehlung „vor Brew abfangen“ muss zu „vor unkontrolliertem Logging und vor jedem generischen Weiterleitungs-/Spool-Pfad klassifizieren“ erweitert werden.
 5. Die Oberfläche liegt inzwischen in `net_dashboard/ui/`; die frühere große `html.rs` ist jetzt ein Asset-Einbinder. Alte Komplettdateien dürfen diese Struktur nicht zurücksetzen.
 
-Diese Punkte sind Prüf- und Planungsbefunde, keine mit diesem Auftrag ausgelieferten Softwareänderungen.
+Diese Punkte sind Prüf- und Planungsbefunde; eine Implementierung ist nicht belegt.
 
-## 3. Ziel, Ausgangslage und Gesprächsverlauf
+## 3. Ziel, Ausgangslage und Entwicklung
 
 ### 3.1 Ausgangslage
 
-Der Nutzer wollte Motorola RUA/RUI in NetCore-Tetra integrieren und bat zunächst um eine Recherche zum Ablauf auf Systemebene sowie eine Roadmap. Anlass waren SDS-Logs beim Ab- und Anmelden eines Funkbenutzers:
+Ziel ist die Integration von Motorola RUA/RUI in NetCore-Tetra, zunächst mit Recherche zum Systemablauf und einer Roadmap. Anlass waren SDS-Logs beim Ab- und Anmelden eines Funkbenutzers:
 
-| Parameter | Im Chat belegt |
+| Parameter | In den Arbeitsnotizen belegt |
 |---|---|
 | Quell-ISSI | `2020004` |
 | Ziel-SSI | `16777213`, hexadezimal `0xFFFFFD` |
@@ -73,24 +70,24 @@ Der Nutzer wollte Motorola RUA/RUI in NetCore-Tetra integrieren und bat zunächs
 
 Zwischenzeitliche Trainingssequenz-Meldungen und ein `D-NWRK-BROADCAST` mit `Europe/Berlin` und ohne Nachbarzellen wurden nicht als RUA-Inhalt ausgewertet. Sie beweisen weder einen RUA-Fehler noch ein RUA-Accept.
 
-Die lokale Basisstation und der Brew-Endpunkt existierten bereits. Mit „kein Server“ meinte der Nutzer im weiteren Gespräch den fehlenden geeigneten **RUA-Referenzserver**, nicht das Fehlen jeglicher NetCore-Infrastruktur.
+Die lokale Basisstation und der Brew-Endpunkt existierten bereits. Es fehlte ein geeigneter **RUA-Referenzserver** für den Protokollvergleich; die bestehende NetCore-Infrastruktur war davon unabhängig.
 
 ### 3.2 Entwicklung der Analyse
 
 | Schritt | Inhalt | Einordnung |
 |---|---|---|
 | Erste Repo-/Protokollprüfung | SDS Type 4 erkannt; lokale Zustellung gegenüber Brew-Weiterleitung erklärt; RUA von MM-Registrierung unterschieden | Historische Codeprüfung und Architekturberatung |
-| WebUI konkretisiert | Benutzer anlegen, löschen, sperren, PIN ändern; aktive Gerätezuordnung anzeigen | Expliziter Nutzerwunsch |
-| Erster bekannter Eingabedatensatz | Benutzerkennung und PIN zur Zuordnung eines vorhandenen Telegramms genannt | Vom Nutzer bereitgestellte Messinformation; Zugangsdaten nicht archiviert |
+| WebUI konkretisiert | Benutzer anlegen, löschen, sperren, PIN ändern; aktive Gerätezuordnung anzeigen | Explizite Anforderung |
+| Erster bekannter Eingabedatensatz | Benutzerkennung und PIN zur Zuordnung eines vorhandenen Telegramms genannt | Bereitgestellte Messinformation; Zugangsdaten nicht archiviert |
 | Vier Vergleichsdatensätze | Zwei gleich lange Namen, jeweils zwei unterschiedliche PIN-Eingaben | Kontrollierte Variationen; Empfangslogs vorhanden |
 | Namenslängenserie | Acht synthetische Kennungen mit einer bis acht Stellen, konstante Labor-PIN | Hexdaten vorhanden; separate SDS-Bitlängen wurden hierbei nicht mitgeliefert |
-| Öffentliche Recherche verlangt | Mangels RUA-Referenzserver sollten Downlink-Details aus öffentlich verfügbaren Quellen ermittelt werden | Expliziter Nutzerauftrag; Referenzserver-Captures sind keine Voraussetzung, die dem Nutzer auferlegt werden darf |
-| Rechercheabschluss im Chat | TTR 001-17 / IOP 001-17 und Hersteller-/Netzdokumentationen als Spuren genannt; kein belastbarer Accept-/Reject-/Cancel-Encoder geliefert | Rechercheergebnis mit Lücken, kein Implementierungsabschluss |
-| Archivierung | Heutiger Codeabgleich, erneute Offline-Prüfung der Bitextraktion und gezielte Auswertung der verfügbaren Standards | Zusätzliche Prüfung am 2026-10-03, getrennt vom ursprünglichen Gespräch |
+| Öffentliche Recherche verlangt | Mangels RUA-Referenzserver sollten Downlink-Details aus öffentlich verfügbaren Quellen ermittelt werden | Verbindlicher Rechercheauftrag; fehlende Referenzserver-Captures sind keine vorgeschaltete Voraussetzung |
+| Rechercheabschluss in den Arbeitsnotizen | TTR 001-17 / IOP 001-17 und Hersteller-/Netzdokumentationen als Spuren genannt; kein belastbarer Accept-/Reject-/Cancel-Encoder geliefert | Rechercheergebnis mit Lücken, kein Implementierungsabschluss |
+| Quellenprüfung 03.10.2026 | Codeabgleich, erneute Offline-Prüfung der Bitextraktion und gezielter Standardsabgleich | Zusätzlicher Befund, vom historischen Betriebsstand getrennt |
 
 ## 4. Anforderungen und Entscheidungsstand
 
-### 4.1 Vom Nutzer festgelegtes Ziel
+### 4.1 Verbindliches Ziel
 
 Folgende Anforderungen sind als **beschlossen/geplant auf Anforderungsebene** zu behandeln:
 
@@ -100,18 +97,18 @@ Folgende Anforderungen sind als **beschlossen/geplant auf Anforderungsebene** zu
 - Das Protokoll recherchieren und anhand eigener kontrollierter Uplink-Beispiele weiter erschließen.
 - Die fehlenden Serverantworten öffentlich recherchieren, weil kein geeigneter RUA-Referenzserver zur Verfügung steht.
 
-Eine Freigabe zur sofortigen aktiven Aussendung unbekannter RUA-PDUs, zur Änderung von Funkrechten oder zu einem Produktiv-Rollout ergibt sich daraus nicht. Der aktuelle Auftrag autorisiert ausschließlich Archivdatei und Index.
+Eine Freigabe zur sofortigen aktiven Aussendung unbekannter RUA-PDUs, zur Änderung von Funkrechten oder zu einem Produktiv-Rollout ergibt sich daraus nicht. Eine Implementierung ist noch offen.
 
 ### 4.2 Technische Vorschläge, die nicht als endgültiger Nutzerbeschluss gelten
 
-| Vorschlag aus dem Chat | Begründung | Verbindlichkeit |
+| Vorschlag aus den Arbeitsnotizen | Begründung | Verbindlichkeit |
 |---|---|---|
-| Eigene User- und Assignment-Verwaltung getrennt von MM | Eine neue Geräte-Registrierung darf nicht unbeabsichtigt sämtliche Benutzerzuordnungen vernichten | Architekturvorschlag; heute durch Registry-Code gut begründet |
+| Eigene User- und Assignment-Verwaltung getrennt von MM | Eine neue Geräte-Registrierung darf nicht unbeabsichtigt sämtliche Benutzerzuordnungen vernichten | Architekturvorschlag; am 03.10.2026 durch Registry-Code gut begründet |
 | SQLite für Benutzer, Sitzungen und Audit | Transaktionen und eindeutige Kennungen statt unsynchronisierter TOML-/JSON-Änderungen | Empfehlung, keine Datenbank eingerichtet |
 | Argon2id mit individuellem Salt; optional serverseitiger Pepper | Keine reversibel gespeicherten PINs in der Benutzerverwaltung | Sicherheitsentwurf, noch nicht implementiert |
 | Beobachtungsmodus vor aktivem Servermodus | Unbestätigte Nachrichtenformate nicht als produktive Anmeldung behandeln | Vorgeschlagene Einführungsstrategie |
 | Archivieren statt hart löschen | Historische Ereignisse bleiben einem minimalen Datensatz zuordenbar | Nicht endgültig beschlossen; Lösch- und Aufbewahrungsregeln fehlen |
-| Alte Anmeldung beim Gerätewechsel beenden | Eindeutige persönliche Benutzeridentität auf einem Gerät | Präferenz des Assistenten, keine bestätigte Takeover-Policy |
+| Alte Anmeldung beim Gerätewechsel beenden | Eindeutige persönliche Benutzeridentität auf einem Gerät | Entwurfsidee, keine bestätigte Takeover-Policy |
 | Acht Stunden Assignment; beispielhaft 60 Sekunden Offline-Grace | Anschauliche Schicht-/Ausfallbeispiele | Keine Standardvorgaben und keine bestätigten Betriebswerte |
 | Rechteprofile, Prioritäten, P-ISSI/RUN-Routing | Über die Anzeige hinaus tatsächlich nutzerbezogener Betrieb | Erweiterungsideen, nicht Voraussetzung für das erste Verwaltungsmodul |
 | Force Off, Book On und Verlängerung im WebUI | Dispatcher-Steuerung der Benutzerzuordnung | Ausbauziel, abhängig vom bestätigten Downlink-Protokoll |
@@ -127,7 +124,7 @@ Für das Datenmodell sind auseinanderzuhalten:
 | Physische ITSI/ISSI | Teilnehmeradresse des verwendeten Funkgeräts im TETRA-Netz |
 | RUI | Benutzer- oder Funktionsidentität im RUA-Verfahren; nicht pauschal auf eine Zahl reduzieren |
 | RUN | Logische Radio User Number, soweit ein entsprechender Nummernplan eingesetzt wird |
-| P-ISSI / permanente Benutzeradresse | Im Chat diskutierte logische Erreichbarkeit; konkretes Mapping noch zu spezifizieren |
+| P-ISSI / permanente Benutzeradresse | In den Arbeitsnotizen diskutierte logische Erreichbarkeit; konkretes Mapping noch zu spezifizieren |
 | Anzeigename / Alpha-Tag | Darstellbarer Name; darf nicht unbemerkt mit einer internen Benutzer-ID gleichgesetzt werden |
 | Web-IAM-Konto | Menschlicher Zugang zur Verwaltungsoberfläche mit eigenen Rollen und Ressourcenrechten |
 | Assignment | Zeitlich und fachlich definierte Bindung einer Benutzeridentität an eine Geräteidentität |
@@ -158,7 +155,7 @@ Alle nachfolgenden Offsets sind **nullbasiert und MSB-first**, bezogen auf das e
 
 `len_bits` bleibt eine eigene Größe. `payload.len() * 8` ist bei nicht oktettausgerichteten Daten lediglich die Speicherkapazität, nicht die tatsächliche Protokolllänge. Der vorhandene Datentyp erhält beide Angaben.
 
-### 6.3 Historische Arbeitshypothese und heutige Einordnung
+### 6.3 Historische Arbeitshypothese und geprüfte Einordnung
 
 | Bits / Bereich | Beobachtung in den vorhandenen Logon-Beispielen | Belastbare Einordnung |
 |---|---|---|
@@ -214,7 +211,7 @@ Wenn die vermutete Bitlänge tatsächlich in acht Bit steht, passen bei 16-Bit-E
 
 ### 6.6 Numerische PIN-Interpretation und offener Widerspruch
 
-Im zweiten und dritten Testblock liefert die Extraktion des 20-Bit-Fensters unmittelbar nach dem Namen den vom Nutzer genannten Zahlenwert. Das spricht bei diesen Beispielen für eine reversible numerische Darstellung, nicht für einen kryptografischen PIN-Hash im sichtbaren Anwendungsinhalt.
+Im zweiten und dritten Testblock liefert die Extraktion des 20-Bit-Fensters unmittelbar nach dem Namen den ausdrücklich genannten Zahlenwert. Das spricht bei diesen Beispielen für eine reversible numerische Darstellung, nicht für einen kryptografischen PIN-Hash im sichtbaren Anwendungsinhalt.
 
 Für das ursprüngliche lange Telegramm ist der extrahierte Wert jedoch **um drei kleiner** als die separat genannte Eingabe. Beide konkreten Zahlen und sämtliche dazugehörigen Hex-Endungen sind hier aus Geheimnisschutzgründen entfernt. Eingabeabweichung, Zuordnung eines anderen Versuchs oder eine noch nicht erfasste Strukturvariante bleiben offen. Es gibt keinen Nachweis eines Funkfehlers und keinen Grund, im Decoder pauschal eine Korrektur zu addieren.
 
@@ -241,7 +238,7 @@ C1       beobachteter Anwendungs-PID mit SDS-TL
 
 Die übrigen sieben Bits des fünften Speicherbytes liegen außerhalb der angegebenen Nutzlänge. Ein generisches „jedes RUA-Paket hat genau ein Paddingbit“ wäre somit falsch: Das galt nur für die betrachtete Logon-Arbeitshypothese. Die Semantik „Logoff Request“ ist durch den Bedienkontext plausibel, aber keine Bestätigung eines vollständigen Logoff-/Acknowledge-Ablaufs.
 
-## 7. Zusätzlicher Standardsabgleich während der Archivierung
+## 7. Standardsabgleich vom 03.10.2026
 
 Dieser Abschnitt enthält **neu geprüfte Quellenbefunde**, nicht nachträglich behauptete Ergebnisse der ursprünglichen Unterhaltung.
 
@@ -281,7 +278,7 @@ Quellen: EN 300 392-2 V3.8.1, Abschnitt 29.5.4.1, Tabelle 29.29, Seite 1214; EN 
 
 ### 7.3 RUA-Anforderung während der Registrierung
 
-Im Chat wurde anhand angeblicher Motorola-Dokumentation eine RUA-Anforderung innerhalb von `D-LOCATION-UPDATE-ACCEPT` diskutiert. Der heutige Code besitzt einen generischen Platz für ein proprietäres Informationselement, setzt ihn aber im untersuchten Erzeugungspfad auf `None`.
+In den Arbeitsnotizen wurde anhand angeblicher Motorola-Dokumentation eine RUA-Anforderung innerhalb von `D-LOCATION-UPDATE-ACCEPT` diskutiert. Der geprüfte Code besitzt einen generischen Platz für ein proprietäres Informationselement, setzt ihn aber im untersuchten Erzeugungspfad auf `None`.
 
 Die EN 300 392-2 V3.8.1 führt auf Seite 1437 in ihrer Änderungshistorie CR 053 auf: eine Ergänzung zur Unterstützung von RUA, mit den betroffenen Abschnitten 16.9.2.7, 16.10.51 und 16.10.41. Dieser Eintrag ist mit **REJ / zurückgezogen** gekennzeichnet. Er ist keine angenommene normative RUA-Felddefinition.
 
@@ -293,7 +290,7 @@ Die gezielte Volltextsuche in allen bereitgestellten PDFs fand keine vollständi
 
 Die generische PEI-Norm `en_30039205v020701p.pdf` lieferte bei dieser Suche keinen `+CTRUA`-Befehl. Das widerlegt keine herstellerspezifische Erweiterung, belegt sie aber auch nicht. Ebenso ist **EN 300 392-11-17 „Include Call“ nicht TTR 001-17 „Radio User Assignment“**; die übereinstimmende Endnummer darf nicht zu einer Verwechslung führen.
 
-## 8. Historischer Repository-Befund und heutiger Codevergleich
+## 8. Historischer Repository-Befund und Codevergleich vom 03.10.2026
 
 ### 8.1 Historisch geprüfter Stand
 
@@ -307,7 +304,7 @@ Die früheren Abrufe aus Commit `41d925457bed3cc0f1207d509642f3e003303010` zeigt
 
 Das erklärte die ursprünglichen Betriebslogs. Es war keine Bestätigung, dass Brew die Benutzeranmeldung bearbeitet oder dass eine RUA-Serverantwort bereits existiert.
 
-### 8.2 Heute zusätzlich geprüfter Stand auf `Archiving`
+### 8.2 Am 03.10.2026 geprüfter Stand auf `Archiving`
 
 Alle Links in der folgenden Tabelle sind auf den geprüften Commit gepinnt. Die Prüfung war eine gezielte Quelltextsichtung, kein vollständiger Build oder Testlauf des gesamten Repositories.
 
@@ -330,7 +327,7 @@ Der rekursiv abgerufene Repository-Baum enthielt keine RUA-benannten Pfade. Zusa
 
 ### 8.3 Wichtige zusätzliche Sicherheitsbefunde
 
-Im vorhandenen `generate_session_token()` wird bei erfolgreichem Öffnen von `/dev/urandom` ein möglicher Fehler von `read_exact()` ignoriert; bei fehlendem Zugriff existiert ein aus Zeit und Prozess-ID abgeleiteter Fallback. Für eine Oberfläche mit PIN- und Benutzeradministration sollte diese Konstruktion nicht als ausreichende Absicherung übernommen werden. Ein belastbarer Zufallsquellenfehler muss zu einem definierten Fehler führen. Diese Archivierung ändert den Code nicht.
+Im vorhandenen `generate_session_token()` wird bei erfolgreichem Öffnen von `/dev/urandom` ein möglicher Fehler von `read_exact()` ignoriert; bei fehlendem Zugriff existiert ein aus Zeit und Prozess-ID abgeleiteter Fallback. Für eine Oberfläche mit PIN- und Benutzeradministration sollte diese Konstruktion nicht als ausreichende Absicherung übernommen werden. Ein belastbarer Zufallsquellenfehler muss zu einem definierten Fehler führen. Eine Korrektur ist noch offen.
 
 Zusätzlich fiel ein unmittelbar SDS-relevanter Widerspruch auf: `SDS_TL_STATUS_UNDELIVERABLE` ist im geprüften `sds_bs.rs` auf `0x02` gesetzt und wird für einen Fehlerreport verwendet. EN 300 392-2 V3.8.1, Tabelle 29.16, Seite 1204, bezeichnet `0x02` jedoch als erfolgreiches „vom Ziel konsumiert“. Das ist ein **offener Prüf-/Fehlerkandidat**, kein hier getesteter Defekt am Endgerät. Für RUA dürfen weder dieser Wert noch der dort benutzte Text-PID unbesehen übernommen werden.
 
@@ -349,13 +346,13 @@ Zusätzlich fiel ein unmittelbar SDS-relevanter Widerspruch auf: `SDS_TL_STATUS_
 | `crates/tetra-config/src/bluestation/sec_dashboard.rs` | `b0ace018ab8c3fdf9eba6c2f0001176237846de3` |
 | `Docs/CENTRAL_IDENTITY_RBAC_ROADMAP.md` | `5ec152513f4b0c8127669c694ec9b804ff078c9a` |
 
-Diese Werte dokumentieren gelesene Git-Objekte, keine von diesem Chat erzeugten Implementierungs-Commits. Ein einschlägiger RUA-PR wurde nicht nachgewiesen.
+Diese Werte dokumentieren gelesene Git-Objekte, keine von dieser Entwicklungsphase erzeugten Implementierungs-Commits. Ein einschlägiger RUA-PR wurde nicht nachgewiesen.
 
 ## 9. Vorgeschlagene Architektur für die Umsetzung
 
 ### 9.1 Verarbeitung und Zuständigkeiten
 
-Die im Chat vorgeschlagene Trennung bleibt sinnvoll, muss aber mit der inzwischen vorhandenen zentralen SDS-Verarbeitung abgeglichen werden:
+Die in den Arbeitsnotizen vorgeschlagene Trennung bleibt sinnvoll, muss aber mit der inzwischen vorhandenen zentralen SDS-Verarbeitung abgeglichen werden:
 
 ```text
 Funkgerät / physische ISSI
@@ -373,7 +370,7 @@ Zu entscheiden ist, ob die RUA-Serverlogik lokal in der TBS läuft oder zentral 
 
 Für jedes unterstützte Betriebsprofil braucht es genau einen zuständigen RUA-Verarbeiter. Lokaler Handler, zentraler SDS Router und Brew dürfen nicht dieselbe Anfrage mehrfach akzeptieren. Im Beobachtungsmodus sind normaler Betriebsverkehr und reine Anzeige zu trennen; ein lokal „PIN passend“ bewerteter Versuch darf nicht als am Funkgerät bestätigter Login erscheinen.
 
-### 9.2 Modulskizzen aus dem Gespräch
+### 9.2 Modulskizzen
 
 Es wurden zwei Ablagevarianten vorgeschlagen, aber keine beschlossen oder angelegt:
 
@@ -392,7 +389,7 @@ Spätere Skizze:
     policy.rs
 ```
 
-Die konkrete Umsetzung soll reine Bitcodierung, Transport-SDS-TL, Fachlogik und Speicherung trennen. Bestehende `BitBuffer`-APIs und PDU-Fehlertypen sind zu verwenden; die früher im Chat erfundenen Hilfsmethoden sind keine unmittelbar kompilierbaren Projekt-APIs.
+Die konkrete Umsetzung soll reine Bitcodierung, Transport-SDS-TL, Fachlogik und Speicherung trennen. Bestehende `BitBuffer`-APIs und PDU-Fehlertypen sind zu verwenden; die früher in den Arbeitsnotizen erfundenen Hilfsmethoden sind keine unmittelbar kompilierbaren Projekt-APIs.
 
 Bei der Weiterarbeit außerdem relevant: `crates/tetra-pdus/src/mm/pdus/d_location_update_accept.rs`, `crates/tetra-entities/src/cmce/cmce_bs.rs`, `crates/tetra-entities/src/net_brew/entity.rs`, die Control-Commands sowie `bins/netcore-control-room/`. Ihre Änderung wäre ein späterer Entwicklungsauftrag außerhalb des Archivs.
 
@@ -475,15 +472,15 @@ Das Anhängen neuer Varianten an `TelemetryEvent` vermeidet zwar eine Verschiebu
 
 ### 10.4 Abgleich mit zentralem IAM
 
-Die heute vorhandene `Docs/CENTRAL_IDENTITY_RBAC_ROADMAP.md` ist selbst ein Planungsdokument. Sie empfiehlt einen zentralen Identity-Dienst und eine gemeinsame Integration, legt aber weder ein bereits installiertes Produkt noch den Betriebsort endgültig fest.
+Die am 03.10.2026 vorhandene `Docs/CENTRAL_IDENTITY_RBAC_ROADMAP.md` ist selbst ein Planungsdokument. Sie empfiehlt einen zentralen Identity-Dienst und eine gemeinsame Integration, legt aber weder ein bereits installiertes Produkt noch den Betriebsort endgültig fest.
 
-Für RUA ergibt sich daraus als neue Integrationsaufgabe: Die WebUI-Administration soll die künftigen Web-IAM-Rechte nutzen können, während RUA-Identitäten und Funk-PINs getrennte Fachobjekte bleiben. Ein Benutzer kann organisatorisch beiden Welten zugeordnet sein, ohne dass dieselben Geheimnisse oder automatisch dieselben Rechte verwendet werden. Diese Archivierung ändert die IAM-Roadmap nicht.
+Für RUA ergibt sich daraus als neue Integrationsaufgabe: Die WebUI-Administration soll die künftigen Web-IAM-Rechte nutzen können, während RUA-Identitäten und Funk-PINs getrennte Fachobjekte bleiben. Ein Benutzer kann organisatorisch beiden Welten zugeordnet sein, ohne dass dieselben Geheimnisse oder automatisch dieselben Rechte verwendet werden. Die RUA-Integration bleibt ein eigener Entwicklungspunkt.
 
 ## 11. Sicherheits- und Policy-Anforderungen
 
 ### 11.1 Geheimnisschutz entlang des ganzen Datenwegs
 
-Der frühere Code schrieb vollständige U-SDS-DATA-Bytes mit INFO ins Log; die Nutzerlogs bestätigen diese Ausgabe. Der heute geprüfte Pfad tut dies weiterhin. Zusätzlich sind Debug-Ausgaben des geparsten PDU, Binärdumps bei Parserfehlern, Dashboard-SDS-Logs und die neue vollständige Payload in `SdsEdgeIngress` zu berücksichtigen.
+Der frühere Code schrieb vollständige U-SDS-DATA-Bytes mit INFO ins Log; die Betriebslogs bestätigen diese Ausgabe. Der am 03.10.2026 geprüfte Pfad tut dies weiterhin. Zusätzlich sind Debug-Ausgaben des geparsten PDU, Binärdumps bei Parserfehlern, Dashboard-SDS-Logs und die neue vollständige Payload in `SdsEdgeIngress` zu berücksichtigen.
 
 Die nötige Maßnahme ist nicht lediglich eine Logzeile „PIN redacted“ hinter dem bestehenden Dump. Vor jedem diagnostischen Export muss zuverlässig entschieden werden, ob vertrauliche Anwendungsdaten vorliegen. Bei einer noch nicht verständlichen RUA-Variante ist eine grobe Unterdrückung des Inhalts besser als eine fehlerhafte feldweise Maskierung. Gleichzeitig muss der geschützte Parser den Originalinhalt intern noch verarbeiten können.
 
@@ -512,7 +509,7 @@ Ein Gerätewechsel darf die bisherige Sitzung nicht schon vor erfolgreicher Benu
 
 ### 11.4 Funkrechte und logische Erreichbarkeit
 
-Ein späterer vollständiger RUA-Dienst soll Kommunikationsrechte aus Gerät, Benutzer, Profil und Betriebszustand kontrolliert ermitteln. Im Chat wurden Gruppenruf, Einzelruf, SDS, Gruppenanmeldung, Paketdaten, Priorität und externe Gateways genannt. Das ist ein größerer Ausbau, nicht eine bereits vorhandene Funktion des Benutzerformulars.
+Ein späterer vollständiger RUA-Dienst soll Kommunikationsrechte aus Gerät, Benutzer, Profil und Betriebszustand kontrolliert ermitteln. In den Arbeitsnotizen wurden Gruppenruf, Einzelruf, SDS, Gruppenanmeldung, Paketdaten, Priorität und externe Gateways genannt. Das ist ein größerer Ausbau, nicht eine bereits vorhandene Funktion des Benutzerformulars.
 
 Limited Service darf nicht nur eine Anzeige am Motorola sein. Umgekehrt darf eine nicht fertig implementierte RUA-Prüfung den bestehenden Funkbetrieb nicht ungeplant sperren. Notruf-/Sicherheitsverkehr und ausfallbedingte Grundrechte benötigen eine explizite, getestete Policy.
 
@@ -524,11 +521,11 @@ Die spätere Auflösung RUN/P-ISSI zu aktueller Geräte-ISSI erfordert ein konsi
 
 | Parameter | Wert | Nachweisgrenze |
 |---|---|---|
-| Beobachtetes Endgerät | ISSI `2020004` | Nutzerlog; keine heutige Erreichbarkeitsprüfung |
+| Beobachtetes Endgerät | ISSI `2020004` | Betriebslog; keine geprüfte Erreichbarkeitsprüfung |
 | Beobachtetes SDS-Ziel | `16777213` / `0xFFFFFD` | Für diesen Codeplug/Ablauf belegt, nicht als universelle RUA-Adresse festgelegt |
 | Beobachteter PID | `193` / `0xC1` | Für dieses Profil belegt; allgemeine Norm weist nur den benutzerdefinierten SDS-TL-Bereich aus |
-| Brew-Transport | WebSocket, historisch `ws://10.0.1.22:8081` | Versandlog belegt; keine heutige Verbindung hergestellt |
-| SDS-Datenart | SDS Type 4; im RF-Log Identifier 3 | Code und Nutzerlogs |
+| Brew-Transport | WebSocket, historisch `ws://10.0.1.22:8081` | Versandlog belegt; keine geprüfte Verbindung hergestellt |
+| SDS-Datenart | SDS Type 4; im RF-Log Identifier 3 | Code und Betriebslogs |
 | Zentrale Telemetrie-Datenart | `SdsEdgeIngress.sds_type` verwendet 1 bis 4; 0 ist Status | Nicht dieselbe Zählweise wie der historische RF-Type-Identifier |
 | Dashboard-Default | TCP 8080, Bind `0.0.0.0` | Quelltext-Default, keine laufende Konfiguration ausgelesen |
 | Lokale Control-/Dashboard-ISSI im SDS-Modul | `4010001` | Vorhandene Konstante; nicht ungeprüft als RUA-Absender verwenden |
@@ -558,11 +555,11 @@ Die frühe TOML-Skizze `[[rua.users]]` wurde später zugunsten einer verwalteten
 
 ## 13. Tests, Befehle und tatsächlicher Ausführungsstand
 
-### 13.1 Vom Nutzer belegte Tests
+### 13.1 Belegte Tests
 
 Die gelieferten SDS-Ereignisse belegen, dass Bedienhandlungen am Funkgerät zu empfangenen Nachrichten führten und dass der damalige Code zumindest die ersten Nachrichten in Richtung Brew weitergab. Die Vergleichsserien isolieren Namens- und PIN-Änderungen sowie die Namenslänge.
 
-Nicht belegt sind eine positive oder negative RUA-Serverantwort, deren Anzeige am Endgerät, eine akzeptierte Assignment-Dauer, ein Profilwechsel oder funktionierende RUA-Rechtesperren. Ein vom Nutzer als „falsche PIN“ eingegebener Wert wäre ohne aktive Gegenstelle noch kein getesteter Reject.
+Nicht belegt sind eine positive oder negative RUA-Serverantwort, deren Anzeige am Endgerät, eine akzeptierte Assignment-Dauer, ein Profilwechsel oder funktionierende RUA-Rechtesperren. Ein ausdrücklich als „falsche PIN“ eingegebener Wert wäre ohne aktive Gegenstelle noch kein getesteter Reject.
 
 ### 13.2 Während der Archivierung ausgeführte Offline-Prüfung
 
@@ -585,7 +582,7 @@ Ein Roundtrip mit demselben hypothetischen Layout kann eine falsche gemeinsame A
 
 | Operation | Tatsächlicher Status |
 |---|---|
-| Lesen von `Archiving`, Archivindex, Baum und ausgewählten Quelldateien über GitHub-Connector | Erfolgreich; Prüfstand in Abschnitt 1 und Blob-Liste in Abschnitt 8 |
+| Lesen von `Archiving`, Archivindex, Baum und ausgewählten Quelldateien über die Repository-API | Erfolgreich; Prüfstand in Abschnitt 1 und Blob-Liste in Abschnitt 8 |
 | Lokaler Cloneversuch mit `git clone --single-branch --branch Archiving --depth 1 ...` | Fehlgeschlagen: DNS-Auflösung von `github.com` im Container nicht möglich; kein lokaler Repo-Clone als Prüfgrundlage verwendet |
 | PDF-Metadaten und Volltext über Files/PyMuPDF | Erfolgreich für 25 Dateien; kein OCR eingesetzt |
 | Gerenderte Tabellenprüfung | Ausgewählte einschlägige PDF-Seiten geprüft; bei nicht bereitgestellten Files-Bildern lokal gerendert |
@@ -594,8 +591,6 @@ Ein Roundtrip mit demselben hypothetischen Layout kann eine falsche gemeinsame A
 | Zugriff auf eine versuchte TCCA-Webseite | Fehlgeschlagen; daraus keine Aussage über aktuelle Mitgliedschaftspflicht oder generelle Dokumentverfügbarkeit ableiten |
 | Compiler, Installation, `systemctl`, Datenbankmigration, Funkkonfiguration | Nicht ausgeführt |
 | Downlink-Testtelegramme / Force Off / Book On | Nicht ausgesendet |
-
-Die Archivveröffentlichung erfolgt über Git-Objekt-/Branch-Operationen des verbundenen GitHub-Werkzeugs, nicht über den fehlgeschlagenen lokalen Clone. Der neue Archiv-Commit ist über die Dateihistorie nachvollziehbar und wird nach dem Schreiben separat zurückgelesen. Kein Force-Push, kein Branch-Merge und keine Produktivänderung gehören zum Auftrag.
 
 ### 13.4 Reproduzierbare spätere Entwicklerprüfungen
 
@@ -609,11 +604,11 @@ git show origin/Archiving:crates/tetra-entities/src/net_dashboard/html.rs
 git show origin/Archiving:crates/tetra-entities/src/cmce/subentities/sds_bs.rs
 ```
 
-Ein späterer Rust-Testaufruf ist anhand der dann tatsächlich angelegten Crates und Testnamen festzulegen. Die früheren Parser-Skizzen verwenden nicht belegte Methoden wie `read_u8_at` und sind nicht als bereits kompilierter Rust-Code zu archivieren. Neue öffentliche Regressionstests sollen eigenständig erzeugte, eindeutig fiktive Fixtures verwenden, keine früheren Zugangsdaten des Nutzers.
+Ein späterer Rust-Testaufruf ist anhand der dann tatsächlich angelegten Crates und Testnamen festzulegen. Die früheren Parser-Skizzen verwenden nicht belegte Methoden wie `read_u8_at` und sind nicht als bereits kompilierter Rust-Code zu archivieren. Neue öffentliche Regressionstests sollen eigenständig erzeugte, eindeutig fiktive Fixtures verwenden, keine früheren Zugangsdaten der Projektplanung.
 
 ## 14. Fehler, überholte Aussagen und verworfene Ansätze
 
-| Frühere Aussage / Ansatz | Heute festzuhaltende Korrektur oder Grenze |
+| Frühere Aussage / Ansatz | Am 03.10.2026 festzuhaltende Korrektur oder Grenze |
 |---|---|
 | `type=3` bedeute SDS Type 3 | Falsch: Im konkreten Enum ist Identifier 3 SDS Type 4. |
 | Byte an Index 2 könnte RUA-PDU-Typ sein | Die Veränderung gehört zur SDS-TL Message reference; das Anwendungskennbyte folgt danach. |
@@ -650,7 +645,7 @@ Die Prioritäten sind **Empfehlungen für die Fortsetzung**, keine bereits ausge
 | RUA-04 | P0 | TTR 001-17 / IOP 001-17 und passende Motorola-Unterlagen beschaffen oder öffentlich belastbare Implementierung/Decoder finden | Versionsstand und Nutzbarkeit prüfen; genaue Downlink-PDUs, Timer, Identitätstypen und Registrierungserweiterung belegen |
 | RUA-05 | P0/P1 | Serverzuständigkeit lokal/zentral und Abgrenzung zu SDS Router, Brew und Web-IAM entscheiden | Ein zuständiger Assignment-Verarbeiter; keine doppelten Antworten, keine unkontrollierte Credential-Spool |
 | RUA-06 | P1 | Benutzer-Store, PIN-Kanonisierung, Hashprüfung, Sperren und Audit implementieren | Persistenz, Konflikte, begrenzte Worker, Backup/Restore und Rechte prüfen; keine Geheimnisrückgabe |
-| RUA-07 | P1 | WebUI-CRUD und beobachtete Gerätezuordnung in aktuelle Assets integrieren | Benutzerwunsch funktional erfüllt; Status „beobachtet/lokal geprüft“ korrekt; API und UI autorisiert |
+| RUA-07 | P1 | WebUI-CRUD und beobachtete Gerätezuordnung in aktuelle Assets integrieren | Anforderung funktional erfüllt; Status „beobachtet/lokal geprüft“ korrekt; API und UI autorisiert |
 | RUA-08 | P1 | Verifizierten aktiven Logon-/Reject-/Logoff-Ablauf ergänzen | Bestätigte Codierung aus RUA-04, Testfunkgerät, tatsächliche Anzeige-/Antwortprüfung, Latenz-/Retry-/Duplikatfälle |
 | RUA-09 | P1 | Assignment-Lebenszyklus und Sperrwirkung abnehmen | Ablauf, Gerätewechsel, Neustart, Coverageverlust, Sperre während Prüfung und verspätete Antworten konsistent |
 | RUA-10 | P2 | Book On, Force Off, Verlängerung und Profile | Erst nach bestätigtem Grundablauf; gesendet/bestätigt/fehlgeschlagen getrennt |
@@ -678,13 +673,13 @@ Die früher vorgeschlagene Zweiteilung in „RUI Presence / Benutzeranzeige“ u
 | WebUI/API | Rollen und Ressourcen, CSRF-/Origin-Schutz, Eingabevalidierung, Reconnect-Snapshot, PIN nie lesbar, Sperraktion mit nachvollziehbarem Status |
 | Regression | Normale Text-SDS, Status, lokale Sonderdienste, Brew-/Zentralrouting, Gruppen-/Einzelruf und Notruf dürfen nicht unbeabsichtigt verändert werden |
 
-Eine zusätzliche PEI-Beobachtung über einen herstellerspezifisch unterstützten `+CTRUA`-Befehl bleibt eine Diagnoseidee. Befehl, Syntax und Verfügbarkeit am konkreten Endgerät sind vorher zu belegen. Der Nutzer muss dafür keinen kommerziellen RUA-Server bereitstellen.
+Eine zusätzliche PEI-Beobachtung über einen herstellerspezifisch unterstützten `+CTRUA`-Befehl bleibt eine Diagnoseidee. Befehl, Syntax und Verfügbarkeit am konkreten Endgerät sind vorher zu belegen. Ein kommerzieller RUA-Server ist keine Voraussetzung.
 
 ## 16. Offene Punkte und explizite Lücken
 
 Es fehlen weiterhin:
 
-- Originaltitel und URL dieses Chats sowie der Kalendertag der ursprünglichen Funklogs.
+- Kalendertag der ursprünglichen Funklogs.
 - Exaktes Funkgerätmodell, Firmware, Codeplug-Einstellungen und beobachtete Displayzustände bei den einzelnen Versuchen.
 - Unabhängige gültige SDS-Bitlängen der acht zuletzt nur als Hex gelieferten Längentests.
 - Auflösung der Abweichung zwischen erstem numerischen Feld und genannter Eingabe.
@@ -693,10 +688,10 @@ Es fehlen weiterhin:
 - Bitgenaue RUA-Registrierungserweiterung; die generische Existenz eines proprietären Informationselements genügt nicht.
 - Entscheidung über lokale oder zentrale RUA-Serverzuständigkeit, Speicherort, Löschfristen, Mehrfachanmeldung, Offline- und Rechtepolitik.
 - Ein Build-/Installationsnachweis für RUA; weder lokale Rust-Tests noch eine produktive Softwareversion oder ein RUA-PR sind belegt.
-- Heutige Live-Konfiguration und Erreichbarkeit der TBS und des Brew-Servers; Repository-Source ist kein Betriebsabzug.
+- Am 03.10.2026 geprüfte Live-Konfiguration und Erreichbarkeit der TBS und des Brew-Servers; Repository-Source ist kein Betriebsabzug.
 - Vollständige fachliche Prüfung aller Standards und aller Repository-Dateien; die dokumentierte Suche und die gezielten Lesefenster sind der tatsächliche Umfang.
 
-**Kein Speicherproblem ist mit einer Protokolllücke gleichzusetzen:** Der fehlgeschlagene Container-Clone verhindert die GitHub-Connector-Veröffentlichung nicht. Umgekehrt würde eine erfolgreich gespeicherte Abschlussdokumentation keinen der offenen RUA-Implementierungspunkte erledigen.
+**Offen bleibt die Protokollimplementierung.** Die vorhandenen Entwicklungsnotizen schließen keine der genannten RUA-Protokoll- oder Abnahmelücken.
 
 ## 17. Quellen und Anhänge
 
@@ -708,25 +703,25 @@ Diese Quelle stützt das Prinzip Benutzer-zu-Gerät-Zuordnung, SDS-Authentifizie
 
 ### Q2. Historische Recherchehinweise, nicht neu als vollständig verifiziert ausgeben
 
-| Hinweis aus dem früheren Chat | Bedeutung und verbleibende Prüfung |
+| Historischer Quellenhinweis | Bedeutung und verbleibende Prüfung |
 |---|---|
-| TTR 001-17, „TETRA Interoperability Profile; Radio User Assignment; Phase 1“ | Als maßgebliche Profilspur genannt. Die im Chat genannte Version 1.1.0 vom 17.11.2016 ist hier kein erneut bestätigter aktueller Veröffentlichungsstand. |
+| TTR 001-17, „TETRA Interoperability Profile; Radio User Assignment; Phase 1“ | Als maßgebliche Profilspur genannt. Die in den Arbeitsnotizen genannte Version 1.1.0 vom 17.11.2016 ist hier kein erneut bestätigter aktueller Veröffentlichungsstand. |
 | IOP 001-17 | Genannter Interoperabilitäts-Testplan; Inhalt und Verfügbarkeit nicht vorliegend. |
 | [TIP-Verzeichnis bei Oborne Consulting](https://www.oborneconsulting.co.uk/TETRA_Standards/TIP-TTR001.htm) | Historischer Kataloghinweis; kein Ersatz für den Spezifikationstext. |
-| [Motorola-Handbuchspiegel](https://manuals.plus/m/473fbd9f73160dc68ce4499dd080689cb082e197b051ae9e4f65ba93a4b7132f) | Im Chat als Quelle für RUA, Assignment-Dauer und `+CTRUA` genannt. Konkrete Ausgabe, Feldtabellen und Originalherkunft erneut prüfen. |
+| [Motorola-Handbuchspiegel](https://manuals.plus/m/473fbd9f73160dc68ce4499dd080689cb082e197b051ae9e4f65ba93a4b7132f) | In den Arbeitsnotizen als Quelle für RUA, Assignment-Dauer und `+CTRUA` genannt. Konkrete Ausgabe, Feldtabellen und Originalherkunft erneut prüfen. |
 | [Airbus-Unterlage als Drittanbieter-Upload](https://www.scribd.com/document/721722061/00126593) | Historische Spur für Alias-/Profilverwaltung; keine verifizierte Funk-PDU-Tabelle. |
-| [VIRVE-Unterlage](https://www.doria.fi/bitstream/handle/10024/129991/lo_2016-36_virve_network_web.pdf?isAllowed=y&sequence=2) | Im Chat für RUA Accept/Reject/Cancel und systembezogene Adressen genannt; genaue Abschnitte und Übertragbarkeit sind weiter zu prüfen. |
+| [VIRVE-Unterlage](https://www.doria.fi/bitstream/handle/10024/129991/lo_2016-36_virve_network_web.pdf?isAllowed=y&sequence=2) | In den Arbeitsnotizen für RUA Accept/Reject/Cancel und systembezogene Adressen genannt; genaue Abschnitte und Übertragbarkeit sind weiter zu prüfen. |
 | [RFE-MultiAnalyzer-Datenblatt](https://www.dmrassociation.org/femvenner/DS_MAS_555_MultiAnalyzer_rfe_en.pdf) | Historischer Hinweis auf einen kommerziellen TIP-Decoder, nicht auf verfügbaren Quellcode oder nutzbare Testvektoren. |
 
 Zu den historischen, unbestätigten Detailangaben gehören `+CTRUA`-Werte 0 für keine neue Zuweisung, 1 RUN, 2 SSI, 3 MS-ISDN, 4 Alpha-Tag, 5 permanente Abmeldung sowie 6/7 reserviert; ebenso Profil-ID 0–255, mögliche Bedeutung von Profil 0, Pseudo-Logon und die Wirkung eines unaufgeforderten Accept als Book On. Diese Angaben bleiben **Recherchekandidaten**, keine implementierbaren Luftschnittstellenkonstanten.
 
-Die früher berichtete Suche nach `RUA Accept PDU`, `RUA Reject PDU`, `RUA Cancel PDU`, `Motorola RUA SDS`, `TTR 001-17`, `IOP 001-17`, `CR199` und `CR286` lieferte im Chat keine dokumentierte vollständige Codierung. Für die beiden zuletzt genannten CR-Nummern liegt kein belastbarer Inhalt vor. Die Aussage, alle relevanten Tabellen seien ausschließlich im Mitgliederbereich erhältlich, wurde bei der Archivierung nicht bestätigt.
+Die früher berichtete Suche nach `RUA Accept PDU`, `RUA Reject PDU`, `RUA Cancel PDU`, `Motorola RUA SDS`, `TTR 001-17`, `IOP 001-17`, `CR199` und `CR286` lieferte in den Arbeitsnotizen keine dokumentierte vollständige Codierung. Für die beiden zuletzt genannten CR-Nummern liegt kein belastbarer Inhalt vor. Die Aussage, alle relevanten Tabellen seien ausschließlich im Mitgliederbereich erhältlich, wurde bei der Quellenprüfung vom 03.10.2026 nicht bestätigt.
 
 ### Q3. Bereitgestellte PDF-Dateien
 
 Die Dateien wurden im Arbeitscontainer unter `/mnt/data/` bereitgestellt. Dieser Pfad ist eine temporäre Arbeitsumgebung, kein Installations- oder Repository-Pfad. Die PDFs selbst werden nicht in `Docs/archive/` kopiert; das Archiv enthält nur das Inventar und gezielte Quellenbezüge.
 
-| Datei | Dokument / Ausgabe laut Inhalt | Seiten | Relevanz für diesen Chat |
+| Datei | Dokument / Ausgabe laut Inhalt | Seiten | Relevanz für das Vorhaben |
 |---|---|---:|---|
 | `en_3003920308v010401p.pdf` | EN 300 392-3-8 V1.4.1, 2020-04 | 22 | ISI Generic Speech Format; Randbezug, kein RUA-Decoder |
 | `en_30039209v010701p.pdf` | EN 300 392-9 V1.7.1, 2020-04 | 46 | Allgemeine SS-Anforderungen; Stringcodierung auf Seite 24 gezielt geprüft |
@@ -776,5 +771,3 @@ Diese SHA-256-Werte beziehen sich auf öffentliches Standardmaterial, nicht auf 
 - [Archivindex](README.md).
 - [Vorhandene zentrale IAM-Roadmap](../CENTRAL_IDENTITY_RBAC_ROADMAP.md), als angrenzende Planung und nicht als fertige RUA-Lösung.
 - [Angrenzendes SDS-/Gateway-Archiv](2026-10-03_flowstation-sds-services-gateways-und-bot-architektur.md), zur späteren Abstimmung der inzwischen zentralisierten SDS-Verarbeitung; seine Inhalte werden hier nicht als neue RUA-Abnahme übernommen.
-
-Es wurde im zugänglichen Gespräch kein RUA-Implementierungs-Commit und kein dazugehöriger RUA-PR erstellt oder belegt. Diese Datei und ihr Indexeintrag sind Dokumentationsänderungen. Die Selbstarchivierung des Chats bleibt beim Nutzer.

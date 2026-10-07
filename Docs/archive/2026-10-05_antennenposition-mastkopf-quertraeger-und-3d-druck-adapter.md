@@ -1,25 +1,23 @@
-# Abschlussdokumentation: Antennenposition, Mastkopf, Querträger und 3D-Druck-Adapter
+# Brainstorming: Antennenposition, Mastkopf, Querträger und 3D-Druck-Adapter
 
-> **Ergebnis des Chats:** Der auf den Fotos gezeigte vertikale Zwei-Antennen-Aufbau ist als aktuell verfügbare, räumlich eingeschränkte Testanordnung technisch plausibel, aber nicht als ausreichend entkoppelter gleichzeitiger TX/RX-Betrieb bestätigt. Die Aussage „die untere Antenne trifft nur Aluminium“ ist kein HF-Nachweis. Für die geplante mechanische Weiterentwicklung wurde ein Hybridansatz festgehalten: vorhandener Metallspigot als tragender Kern, Aluminium-Querträger und ein 3D-gedrucktes Klemm-/Formteil. Eine leitfähige Verbindung des Querträgers zum Mast ist nicht pauschal Voraussetzung der Antennenfunktion; für Outdoor-Betrieb sind Potentialausgleich, statische Aufladung, Überspannungs- und Blitzschutz jedoch getrennt zu planen.
+**Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
 
-## 1. Metadaten und Auswertungsumfang
+> **Festgehaltene Richtung:** Der auf den Fotos gezeigte vertikale Zwei-Antennen-Aufbau ist als aktuell verfügbare, räumlich eingeschränkte Testanordnung technisch plausibel, aber nicht als ausreichend entkoppelter gleichzeitiger TX/RX-Betrieb bestätigt. Die Aussage „die untere Antenne trifft nur Aluminium“ ist kein HF-Nachweis. Für die geplante mechanische Weiterentwicklung wurde ein Hybridansatz festgehalten: vorhandener Metallspigot als tragender Kern, Aluminium-Querträger und ein 3D-gedrucktes Klemm-/Formteil. Eine leitfähige Verbindung des Querträgers zum Mast ist nicht pauschal Voraussetzung der Antennenfunktion; für Outdoor-Betrieb sind Potentialausgleich, statische Aufladung, Überspannungs- und Blitzschutz jedoch getrennt zu planen.
+
+## 1. Arbeitsstand und Bezugsquellen
 
 | Feld | Wert |
 |---|---|
 | Thema | Aktuelle RX/TX-Antennenposition am mobilen Mast; Mastkopf; Metallspigot; geplanter 3D-Druck-Adapter für einen Querträger; HF-Entkopplung und mechanische Lastpfade |
-| Ursprünglicher Chattitel | Im verfügbaren Chat-/Werkzeugkontext nicht auslesbar |
-| Chatlink | Nicht verfügbar |
 | Zusammenfassung erstellt | 2026-10-05 |
 | Repository | JanHG98/netcore-tetra |
-| Zielbranch dieser Archivierung | Archiving |
+| Zielbranch dieser Quellenprüfung | Archiving |
 | Geprüfter Archiving-Head vor dem Archiv-Commit | 2d4c6550a017fe1f951a391d5044aca1803aa127 |
 | Zusätzlich geprüfter main-Head | 9116c15d645458f99e236712b67a1ad970432791 |
 | Zielpfad | Docs/archive/2026-10-05_antennenposition-mastkopf-quertraeger-und-3d-druck-adapter.md |
 | Zugehöriges älteres Archiv | [Sirio SPO 380-2 – RX/TX-Antennen an einem gemeinsamen Mast](2026-10-03_sirio-spo-380-2-rx-tx-antennenmast-und-entkopplung.md) |
 
-Der sichtbare Verlauf dieses Chats wurde vollständig für die hier behandelten Themen ausgewertet. Dazu gehören die vier im Chat gezeigten Fotos, die Diskussion der aktuellen Antennenposition sowie die anschließende Diskussion des Mastkopfs und eines möglichen 3D-Druck-Querträgeradapters. Nicht sichtbar und daher nicht rekonstruierbar sind ein ursprünglicher Chattitel, ein dauerhafter Chatlink sowie gegebenenfalls außerhalb des zugänglichen Verlaufs liegende ältere Nachrichten.
-
-**Wichtige Abgrenzung:** Diese Datei trennt den Gesprächsstand von einem zusätzlich am 2026-10-05 überprüften Repository-Stand. Aussagen aus dem Chat werden nicht als Implementierungsnachweis für Software oder Hardware behandelt.
+Vier Fotos dokumentieren die Antennenposition, den Metallspigot, die Mastkopfaufnahme und deren Passung. Die Montage ist damit visuell nachvollziehbar. Für HF-Isolation, Windlast und Dauerfestigkeit fehlen Mess- beziehungsweise Lastnachweise. Der separate Repository-Abgleich wurde am 5. Oktober 2026 durchgeführt.
 
 ### Statusbegriffe
 
@@ -33,9 +31,9 @@ Der sichtbare Verlauf dieses Chats wurde vollständig für die hier behandelten 
 
 ## 2. Ziel und Ausgangslage
 
-Ziel des Chats war zunächst die pragmatische Bewertung einer bereits aufgebauten Antennenposition. Auf einem mobilen Stativ-/Teleskopmast sind zwei vertikal polarisierte Antennen übereinander angeordnet. Der verfügbare Raum ist eingeschränkt; eine bessere räumliche Trennung ist aktuell nicht ohne zusätzliche Mechanik möglich.
+Ziel der Planung war zunächst die pragmatische Bewertung einer bereits aufgebauten Antennenposition. Auf einem mobilen Stativ-/Teleskopmast sind zwei vertikal polarisierte Antennen übereinander angeordnet. Der verfügbare Raum ist eingeschränkt; eine bessere räumliche Trennung ist aktuell nicht ohne zusätzliche Mechanik möglich.
 
-Im zweiten Teil wurde der Mastkopf betrachtet. Vorhanden sind eine offene Mastkopfaufnahme mit seitlicher Klemmung und ein Metalladapter/Spigot, der laut Nutzer beidseitig in die Aufnahme passt. Daraus entstand die Idee, einen 3D-gedruckten Adapter zu konstruieren, der einen Querträger aufnehmen kann.
+Im zweiten Teil wurde der Mastkopf betrachtet. Vorhanden sind eine offene Mastkopfaufnahme mit seitlicher Klemmung und ein Metalladapter/Spigot, der laut Betriebsrückmeldung beidseitig in die Aufnahme passt. Daraus entstand die Idee, einen 3D-gedruckten Adapter zu konstruieren, der einen Querträger aufnehmen kann.
 
 Die beiden Fragestellungen hängen zusammen:
 
@@ -45,7 +43,7 @@ Die beiden Fragestellungen hängen zusammen:
 
 ## 3. Bilddokumentation des aktuellen Aufbaus
 
-Die Bilder wurden mit diesem Archiv-Commit unter Docs/archive/assets/2026-10-05_antennenposition-mastkopf-quertraeger/ abgelegt. Wegen der verfügbaren GitHub-Schreibschnittstelle wurden sie als verkleinerte, komprimierte JPEG-Archivkopien gespeichert. Sie sind zur technischen Dokumentation des Aufbaus geeignet, aber **nicht byteidentisch mit den hochauflösenden Chat-Uploads**.
+Die Bilder wurden mit diesem Archiv-Commit unter Docs/archive/assets/2026-10-05_antennenposition-mastkopf-quertraeger/ abgelegt. Wegen der verfügbaren GitHub-Schreibschnittstelle wurden sie als verkleinerte, komprimierte JPEG-Archivkopien gespeichert. Sie sind zur technischen Dokumentation des Aufbaus geeignet, aber **nicht byteidentisch mit den hochauflösenden Originaluploads**.
 
 ### 3.1 Aktuelle Antennenposition
 
@@ -79,7 +77,7 @@ Die Bilder wurden mit diesem Archiv-Commit unter Docs/archive/assets/2026-10-05_
 
 Die vertikale Anordnung zweier vertikal polarisierter Antennen kann gegenüber einer rein seitlichen Anordnung auf gleicher Höhe günstig sein, weil das Fernfeld vertikaler Rundstrahler entlang der Antennenachse typischerweise schwächer ist als in der horizontalen Hauptabstrahlrichtung. Daraus folgt jedoch **keine garantierte Isolation** im realen Aufbau. Nahfeld, Mast, Halter, Kabel, Reflexionen und die tatsächliche Antennenkonstruktion bleiben relevant.
 
-Die im Gespräch anfänglich naheliegende Begründung, die untere Antenne „sehe“ nur den Aluminiumteil der oberen Montage, wurde ausdrücklich relativiert. HF-Kopplung folgt nicht einer optischen Sichtlinie.
+Die in der Diskussion anfänglich naheliegende Begründung, die untere Antenne „sehe“ nur den Aluminiumteil der oberen Montage, wurde ausdrücklich relativiert. HF-Kopplung folgt nicht einer optischen Sichtlinie.
 
 ### 4.2 Messung vor Freigabe
 
@@ -92,7 +90,7 @@ Vorgesehene Messungen:
 - Sweep grob über 400 bis 425 MHz, damit die relevanten RX-/TX-Bereiche und das Verhalten dazwischen sichtbar werden;
 - anschließend ein kontrollierter aktiver Desensibilisierungs-/Blocking-Test mit repräsentativer TX-Leistung und reproduzierbarem Nutzsignal am RX.
 
-Im Chat wurde **kein** fixer dB-Grenzwert als Abnahmekriterium festgelegt. Ein sinnvoller Mindestwert hängt von TX-Leistung, Senderrauschen, Empfänger-Blocking, Kabel-/Filterverlusten und gewünschter Empfangsreserve ab.
+In der Planung wurde **kein** fixer dB-Grenzwert als Abnahmekriterium festgelegt. Ein sinnvoller Mindestwert hängt von TX-Leistung, Senderrauschen, Empfänger-Blocking, Kabel-/Filterverlusten und gewünschter Empfangsreserve ab.
 
 ### 4.3 Querträgeradapter
 
@@ -161,13 +159,13 @@ Im aktuellen config.toml ist weiterhin der historische Kommentar vorhanden, dupl
 
 Im aktuell geprüften freqs.rs ist dagegen weiterhin ein 10-MHz-Duplexabstand im zugehörigen Test-/Berechnungsstand hinterlegt.
 
-**Folgerung:** Diese Dokumentationsabweichung ist ein separater Roadmap-Kandidat. Sie wurde in diesem Archivierungsauftrag nicht außerhalb von Docs/archive/ geändert.
+**Folgerung:** Die Dokumentationsabweichung bleibt ein separater Roadmap-Kandidat.
 
 ### 5.2 Repository-Abweichung: generisches Duplexer-Beispiel
 
 Die aktuelle Hardware-und-RF-Wiki nennt weiterhin das frühere Laborbeispiel 418,000/418,025 MHz Downlink und 408,000/408,025 MHz Uplink.
 
-Die Wiki beschreibt als generischen RF-Pfad auch Duplexer-/Filterthemen. Das darf **nicht** als Aussage verstanden werden, dass der hier diskutierte reale Aufbau einen Duplexer verwendet. Das ältere zugehörige Archiv dokumentiert ausdrücklich die Nutzerentscheidung für zwei getrennte Antennen ohne Duplexer.
+Die Wiki beschreibt als generischen RF-Pfad auch Duplexer-/Filterthemen. Das darf **nicht** als Aussage verstanden werden, dass der hier diskutierte reale Aufbau einen Duplexer verwendet. Das ältere zugehörige Archiv dokumentiert ausdrücklich die Festlegung für zwei getrennte Antennen ohne Duplexer.
 
 ## 6. Komponenten, Schnittstellen und Abhängigkeiten
 
@@ -183,7 +181,7 @@ Die Wiki beschreibt als generischen RF-Pfad auch Duplexer-/Filterthemen. Das dar
 | Metallbolzen/-hülse | Lastdurchleitung durch den gedruckten Adapter | **Idee / bevorzugtes Detail**, noch nicht dimensioniert |
 | Bonding-Leitung/Zahnscheibe | Optional definierter Potentialausgleich | **Idee**, nicht als RF-Pflicht festgelegt |
 | Koaxleitungen 50 Ohm | Getrennte RF-Pfade | im Projekt erforderlich; konkrete Kabelführung dieses Fotos nicht vollständig belegt |
-| VNA / Messaufbau | S11/S21-Abnahme | **beschlossen/geplant**, im Chat nicht durchgeführt |
+| VNA / Messaufbau | S11/S21-Abnahme | **beschlossen/geplant**, in der Planung nicht durchgeführt |
 | Kontrollierte RX-Nutzsignalquelle | aktiver Desense-Test | **beschlossen/geplant**, noch nicht durchgeführt |
 
 ## 7. Mechanische Konstruktionshinweise für den geplanten 3D-Druck-Adapter
@@ -199,7 +197,7 @@ Diese Punkte sind **Entwurfsregeln aus der Diskussion, keine statische Berechnun
 - Querträger gegen Herausziehen und Verdrehen sichern.
 - Druckorientierung so wählen, dass das dominante Biegemoment nicht nur Layer gegeneinander aufspaltet.
 - Viele Perimeter sind für die mechanische Schale wichtiger als blind sehr hoher Infill-Anteil.
-- Im Chat wurden etwa 6 bis 8 mm tragende Wandstärke am zentralen Adapter als **Vorentwurfsgröße** genannt. Das ist kein berechneter Mindestwert und muss nach realer Geometrie neu bewertet werden.
+- In der Planung wurden etwa 6 bis 8 mm tragende Wandstärke am zentralen Adapter als **Vorentwurfsgröße** genannt. Das ist kein berechneter Mindestwert und muss nach realer Geometrie neu bewertet werden.
 
 ### Materialwahl
 
@@ -227,7 +225,7 @@ Auch bei robustem Filament bleibt die Konstruktion ein Mast-/Windlastbauteil. Ei
 | Outdoor-Bonding/Potentialausgleich | **Idee / Planungsbedarf** | Noch keine Ausführung |
 | S11/S21-Messung | **beschlossen/geplant** | Nicht durchgeführt |
 | Aktiver Desensibilisierungstest | **beschlossen/geplant** | Nicht durchgeführt |
-| Softwareänderung durch diesen Chat | **keine** | Nur Archivierung |
+| Neue Softwarefunktion | **keine** | Mechanik-/HF-Planung |
 | Produktiver Mastbetrieb dieses Aufbaus | **nicht bestätigt** | Kein Betriebsprotokoll |
 
 ## 9. Relevante Konfigurationen, Pfade und technische Parameter
@@ -243,11 +241,11 @@ Auch bei robustem Filament bleibt die Konstruktion ein Mast-/Windlastbauteil. Ei
 
 ### Protokolle und Ports
 
-Für diesen Chat wurden keine neuen Netzwerkdienste, Ports, API-Protokolle oder Deploymentpfade definiert. Das Thema ist ausschließlich mechanisch/RF-seitig.
+Für diese Planung wurden keine neuen Netzwerkdienste, Ports, API-Protokolle oder Deploymentpfade definiert. Das Thema ist ausschließlich mechanisch/RF-seitig.
 
 ## 10. Befehle, Installations- und Reparaturabläufe
 
-Es wurden **keine Shell-Befehle, Installationen oder Reparaturskripte** im Chat ausgeführt.
+Es wurden **keine Shell-Befehle, Installationen oder Reparaturskripte** in der Planung ausgeführt.
 
 Vorgeschlagener Messablauf, noch nicht ausgeführt:
 
@@ -263,7 +261,7 @@ Vorgeschlagener Messablauf, noch nicht ausgeführt:
 9. Erst danach kontrollierter aktiver Test mit repräsentativer TX-Leistung.
 ~~~
 
-**Status:** ausschließlich vorgeschlagen; im Chat nicht erfolgreich ausgeführt oder bestätigt.
+**Status:** ausschließlich vorgeschlagen; in der Planung nicht erfolgreich ausgeführt oder bestätigt.
 
 ## 11. Fehlerbilder, Diagnose und funktionierende Korrekturen
 
@@ -315,7 +313,7 @@ Es trat kein Softwarefehler auf. Die wichtigsten „Fehler“ waren Annahmen in 
 - kein Windlasttest;
 - kein Temperatur-/Kriechtest;
 - kein Outdoor-Betriebstest;
-- keine Prüfung eines Herstellerdatenblatts auf Groundplane-Anforderung in diesem Chat.
+- keine Prüfung eines Herstellerdatenblatts auf Groundplane-Anforderung für diesen Arbeitsstand.
 
 ## 13. Verworfene oder ersetzte Ansätze
 
@@ -343,7 +341,7 @@ Der ältere Projektentscheid **„zwei getrennte Antennen, kein Duplexer“** bl
 | RF-ANT-16 | P1 | Tripod/Mast gegen Kippen und Torsion sichern; Hebelarm des Querträgers statisch bewerten | Vor Außenbetrieb |
 | RF-ANT-17 | P1/P2 | Outdoor-Bonding, Schirmanschluss, Überspannung und Blitzschutzkonzept planen | Kein Ersatz für Antennen-HF-Design |
 | RF-ANT-18 | P2 | Nur bei unzureichender Reserve einzelne RX-/TX-Filter erneut bewerten | Kein Duplexer; Messbedarf zuerst |
-| RF-ANT-19 | P2 | Später die Hardware-Wiki um die reale Zwei-Antennen-Variante samt Messwerten ergänzen | Änderung außerhalb dieses Archivauftrags |
+| RF-ANT-19 | P2 | Später die Hardware-Wiki um die reale Zwei-Antennen-Variante samt Messwerten ergänzen | Geplante Dokumentationsergänzung |
 | RF-ANT-20 | P2 | Historischen 5-MHz-Kommentar in config.toml gegen die reale Duplexberechnung bereinigen | Separate Code-/Dokuänderung |
 
 ### Bereits vereinbarte Reihenfolge
@@ -361,12 +359,12 @@ Der ältere Projektentscheid **„zwei getrennte Antennen, kein Duplexer“** bl
 Die am 2026-10-03 archivierte Diskussion hatte bereits festgehalten:
 
 - zwei getrennte Antennen am gemeinsamen Mast;
-- kein Duplexer als Nutzerentscheidung;
+- kein Duplexer als Festlegung;
 - räumliche Entkopplung als bevorzugter Versuch;
 - S21/SWR und aktiver Desense-Test noch offen;
 - keine damals verfügbare Fotodokumentation des realen Mastaufbaus.
 
-Dieser Chat ergänzt das ältere Archiv deshalb wesentlich um:
+Diese Planung ergänzt das ältere Archiv deshalb wesentlich um:
 
 1. **den fotografisch belegten realen Zwischenaufbau**;
 2. **die reale Mastkopf-/Spigot-Geometrie als Ausgangspunkt für eine Traverse**;
@@ -377,7 +375,7 @@ Das ältere Archiv wird nicht überschrieben; beide Dokumente sind komplementär
 
 ## 16. Quellen, Anhänge, Repository-Dateien und Commitstände
 
-### Chat-Anhänge
+### Anhänge
 
 | Datei im Archiv | Inhalt | Archivstatus |
 |---|---|---|
@@ -395,21 +393,18 @@ Das ältere Archiv wird nicht überschrieben; beide Dokumente sind komplementär
 - <code>wiki/Hardware-und-RF.md</code>, Blob 42d456630bdbdbd80f4843d87de5caf7cd8ab9f6
 - Vorgängerarchiv: [2026-10-03_sirio-spo-380-2-rx-tx-antennenmast-und-entkopplung.md](2026-10-03_sirio-spo-380-2-rx-tx-antennenmast-und-entkopplung.md)
 
-Der endgültige Commit-SHA, der **diese Datei selbst** enthält, kann naturgemäß nicht vor seiner Erzeugung in seinen eigenen Inhalt geschrieben werden. Maßgeblich ist der Git-Commit, auf den der Branch Archiving nach diesem Schreibvorgang zeigt; er wird in der Abschlussmeldung des Archivierungslaufs genannt.
+## 17. Offene Nachweise und ausdrücklich nicht behauptete Punkte
 
-## 17. Auswertungslücken und ausdrücklich nicht behauptete Punkte
-
-- Ursprünglicher Chattitel und Chatlink sind nicht verfügbar.
 - Exakte Abmessungen des Masts, des Spigots und der Mastkopfaufnahme fehlen.
-- Das konkrete Antennenmodell wird in diesem sichtbaren Chat nicht erneut am Typenschild verifiziert. Das ältere zugehörige Archiv nennt Sirio SPO 380-2; diese Identifikation wird hier nicht allein aus den Fotos neu abgeleitet.
+- Das konkrete Antennenmodell wird in den verfügbaren Unterlagen nicht erneut am Typenschild verifiziert. Das ältere zugehörige Archiv nennt Sirio SPO 380-2; diese Identifikation wird hier nicht allein aus den Fotos neu abgeleitet.
 - Kein Foto beweist, welcher Anschluss tatsächlich TX oder RX ist.
 - Keine S-Parameter- oder Spektrummessung liegt vor.
-- Keine reale TX-Leistung oder Empfänger-Blocking-Spezifikation wurde im Chat genannt.
+- Keine reale TX-Leistung oder Empfänger-Blocking-Spezifikation wurde in der Planung genannt.
 - Keine CAD-/STL-/3MF-Datei wurde erstellt.
 - Die vier GitHub-Bilder sind verkleinerte/komprimierte Archivkopien und nicht die byteidentischen Originaluploads.
 - Keine Aussage in dieser Datei behauptet eine Funkzulassung, Blitzschutzfreigabe oder statische Freigabe des gezeigten Stativs.
 
-## 18. Fortsetzungspunkt für einen neuen Chat
+## 18. Nächster Arbeitsschritt
 
 Für eine direkte Fortsetzung reichen idealerweise fünf Datensätze:
 

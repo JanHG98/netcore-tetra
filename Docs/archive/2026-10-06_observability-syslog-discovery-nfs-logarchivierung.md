@@ -1,20 +1,20 @@
-# Observability-LXC: Syslog, Discovery und tägliche NFS-Logarchivierung
+# Brainstorming: Observability-LXC: Syslog, Discovery und tägliche NFS-Logarchivierung
 
-Der Chat führte von der Idee einer täglichen Logkopie nach einer vollen LXC-Platte zu einer eigenen, in NetCore integrierten Syslog-Pipeline im bestehenden Observability-LXC. **Am 27.09.2026 waren der echte NFS-Mount in Observability und Media Library, ein Schreibtest mit der übersetzten Dienstidentität sowie ein Archivlauf mit einem Segment und ohne Fehler durch Betreiber-Ausgaben bestätigt.** Die Anbindung des ersten entfernten Journald-Senders auf CT 138 blieb im zugänglichen Verlauf der nächste, noch nicht bestätigte Schritt.
+Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
 
-**Der heutige Repository-Stand ist davon zu trennen:** Die historische Implementierung ist im Commit `41e69acba89dc3bd9ea0e0679efef3bcecc7f7e6` erhalten. PR #57 wurde in den damaligen Branch `feature/openlab-discovery-deployment` übernommen. Die neue Syslog-/Discovery-Pipeline fehlt jedoch im am 06.10.2026 geprüften `main` und `Archiving`. Eine Archivierung dieses Wissens integriert die fehlenden Produktdateien nicht. Vor neuen Updates muss deshalb der tatsächlich installierte Stand mit der aktuellen Integrationsplanung abgeglichen werden.
+Aus einer vollen LXC-Platte entstand zunächst die Idee einer täglichen Logkopie, anschließend eine eigene NetCore-Syslog-Pipeline im bestehenden Observability-LXC. **Am 27.09.2026 waren der echte NFS-Mount in Observability und Media Library, ein Schreibtest mit der übersetzten Dienstidentität sowie ein Archivlauf mit einem Segment ohne Fehler durch Betriebsprotokolle bestätigt.** Der entfernte Journald-Sender auf CT 138 blieb der nächste, noch nicht bestätigte Schritt.
 
-## 1. Metadaten, Quellenumfang und Nachweisstufen
+**Der geprüfte Repository-Stand ist davon zu trennen:** Die historische Implementierung ist im Commit `41e69acba89dc3bd9ea0e0679efef3bcecc7f7e6` erhalten. PR #57 wurde in den damaligen Branch `feature/openlab-discovery-deployment` übernommen. Die neue Syslog-/Discovery-Pipeline fehlt jedoch im am 06.10.2026 geprüften `main` und `Archiving`. Eine Archivierung dieses Wissens integriert die fehlenden Produktdateien nicht. Vor neuen Updates muss deshalb der tatsächlich installierte Stand mit der aktuellen Integrationsplanung abgeglichen werden.
+
+## 1. Projektstand, Quellenumfang und Nachweisstufen
 
 | Feld | Wert |
 |---|---|
 | Thema | Zentrale Syslog-Sammlung, Discovery-Adressen, begrenzte Logpuffer und tägliche NAS-Archivierung; Proxmox-/LXC-NFS-Reparatur |
-| Ursprünglicher Chattitel | Nicht verfügbar; der Titel dieses Dokuments ist ein beschreibender Archivtitel |
-| Ursprünglicher Chatlink / Chat-ID | Nicht verfügbar; die im Browserkontext genannte GitHub-Datei ist kein Chatlink |
 | Historischer Betriebszeitpunkt | Terminalnachweise vom 27.09.2026; ursprünglicher Mountfehler im Journal vom 14.09.2026 |
-| Erstellung und Quellenprüfung | 2026-10-06; Benutzerzeitzone Europe/Berlin |
+| Erstellung und Quellenprüfung | 2026-10-06; Zeitzone Europe/Berlin |
 | Repository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
-| Ausschließlicher Schreibbranch | `Archiving` |
+| Ablagebranch | `Archiving` |
 | Geprüfter Archiv-Ausgangscommit | [`5bcc293c123ca11d66bc7550d4160df354bfcde2`](https://github.com/JanHG98/netcore-tetra/commit/5bcc293c123ca11d66bc7550d4160df354bfcde2) |
 | Zusätzlich nur lesend geprüfter Hauptzweig | [`main@9116c15d645458f99e236712b67a1ad970432791`](https://github.com/JanHG98/netcore-tetra/tree/9116c15d645458f99e236712b67a1ad970432791) |
 | Historischer Implementierungscommit | [`41e69acba89dc3bd9ea0e0679efef3bcecc7f7e6`](https://github.com/JanHG98/netcore-tetra/commit/41e69acba89dc3bd9ea0e0679efef3bcecc7f7e6) |
@@ -22,17 +22,16 @@ Der Chat führte von der Idee einer täglichen Logkopie nach einer vollen LXC-Pl
 | Historischer PR | [#57: Observability: Discovery-Adressen, begrenzter Syslog-Puffer und tägliches Share-Archiv](https://github.com/JanHG98/netcore-tetra/pull/57) |
 | Zielpfad | `Docs/archive/2026-10-06_observability-syslog-discovery-nfs-logarchivierung.md` |
 | Index | [README.md](README.md) |
-| Änderungsumfang dieses Auftrags | Abschlussdokumentation und Index unter `Docs/archive/`; keine Produkt-, NAS-, LXC-, Roadmap- oder main-Änderung |
 
-Der Ausgangscommit bezeichnet den geprüften Bestand vor der Archivänderung. Der tatsächliche Archivcommit ist über die Git-Dateihistorie und die Abschlussmeldung auffindbar; er ist nicht mit dem historischen Produktcommit gleichzusetzen.
+Der Ausgangscommit bezeichnet den geprüften Archivbestand. Der historische Produktcommit dokumentiert die technische Implementierung; die Veröffentlichung dieser Notizen ist davon zu unterscheiden.
 
 ### 1.1 Zugängliches Material und Grenzen
 
-Ausgewertet wurden die sichtbaren Benutzerbeiträge einschließlich der ausführlichen Terminalausgaben, eine komprimierte Übergabe früherer Assistenzarbeit, eine ergänzende Kontextsuche sowie direkt gelesene Repository-Dateien und PR-Metadaten. Frühere Assistenzantworten, vollständige ursprüngliche Toolprotokolle und sämtliche damaligen Buildlogs liegen nicht als vollständiger Chat-Export vor. Die ergänzende Kontextsuche lieferte für diesen Chat keinen zusätzlichen Sendererfolg, Chatlink oder zuordenbaren Bildanhang. Andere gefundene Projektchats werden nicht als Ausführungsbeleg dieses Chats behandelt.
+Grundlagen sind Terminalausgaben, erhaltene Entwicklungsnotizen sowie Repository-Dateien und PR-Metadaten. Frühere Werkzeugprotokolle und Buildlogs sind nicht vollständig erhalten. Für den entfernten Senderpilot fehlt ein zusätzlicher Erfolgsnachweis; Tests aus benachbarten Projektunterlagen werden nicht übernommen.
 
 Die technischen Aussagen zur historischen Implementierung wurden, soweit unten angegeben, erneut am festen Commit geprüft. Die damaligen Testzahlen sind als historische Angaben gekennzeichnet; neue Prüfungen dieses Archivlaufs werden separat aufgeführt. Der Archivlauf hatte keinen Zugriff auf das Live-LAN. Der seit dem 27.09. möglicherweise veränderte aktuelle Betriebszustand ist unbekannt.
 
-Von 25 angekündigten PDF-Anhängen sind 23 Dateien lokal vorhanden. Zwei fehlen; siehe Abschnitt 13. Die PDFs wurden für diese NFS-/Syslog-Dokumentation nicht fachlich als TETRA-Normen ausgewertet. Es sind keine zugänglichen Originalbilder dieses Chats vorhanden. Ein früher erwähnter Testscreenshot ist nicht wieder verfügbar; er wurde nicht erfunden oder durch ein fremdes Bild ersetzt.
+Von 25 angekündigten PDF-Anhängen sind 23 Dateien lokal vorhanden. Zwei fehlen; siehe Abschnitt 13. Die PDFs wurden für diese NFS-/Syslog-Dokumentation nicht fachlich als TETRA-Normen ausgewertet. Es sind keine zugänglichen Originalbilder dieser Arbeitsphase vorhanden. Ein früher erwähnter Testscreenshot ist nicht wieder verfügbar; er wurde nicht erfunden oder durch ein fremdes Bild ersetzt.
 
 ### 1.2 Statusbegriffe
 
@@ -48,9 +47,9 @@ Diese Stufen sind nicht austauschbar: Ein PR-Text oder eine Installationsanleitu
 
 ## 2. Ziel, Ausgangslage und Entscheidungen
 
-Auslöser war eine zuvor vollgelaufene LXC-Platte. Welcher Container, welche genaue Logdatei und welcher Umfang den ursprünglichen Vorfall verursachten, ist in diesem Verlauf nicht abschließend belegt. Der Nutzer wollte Logs automatisch, beispielsweise täglich, auf dem vorhandenen Share ablegen. Dort hatte er bereits `Logs` auf derselben Ebene wie `Recordings`, `Media-Library` und `TTS-Dateien` angelegt.
+Auslöser war eine volle LXC-Platte; Container, genaue Logdatei und Umfang des ursprünglichen Vorfalls sind nicht abschließend belegt. Ziel war, Logs automatisch, etwa täglich, auf dem vorhandenen Share abzulegen. `Logs` lag dort bereits auf derselben Ebene wie `Recordings`, `Media-Library` und `TTS-Dateien`.
 
-Danach kamen zentrale Syslog-Sammlung, die Alternative [inventor7777/syslog-flow](https://github.com/inventor7777/syslog-flow), die Frage „Deployment-VM oder eigener LXC?“ und die automatische Übernahme der Dienst-IP-Adressen hinzu. Der Nutzer beauftragte schließlich ein Update für den vorhandenen Observability-LXC. Die beobachtete Umsetzung war ein eigener NetCore-Integrationslayer auf rsyslog, Python und dem vorhandenen Rust-NMS.
+Danach kamen zentrale Syslog-Sammlung, die Alternative [inventor7777/syslog-flow](https://github.com/inventor7777/syslog-flow), die Frage „Deployment-VM oder eigener LXC?“ und die automatische Übernahme der Dienst-IP-Adressen hinzu. Festgelegt wurde ein Update des vorhandenen Observability-LXC. Die beobachtete Umsetzung war ein eigener NetCore-Integrationslayer auf rsyslog, Python und dem vorhandenen Rust-NMS.
 
 | Anforderung / Entscheidung | Endstand und Begründung | Nachweisstufe |
 |---|---|---|
@@ -61,9 +60,9 @@ Danach kamen zentrale Syslog-Sammlung, die Alternative [inventor7777/syslog-flow
 | Verlässlicher Transport | Journald-Sender über RELP/TCP 20514; zusätzlich TCP/UDP 514 für kompatible Quellen | Historisch implementiert; lokaler TCP-514-Test bestätigt, entfernter RELP-Pilot offen |
 | Archiv nur auf echtem Netzlaufwerk | Netzwerkdateisystem und Mountidentität prüfen; kein lokales Ersatzarchiv bei fehlendem NAS | Historisch implementiert; Mountreparatur und erster NAS-Lauf bestätigt |
 | Löschung erst nach verifizierter Kopie | gzip-Archiv zurücklesen und SHA-256 gegen Quelldaten prüfen | Historisch implementiert und lokal testbar; Dienstlauf am NAS erfolgreich |
-| NAS-VM nicht umkonfigurieren | NAS ist VM 100, startet laut Nutzer bereits automatisch als zweite VM nach AD | Ausdrückliche Nutzerkorrektur; NAS-Startreihenfolge unverändert lassen |
+| NAS-VM nicht umkonfigurieren | NAS ist VM 100, startet laut Betriebsangabe bereits automatisch als zweite VM nach AD | Ausdrückliche Korrektur anhand der Anlage; NAS-Startreihenfolge unverändert lassen |
 | Kopierbare Betriebsanweisungen | Kurze, eigenständige Befehle mit absoluten Pfaden; keine über SSH-Neuanmeldungen vorausgesetzten Variablen | Aus konkretem Kopier-/Sitzungsfehler abgeleitete Arbeitsvorgabe |
-| `syslog-flow` als fertige Alternative | Im Chat vorgeschlagen; keine Installation oder abschließende belastbare Produktbewertung nachgewiesen | Idee, nicht gewählter Implementierungspfad |
+| `syslog-flow` als fertige Alternative | Im Entwurf vorgeschlagen; keine Installation oder abschließende belastbare Produktbewertung nachgewiesen | Idee, nicht gewählter Implementierungspfad |
 
 Die ursprüngliche tägliche „Kopie der LXC-Logs“ wurde damit präzisiert: laufende Übertragung neuer Journalmeldungen an den Collector, tägliche Archivierung seiner Segmente und zusätzliche lokale Journalgrenzen. Bereits vorhandene alte Journale und beliebige Dateilogs werden dadurch nicht automatisch vollständig exportiert oder verkleinert.
 
@@ -99,7 +98,7 @@ Ein hängender `hard`-NFS-Zugriff bleibt ein Betriebsrisiko für den Archivproze
 | Eingabegrenzen | Managementnetz `10.0.1.0/24`, HTTP/IPv4 und erwartete Controllerkennung; Anfrage 3 Sekunden, maximal 1 MiB |
 | Sender-Konfigurationswechsel | Temporäre Datei, `rsyslogd -N1`, atomarer Austausch und Dienstneustart |
 
-Die Inventardatei ersetzt keine gemessene aktuelle Hostinventur. Die im historischen Beispiel enthaltene PBX-Klassifikation als `LXC` ist in diesem Chat nicht durch eine zugehörige `pct config` bestätigt; vor einem späteren PBX-Rollout muss die tatsächliche Virtualisierungsart festgestellt werden. Für PBX, Brew und TBS werden nicht allein aus ihrer Existenz ungeprüfte `/metrics`-Endpunkte angenommen.
+Die Inventardatei ersetzt keine gemessene aktuelle Hostinventur. Die im historischen Beispiel enthaltene PBX-Klassifikation als `LXC` ist für diesen Entwicklungsstand nicht durch eine zugehörige `pct config` bestätigt; vor einem späteren PBX-Rollout muss die tatsächliche Virtualisierungsart festgestellt werden. Für PBX, Brew und TBS werden nicht allein aus ihrer Existenz ungeprüfte `/metrics`-Endpunkte angenommen.
 
 ### 3.3 Protokolle, APIs und Grenzen
 
@@ -120,14 +119,14 @@ Das historische Sicherheitsmodell bleibt `open_lab`: keine Managementanmeldung u
 
 Die Websuche durchsucht die begrenzte Vorschau, nicht die vollständigen gzip-Archive. Persistente Queues und RELP verbessern die Zustellung, garantieren bei vollen Platten, langen Ausfällen oder Abstürzen jedoch weder Verlustfreiheit noch exakt einmalige Rohdatenspeicherung. Wiederholte Preview-IDs werden innerhalb der NMS-Aufbewahrung dedupliziert; Raw-Duplikate nach einem Crash bleiben möglich.
 
-## 4. Reales Host-, Mount- und Rechteinventar aus dem Chat
+## 4. Historisches Host-, Mount- und Rechteinventar
 
 ### 4.1 Für diese Reparatur maßgebliche Systeme
 
 | System | Proxmox-ID / Typ | Adresse | Bestätigte Eigenschaften |
 |---|---|---|---|
 | `SRV-H-PVE-01` | Proxmox-Host | `10.0.1.3` | Debian; Kernelmeldung `6.8.12-30-pve`; vorhandene NFS-Clientkonfiguration |
-| NAS | VM **100** | `10.0.1.148` | Startet laut Nutzer als zweite VM nach dem AD-Server |
+| NAS | VM **100** | `10.0.1.148` | Startet laut Betriebsangabe als zweite VM nach dem AD-Server |
 | Observability | CT **136** | `10.0.1.143/24` | Gateway `10.0.1.1`, `vmbr0`, Firewallflag 1; Ubuntu; 2 Kerne, 2048 MiB RAM, 2048 MiB Swap; Rootdisk **10 GiB**; unprivilegiert, nesting |
 | Media-Library | CT **138** | `10.0.1.154/24` | Gateway `10.0.1.1`, `vmbr0`, Firewallflag 1; Ubuntu; 4 Kerne, 2048 MiB RAM, 2048 MiB Swap; Rootdisk 25 GiB; unprivilegiert, nesting |
 | Deployment-VM | VM, ID hier nicht belegt | `10.0.1.131:8320` | Historischer Discovery-Endpunkt; kein hier gezeigter Live-Discovery-Test |
@@ -307,7 +306,7 @@ Historische relevante `syslog.json`-Werte:
 }
 ```
 
-`open_share()` prüft `/proc/self/mountinfo`: Der konfigurierte Mountpunkt muss als `nfs`, `nfs4` oder `cifs` erscheinen. Anschließend wird er mit `O_DIRECTORY|O_NOFOLLOW` geöffnet und die Gerätekennung mit dem Mount abgeglichen. Weitere Archivzugriffe nutzen Verzeichnisdeskriptoren und Symlinkschutz. Die Prüfung bindet sich **nicht an einen bestimmten NAS-Server oder Exportnamen**; die exakte Quelle wurde im Chat zusätzlich mit `findmnt` kontrolliert. Ein schlafender `autofs`-Mount allein erfüllt diese Prüfung nicht; das tatsächliche NFS muss sichtbar sein. Deshalb darf eine spätere Automountplanung nicht unterstellen, dass der Archiver jeden beliebigen Autofs-Zustand selbst aktiviert.
+`open_share()` prüft `/proc/self/mountinfo`: Der konfigurierte Mountpunkt muss als `nfs`, `nfs4` oder `cifs` erscheinen. Anschließend wird er mit `O_DIRECTORY|O_NOFOLLOW` geöffnet und die Gerätekennung mit dem Mount abgeglichen. Weitere Archivzugriffe nutzen Verzeichnisdeskriptoren und Symlinkschutz. Die Prüfung bindet sich **nicht an einen bestimmten NAS-Server oder Exportnamen**; die exakte Quelle wurde im dokumentierten Arbeitsstand zusätzlich mit `findmnt` kontrolliert. Ein schlafender `autofs`-Mount allein erfüllt diese Prüfung nicht; das tatsächliche NFS muss sichtbar sein. Deshalb darf eine spätere Automountplanung nicht unterstellen, dass der Archiver jeden beliebigen Autofs-Zustand selbst aktiviert.
 
 ### 5.3 Migration, Abhängigkeiten und Rückweg
 
@@ -321,7 +320,7 @@ Der damals dokumentierte Rückweg war **nur vorgeschlagen, nicht im LAN getestet
 
 ### 6.1 Update und erste Mountdiagnose
 
-Der Nutzer meldete, dass das Update auf dem damaligen Feature-Branch lief:
+Im Betriebsprotokoll dokumentiert ist, dass das Update auf dem damaligen Feature-Branch lief:
 
 ```bash
 git fetch origin
@@ -329,9 +328,9 @@ git switch feature/observability-syslog-discovery
 bash system-backend/observability/install/update.sh
 ```
 
-**Status:** Installation vom Nutzer als laufend/funktionierend gemeldet; anschließend existierten Syslog-Archivdienst und Statusdatei im LXC. Ein `git rev-parse HEAD` der installierten Anlage wurde nicht gezeigt. Deshalb ist der genaue Live-Quellcommit nicht zusätzlich bewiesen. Die Befehle sind historische Dokumentation: Der Feature-Branch existiert am Archivdatum nicht mehr als Remote-Branch und ist keine unverändert ausführbare heutige Neuinstallationsanweisung.
+**Status:** Installation durch den Betreiber als laufend/funktionierend gemeldet; anschließend existierten Syslog-Archivdienst und Statusdatei im LXC. Ein `git rev-parse HEAD` der installierten Anlage wurde nicht gezeigt. Deshalb ist der genaue Live-Quellcommit nicht zusätzlich bewiesen. Die Befehle sind historische Dokumentation: Der Feature-Branch existiert am Archivdatum nicht mehr als Remote-Branch und ist keine unverändert ausführbare geprüfte Neuinstallationsanweisung.
 
-Zunächst nahm der Nutzer an, Proxmox kenne das Share nicht, weil er es direkt in LXC einspiele. Die späteren Ausgaben korrigierten dies:
+Anfangs war unklar, ob das Share nur direkt im LXC eingebunden war. Die späteren Ausgaben klärten den Hostmount:
 
 ```text
 Media-Library /mnt/nfs-share:
@@ -371,7 +370,7 @@ Das war ein Variablen-/Kopierfehler, kein Nachweis eines defekten NFS-Exports. D
 
 ### 6.4 Rechte, Bind-Mount und finaler Nachweis
 
-Die Rechtekorrektur unter dem echten Export und der Schreib-/Lese-/Löschtest als UID 100999/GID 100989 liefen erfolgreich. CT 136 erhielt `mp0`; sein Shutdown/Start ist ausdrücklich in der Benutzer-Ausgabe enthalten. Die abschließenden Abfragen zeigten **in beiden CTs**:
+Die Rechtekorrektur unter dem echten Export und der Schreib-/Lese-/Löschtest als UID 100999/GID 100989 liefen erfolgreich. CT 136 erhielt `mp0`; sein Shutdown/Start ist ausdrücklich in der Betriebsprotokoll enthalten. Die abschließenden Abfragen zeigten **in beiden CTs**:
 
 ```text
 TARGET         SOURCE                                    FSTYPE
@@ -382,7 +381,7 @@ Ein Neustart von CT 138 war im früheren Ablauf vorgeschlagen. Seine konkrete er
 
 ### 6.5 Archivlauf und Timer
 
-Der Nutzer schickte lokal im Observability-LXC eine TCP-Syslog-Meldung, startete den Archivservice und las die Statusdatei. Ergebnis:
+Der lokale Test im Observability-LXC sendete eine TCP-Syslog-Meldung, startete den Archivservice und prüfte dessen Statusdatei. Ergebnis:
 
 ```json
 {"last_attempt": "2026-09-27T16:18:04.149856+00:00", "archived_segments": 1, "error": null, "last_success": "2026-09-27T16:18:08.270585+00:00"}
@@ -392,13 +391,13 @@ Das Journal bestätigte den erfolgreichen Dienstabschluss um `16:18:10` UTC. Ein
 
 Die vollständige Timerdefinition im historischen Code belegt **02:15 UTC plus bis zu fünf Minuten Zufallsverzögerung**. Das entspricht im September **04:15–04:20 MESZ**. Es handelt sich nicht um eine fest auf 02:15 deutscher Ortszeit gesetzte Aufgabe.
 
-**Testgrenze:** Der Status bestätigt einen archivierten Abschnitt und einen erfolgreichen Serviceabschluss. Im Chat wurde kein manuelles Entpacken gezeigt, das genau den zuvor gesendeten Marker im NAS-Archiv sichtbar macht. Der Code führt eine interne Rückleseprüfung aus; diese ist von einer zusätzlich beobachteten manuellen Inhaltskontrolle zu unterscheiden. Ebenso bestätigt der Loopback-Test nicht TCP 20514 durch die Proxmox-/LXC-Firewall von einem anderen Container.
+**Testgrenze:** Der Status bestätigt einen archivierten Abschnitt und einen erfolgreichen Serviceabschluss. Im Betriebsprotokoll fehlt ein manuelles Entpacken, das genau den zuvor gesendeten Marker im NAS-Archiv sichtbar macht. Der Code führt eine interne Rückleseprüfung aus; diese ist von einer zusätzlich beobachteten manuellen Inhaltskontrolle zu unterscheiden. Ebenso bestätigt der Loopback-Test nicht TCP 20514 durch die Proxmox-/LXC-Firewall von einem anderen Container.
 
 ## 7. Wichtige Befehle und ihr tatsächlicher Status
 
-Die folgenden Befehle werden als Betriebswissen aufbewahrt. Sie wurden im Archivauftrag **nicht erneut auf den Zielsystemen ausgeführt**. Vor einer Wiederholung müssen aktuelle IDs, Mounts, Rechte und installierte Software geprüft werden. Insbesondere sind Reparaturbefehle keine Aufforderung, den inzwischen funktionierenden Mount erneut umzubauen.
+Die folgenden Befehle werden als Betriebswissen aufbewahrt. Sie wurden im Prüfdurchlauf vom 06.10.2026 **nicht erneut auf den Zielsystemen ausgeführt**. Vor einer Wiederholung müssen aktuelle IDs, Mounts, Rechte und installierte Software geprüft werden. Insbesondere sind Reparaturbefehle keine Aufforderung, den inzwischen funktionierenden Mount erneut umzubauen.
 
-### 7.1 Diagnosen – im Chat ausgeführt
+### 7.1 Diagnosen – im dokumentierten Arbeitsstand ausgeführt
 
 Auf dem **Proxmox-Host**:
 
@@ -420,7 +419,7 @@ Der erfolgreiche temporäre Lesetest verwendete:
 mount -v -t nfs -o ro,vers=4.1,hard,retry=0 10.0.1.148:/mnt/MassStorage/SRV-M-TBS-01 <temporärer-leerer-Mountpunkt>
 ```
 
-`<temporärer-leerer-Mountpunkt>` ist hier bewusst ein Platzhalter, keine wörtlich auszuführende Shellzeile. Im Chat wurde ein mit `mktemp -d /mnt/netcore-nfs-test.XXXXXX` erzeugter Ordner benutzt und danach wieder entfernt.
+`<temporärer-leerer-Mountpunkt>` ist hier bewusst ein Platzhalter, keine wörtlich auszuführende Shellzeile. Im Betriebsprotokoll wurde ein mit `mktemp -d /mnt/netcore-nfs-test.XXXXXX` erzeugter Ordner benutzt und danach wieder entfernt.
 
 ### 7.2 Erfolgreiche abschließende Reparatur – auf Proxmox ausgeführt
 
@@ -480,7 +479,7 @@ Der korrekt geschriebene Timer-Prüfbefehl lautet:
 pct exec 136 -- systemctl list-timers netcore-syslog-archive.timer --no-pager
 ```
 
-Der Chat enthält ein Timerergebnis, jedoch mit einem kopierbedingt veränderten Aufruf. Die hier normalisierte Zeile ist die lesbare Fortsetzungsfassung.
+Das Betriebsprotokoll enthält ein Timerergebnis, jedoch mit einem kopierbedingt veränderten Aufruf. Die hier normalisierte Zeile ist die lesbare Fortsetzungsfassung.
 
 ### 7.4 Boot-/Automount-Vorschlag – Anwendung nicht bestätigt
 
@@ -508,7 +507,7 @@ findmnt --fstab --raw -t nfs,nfs4 -o TARGET,OPTIONS
 
 ### 7.5 Senderpilot auf Media Library – nur vorgeschlagen
 
-Der nächste vereinbarte Ablauf war, zuerst CT 138 anzubinden. Dafür sollte das vorhandene Logging-Paket aus dem installierten Observability-Checkout verwendet werden. **Keiner der folgenden Schritte ist durch eine nachfolgende Benutzer-Erfolgsausgabe bestätigt.** Bei heutiger Wiederaufnahme zuerst sicherstellen, dass `/opt/netcore-tetra` in CT 136 tatsächlich noch den geprüften historischen Logging-Code enthält; das heutige main allein enthält diese Dateien nicht.
+Der nächste vereinbarte Ablauf war, zuerst CT 138 anzubinden. Dafür sollte das vorhandene Logging-Paket aus dem installierten Observability-Checkout verwendet werden. **Keiner der folgenden Schritte ist durch eine nachfolgende Betriebsbestätigung bestätigt.** Bei geprüfter Wiederaufnahme zuerst sicherstellen, dass `/opt/netcore-tetra` in CT 136 tatsächlich noch den geprüften historischen Logging-Code enthält; das geprüfte main allein enthält diese Dateien nicht.
 
 Alle Befehle waren für den **Proxmox-Host** vorgesehen, einzeln kopierbar:
 
@@ -552,7 +551,7 @@ Das Abnahmekriterium ist der passende Eintrag mit plausibler Quelle, nicht nur `
 
 Bei fehlendem Eintrag zuerst Senderdienst/Journal, Discovery-Ziel, TCP 20514, Receiverstatus und Preview prüfen. Der in beiden CT-Konfigurationen gesetzte Proxmox-Firewallflag macht die reine Loopback-Abnahme nicht zu einem Netzwerktest. Keine pauschale Firewallabschaltung als Reparatur vorsehen. AppArmor-Kompatibilität ist ebenfalls auf dem jeweiligen Ziel zu prüfen; der historische Installer bricht bei nicht unterstützter Include-/Reload-Situation ab, statt AppArmor abzuschalten.
 
-## 8. Heutiger Repository-Befund vom 06.10.2026
+## 8. Geprüfter Repository-Befund vom 06.10.2026
 
 ### 8.1 Historische Veröffentlichung und Branchstatus
 
@@ -562,14 +561,14 @@ Die GitHub-PR-Metadaten bestätigen:
 |---|---|
 | PR | #57 |
 | Erzeugt | `2026-09-27T15:03:53Z` |
-| Zustand heute | `closed`, `merged=true`, `draft=false` |
+| Zustand zum Prüfstand vom 06.10.2026 | `closed`, `merged=true`, `draft=false` |
 | Headbranch / SHA | `feature/observability-syslog-discovery` / `41e69acba89dc3bd9ea0e0679efef3bcecc7f7e6` |
 | Basebranch / SHA | `feature/openlab-discovery-deployment` / `17bd2751ce81af48cd41f3d90ab02f556548efdd` |
 | Mergecommit | `8573b50a22287e62a30ad34beb2abd70b262d112` |
 | Mergezeit | `2026-09-27T15:24:37Z` |
 | Umfang | 1 Commit, 35 Dateien, 2.078 Ergänzungen, 87 Löschungen |
 
-Eine frühere Bezeichnung als Draft beschreibt die Erstellungssituation, nicht den heutigen PR-Status. Die PR-Beschreibung enthält noch „Noch keine Installation im Live-LAN“; dieser damalige Text wird durch die späteren Benutzer-Ausgaben zum Mount-/Archivtest teilweise überholt. Er bleibt für nicht nachgewiesene Sender-/Discovery-Tests weiterhin keine positive Abnahme.
+Eine frühere Bezeichnung als Draft beschreibt die Erstellungssituation, nicht den geprüften PR-Status. Die PR-Beschreibung enthält noch „Noch keine Installation im Live-LAN“; dieser damalige Text wird durch die späteren Betriebsausgaben zum Mount-/Archivtest teilweise überholt. Er bleibt für nicht nachgewiesene Sender-/Discovery-Tests weiterhin keine positive Abnahme.
 
 Die am Archivdatum gelesene Branchliste enthält `Archiving` und `main`. Beide historischen Feature-Branch-Namen fehlen. Der vollständige historische Commit ist trotzdem direkt abrufbar. Ein gemergter PR in einen Feature-Branch belegt keine Integration in main.
 
@@ -577,7 +576,7 @@ Die am Archivdatum gelesene Branchliste enthält `Archiving` und `main`. Beide h
 
 Die Pfade `system-backend/observability/` und `tools/check_observability.py` sind zwischen dem geprüften `Archiving@5bcc293…` und `main@9116c15…` inhaltlich identisch. Daher gelten die folgenden aktuellen Befunde für beide geprüften Stände. Das ist keine Behauptung, dass die gesamten Branches identisch sind.
 
-| Bereich | Historischer Syslog-Commit `41e69ac…` | Heutiges `Archiving` / `main` |
+| Bereich | Historischer Syslog-Commit `41e69ac…` | Geprüftes `Archiving` / `main` |
 |---|---|---|
 | Native NMS-Basis | Vorhanden | Vorhanden |
 | Dienstadressen | 24 Starttargets mit realen Managementadressen; Controllerabgleich | 21 Beispieltargets: 17 Loopbackadressen, vier Ziele aus `10.0.20.*`; kein Discovery-Abschnitt |
@@ -594,17 +593,17 @@ Die Pfade `system-backend/observability/` und `tools/check_observability.py` sin
 | `install/update.sh` | Build plus Syslog-Integration | Baut nativen Rust-Dienst, kopiert klassische Stackvorlagen und konfiguriert den eigenen LXC-Endpunkt; kein neuer Archivinstaller |
 | Neue Syslogtests / Browser-Smoke | Vorhanden | Fehlen; bestehender allgemeiner Observability-Checker/Referenztest vorhanden |
 
-Die heutige Funktion zur Erkennung der **eigenen** LXC-IPv4 über den gemeinsamen `lxc-network.sh`-Helfer ist nicht dieselbe Funktion wie Discovery aller Dienstziele von der Deployment-VM. Diese ähnliche Bezeichnung darf die Integrationslücke nicht verdecken.
+Die geprüfte Funktion zur Erkennung der **eigenen** LXC-IPv4 über den gemeinsamen `lxc-network.sh`-Helfer ist nicht dieselbe Funktion wie Discovery aller Dienstziele von der Deployment-VM. Diese ähnliche Bezeichnung darf die Integrationslücke nicht verdecken.
 
-Der heute vorhandene `agents/journal_forwarder.py` startet `journalctl -f -n 0`, sendet HTTP-Batches von 25 Einträgen und verwendet ohne Anpassung `127.0.0.1:8210`. Er ist kein gleichwertiger Nachweis für den historischen RELP-Sender mit persistenter Diskqueue. Die klassischen Prometheus-/Grafana-/Loki-/Promtail-Vorlagen sind Altbestand; die neue historische Pipeline benötigt weder Loki noch Promtail für ihren Kernpfad.
+Der zum Prüfstand vom 06.10.2026 vorhandene `agents/journal_forwarder.py` startet `journalctl -f -n 0`, sendet HTTP-Batches von 25 Einträgen und verwendet ohne Anpassung `127.0.0.1:8210`. Er ist kein gleichwertiger Nachweis für den historischen RELP-Sender mit persistenter Diskqueue. Die klassischen Prometheus-/Grafana-/Loki-/Promtail-Vorlagen sind Altbestand; die neue historische Pipeline benötigt weder Loki noch Promtail für ihren Kernpfad.
 
-Die letzte Änderung am heute vorhandenen Observability-Verzeichnis stammt aus `2fe2a1939a8795db3816d45973282781dae856f0` mit dem Betreff `Complete persistent dark mode across all NetCore WebUIs`. Diese neuere UI-Arbeit muss bei einer späteren Integration erhalten bleiben. Ein ungeprüftes Zurücksetzen auf das gesamte alte Verzeichnis wäre keine saubere Zusammenführung.
+Die letzte Änderung am zum Prüfstand vom 06.10.2026 vorhandenen Observability-Verzeichnis stammt aus `2fe2a1939a8795db3816d45973282781dae856f0` mit dem Betreff `Complete persistent dark mode across all NetCore WebUIs`. Diese neuere UI-Arbeit muss bei einer späteren Integration erhalten bleiben. Ein ungeprüftes Zurücksetzen auf das gesamte alte Verzeichnis wäre keine saubere Zusammenführung.
 
 ### 8.3 Einordnung in die aktuelle Gesamtplanung
 
 Die nur lesend geprüfte [ROADMAP.md auf main](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md) führt als ersten Gesamtschritt **Z01.1: fehlende Deployment-/Syslog-Arbeit gegen aktuelles main abgleichen und den Integrationsplan vorbereiten**. Danach folgen Z01.2 kontrollierte Integration, Z01.3 konsistentes Inventory/Readiness/CI und Z01.4 Installation, Upgrade und Recovery einschließlich NAS-Ausfall und begrenzter Logpuffer.
 
-Dort ist außerdem der spätere historische Feature-Stand `bbf039729b9b05f8d623b11195ca24a124f68d16` genannt. Dieser Archivauftrag hat den konkreten Syslog-Commit `41e69ac…` und die relevanten aktuellen Observability-Pfade geprüft; er behauptet keinen vollständigen Tip-Vergleich aller Deployment-, Imagebuilder- und VPN-Dateien und erklärt Z01.1 damit nicht pauschal für erledigt. Ergänzende Historie steht im [Deployment-/Discovery-Archiv](2026-10-05_deployment-vm-tbs-imagebuilder-und-auto-discovery.md).
+Dort ist außerdem der spätere historische Feature-Stand `bbf039729b9b05f8d623b11195ca24a124f68d16` genannt. Dieser Prüfdurchlauf vom 06.10.2026 hat den konkreten Syslog-Commit `41e69ac…` und die relevanten aktuellen Observability-Pfade geprüft; er behauptet keinen vollständigen Tip-Vergleich aller Deployment-, Imagebuilder- und VPN-Dateien und erklärt Z01.1 damit nicht pauschal für erledigt. Ergänzende Historie steht im [Deployment-/Discovery-Archiv](2026-10-05_deployment-vm-tbs-imagebuilder-und-auto-discovery.md).
 
 ## 9. Tests und erreichte Nachweisgrenzen
 
@@ -612,9 +611,9 @@ Dort ist außerdem der spätere historische Feature-Stand `bbf039729b9b05f8d623b
 
 Die ursprüngliche Assistenzübergabe und die überprüfte PR-Beschreibung berichten einen Release-Build, vier Rust-Tests, 17 Python-Tests einschließlich echter rsyslog-Protokoll-/Wiederanlaufprüfung, den bestehenden Paketcheck und Referenztest sowie NMS-API und Chromium-WebUI. Ferner wurde die Migration einer alten TOML einschließlich Backup und Wiederholung beschrieben.
 
-Diese Angaben sind heute als **historische Testberichte** auffindbar, aber ihre vollständigen damaligen Build-/Testlogs wurden nicht wiedergewonnen. Sie sind weder neu ausgeführte Archivtests noch ein Beleg für 29 sendende Live-Systeme. Die historische Teststruktur umfasst 15 Store-/Clienttests und zwei Wiretests; echte lokale rsyslog-Prozesse belegen keine Produktionsfirewall oder NAS-Berechtigungen. Archivtests verwenden einen injizierten lokalen Share-Ersatz.
+Diese Angaben sind zum Prüfstand vom 06.10.2026 als **historische Testberichte** auffindbar, aber ihre vollständigen damaligen Build-/Testlogs wurden nicht wiedergewonnen. Sie sind weder neu ausgeführte Archivtests noch ein Beleg für 29 sendende Live-Systeme. Die historische Teststruktur umfasst 15 Store-/Clienttests und zwei Wiretests; echte lokale rsyslog-Prozesse belegen keine Produktionsfirewall oder NAS-Berechtigungen. Archivtests verwenden einen injizierten lokalen Share-Ersatz.
 
-### 9.2 Durch Benutzer-Ausgaben belegte Tests im LAN
+### 9.2 Durch Betriebsausgaben belegte Tests im LAN
 
 | Prüfung | Ergebnis | Grenze |
 |---|---|---|
@@ -627,16 +626,16 @@ Diese Angaben sind heute als **historische Testberichte** auffindbar, aber ihre 
 | Manueller Archivlauf | Ein Segment, `error=null`, `last_success=2026-09-27T16:18:08.270585+00:00`; Unit erfolgreich | Keine manuelle Gzip-Markeranzeige; kein Dauerlauf |
 | Archivtimer | Gelistet mit nächstem Termin | Kein Nachweis, dass der nächste nächtliche Termin später tatsächlich erfolgreich lief |
 
-### 9.3 Neue Prüfungen im Archivauftrag
+### 9.3 Quellenprüfung vom 06.10.2026
 
 | Prüfung am 06.10.2026 | Ergebnis | Grenze |
 |---|---|---|
 | `PYTHONDONTWRITEBYTECODE=1 python3 tools/check_observability.py` im aktuellen Archiving-Checkout | Exit 0, `Observability static package check: OK` | TOML-/Quellmarker-, Shell-/JavaScript-Prüfungen und Aufruf des Referenzmodells; kein Rust-Build und kein Live-Dienst |
 | Direkter Vergleich `Archiving@5bcc293…` gegen `main@9116c15…` für `system-backend/observability/` und `tools/check_observability.py` | `git diff --exit-code` Exit 0, keine Unterschiede | Nur die genannten relevanten Pfade, nicht gesamte Branchgleichheit |
 | Export von `41e69ac…` in ein temporäres Testverzeichnis einschließlich Deployment-Core-Testabhängigkeiten; `python3 -m unittest discover -s …/system-backend/observability/tests -p test_syslog.py -v` | **15 Tests bestanden: 11 StoreTests und 4 ClientTests** | Lokale/injizierte Abhängigkeiten; keine echte NAS-, rsyslog-Wire- oder Browser-Abnahme |
-| Historische Quellen, heutige relevante Dateien, PR-Metadaten, Branchliste, Mount-/Rechteangaben und vorhandener Archivindex | Gelesen und in dieser Dokumentation abgeglichen | Installierte Live-Dateien wurden nicht neu ausgelesen |
+| Historische Quellen, geprüfte relevante Dateien, PR-Metadaten, Branchliste, Mount-/Rechteangaben und vorhandener Archivindex | Gelesen und in dieser Dokumentation abgeglichen | Installierte Live-Dateien wurden nicht neu ausgelesen |
 
-Beim anfänglich zu kleinen Testexport fehlten `common.py` bzw. `catalog.json` aus den Testabhängigkeiten. Ein vollständigerer Export behob diese lokale Vorbereitungslücke; es war keine Produktcodeänderung nötig. Die zwei zusätzlichen `test_syslog_wire.py`-Tests wurden heute nicht erneut ausgeführt. Ebenso wurden keine neuen Rust-/Browser-Buildtests, Live-Installationen, NAS-Zugriffe oder Funkprüfungen durchgeführt.
+Beim anfänglich zu kleinen Testexport fehlten `common.py` bzw. `catalog.json` aus den Testabhängigkeiten. Ein vollständigerer Export behob diese lokale Vorbereitungslücke; es war keine Produktcodeänderung nötig. Die zwei zusätzlichen `test_syslog_wire.py`-Tests wurden zum Prüfstand vom 06.10.2026 nicht erneut ausgeführt. Ebenso wurden keine neuen Rust-/Browser-Buildtests, Live-Installationen, NAS-Zugriffe oder Funkprüfungen durchgeführt.
 
 ## 10. Ersetzte Ansätze und verbleibende Fehlerklassen
 
@@ -647,9 +646,9 @@ Beim anfänglich zu kleinen Testexport fehlten `common.py` bzw. `catalog.json` a
 | Alles in der Deployment-VM betreiben | Für diese Umsetzung ersetzt durch separaten Observability-LXC, VM nur für Discovery |
 | Eigenen Syslog-Protokollserver komplett neu bauen | Implementierung verwendet rsyslog als Protokollschicht und maßgeschneiderte NetCore-Speicherung/Integration |
 | Alle Ziel-IPs dauerhaft nur statisch pflegen | Historisch ersetzt durch Startinventar plus Controllerabgleich und Cache |
-| NAS-VM wegen Mounttimeout umkonfigurieren | Nutzerkorrektur: VM 100 startet schon nach AD; keine Änderung ihrer Startreihenfolge |
+| NAS-VM wegen Mounttimeout umkonfigurieren | Korrektur anhand der Anlage: VM 100 startet schon nach AD; keine Änderung ihrer Startreihenfolge |
 | Erfolgreicher Test unter `/Logs/NetCore` nach SSH-Neuanmeldung | Falscher lokaler Pfad durch verlorene Variable; verworfen und entfernt |
-| `set -euo pipefail` direkt in interaktiver SSH-Shell für lange Kopiersequenzen | Für diesen Nutzer ungeeignet; Tippfehler trennte die Sitzung. Kurze eigenständige Befehle verwenden |
+| `set -euo pipefail` direkt in interaktiver SSH-Shell für lange Kopiersequenzen | Für die interaktive Kopiersequenz ungeeignet; Tippfehler trennte die Sitzung. Kurze eigenständige Befehle verwenden |
 | `chmod 000` am Mountpfad ohne Zustandsprüfung | Nur für den vorab als leer und ungemountet geprüften lokalen Platzhalter gedacht; nicht auf NAS-Wurzel anwenden |
 | Erfolgreicher Archive-Oneshot bedeutet vollständigen Flottenrollout | Falsch; Senderinstallation, Remote-RELP und alle Quellen müssen separat nachgewiesen werden |
 | Gemergter PR bedeutet aktuelle main-Integration | Falsch; PR #57 ging in einen Feature-Branch, aktuelle Produktdateien fehlen |
@@ -658,12 +657,12 @@ Offen bleiben unter anderem Berechtigungs-/Mountabweichungen nach Boot, die tats
 
 ## 11. Offene Aufgaben, Ideen und Roadmap-Kandidaten
 
-Die folgende Liste bewahrt die Arbeiten dieses Chats und ordnet sie der heutigen Planung zu. Sie ändert keine Roadmap außerhalb von `Docs/archive/` und behauptet keine neue pauschale Rolloutfreigabe.
+Die folgende Liste ordnet offene Arbeiten der Planung vom 06.10.2026 zu. Sie enthält Vorschläge und bestätigt keine neuen Rollouts.
 
 | ID | Aufgabe / Status | Abhängigkeit und konkretes Abnahmekriterium |
 |---|---|---|
 | OBS-01 | **Beschlossen/geplant:** aktuellen installierten Observability-Stand erfassen und vor Updates sichern | Git-SHA, installierte Dateien/Units, `/etc/netcore`-Konfiguration und vorhandene Archive prüfen; historischen Betriebsstand nicht versehentlich durch aktuelles main ohne Pipeline ersetzen |
-| OBS-02 | **Beschlossen/geplant, heute Z01:** fehlende Syslog-/Discovery-Entwicklung kontrolliert integrieren | Vergleich aktuelles main ↔ historischer Feature-Stand, Erhalt neuer UI/Fachänderungen, Konfigurationsmigration, gezielte Tests und Rückweg; dieser Archivlauf ist nicht die vollständige Z01-Abnahme |
+| OBS-02 | **Beschlossen/geplant, zum Prüfstand vom 06.10.2026 Z01:** fehlende Syslog-/Discovery-Entwicklung kontrolliert integrieren | Vergleich aktuelles main ↔ historischer Feature-Stand, Erhalt neuer UI/Fachänderungen, Konfigurationsmigration, gezielte Tests und Rückweg; dieser Archivlauf ist nicht die vollständige Z01-Abnahme |
 | OBS-03 | **Nächster historischer Betriebsschritt:** Senderpilot CT 138 | Passendes Paket, erreichbarer RELP-Port, erfolgreiche Installation; `NETCORE-CLIENTTEST-138` mit korrekter Quelle im NMS und anschließend im Archiv nachweisen |
 | OBS-04 | **Geplant:** übrige native NetCore-LXCs anbinden | Erst nach Pilot; CT 123–147 anhand aktueller Liste einzeln erfassen, CT 138 nicht als ungeprüftes Neuziel behandeln; Erfolg/Fehler je Host protokollieren |
 | OBS-05 | **Gewünschte Erweiterung:** Deployment-VM, TBS/Pi, Brew und PBX als Logquellen | Tatsächliche Plattform/Adressierung und Dienststartart prüfen; keine CT-ID für PBX oder VM erfinden; CT 149/Warn-Control bewusst ins aktuelle Inventar aufnehmen, falls gewünscht |
@@ -675,25 +674,25 @@ Die folgende Liste bewahrt die Arbeiten dieses Chats und ordnet sie der heutigen
 | OBS-11 | **Option:** bestehendes Prometheus auf HTTP-SD umstellen | Individuelle `/etc/prometheus`-Konfiguration erhalten; `promtool check config`, gezieltes Reload und echte Ziele prüfen; Update überschreibt diese Konfiguration nicht pauschal |
 | OBS-12 | **Option:** vollständige Archivsuche / zusätzliche Inputs | Bestehende WebUI durchsucht nur Preview; breitere gzip-Suche oder gezielte Dateilog-/weitere Geräteinputs wären zusätzliche Arbeit, kein bereits vorhandenes Versprechen |
 | OBS-13 | **Option:** NAS-seitige zusätzliche Quoten | Nur nach tatsächlichem Bedarf; Schutz von TTS/Recordings. Kein Auftrag, am funktionierenden NAS ungefragt Einstellungen zu ändern |
-| OBS-14 | **Idee, nicht gewählt:** `syslog-flow` erneut fachlich vergleichen | Nur bei Bedarf; vorhandene Pipeline und Integrationskosten berücksichtigen; kein belegter Funktions-/Lizenzvergleich in diesem Chat |
+| OBS-14 | **Idee, nicht gewählt:** `syslog-flow` erneut fachlich vergleichen | Nur bei Bedarf; vorhandene Pipeline und Integrationskosten berücksichtigen; kein belegter Funktions-/Lizenzvergleich für diesen Entwicklungsstand |
 | OBS-15 | **Spätere Betriebsarbeit:** Authentisierung/TLS und geschütztes Management | Mit zentraler IAM-/Betriebsplanung abstimmen; Open-Lab-Code nicht als bereits abgesicherten Produktionsdienst darstellen |
-| OBS-16 | **Archivlücke:** Originalbild/Testprotokolle und fehlende Anhänge nachsichern | Nur echte zuordenbare Dateien ergänzen; ursprünglichen Chatlink/Titel nachtragen, falls verfügbar |
+| OBS-16 | **Archivlücke:** Originalbild/Testprotokolle und fehlende Anhänge nachsichern | Nur echte zuordenbare Dateien ergänzen; Herkunft und Zuordnung der Originaldateien dokumentieren |
 
 ## 12. Konkrete Fortsetzung und Prioritäten
 
-**Zum historischen Gesprächsende** war die Reihenfolge: CT-138-Senderpilot → eindeutigen Empfang prüfen → weitere Quellen ausrollen. Mount und erster Archivlauf waren bereits erfolgreich; eine erneute vollständige NAS-Reparatur wäre kein sinnvoller Start gewesen.
+**Zum historischen Abschluss der Arbeitsphase** war die Reihenfolge: CT-138-Senderpilot → eindeutigen Empfang prüfen → weitere Quellen ausrollen. Mount und erster Archivlauf waren bereits erfolgreich; eine erneute vollständige NAS-Reparatur wäre kein sinnvoller Start gewesen.
 
-**Bei Wiederaufnahme nach dem heutigen Repository-Abgleich** kommt davor die Bestandsklarheit: installierten Quellstand und Konfiguration von CT 136 sichern, aktuelle Gesamtroadmap lesen und die Übernahmelücke nach Z01 bearbeiten. Der begrenzte Vergleich dieses Archivdokuments liefert dafür Belege, ersetzt aber weder den vollständigen Integrationsplan noch den Produktrollout. Ein bereits laufender historischer Dienst kann weiterhin existieren, obwohl die aktuellen Branches seinen Code nicht enthalten.
+**Bei Wiederaufnahme nach dem geprüften Repository-Abgleich** kommt davor die Bestandsklarheit: installierten Quellstand und Konfiguration von CT 136 sichern, aktuelle Gesamtroadmap lesen und die Übernahmelücke nach Z01 bearbeiten. Der begrenzte Vergleich dieses Archivdokuments liefert dafür Belege, ersetzt aber weder den vollständigen Integrationsplan noch den Produktrollout. Ein bereits laufender historischer Dienst kann weiterhin existieren, obwohl die aktuellen Branches seinen Code nicht enthalten.
 
-Danach den CT-138-Pilot mit dem überprüften Paket abschließen. Eine einzelne positive Logzeile mit eindeutiger Quelle ist das erste Netzwerk-Abnahmekriterium. Als zweites Kriterium genau diesen Marker im NAS-Archiv prüfen. Erst dann einen protokollierten Rollout auf weitere NetCore-Container und getrennt VM/Pi/Brew/PBX planen bzw. im weiter autorisierten Arbeitsumfang durchführen.
+Danach den CT-138-Pilot mit dem überprüften Paket abschließen. Eine einzelne positive Logzeile mit eindeutiger Quelle ist das erste Netzwerk-Abnahmekriterium. Als zweites Kriterium genau diesen Marker im NAS-Archiv prüfen. Erst dann einen protokollierten Rollout auf weitere NetCore-Container und getrennt VM/Pi/Brew/PBX planen bzw. anschließend durchführen.
 
-Boot-/NAS-Wiederkehr, mehrere echte Tagesarchive und die Kontrolle lokaler Plattenverbraucher bleiben notwendige Betriebsabnahmen. Der Nutzer hat NAS-Änderungen nicht als nächsten Schritt gewünscht. Die übergeordnete aktuelle Priorität Z01.1 bleibt erhalten; dieses Archiv startet keine zusätzlichen Automationen, Deployments oder Änderungen an der Anlage.
+Boot-/NAS-Wiederkehr, mehrere echte Tagesarchive und die Kontrolle lokaler Plattenverbraucher bleiben notwendige Betriebsabnahmen. NAS-Änderungen waren nicht als nächster Schritt vorgesehen. Die übergeordnete aktuelle Priorität Z01.1 bleibt erhalten; dieses Archiv startet keine zusätzlichen Automationen, Deployments oder Änderungen an der Anlage.
 
-## 13. Anhänge, Bilder und Auswertungslücken
+## 13. Anhänge, Bilder und offene Belege
 
 ### 13.1 PDF-Anhänge
 
-Die folgenden Namen wurden mit dem Auftrag bereitgestellt. „Vorhanden“ bedeutet, dass die Binärdatei im Arbeitsbereich vorlag, nicht dass sie für diese Dokumentation vollständig gelesen oder normativ ausgewertet wurde. Der konkrete Chat behandelt Syslog, Linux-Dienste, Proxmox und NFS; aus den TETRA-Standards wurden hierfür keine technischen Behauptungen abgeleitet. Die umfangreichen PDF-Dateien wurden nicht ohne fachlichen Zweck in das Git-Archiv dupliziert.
+Die folgenden Namen wurden mit dem Auftrag bereitgestellt. „Vorhanden“ bedeutet, dass die Binärdatei im Arbeitsbereich vorlag, nicht dass sie für diese Dokumentation vollständig gelesen oder normativ ausgewertet wurde. Diese Ausarbeitung behandelt Syslog, Linux-Dienste, Proxmox und NFS; aus den TETRA-Standards wurden hierfür keine technischen Behauptungen abgeleitet. Die umfangreichen PDF-Dateien wurden nicht ohne fachlichen Zweck in das Git-Archiv dupliziert.
 
 | Anhang | Verfügbarkeit / Nutzung |
 |---|---|
@@ -725,11 +724,10 @@ Die folgenden Namen wurden mit dem Auftrag bereitgestellt. „Vorhanden“ bedeu
 
 ### 13.2 Bilder
 
-Im sichtbaren Chat liegen Terminalausgaben als Text vor, keine eingebetteten Bilddateien. Die komprimierte Übergabe erwähnt den damaligen Testscreenshot `observability-syslog-test.png`; die Datei war am Archivdatum weder im verfügbaren Arbeitsbestand noch als zuordenbarer Anhang verfügbar. Deshalb konnten **keine Originalbilder dieses Chats** hochgeladen werden. Die bereits im Repository vorhandenen Bilder anderer Chats bleiben unverändert und werden diesem Chat nicht zugerechnet. Eine nachträglich erzeugte Illustration würde den fehlenden Originalnachweis nicht ersetzen und wurde nicht angelegt.
+Die Betriebsnachweise liegen als Terminaltext vor. Der erwähnte Screenshot `observability-syslog-test.png` war am Prüfdatum weder im Arbeitsbestand noch als eindeutig zugeordneter Anhang vorhanden. Diese Bildlücke bleibt offen; Bilder anderer Projektphasen ersetzen den fehlenden Originalnachweis nicht.
 
 ### 13.3 Weitere ausdrücklich offene Belege
 
-- Ursprünglicher Chattitel, Chatlink und vollständiger ungekürzter Altverlauf.
 - Vollständige historische Build-, Python-, Rust- und Browser-Testprotokolle.
 - Exakter installierter Git-SHA auf CT 136 am 27.09. und aktueller installierter Stand am Archivdatum.
 - Abschließende `/etc/fstab` nach dem Automount-Vorschlag und Kaltstartnachweis.
@@ -740,10 +738,10 @@ Es wurden keine Passwörter, Tokens, privaten Schlüssel oder sonstigen Zugangsd
 
 ## 14. Quellen und Fortsetzungsreferenzen
 
-### 14.1 Primärbelege dieses Chats
+### 14.1 Primärbelege dieser Arbeitsphase
 
-- Benutzer-Terminalausgaben zu `pct list`, `pct config 136/138`, `findmnt`, UID/GID-Mappings, NFS-Test, Rechtekorrektur und Archive-Service vom 27.09.2026.
-- Benutzerkorrektur: NAS ist VM 100, startet bereits als zweite VM nach AD; keine entsprechende NAS-Umkonfiguration gewünscht.
+- Terminalausgaben zu `pct list`, `pct config 136/138`, `findmnt`, UID/GID-Mappings, NFS-Test, Rechtekorrektur und Archive-Service vom 27.09.2026.
+- Standortkorrektur: NAS ist VM 100, startet bereits als zweite VM nach AD; keine entsprechende NAS-Umkonfiguration gewünscht.
 - Letzte offene Assistenzanleitung: Senderpilot CT 138 mit Marker `NETCORE-CLIENTTEST-138`; keine nachfolgende Erfolgsausgabe verfügbar.
 - Frühere Zusammenfassung der Entwicklungsarbeit; nur zusammen mit den explizit gekennzeichneten Repository-/PR-Prüfungen als Implementierungsbeleg verwendet.
 
@@ -759,8 +757,8 @@ Es wurden keine Passwörter, Tokens, privaten Schlüssel oder sonstigen Zugangsd
 - [Aktuelle zentrale Roadmap mit Z01](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md).
 - [Archiv: Deployment-VM, Imagebuilder und Discovery](2026-10-05_deployment-vm-tbs-imagebuilder-und-auto-discovery.md).
 - [Archiv: Media Library, TTS und Medien-Share](2026-10-05_media-library-tts-archivierung-basisstations-playout-und-ip-gateway-routing.md).
-- [Archiv: Containerupdates und spätere Betriebsdiagnose](2026-10-06_tbs-container-updates-katwarn-reparaturen-release-und-brancharchiv.md); eigener Chat, keine automatische Erweiterung des hier belegten Senderstands.
+- [Archiv: Containerupdates und spätere Betriebsdiagnose](2026-10-06_tbs-container-updates-katwarn-reparaturen-release-und-brancharchiv.md); eigener Planungsstand, keine automatische Erweiterung des hier belegten Senderstands.
 
 ### 14.3 Externe Referenz aus der Ideenphase
 
-[inventor7777/syslog-flow](https://github.com/inventor7777/syslog-flow) wurde vom Nutzer als Alternative genannt. Dieses Archiv enthält keine neue Produktbewertung und behauptet weder dessen Installation noch eine dokumentierte Ablehnung aufgrund bestimmter Funktionen. Maßgeblich für den hier bestätigten Betrieb ist die NetCore-Pipeline im historischen Commit und die konkret gezeigte NFS-/Archivabnahme.
+[inventor7777/syslog-flow](https://github.com/inventor7777/syslog-flow) wurde durch den Betreiber als Alternative genannt. Dieses Archiv enthält keine neue Produktbewertung und behauptet weder dessen Installation noch eine dokumentierte Ablehnung aufgrund bestimmter Funktionen. Maßgeblich für den hier bestätigten Betrieb ist die NetCore-Pipeline im historischen Commit und die konkret gezeigte NFS-/Archivabnahme.

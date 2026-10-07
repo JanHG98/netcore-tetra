@@ -1,18 +1,18 @@
-# Funkgeräte-Inventarliste: Excel-Stammdaten ohne Zubehörbindung
+# Brainstorming: Funkgeräte-Inventarliste mit Excel-Stammdaten ohne Zubehörbindung
 
-> **Ergebnis des historischen Chats:** Jan führt eine Excel-Liste mit 17 ausdrücklich bestätigten Spalten. Wechselbare Akkus und Zubehör sollen darin nicht fest einem Funkgerät zugeordnet werden. Weitere vorgeschlagene Spalten wurden nicht abschließend freigegeben.
+**Stand der Notizen und ergänzenden Prüfungen: 2026-10-04.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
+
+> **Planungsstand:** Eine Excel-Liste mit 17 bestätigten Spalten bildet die Gerätestammdaten ab. Wechselbare Akkus und Zubehör sollen keinem Funkgerät dauerhaft zugeordnet werden. Zusätzliche Spalten bleiben optional.
 >
-> **Zusätzlich überprüfter Repository-Stand:** Auf `Archiving` existiert bereits ein Asset-Management-Dienst mit Geräte-, Personen-, Ausgabe- und Wartungsverwaltung. Das ist ein eigenständiger heutiger Codebefund, kein im damaligen Chat nachgewiesenes Entwicklungsergebnis. Das dortige Datenmodell und die Export-/Importwege bilden die 17 Excel-Spalten nicht verlustfrei ab.
+> **Zusätzlich überprüfter Repository-Stand:** Auf `Archiving` existiert bereits ein Asset-Management-Dienst mit Geräte-, Personen-, Ausgabe- und Wartungsverwaltung. Das ist ein eigenständiger geprüfter Codebefund, kein im damaligen Planungsstand nachgewiesenes Entwicklungsergebnis. Das dortige Datenmodell und die Export-/Importwege bilden die 17 Excel-Spalten nicht verlustfrei ab.
 
-## 1. Metadaten und Auswertungsgrenzen
+## 1. Kontext und Quellenlage
 
 | Merkmal | Stand |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Sinnvolle Spalten für eine Funkgeräte-Inventarliste; Trennung von Gerätestammdaten und wechselbarem Zubehör |
-| Ursprünglicher Chattitel | Im verfügbaren Originalverlauf nicht als Metadatum vorhanden; der Dokumenttitel ist ein neu vergebener Archivtitel. |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link erfunden. |
-| Historischer Zeitraum | Eine ergänzende Kontextsuche ordnet die bestätigte Spaltenliste und die Zubehörkorrektur dem 11.12.2025 zu. Die sichtbaren Originalnachrichten tragen hier keine eigenen Zeitstempel; die zeitliche Einordnung ist daher ergänzende Kontextinformation, kein vollständiger Chatexport. |
+| Historischer Zeitraum | Bestätigte Spaltenliste und Zubehörkorrektur sind ergänzend dem 11.12.2025 zugeordnet; eigene Zeitstempel des ursprünglichen Bestands fehlen. |
 | Erstellungsdatum | 2026-10-04 |
 | Repository | `JanHG98/netcore-tetra` |
 | Geprüfter Zielbranch | `Archiving` |
@@ -20,42 +20,40 @@
 | Zugehöriger Root-Tree | `8c7b3381ce121acdf9bf42d965d856476ce22dc7` |
 | Archivdatei | `Docs/archive/2026-10-04_funkgeraete-inventarliste-excel-stammdaten-ohne-zubehoerbindung.md` |
 | Index | `Docs/archive/README.md` |
-| Änderungsumfang dieses Auftrags | Diese Zusammenfassung und ihr Indexeintrag; keine Änderung an Anwendung, Konfiguration, zentraler Roadmap oder anderen Branches. |
-| Archivierungscommit | Über die Git-Historie dieser Datei und die Abschlussmeldung bestimmbar; nicht mit dem oben genannten geprüften Ausgangscommit verwechseln. |
 
-Ausgewertet wurde der vollständig hier sichtbare thematische Austausch: erste und wiederholte Frage, eine sachfremde Assistentenantwort, die Vorschlagslisten, Jans aktualisierte Spaltenliste und seine abschließende Zubehör-/Akkukorrektur. Die Kontextsuche bestätigte die beiden maßgeblichen Nutzerfestlegungen, lieferte aber keinen Originaltitel oder Chatlink. Projektübergreifende Erinnerungen und andere Chats wurden nicht als Entscheidungen dieses Chats ausgegeben.
+Die Planung umfasst vorhandene Spalten, Erweiterung auf 17 Felder und den ausdrücklichen Ausschluss gerätefester Zubehör-/Akkubindung. Der zusätzlich betrachtete VPN-Text ist sachfremd und begründet keine Architekturentscheidung.
 
-**Nicht verfügbar:** die eigentliche Excel-Arbeitsmappe, Gerätezeilen, Zellformate, Formeln, Dropdowns, Codeplugdateien, Herstellerlizenzlisten, Geräteauslesungen, Betriebsprotokolle und eigenständige historische Chatbilder. Deshalb sind weder Datenqualität noch tatsächliche Gerätekonfiguration oder laufender Betrieb geprüft.
+**Nicht verfügbar:** die eigentliche Excel-Arbeitsmappe, Gerätezeilen, Zellformate, Formeln, Dropdowns, Codeplugdateien, Herstellerlizenzlisten, Geräteauslesungen, Betriebsprotokolle und eigenständige historische Bilder. Deshalb sind weder Datenqualität noch tatsächliche Gerätekonfiguration oder laufender Betrieb geprüft.
 
-Die Files-Bestandsaufnahme ergab **25 Projekt-PDFs**, keine separat hochgeladene Excel-Datei und keine eigenständigen Bilddateien. Die PDFs sind allgemeine TETRA-Referenzen, keine Bestandsnachweise. Sie wurden inventarisiert und nur an fachlich einschlägigen Stellen vertieft gelesen; keine vollständige Auswertung aller Normseiten wird behauptet. Zwei während dieser Archivierung erzeugte Seitenrenderings dienten ausschließlich der Sichtkontrolle von Normabbildungen und sind keine ursprünglichen Chatbilder.
+Die Files-Bestandsaufnahme ergab **25 Projekt-PDFs**, keine separat hochgeladene Excel-Datei und keine eigenständigen Bilddateien. Die PDFs sind allgemeine TETRA-Referenzen, keine Bestandsnachweise. Sie wurden inventarisiert und nur an fachlich einschlägigen Stellen vertieft gelesen; keine vollständige Auswertung aller Normseiten wird behauptet. Zwei während dieser Archivierung erzeugte Seitenrenderings dienten ausschließlich der Sichtkontrolle von Normabbildungen und sind keine ursprünglichen Bilder.
 
 ### 1.1 Statusbegriffe
 
 | Status | Bedeutung in diesem Dokument |
 |---|---|
-| **Idee** | Im Chat vorgeschlagen, ohne ausdrückliche Freigabe oder Umsetzungsnachweis. |
-| **Beschlossen/geplant** | Vom Nutzer ausdrücklich vorgegeben oder bestätigt; noch kein Nachweis einer Repository-Implementierung. |
+| **Idee** | Vorgeschlagen, ohne ausdrückliche Freigabe oder Umsetzungsnachweis. |
+| **Beschlossen/geplant** | Ausdrücklich vorgegeben oder bestätigt; noch kein Nachweis einer Repository-Implementierung. |
 | **Implementiert** | Konkreter Code oder ein konkretes Artefakt wurde im angegebenen Repository-Stand gelesen. |
 | **Getestet** | Ein bestimmter Test wurde tatsächlich ausgeführt; Umfang und Grenzen müssen benannt sein. |
-| **Im Betrieb bestätigt** | Durch zuordenbare Laufzeitnachweise oder ausdrücklich abgegrenzte Nutzerbeobachtung bestätigt. |
+| **Im Betrieb bestätigt** | Durch zuordenbare Laufzeitnachweise oder ausdrücklich abgegrenzte Betriebsbeobachtung bestätigt. |
 
-Eine existierende Markdown-Beschreibung ist kein Funktionsnachweis. Eine vom Nutzer beschriebene Tabellenänderung ist kein Nachweis einer Softwareimplementierung. Ein hinterlegter Smoke-Testplan ist kein bestandenes Testergebnis.
+Tabellenänderung, Softwareimplementierung und Betrieb sind unterschiedliche Nachweisstufen. Ein hinterlegter Smoke-Testplan ist noch kein bestandenes Testergebnis.
 
-## 2. Ziel, Ausgangslage und Gesprächsverlauf
+## 2. Ziel, Ausgangslage und Planungsverlauf
 
-Jan hatte bereits eine Excel-Tabelle für Funkgeräte und fragte nach weiteren sinnvollen Spalten. Ausgangspunkt waren zwölf Felder:
+Ausgangspunkt ist eine bestehende Excel-Tabelle für Funkgeräte mit zwölf Feldern; gesucht sind sinnvolle Ergänzungen:
 
 ```text
 Eigentümer | Typ | Modell | Seriennummer | TEI | MCC | MNC | ISSI | ITSI | Anzeigename | Tactical | Firmware
 ```
 
-Die erste Assistentenantwort wechselte irrtümlich zu einem angeblichen Handbuchabschnitt „9.4 VPN-Integration“. Dieser Text beantwortete die Frage nicht und begründet **keine** in diesem Chat beschlossene VPN-Architektur oder Sicherheitsfunktion.
+Ein früher Text zu „9.4 VPN-Integration“ war sachfremd und bleibt aus der Inventarplanung ausgeschlossen.
 
-Nach Wiederholung der Frage wurden zahlreiche Vorschläge aus Inventarisierung, Programmierung, Geräteverwaltung, Zustandsüberwachung und möglicher Automatisierung gemacht. Der Assistent unterstellte dabei eine umfassende Geräte-Datenbank. Jan hatte diesen Ausbauumfang nicht ausdrücklich gewählt.
+Betrachtet wurden Erweiterungen für Inventarisierung, Programmierung, Geräteverwaltung, Zustandsüberwachung und Automatisierung. Der darüber hinaus gedachte Ausbau zur umfassenden Gerätedatenbank ist nicht beschlossen.
 
-Anschließend bestätigte Jan eine auf 17 Felder erweiterte Liste. Gegenüber dem Ausgangspunkt kamen **Marke, Frequenzband, Codeplug, E2EE und SIM** hinzu. Weitere Vorschläge wurden wiederholt als vermeintliche Pflichtfelder dargestellt. Jan widersprach insbesondere der festen Erfassung von Zubehör und Akkus am Gerät: Diese seien nicht mit dem Funkgerät „verheiratet“.
+Festgelegt wurde eine Erweiterung auf 17 Felder: **Marke, Frequenzband, Codeplug, E2EE und SIM** kommen hinzu. Gerätefeste Zubehör-/Akkufelder sind ausgeschlossen, weil diese Komponenten keine dauerhafte Einheit mit dem Funkgerät bilden.
 
-Die letzte thematische Antwort akzeptierte diese Einschränkung und reduzierte die verbleibenden Vorschläge auf Status, Programmierdatum, Gruppenprofil, Standortzuordnung, Lizenzoptionen und Fehler-/Bemerkungsfeld. Eine anschließende Bestätigung, diese sechs Felder tatsächlich ergänzt zu haben, liegt nicht vor.
+Nach dem Zubehör-Ausschluss bleiben sechs optionale Felder: Status, Programmierdatum, Gruppenprofil, Standortzuordnung, Lizenzoptionen und Fehler-/Bemerkungsfeld. Ihre tatsächliche Aufnahme in die Tabelle ist nicht bestätigt.
 
 ## 3. Endgültig bestätigte Anforderungen und Entscheidungen
 
@@ -73,27 +71,27 @@ Diese Zeile dokumentiert die Überschriften. Sie ist **kein** fertig spezifizier
 |---:|---|---|
 | 1 | Eigentümer | Eigentümerzuordnung gewünscht; Personenname, Organisation oder Eigentümercodierung nicht festgelegt. Nicht automatisch identisch mit aktuellem Nutzer. |
 | 2 | Typ | Eigene Spalte neben Marke und Modell; konkrete Typenliste nicht definiert. |
-| 3 | Marke | Vom Nutzer ergänzt; keine im Chat bestätigten Gerätewerte. |
+| 3 | Marke | Als neue Spalte bestätigt; konkrete Gerätewerte fehlen. |
 | 4 | Modell | Modellbezeichnung; konkrete Gerätevarianten nicht aus einer Bestandsdatei bekannt. |
 | 5 | Seriennummer | Seriennummer als eigener Identifikator vorgesehen. |
-| 6 | TEI | Als eigener Identifikator vorgesehen; Darstellung und Erfassungsweg im historischen Chat nicht definiert. |
+| 6 | TEI | Als eigener Identifikator vorgesehen; Darstellung und Erfassungsweg im historischen Planungsstand nicht definiert. |
 | 7 | MCC | Eigene Spalte; keine tatsächlichen Netzdaten dieses Bestands genannt. |
 | 8 | MNC | Eigene Spalte; keine verbindliche Format- oder Validierungsregel festgelegt. |
-| 9 | ISSI | Eigene Spalte; kein Nummernplan in diesem Chat beschlossen. |
+| 9 | ISSI | Eigene Spalte; kein Nummernplan in diesem Planungsstand beschlossen. |
 | 10 | ITSI | Zusätzlich zur Komponentenaufteilung enthalten; Formel, Anzeigeformat und Pflegeverantwortung offen. |
 | 11 | Anzeigename | Vorgesehen; Bezug auf Gerätedisplay, Verzeichnis oder Leitstellenanzeige nicht näher definiert. |
 | 12 | Tactical | Originalbezeichnung beibehalten; Abgrenzung zu Anzeigename/Funkrufname offen. |
 | 13 | Firmware | Firmwarestand vorgesehen; Version gegenüber Build nicht endgültig getrennt. |
-| 14 | Frequenzband | Vom Nutzer ergänzt; Hardwareband gegenüber programmiertem Frequenzprofil noch abzugrenzen. |
-| 15 | Codeplug | Vom Nutzer ergänzt; Name, Version, Dateireferenz und Änderungsdatum nicht separat spezifiziert. |
-| 16 | E2EE | Vom Nutzer ergänzt; Fähigkeit, Lizenz, Konfiguration oder nachgewiesene Nutzung nicht unterschieden. |
-| 17 | SIM | Vom Nutzer ergänzt; Vorhandensein, Kartentyp oder Kartenkennung nicht definiert. |
+| 14 | Frequenzband | Als neue Spalte bestätigt; Hardwareband gegenüber programmiertem Frequenzprofil abgrenzen. |
+| 15 | Codeplug | Als neue Spalte bestätigt; Name, Version, Dateireferenz und Änderungsdatum nicht separat spezifiziert. |
+| 16 | E2EE | Als neue Spalte bestätigt; Fähigkeit, Lizenz, Konfiguration und nachgewiesene Nutzung unterscheiden. |
+| 17 | SIM | Als neue Spalte bestätigt; Vorhandensein, Kartentyp oder Kartenkennung noch definieren. |
 
-**Evidenzstatus:** Die Existenz der Tabelle und diese Überschriften sind durch Jans Aussage bestätigt. Eine Änderung oder Prüfung der Arbeitsmappe durch den Assistenten fand nicht statt. Es wurden weder Excel-Datei noch CSV noch Google-Sheets-Vorlage erzeugt.
+**Nachweisstand:** Tabelle und Überschriften sind als Bestand bestätigt. Die Arbeitsmappe wurde nicht bereitgestellt und konnte nicht geprüft oder geändert werden. Excel-, CSV- und Google-Sheets-Vorlagen wurden nicht erzeugt.
 
 ### 3.2 Keine feste Akku- oder Zubehörbindung
 
-**Beschlossen:** Wechselbare Akkus und Zubehör sollen nicht als feste Bestandteile eines Funkgeräte-Datensatzes gepflegt werden. Begründung des Nutzers ist die fehlende dauerhafte Zuordnung.
+**Beschlossen:** Wechselbare Akkus und Zubehör bleiben außerhalb fester Funkgeräte-Stammdaten. Ausschlaggebend ist die fehlende dauerhafte Zuordnung.
 
 Damit sind die zuvor empfohlenen gerätefesten Felder für Akku-Typ, Akku-Seriennummer, Kapazität, Zyklen, Akkutausch, Ladegerät, Headset/PTT und ähnliches Zubehör für diese Liste verworfen. Das ist keine pauschale Aussage, dass Zubehör niemals separat inventarisiert werden dürfe; ein separates Zubehörprojekt wurde hier jedoch ebenfalls nicht beauftragt.
 
@@ -105,9 +103,9 @@ Es gibt keine Freigabe für eine Datenbankmigration, neue API, automatische Netz
 
 ## 4. Ideenbestand und verworfene Erweiterungen
 
-Alle nachfolgenden Erweiterungen waren Vorschläge des Assistenten, nicht automatisch Nutzeranforderungen.
+Die folgenden Erweiterungen sind Ideen und keine verbindlichen Anforderungen.
 
-| Themenfeld | Im Chat genannte Ideen | Abschließende Einordnung |
+| Themenfeld | Betrachtete Ideen | Abschließende Einordnung |
 |---|---|---|
 | Betriebs-/Inventarstatus | Aktiv, Reserve, defekt, Reparatur/eingeschickt, außer Dienst, verloren, Testgerät; früh auch „vergriffen“ | **Idee**. Administrative Verfügbarkeit, Einsatzzweck und Netzregistrierung nicht ungeprüft in ein einziges Statusfeld mischen. |
 | Programmierstand | Letzte Programmierung, Codeplug-Datum, Codeplug-Version | **Idee**. Nur `Codeplug` selbst ist bestätigt. |
@@ -120,19 +118,19 @@ Alle nachfolgenden Erweiterungen waren Vorschläge des Assistenten, nicht automa
 | Netz-/Sicherheitszustand | ISSI aktiv/authentifiziert/gesperrt; „TEI-Status“; SIM-/Crypto-Modul- oder Schlüsselreferenz | **Idee** mit begrifflichem Klärungsbedarf. Keine Geheimnisse als Inventardaten. |
 | Hybridgeräte | IMEI bzw. Modem-ID | **Idee**, nur bei tatsächlich entsprechender Hardware. Das damalige SC20-/SC21-Beispiel ist zu korrigieren, siehe Abschnitt 5. |
 | Zustand | Betriebsstunden, letzte Fehlermeldungen/Events | **Idee**. Keine Auslesbarkeit oder konkreten Messwerte belegt. |
-| Administration | Kaufdatum, Lieferant, Garantieende, Kostenstelle, Projektzuordnung | **Idee**, nicht vom Nutzer verworfen, aber auch nicht übernommen. |
+| Administration | Kaufdatum, Lieferant, Garantieende, Kostenstelle, Projektzuordnung | **Idee**, weder verworfen noch übernommen. |
 | Wartung/Fehler | Reparaturhistorie, Tickets, Fehler-/Bemerkungsfeld | **Idee**. „No Service“, „RegFail“ und „Authentication Rejected“ waren illustrative Fehlertexte, keine dokumentierten Vorfälle dieser Geräte. |
 | Konfigurationsvergleich | Codeplug-Checksumme bzw. Konfigurations-Hash | **Idee**. Keine Implementierung oder normalisierte Vergleichsdefinition. |
 | Automatisierung | Gruppen-/Funktionsrolle wie Operator, Gateway, Dispatch oder Monitoring; Datenbank-/CSV-Import | **Idee**. Kein Vertrag mit NetCore-Komponenten vereinbart. |
 | Identifikation | QR-Link zur Gerätedetailseite | **Idee**. Keine Ziel-URL, Inventarnummernlogik oder QR-Datei erstellt. |
 | Vorlagen/UI | Excel- oder Google-Sheets-Vorlage; kompakte/vollständige Variante; farbliche Bereiche, Spaltenbreiten und Dropdowns | **Angeboten, nicht beauftragt/erstellt**. Auch die vorgeschlagenen Standort-, Lizenz-, Firmware- und Gerätetyp-Auswahllisten sind nicht final. |
-| Akkus und Zubehör | Gerätefeste Zuordnung samt Gesundheits-/Tauschdaten | **Verworfen für diese Liste**, aufgrund der ausdrücklichen Nutzerkorrektur. |
+| Akkus und Zubehör | Gerätefeste Zuordnung samt Gesundheits-/Tauschdaten | **Verworfen für diese Liste**, wegen der wechselnden Zuordnung. |
 
 Die sechs zuletzt wiederholten Kandidaten waren: **Status, letzte Programmierung, Gruppenprofil, Standortzuordnung, Lizenzoptionen, Fehler/Bemerkungen**. Sie bleiben optional und nicht freigegeben.
 
 ## 5. Fachliche Nachprüfung bei der Archivierung
 
-Dieser Abschnitt ist eine **nachträgliche Prüfung**, nicht die nachträgliche Zuschreibung neuer Entscheidungen an den historischen Chat. Quellen sind die bereitgestellten Normausgaben sowie gesondert recherchierte Hersteller-/Microsoft-Primärquellen.
+Der nachträgliche fachliche Abgleich vom 2026-10-04 ergänzt den historischen Planungsstand. Grundlage sind die bereitgestellten Normausgaben und gesondert recherchierte Hersteller-/Microsoft-Primärquellen.
 
 ### 5.1 Geräteidentität und Teilnehmeridentität
 
@@ -152,14 +150,14 @@ Für eine spätere Präzisierung sind „unterstützt“, „freigeschaltet“, 
 
 | Frühere Aussage | Einordnung für die Fortsetzung |
 |---|---|
-| SC20/SC21 als Beispiele für LTE-/Hybridgeräte | Die am Archivierungstag gelesene Sepura-Produktübersicht führt beide als TETRA-Geräte und unterscheidet Hybridgeräte gesondert. Die pauschale Zuordnung aus der früheren Antwort wird nicht übernommen. Daraus folgt keine IMEI-Pflichtspalte für diesen Bestand. [S6] |
-| Gruppenprofil als pauschale Erklärung für „Kein Dienst“ | Im Chat nicht diagnostisch belegt. Fehlende Gruppennutzung und fehlender Netzdienst dürfen nicht ohne weitere Befunde gleichgesetzt werden. |
+| SC20/SC21 als Beispiele für LTE-/Hybridgeräte | Die am Archivierungstag gelesene Sepura-Produktübersicht führt beide als TETRA-Geräte und unterscheidet Hybridgeräte gesondert. Die pauschale Zuordnung aus der früheren Einordnung wird nicht übernommen. Daraus folgt keine IMEI-Pflichtspalte für diesen Bestand. [S6] |
+| Gruppenprofil als pauschale Erklärung für „Kein Dienst“ | Nicht diagnostisch belegt. Fehlende Gruppennutzung und fehlender Netzdienst dürfen ohne weitere Befunde nicht gleichgesetzt werden. |
 | Gleicher Konfigurations-Hash bedeutet gleich programmierte Geräte | Nur bei identischer Vergleichsgrundlage sinnvoll. Dateiprüfsumme, fachlich normalisiertes Profil und gerätespezifische Identitäten sind zu unterscheiden. Keine Vergleichslogik wurde implementiert. |
 | Hashvergleich werde in großen BOS-Organisationen besonders häufig genutzt | Unbelegte Allgemeinaussage; keine technische Anforderung oder belastbare Projektquelle. |
-| „70 % einer perfekten Datenbank“, „unverzichtbar“ und zahlreiche „MUST-HAVES“ | Keine messbaren Vollständigkeitskriterien. Diese Wertungen werden durch die konkrete Nutzerentscheidung und den tatsächlichen Zweck der Liste ersetzt. |
+| „70 % einer perfekten Datenbank“, „unverzichtbar“ und zahlreiche „MUST-HAVES“ | Keine messbaren Vollständigkeitskriterien. Diese Wertungen werden durch die konkrete Festlegung und den tatsächlichen Zweck der Liste ersetzt. |
 | „TEI-Status (aktive Zuweisung)“ | Kein hinreichend definierter Feldname. Hardwareidentität, Teilnehmerzulassung, Sperrung und aktuelle Registrierung müssen fachlich getrennt werden. |
 | GPS/BT/E2EE/SDS-Funktionen pauschal als Lizenzen | Die konkrete Ausstattung und Freischaltung ist geräte-/herstellerbezogen zu prüfen; keine bestätigte Feature-Matrix liegt vor. |
-| Beginn eines VPN-Handbuchkapitels | Sachfremde Fehlantwort, kein beschlossenes oder implementiertes Teilprojekt dieses Chats. |
+| Beginn eines VPN-Handbuchkapitels | Sachfremde Fehlantwort, kein beschlossenes oder implementiertes Teilprojekt dieser Planung. |
 
 ### 5.4 Excel-Datentreue als neuer Prüfhinweis
 
@@ -167,7 +165,7 @@ Microsoft dokumentiert, dass Excel führende Nullen entfernen und Zahlencodes in
 
 **Neuer, nicht historisch beschlossener Prüfpunkt:** Seriennummern, TEI, Kartenkennungen und textuelle Identitätsdarstellungen vor Eingabe/Import bewusst als Text behandeln und mit einem Originalauszug vergleichen. Die 15 Hexadezimalstellen einer TEI sind nicht mit Excels 15 signifikanten Dezimalstellen gleichzusetzen. Keine bestehende Zelle wurde in diesem Auftrag verändert oder getestet.
 
-## 6. Heutiger Repository-Abgleich
+## 6. Repository-Abgleich am Dokumentdatum
 
 ### 6.1 Prüfmethode und Reichweite
 
@@ -183,13 +181,13 @@ Der Abgleich ist gezielt, nicht repositoryweit vollständig: Phase-10-Dokumentat
 | Gerätebestand | `kind = tetra_radio`; unter anderem Hersteller, Modell, Seriennummer, Firmware-/Codeplugversion, TEI und ISSI. [R1] | Nicht identisch mit der 17-spaltigen Excel-Liste. |
 | Andere Asset-Arten | Unter anderem `accessory`, `rack`, `tbs`, `server`, `tool`. [R1] | Eine generische Zubehörkategorie erzwingt keine feste Zubehörbindung an ein Funkgerät. Keine Löschung dieser Kategorie beauftragt. |
 | Persistenz | JSON-Zustand, NDJSON-Ereignisse und Auditdatei; Schreiben des Zustands über temporäre Datei und Ersetzen. [R1, R3] | Keine Wiederherstellung oder Parallelitäts-/Ausfallabnahme durchgeführt. |
-| Personen/Ausgaben | Eigenständige Personen und Ausgabe-/Rückgabe-Datensätze. RUI/RUA nur Metadaten; `pin_stored = False`, `network_login_executed = False`. [R1] | Kein Beweis einer Funkbenutzeranmeldung und keine Freigabe zur Verwendung solcher Zusatzfelder in Jans Excel-Liste. |
+| Personen/Ausgaben | Eigenständige Personen und Ausgabe-/Rückgabe-Datensätze. RUI/RUA nur Metadaten; `pin_stored = False`, `network_login_executed = False`. [R1] | Kein Beweis einer Funkbenutzeranmeldung; Aufnahme solcher Zusatzfelder in die Excel-Liste nicht beschlossen. |
 | Subscriber Core | In der Dienstbeschreibung autoritativ für ISSI-Zulassung und Dienstberechtigungen; Lesepfade für Profile/beobachtete Teilnehmer sind vorhanden. [R1, R2] | Ein Inventareintrag darf nicht als Netzfreigabe behandelt werden. |
 | Mobility Core | In der Dienstbeschreibung autoritativ für bedienende TBS/Registrierung; Snapshot-Abgleich im Code. [R1, R2] | Ein gespeicherter Snapshot ist keine garantierte Live-Erreichbarkeit. |
 | Task Workflow | Codepfad zum Erstellen eines Wartungsauftrags vorhanden. [R1] | Kein Wartungsauftrag ausgelöst. |
 | Export/Import | CSV-Export sowie JSON-Export/-Import implementiert. [R1] | Kein nachgewiesener XLSX-Import oder verlustfreier Roundtrip mit der vorhandenen Tabelle. |
 
-Damit ist die historische Vorstellung einer irgendwann möglichen Geräte-Datenbank heute **teilweise durch vorhandenen Code überholt**. Nicht überholt sind die konkreten Feldentscheidungen und die Notwendigkeit, das tatsächliche Tabellenformat vor einer Migration zu verstehen. Ein zusätzlicher paralleler Inventardienst ist daraus nicht abzuleiten.
+Damit ist die historische Vorstellung einer irgendwann möglichen Geräte-Datenbank am 2026-10-04 **teilweise durch vorhandenen Code überholt**. Nicht überholt sind die konkreten Feldentscheidungen und die Notwendigkeit, das tatsächliche Tabellenformat vor einer Migration zu verstehen. Ein zusätzlicher paralleler Inventardienst ist daraus nicht abzuleiten.
 
 ### 6.3 Abbildung der 17 Excel-Spalten auf das gelesene Datenmodell
 
@@ -273,7 +271,7 @@ Der CSV-Export enthält schon das vorhandene `organization`-Feld nicht und ist k
 
 ### 8.1 Historisch tatsächlich aufgetreten
 
-Es wurde kein Geräte-, Netz- oder Excel-Laufzeitfehler diagnostiziert. Die belegten Probleme waren die sachfremde VPN-Antwort und die überdimensionierte Empfehlung gerätefester Zubehör-/Akkufelder. Die funktionierende fachliche Korrektur war die ausdrückliche Nutzerabgrenzung; ein Softwarefix war dafür weder nötig noch erfolgt.
+Ein Geräte-, Netz- oder Excel-Laufzeitfehler ist nicht diagnostiziert. Die fachliche Korrektur beschränkt die Liste auf Gerätestammdaten und schließt sachfremde VPN-Planung sowie gerätefeste Zubehör-/Akkufelder aus. Ein Softwarefix war dafür nicht nötig.
 
 ### 8.2 Neu erkannte statische Codebefunde
 
@@ -302,7 +300,7 @@ Im ursprünglichen Austausch wurden keine Installations-, Deployment-, Reparatur
 | GitHub-Branch und Archivindex lesen | `Archiving` und Ausgangscommit tatsächlich ermittelt; vorhandene Indexeinträge gelesen. | Kein Nachweis einer laufenden NetCore-Installation. |
 | Zielpfad vor dem Schreiben prüfen | Der neu gewählte Archivpfad lieferte `404 Not Found`. | Andere Archive, insbesondere der separate ISSI-Nummernplan, dürfen nicht ersetzt werden. |
 | Gezielte Quellcodeprüfung | Die in Abschnitt 6–8 genannten Dateien und Funktionen wurden am festen Commit gelesen. | Kein vollständiger Codeaudit, kein Anwendungstest. |
-| Files-Bestandsaufnahme | 25 Projekt-PDFs, keine Arbeitsmappe oder eigenständigen historischen Chatbilder. | Kein vollständiger Chatexport. |
+| Dateienbestand | 25 Projekt-PDFs, keine Arbeitsmappe oder eigenständigen historischen Bilder. | Reale Bestandszeilen und Zellformate nicht prüfbar. |
 | PDF-Inventar und Normabbildungen | Dateinamen, Seitenzahlen, Deckblätter und SHA-256-Werte lokal geprüft; Seiten 29/33 aus [S1] gerendert und visuell geprüft. | Übrige Normteile nur nach Relevanz erschlossen, nicht vollständig gelesen. |
 | Lokaler Git-Klonversuch | `git clone --depth 1 --single-branch --branch Archiving ...` scheiterte an `Could not resolve host: github.com`. | Der GitHub-Connector war separat lesefähig und ist der gewählte Schreibweg; kein lokaler Push vorgetäuscht. |
 | Externe Primärquellenprüfung | Microsoft-Hinweis zur Excel-Datentreue und Sepura-Geräteklassifizierung gelesen. | Kein Herstellerabgleich aller im Bestand befindlichen Geräte möglich. |
@@ -344,18 +342,18 @@ Für eine spätere Abnahme sind mindestens Testfälle zu führenden Nullen, hexa
 
 ## 11. Quellen, Repository-Dateien und Querverweise
 
-### 11.1 Historische Evidenz im sichtbaren Chat
+### 11.1 Historische Planungsgrundlage
 
 | Lokale Quellenkennung | Inhalt |
 |---|---|
-| C1 | Nutzerfrage mit zwölf vorhandenen Feldern; nach sachfremder Antwort wiederholt. |
-| C2 | Assistentenvorschläge zu Inventar, Konfiguration, Verwaltung und Automatisierung. |
-| C3 | Nutzerbestätigung der vollständigen 17-Spalten-Liste. |
-| C4 | Erneute Assistentenvorschläge einschließlich Zubehör/Akku. |
-| C5 | Ausdrücklicher Nutzereinwand gegen feste Zubehör-/Akkuzuordnung. |
-| C6 | Letzte Assistentenantwort akzeptiert den Ausschluss; sechs verbleibende optionale Feldvorschläge. |
+| C1 | Ausgangsliste mit zwölf Feldern. |
+| C2 | Erweiterungsansätze für Inventar, Konfiguration, Verwaltung und Automatisierung. |
+| C3 | Bestätigte vollständige 17-Spalten-Liste. |
+| C4 | Weitere optionale Felder einschließlich Zubehör/Akku. |
+| C5 | Ausschluss fester Zubehör-/Akkuzuordnung. |
+| C6 | Bereinigte Liste mit sechs verbliebenen optionalen Feldvorschlägen. |
 
-Diese Kennungen ordnen die hier sichtbaren Nachrichten zu; sie sind keine erfundenen Chatlinks oder externen Dokument-IDs. C3 und C5 sind für die endgültigen Nutzeranforderungen maßgeblich.
+Die lokalen Quellenkennungen ordnen die historischen Planungsschritte zu. C3 und C5 enthalten die endgültigen Festlegungen.
 
 ### 11.2 Gelesene Repository-Quellen
 
@@ -368,9 +366,9 @@ Die Links sind auf den tatsächlich geprüften Commit fixiert:
 - **[R5]** [OPEN-LAB-Smoke-Testplan](https://github.com/JanHG98/netcore-tetra/blob/10214c87c9ce302ee3b35da504b978504fea0eb5/system-backend/asset-management/tests/open_lab_smoke.md): Anleitung ohne hier belegtes Testergebnis. Blob: `4ad82548fefa328c8b8c11182625661496a0e9fa`.
 - **[R6]** [Vorhandener Archivindex vor dieser Ergänzung](https://github.com/JanHG98/netcore-tetra/blob/10214c87c9ce302ee3b35da504b978504fea0eb5/Docs/archive/README.md): vorhandene Einträge bleiben erhalten.
 
-Der Index führt auch ein eigenständiges [Archiv zum ISSI-Nummernplan, zur Vergabe und zu RBAC](2026-10-04_issi-nummernplan-rbac-und-vergaberichtlinie.md). Dieses ist ein thematischer Querverweis, nicht Bestandteil oder Ersatz des hier zusammengefassten Chats; dessen fachlicher Volltext wurde für diese Abschlussdokumentation nicht erneut ausgewertet.
+Das [Archiv zum ISSI-Nummernplan, zur Vergabe und zu RBAC](2026-10-04_issi-nummernplan-rbac-und-vergaberichtlinie.md) ist ein thematischer Querverweis. Sein fachlicher Volltext wurde für diesen Abgleich nicht erneut ausgewertet.
 
-Im historischen Inventar-Chat wurden keine Umsetzungscommits oder PRs genannt. Daher wird diesem Chat kein Feature-Commit und keine PR nachträglich zugeordnet.
+Für die Inventarplanung sind keine Umsetzungscommits oder PRs dokumentiert.
 
 ### 11.3 Fachquellen der zusätzlichen Prüfung
 
@@ -381,13 +379,13 @@ Im historischen Inventar-Chat wurden keine Umsetzungscommits oder PRs genannt. D
 - **[S5]** [Microsoft: Keeping leading zeros and large numbers](https://support.microsoft.com/en-us/excel/keeping-leading-zeros-and-large-numbers), zusätzlich [Format numbers as text](https://support.microsoft.com/en-us/excel/format-numbers-as-text); abgerufen am 2026-10-04.
 - **[S6]** [Sepura: TETRA, Hybrid and 4G/5G hand-portable radios](https://sepura.com/hand-portable-radios/), ergänzend die Herstellerseiten für [SC20](https://sepura.com/devices/sc20-tetra-radio/) und [SC21](https://sepura.com/devices/sc21-tetra-radio/); abgerufen am 2026-10-04.
 
-Die Normen werden als **bereitgestellte Ausgaben** zitiert. Ihr heutiger Normstatus wurde nicht umfassend recherchiert; vorhandene Drafts werden nicht zu verabschiedeten Normen umdeklariert.
+Die Normen werden als **bereitgestellte Ausgaben** zitiert. Ihr geprüfter Normstatus wurde nicht umfassend recherchiert; vorhandene Drafts werden nicht zu verabschiedeten Normen umdeklariert.
 
 ## 12. Anhang: Quellen- und Bildbestand
 
 ### 12.1 Umgang mit Bildern und Originaldateien
 
-**Keine eigenständigen historischen Chatbilder vorhanden:** Im thematischen Verlauf waren weder Gerätefotos noch Tabellen-Screenshots oder entworfene Diagramme enthalten. Die sichtbaren PDF-Deckblätter und eingebetteten Normabbildungen gehören zu den Projekt-PDFs. Sie wurden nicht als vermeintliche Original-Chatbilder neu veröffentlicht. Die während der Prüfung erzeugten Normseiten-Renderings sind ebenfalls keine nachzuarchivierenden historischen Bildassets.
+**Keine eigenständigen historischen Bilder vorhanden:** Im thematischen Verlauf waren weder Gerätefotos noch Tabellen-Screenshots oder entworfene Diagramme enthalten. Die sichtbaren PDF-Deckblätter und eingebetteten Normabbildungen gehören zu den Projekt-PDFs. Sie wurden nicht als vermeintliche Originalbilder neu veröffentlicht. Die während der Prüfung erzeugten Normseiten-Renderings sind ebenfalls keine nachzuarchivierenden historischen Bildassets.
 
 Die 25 PDFs wurden nicht dupliziert und nicht als Gerätebestandsdaten in das Git-Archiv kopiert. Ihr identifizierbarer Bestand ist unten festgehalten. Die eigentliche Arbeitsmappe kann ohne bereitgestellte Datei nicht nacharchiviert werden. Ein vollständiges Archiv der Excel-Inhalte ist daher ausdrücklich **nicht** Bestandteil dieses Ergebnisses.
 
@@ -409,7 +407,7 @@ Die Titel/Versionen stammen aus den vorliegenden Deckblättern, die Seitenzahlen
 | `en_3003920304v010301p.pdf` | EN 300 392-3-4 V1.3.1 (2010-08), ISI-SDS | 28 | Inventarisiert. |
 | `en_3003920308v010401p.pdf` | EN 300 392-3-8 V1.4.1 (2020-04), ISI Speech Format | 22 | Inventarisiert. |
 | `en_3003920313v010201p.pdf` | EN 300 392-3-13 V1.2.1 (2020-04), transportunabhängiger ISI-Gruppenruf | 191 | Inventarisiert. |
-| `en_3003920315v010500a.pdf` | Draft EN 300 392-3-15 V1.5.0 (2026-04), ISI Mobility Management | 380 | Als Draft inventarisiert; keine historische Chatgrundlage unterstellt. |
+| `en_3003920315v010500a.pdf` | Draft EN 300 392-3-15 V1.5.0 (2026-04), ISI Mobility Management | 380 | Als Draft inventarisiert; kein Nachweis historischer Entscheidungen. |
 | `en_30039209v010701p.pdf` | EN 300 392-9 V1.7.1 (2020-04), Supplementary Services | 46 | Inventarisiert. |
 | `en_3003921006v010401p.pdf` | EN 300 392-10-6 V1.4.1 (2006-08), Call Authorized by Dispatcher | 20 | Inventarisiert. |
 | `en_3003921018v010301p.pdf` | EN 300 392-10-18 V1.3.1 (2003-10), Barring of Outgoing Calls | 17 | Inventarisiert. |
@@ -417,7 +415,7 @@ Die Titel/Versionen stammen aus den vorliegenden Deckblättern, die Seitenzahlen
 | `en_3003921114v010101p.pdf` | EN 300 392-11-14 V1.1.1 (2002-07), Late Entry | 23 | Inventarisiert. |
 | `en_3003921117v010102p.pdf` | EN 300 392-11-17 V1.1.2 (2002-01), Include Call | 18 | Inventarisiert. |
 | `en_3003921201v010202p.pdf` | EN 300 392-12-1 V1.2.2 (2007-08), Call Identification | 56 | Inventarisiert. |
-| `en_3003921216v010400a.pdf` | Draft EN 300 392-12-16 V1.4.0 (2026-03), Pre-emptive Priority Call | 67 | Als Draft inventarisiert; keine historische Chatgrundlage unterstellt. |
+| `en_3003921216v010400a.pdf` | Draft EN 300 392-12-16 V1.4.0 (2026-03), Pre-emptive Priority Call | 67 | Als Draft inventarisiert; kein Nachweis historischer Entscheidungen. |
 | `en_30039401v030301p.pdf` | EN 300 394-1 V3.3.1 (2015-04), Radio Conformance Testing | 169 | Referenz, kein Konformitätstest durchgeführt. |
 | `en_30039502v010303p.pdf` | EN 300 395-2 V1.3.3 (2025-02), TETRA codec | 94 | Inventarisiert. |
 | `ets_30039214e01v.pdf` | Final draft prETS 300 392-14 (1997-09), PICS proforma | 61 | Als Entwurf inventarisiert; keine ausgefüllte Konformitätserklärung. |
@@ -457,6 +455,6 @@ ac716ca18082cc0fd2ee768a14f03deb48fa78a77e83751b1a6b319c7fc2106a  en_30039502v01
 
 ## 13. Übergabestand
 
-Die 17 bestätigten Überschriften und der Ausschluss fester Zubehör-/Akkubindung bilden die belastbare Fortsetzungsgrundlage. Zusätzliche Felder bleiben Entscheidungen, nicht vermeintlich schon erledigte Aufgaben. Der heutige Asset-Dienst ist als bestehender Anschlusskandidat nachgewiesen; Tabellenmigration, Validierungsfixes, sichere Betriebsfreigabe und reale Tests sind nicht erledigt.
+Die 17 bestätigten Überschriften und der Ausschluss fester Zubehör-/Akkubindung bilden die belastbare Fortsetzungsgrundlage. Zusätzliche Felder bleiben Entscheidungen, nicht vermeintlich schon erledigte Aufgaben. Der ergänzende Asset-Dienst ist als bestehender Anschlusskandidat nachgewiesen; Tabellenmigration, Validierungsfixes, sichere Betriebsfreigabe und reale Tests sind nicht erledigt.
 
 Für die nächste Bearbeitung zuerst die Originaltabelle bzw. anonymisierte Beispiele und die offenen Feldbedeutungen klären. Danach das bestehende Asset-Modell gezielt abgleichen. Keine fremden Archive überschreiben, keine Geheimnisse übernehmen und aus diesem Dokument keinen Auftrag zur Geräteprogrammierung oder Produktionsänderung ableiten.

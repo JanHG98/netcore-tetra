@@ -1,39 +1,36 @@
-# Chatabschluss: NetCore-Tetra Wallpaper und Branding
+# Brainstorming: NetCore-Tetra Wallpaper und Branding
 
-## Metadaten
+## Rahmen und Quellenstand
 
 - **Thema:** Erstellung eines NetCore-Tetra Desktop- und Smartphone-Hintergrunds unter Verwendung des vorhandenen NetCore-Logos.
-- **Ursprünglicher Chattitel:** Im zugänglichen Verlauf nicht als eigener Titel überliefert; Thema des Chats war sinngemäß „NetCore Desktop-/Handy-Wallpaper“.
-- **Chatlink:** Im zugänglichen Chatkontext nicht verfügbar.
-- **Erstellungsdatum dieser Archivierung:** 2026-10-03.
+- **Notizstand:** 2026-10-03.
 - **Zielrepository:** `JanHG98/netcore-tetra`
 - **Zielbranch:** `Archiving`
-- **Repository-Referenz bei der Prüfung:** Branch `Archiving`; das dort vorhandene Original-Logo `crates/tetra-entities/src/net_dashboard/ui/netcore-logo.png` wurde gefunden. Der heutige Default-Branch-Stand enthält außerdem den Merge-Commit `7137e0dd69877e1b604bf89148fd8b6b590c1a97` („NetCore-Design mit Dark Mode für Basisstation und alle Dienst-WebUIs“). Dieser Commit wird nur als heutiger Repository-Vergleich genannt; er ist nicht der Nachweis für den Stand des Branches `Archiving`.
-- **Archivierungscommit:** wird durch den Commit dieses Dokuments/der zugehörigen Archivassets bestimmt.
+- **Repository-Referenz bei der Prüfung:** Branch `Archiving`; das dort vorhandene Original-Logo `crates/tetra-entities/src/net_dashboard/ui/netcore-logo.png` wurde gefunden. Der geprüfte Default-Branch-Stand enthält außerdem den Merge-Commit `7137e0dd69877e1b604bf89148fd8b6b590c1a97` („NetCore-Design mit Dark Mode für Basisstation und alle Dienst-WebUIs“). Dieser Commit wird nur als am 03.10.2026 geprüfter Repository-Vergleich genannt; er ist nicht der Nachweis für den Stand des Branches `Archiving`.
 
 ## 1. Ziel und Ausgangslage
 
-Ziel dieses Chats war kein Eingriff in die Funk-, Server- oder Softwarearchitektur von NetCore-Tetra, sondern die Entwicklung eines visuellen Hintergrundbilds für NetCore-Arbeitsgeräte. Ausgangspunkt war der Wunsch nach einem „richtig geilen Desktophintergrund“ für NetCore. Anschließend wurde ausdrücklich festgelegt, dass das bereits vorhandene NetCore-Logo Bestandteil des Designs sein soll.
+Ziel ist die Gestaltung von Desktop- und Smartphone-Hintergründen für NetCore-Arbeitsgeräte. Das vorhandene NetCore-Logo ist verbindlicher Bestandteil.
 
-Als visuelle Referenz wurde im Chat ein quadratisches NetCore-Tetra-Logo bereitgestellt. Sichtbare Kernelemente:
+Als visuelle Referenz wurde in den Arbeitsnotizen ein quadratisches NetCore-Tetra-Logo bereitgestellt. Sichtbare Kernelemente:
 
 - dunkles, aus vier Knoten und Verbindungen aufgebautes Netzwerk-/Mesh-Symbol,
 - drei blaue Funk-/Radiowellen oberhalb/rechts des Symbols,
 - Wortmarke **NetCore-Tetra**,
 - Claim **„digital. dezentral. skalierbar.“**.
 
-Der Nutzer wünschte nach einer ersten Richtung eine **cleanere Variante** und danach ausdrücklich eine **Hochkantversion für das Handy**. Bei der mobilen Fassung wurde anschließend eine weitere Korrektur verlangt: **ohne die Leiste unten**.
+Verbindliche Weiterentwicklung: eine **reduzierte Variante**, eine **Hochkantversion fürs Handy** und zuletzt **keine untere Leiste**.
 
 ## 2. Statusklassifikation
 
 | Gegenstand | Status | Nachweis / Bemerkung |
 |---|---|---|
 | NetCore-Logo als Branding-Basis | **beschlossen/geplant** und im Repository **implementiert** | Im aktuellen Branch `Archiving` ist `crates/tetra-entities/src/net_dashboard/ui/netcore-logo.png` vorhanden. |
-| Desktop-Wallpaper | **Idee / Designauftrag** | Der zugängliche Verlauf enthält die Anforderung, aber das tatsächlich erzeugte Desktopbild ist in diesem Archivierungslauf nicht als separat zugängliche Originaldatei verfügbar. |
-| Cleaner Designstil | **beschlossen** | Explizite spätere Nutzerkorrektur: „ander version vllt etwas cleaner?“ |
-| Hochkant-Wallpaper fürs Handy | **implementiert im Chat** | Eine Hochkantgrafik wurde durch das Bildwerkzeug erzeugt. |
-| Mobile Version ohne untere Leiste | **implementiert im Chat** | Daraufhin wurde eine weitere Hochkantgrafik ohne die unerwünschte untere Leiste erzeugt. |
-| Aufnahme der generierten Bilder ins Repository | **offen / teilweise technisch nicht möglich in diesem Archivierungslauf** | Siehe Abschnitt „Auswertungslücken und Assets“. |
+| Desktop-Wallpaper | **Idee / Designauftrag** | Der zugängliche Verlauf enthält die Anforderung, aber das tatsächlich erzeugte Desktopbild ist in der Quellenprüfung vom 03.10.2026 nicht als separat zugängliche Originaldatei verfügbar. |
+| Cleaner Designstil | **beschlossen** | Spätere Festlegung: reduzierte, saubere Gestaltung. |
+| Hochkant-Wallpaper fürs Handy | **als Grafikentwurf umgesetzt** | Eine Hochkantgrafik wurde durch das Bildwerkzeug erzeugt. |
+| Mobile Version ohne untere Leiste | **als Grafikentwurf umgesetzt** | Daraufhin wurde eine weitere Hochkantgrafik ohne die unerwünschte untere Leiste erzeugt. |
+| Aufnahme der generierten Bilder ins Repository | **offen / teilweise technisch nicht möglich in der Quellenprüfung vom 03.10.2026** | Siehe Abschnitt „Offene Nachweise und Assets“. |
 
 ## 3. Endgültige Anforderungen und Entscheidungen
 
@@ -49,33 +46,33 @@ Die letzte erzeugte Darstellung verwendete die Wortmarke **NetCore-Tetra** mit b
 
 ## 4. Architektur, Komponenten, Schnittstellen und Abhängigkeiten
 
-Dieser Chat enthält **keine Änderung an der technischen NetCore-Tetra-Systemarchitektur**. Es wurden keine Dienste, APIs, Funkprotokolle, Ports oder Deploymentpfade geändert.
+Das Vorhaben betrifft statische Branding-Assets; die technische Systemarchitektur wurde nicht verändert.
 
 Relevante Branding-Abhängigkeit im Repository:
 
 `crates/tetra-entities/src/net_dashboard/ui/netcore-logo.png`
 
-Die heutige Repository-Prüfung zeigt außerdem, dass dieses Asset von der Dashboard-UI eingebunden wird. Unter anderem referenziert `crates/tetra-entities/src/net_dashboard/html.rs` das PNG per `include_bytes!`, und die Login-/UI-Dateien verwenden `/assets/netcore-logo.png`. Das Branding ist damit nicht nur ein loses Grafikasset, sondern Bestandteil der aktuellen WebUI.
+Die Repository-Prüfung zeigt außerdem, dass dieses Asset von der Dashboard-UI eingebunden wird. Unter anderem referenziert `crates/tetra-entities/src/net_dashboard/html.rs` das PNG per `include_bytes!`, und die Login-/UI-Dateien verwenden `/assets/netcore-logo.png`. Das Branding ist damit nicht nur ein loses Grafikasset, sondern Bestandteil der aktuellen WebUI.
 
-Der Repository-Stand auf dem Default-Branch enthält am 2026-10-03 den Merge-Commit `7137e0dd69877e1b604bf89148fd8b6b590c1a97`, dessen Commitnachricht die Übernahme des NetCore-Designs mit Dark Mode für Basisstation und Dienst-WebUIs beschreibt. Das passt gestalterisch zur im Chat gewünschten dunklen Wallpaper-Richtung, ist aber **kein Beleg**, dass die Wallpaper selbst dort implementiert wurden.
+Der Repository-Stand auf dem Default-Branch enthält am 2026-10-03 den Merge-Commit `7137e0dd69877e1b604bf89148fd8b6b590c1a97`, dessen Commitnachricht die Übernahme des NetCore-Designs mit Dark Mode für Basisstation und Dienst-WebUIs beschreibt. Das passt gestalterisch zur in den Arbeitsnotizen gewünschten dunklen Wallpaper-Richtung, ist aber **kein Beleg**, dass die Wallpaper selbst dort implementiert wurden.
 
 ## 5. Erreichter Entwicklungs- und Betriebsstand
 
-### Im Chat erreicht
+### Historisch erarbeitet
 
 - Logo als verbindliches Gestaltungselement festgelegt.
 - Cleanere Gestaltung als bevorzugte Richtung festgelegt.
 - Smartphone-Hochkantversion erzeugt.
-- Nach Nutzerfeedback eine weitere Hochkantversion **ohne untere Leiste** erzeugt.
+- Nach Gestaltungsfeedback eine weitere Hochkantversion **ohne untere Leiste** erzeugt.
 - Letzte sichtbare Fassung: dunkler Hintergrund, blaue Netzstruktur, zentraler NetCore-Tetra-Schriftzug und Funk-/Netzwerklogo, vernetzte Erde/Europa im unteren Bereich.
 
 ### Nicht erreicht bzw. nicht belegt
 
-- Keine belastbare Aussage über die exakte Pixelauflösung der finalen Handydatei aus dem zugänglichen Chattext.
+- Keine belastbare Aussage über die exakte Pixelauflösung der finalen Handydatei aus dem zugänglichen Arbeitsnotizen.
 - Kein Betrieb-/Deploymenttest nötig oder durchgeführt; es handelt sich um ein statisches Grafikasset.
-- Kein Nachweis, dass Desktop- oder Mobile-Wallpaper vor diesem Archivierungslauf bereits in Git eingecheckt wurden.
+- Kein Nachweis, dass Desktop- oder Mobile-Wallpaper vor der Quellenprüfung vom 03.10.2026 bereits in Git eingecheckt wurden.
 - Keine Aussage über Lockscreen-Safe-Areas, verschiedene Smartphone-Seitenverhältnisse oder automatische Dark-/Light-Varianten getestet.
-- Keine verifizierte Desktop-Endfassung im zugänglichen Dateibestand dieses Archivierungslaufs.
+- Keine verifizierte Desktop-Endfassung im zugänglichen Dateibestand der Quellenprüfung vom 03.10.2026.
 
 ## 6. Relevante Dateien und technische Parameter
 
@@ -88,7 +85,7 @@ Der Repository-Stand auf dem Default-Branch enthält am 2026-10-03 den Merge-Com
 - `tools/embed_service_design.py` — synchronisiert laut aktuellem Repository das Original-PNG in ein Data-URI-Asset für Service-WebUIs.
 - `system-backend/shared/web-ui/README.md` — dokumentiert den Logo-Sync für Shared-WebUI-Assets.
 
-### Grafikparameter aus dem Chat
+### Grafikparameter
 
 - Primärer Stil: Dark / High-Tech / futuristisch.
 - Akzent: leuchtendes Blau.
@@ -96,7 +93,7 @@ Der Repository-Stand auf dem Default-Branch enthält am 2026-10-03 den Merge-Com
 - Mobile Layout: Hochkant.
 - Letzte Korrektur: keine zusätzliche Leiste am unteren Bildrand.
 
-Ports, Protokolle, IP-Adressen, Funkparameter oder Dienstkonfigurationen waren in diesem Chat nicht Gegenstand der Arbeit.
+Ports, Protokolle, IP-Adressen, Funkparameter oder Dienstkonfigurationen waren in dieser Entwicklungsphase nicht Gegenstand der Arbeit.
 
 ## 7. Befehle, Installation, Deployment und Reparatur
 
@@ -110,13 +107,13 @@ Die Bilder wurden über ein Bildgenerierungswerkzeug erstellt. Das ist **kein Re
 
 **Diagnose:** Für ein sauberes NetCore-Wallpaper sollte nicht irgendein nachgebautes Logo verwendet werden.
 
-**Lösung:** Nutzer stellte das Logo im Chat bereit; ab diesem Zeitpunkt wurde es als visuelle Referenz verwendet.
+**Lösung:** Das bereitgestellte Projektlogo wurde als verbindliche visuelle Referenz verwendet.
 
 **Status:** gelöst.
 
 ### Designproblem: erste Variante nicht clean genug
 
-**Diagnose:** Nutzer wünschte ausdrücklich eine cleanere Version.
+**Diagnose:** Die erste Variante war zu dekorativ; eine reduzierte Gestaltung wurde ausdrücklich gefordert.
 
 **Lösung:** Gestaltung wurde in Richtung reduzierter High-Tech-/Dark-Optik weitergeführt.
 
@@ -124,17 +121,17 @@ Die Bilder wurden über ein Bildgenerierungswerkzeug erstellt. Das ist **kein Re
 
 ### Designproblem: untere Leiste in mobiler Variante
 
-**Diagnose:** Nutzer wollte eine weitere Handyversion „ohne die Leiste unten“.
+**Diagnose:** Die untere Leiste war ausdrücklich unerwünscht.
 
 **Lösung:** Eine neue vertikale Fassung ohne diese Leiste wurde generiert.
 
-**Status:** im Chat umgesetzt.
+**Status:** als Entwurf umgesetzt.
 
 ## 9. Tests und Grenzen
 
 Es wurden keine automatisierten Tests durchgeführt, da es sich um ein Grafikdesign handelt.
 
-Visuelle Abnahme erfolgte iterativ durch Nutzerfeedback:
+Visuelle Abnahme erfolgte iterativ durch Gestaltungsfeedback:
 
 - Logo einbringen → akzeptierte Richtung.
 - Cleaner gestalten → neue Anforderung.
@@ -152,7 +149,7 @@ Nicht getestet bzw. nicht dokumentiert:
 
 ## 10. Verworfene oder ersetzte Ansätze
 
-- **Wallpaper ohne originales NetCore-Logo:** verworfen; Nutzer verlangte ausdrücklich das eigene Logo.
+- **Wallpaper ohne originales NetCore-Logo:** verworfen; eigenes Logo ist verbindlich.
 - **Stärker dekorierte/ältere Variante:** durch Wunsch nach „cleaner“ ersetzt.
 - **Mobile Variante mit unterer Leiste:** durch spätere ausdrückliche Korrektur ersetzt; für zukünftige Ableitungen nicht als Zielversion verwenden.
 
@@ -169,29 +166,29 @@ Nicht getestet bzw. nicht dokumentiert:
 - **[beschlossen für Fortsetzungen]** Untere Zusatzleiste bei der mobilen Zielversion weglassen.
 - **[beschlossen für Fortsetzungen]** Das echte NetCore-Logo verwenden und nicht frei neu erfinden.
 - **[offen]** Finale gewünschte Desktop-Auflösung(en) und konkretes Smartphone-Modell/Displayformat festlegen, wenn pixelgenaue Exporte benötigt werden.
-- **[offen]** Die finalen Originaldateien der im Chat erzeugten Wallpaper dauerhaft unter `Docs/archive/` ablegen, sobald sie als Binärdateien für einen GitHub-Upload verfügbar sind.
+- **[offen]** Die finalen Originaldateien der in den Arbeitsnotizen erzeugten Wallpaper dauerhaft unter `Docs/archive/` ablegen, sobald sie als Binärdateien für einen GitHub-Upload verfügbar sind.
 
-## 12. Historischer Chatstand vs. heutiger Repository-Stand
+## 12. Entwicklungsstand und Repository-Befund vom 03.10.2026
 
-### Historischer Chatstand
+### Historischer Entwicklungsstand
 
-Der Chat war ein reiner Branding-/Wallpaper-Designlauf. Es wurden keine NetCore-Tetra-Funkfunktionen oder Dienste verändert. Die finale Nutzerkorrektur lautete sinngemäß: mobile Hochkantversion beibehalten, aber **ohne die Leiste unten**.
+Ergebnis des Designlaufs ist die mobile Hochkantfassung ohne untere Leiste. Funkfunktionen oder Dienste wurden nicht verändert.
 
 ### Zusätzlich überprüfter Repository-Stand am 2026-10-03
 
 - Branch `Archiving` existiert.
-- `Docs/archive/README.md` existiert bereits und enthält Archivierungen anderer Chats; diese müssen erhalten bleiben.
+- `Docs/archive/README.md` existiert bereits und enthält Archivierungen anderer Themen; diese müssen erhalten bleiben.
 - Das Logoasset `crates/tetra-entities/src/net_dashboard/ui/netcore-logo.png` ist im Branch `Archiving` vorhanden.
-- Im heutigen Repository-Hauptstand existiert der Merge-Commit `7137e0dd69877e1b604bf89148fd8b6b590c1a97` zum NetCore-Design/Dark-Mode.
-- Es wurde **kein vorhandenes Archivdokument für genau diesen Wallpaper-Chat** unter dem vorgesehenen Dateinamen gefunden.
-- Aus diesen Repository-Befunden folgt **nicht**, dass die im Chat generierten Wallpaper bereits Bestandteil des Produktcodes oder eines Releases sind.
+- Im am 03.10.2026 geprüften Repository-Hauptstand existiert der Merge-Commit `7137e0dd69877e1b604bf89148fd8b6b590c1a97` zum NetCore-Design/Dark-Mode.
+- Es wurde **kein vorhandenes Archivdokument für genau dieses Wallpaper-Vorhaben** unter dem vorgesehenen Dateinamen gefunden.
+- Aus diesen Repository-Befunden folgt **nicht**, dass die in den Arbeitsnotizen generierten Wallpaper bereits Bestandteil des Produktcodes oder eines Releases sind.
 
 ## 13. Relevante Quellen, Anhänge, Branches, Commits und PRs
 
-### Chatbezogene visuelle Quellen
+### Visuelle Arbeitsgrundlagen
 
-1. Vom Nutzer im Chat bereitgestelltes quadratisches NetCore-Tetra-Logo mit Netzwerkmarke, Funkwellen, Wortmarke und Claim.
-2. Im Chat generierte vertikale NetCore-Tetra-Handygrafik.
+1. Ausdrücklich in den Arbeitsnotizen bereitgestelltes quadratisches NetCore-Tetra-Logo mit Netzwerkmarke, Funkwellen, Wortmarke und Claim.
+2. In den Arbeitsnotizen generierte vertikale NetCore-Tetra-Handygrafik.
 3. Nachfolgend generierte vertikale Version ohne unerwünschte untere Leiste.
 
 ### Repository
@@ -199,13 +196,13 @@ Der Chat war ein reiner Branding-/Wallpaper-Designlauf. Es wurden keine NetCore-
 - Repository: `JanHG98/netcore-tetra`
 - Archivbranch: `Archiving`
 - Aktuelles Logoasset: `crates/tetra-entities/src/net_dashboard/ui/netcore-logo.png`
-- Heutiger Default-Branch-Vergleich: `7137e0dd69877e1b604bf89148fd8b6b590c1a97`, Merge von PR #59 („NetCore-Design mit Dark Mode für Basisstation und alle Dienst-WebUIs“).
+- Am 03.10.2026 geprüfter Default-Branch-Vergleich: `7137e0dd69877e1b604bf89148fd8b6b590c1a97`, Merge von PR #59 („NetCore-Design mit Dark Mode für Basisstation und alle Dienst-WebUIs“).
 
-## 14. Auswertungslücken und Assets
+## 14. Offene Nachweise und Assets
 
-Der zugängliche Verlauf enthält die sichtbaren Chatbilder, aber die ursprünglichen Binärdateien der vom Bildgenerator erzeugten Wallpaper stehen dem GitHub-Schreibwerkzeug in diesem Archivierungslauf **nicht als direkt übertragbare Datei/Bytequelle** zur Verfügung. Deshalb darf nicht behauptet werden, dass diese generierten Wallpaper-Binärdateien vollständig ins Repository übernommen wurden.
+Die Wallpaper sind als Bildvorschauen dokumentiert. Original-Binärdateien standen für die Git-Ablage am 03.10.2026 nicht direkt zur Verfügung; eine vollständige Übernahme ins Repository ist deshalb nicht nachgewiesen.
 
-Das **kanonische NetCore-Logo selbst** ist dagegen bereits im Repository vorhanden und wurde heute im Branch `Archiving` verifiziert. Es muss daher nicht dupliziert werden.
+Das **kanonische NetCore-Logo selbst** ist dagegen bereits im Repository vorhanden und wurde am 03.10.2026 im Branch `Archiving` verifiziert. Es muss daher nicht dupliziert werden.
 
 Für eine spätere vollständige Asset-Archivierung sollten die finalen generierten Bilder, sofern wieder als Dateien verfügbar, ausschließlich unter einem Unterpfad von `Docs/archive/` abgelegt und aus diesem Dokument relativ referenziert werden.
 
@@ -220,4 +217,4 @@ Für eine spätere vollständige Asset-Archivierung sollten die finalen generier
 
 ---
 
-**Archivhinweis:** Dieses Dokument beschreibt den Abschluss dieses konkreten Wallpaper-/Branding-Chats. Es ist keine allgemeine NetCore-Tetra-Systemdokumentation und keine Bestätigung von Funk-, Backend- oder Deploymentänderungen.
+Die Notizen betreffen ausschließlich das Wallpaper- und Branding-Vorhaben.

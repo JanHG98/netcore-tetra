@@ -1,25 +1,23 @@
-# Technische Abschlussdokumentation: Flowstation SDS-Services, Gateways und Bot-Architektur
+# Brainstorming: Flowstation SDS-Services, Gateways und Bot-Architektur
 
-## 1. Metadaten und Geltungsbereich
+## 1. Rahmen und Quellenstand
 
 | Feld | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Informations-, Warn-, Telemetrie- und Automationsdienste über TETRA-SDS; Flowstation als Funkgateway und möglicher externer Service-Daemon |
-| Ursprünglicher Chattitel | Nicht zugänglich. „Flowstation SDS-Services“ ist eine beschreibende Themenbezeichnung dieser Dokumentation. |
-| Ursprünglicher Chatlink | Nicht im bereitgestellten Verlauf oder in der ergänzenden Verlaufssuche verfügbar |
 | Erstellungsdatum | 2026-10-03, Zeitzone Europe/Berlin |
-| Historischer Zeitraum | Die ergänzende Verlaufssuche ordnet die beiden Ausgangsfragen dem 2026-05-11 zu. Das ist ein indirekter Zeitnachweis; originale Chatmetadaten fehlen. |
+| Historischer Zeitraum | Indirekte zeitliche Zuordnung der Ausgangsfragen: 2026-05-11; kein vollständiger datierter Originalnachweis. |
 | Zielrepository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
-| Ausschließlicher Schreibbranch | `Archiving` |
+| Geprüfter Branch | `Archiving` |
 | Ablage | Ausschließlich `Docs/archive/` |
 | Zunächst geprüfter HEAD von `Archiving` | [`98fae39a4cb041d14e2a3633a4e36782124f79da`](https://github.com/JanHG98/netcore-tetra/commit/98fae39a4cb041d14e2a3633a4e36782124f79da) |
-| Vor der Speicherung erneut geladene Schreibbasis | `98fae39a4cb041d14e2a3633a4e36782124f79da`; vorhandener Index und Archivdateien erneut geprüft |
+| Zusätzlich abgeglichener Branchstand | `98fae39a4cb041d14e2a3633a4e36782124f79da`; vorhandener Index und Archivdateien erneut geprüft |
 | Zusätzlich geprüfter HEAD von `main` | [`6aa9be8f74ab731f72dc133a5f8e90c5018c626d`](https://github.com/JanHG98/netcore-tetra/commit/6aa9be8f74ab731f72dc133a5f8e90c5018c626d) |
 | Zusätzlich geprüftes Upstream-Repository | `razvanzeces/flowstation`, `main`, [`0f4faa98b1abe9ec295cf7a94a7a1fa4b3a869b8`](https://github.com/razvanzeces/flowstation/commit/0f4faa98b1abe9ec295cf7a94a7a1fa4b3a869b8) |
-| Historischer Code-Commit des Originalchats | Nicht überliefert; heutige Befunde werden nicht rückwirkend diesem unbekannten Stand zugeschrieben. |
+| Historischer Code-Commit des ursprünglichen Entwicklungsstands | Nicht überliefert; geprüfte Befunde werden nicht rückwirkend diesem unbekannten Stand zugeschrieben. |
 
-Diese Datei archiviert den zugänglichen SDS-Service-Chat. Sie ist kein vollständiges Projektprotokoll und keine neue Implementierung. Die ebenfalls eingeblendeten Ausschnitte anderer NetCore-Chats dienen nur der Einordnung. Daraus werden keine zusätzlichen Aufträge abgeleitet.
+Die Notizen sammeln SDS-Service-Ideen und prüfen ihre technische Grundlage. Eine neue Implementierung oder Betriebsabnahme ist damit nicht verbunden.
 
 ### Statusbegriffe
 
@@ -29,42 +27,42 @@ Diese Datei archiviert den zugänglichen SDS-Service-Chat. Sie ist kein vollstä
 | **Beschlossen/geplant** | Ausdrücklich als Ziel oder Auftrag festgelegt; noch kein Implementierungsnachweis |
 | **Implementiert** | Konkrete Logik in den genannten Repository-Dateien am angegebenen Commit geprüft |
 | **Getestet** | Ausgeführter Test mit verfügbarem Ergebnis; vorhandener Testcode allein reicht dafür nicht |
-| **Im Betrieb bestätigt** | Beobachteter erfolgreicher Ablauf im realen Netz; im zugänglichen SDS-Service-Chat nicht belegt |
+| **Im Betrieb bestätigt** | Beobachteter erfolgreicher Ablauf im realen Netz; im zugänglichen SDS-Service-Entwurf nicht belegt |
 
-Bei Kombinationen wird die Grenze ausdrücklich genannt, beispielsweise „implementiert; Tests vorhanden, hier nicht ausgeführt“. Insbesondere sind Chat-Antworten, README-Funktionslisten und ETSI-Unterlagen für sich allein kein Nachweis einer erfolgreichen Funkzustellung.
+Bei Kombinationen wird die Grenze ausdrücklich genannt, beispielsweise „implementiert; Tests vorhanden, hier nicht ausgeführt“. Insbesondere sind Konzeptbeschreibungen, README-Funktionslisten und ETSI-Unterlagen für sich allein kein Nachweis einer erfolgreichen Funkzustellung.
 
-## 2. Verfügbare Quellen und Auswertungslücken
+## 2. Verfügbare Quellen und offene Nachweise
 
-### 2.1 Direkt zugänglicher Chat
+### 2.1 Ausgangsfragen
 
-Der übertragene fachliche Verlauf enthält zwei Nutzerfragen und die dazugehörigen Antworten:
+Ausgangspunkt waren zwei Fragen:
 
 1. Welche SDS-Services lassen sich in Flowstation integrieren? Wetter wurde als bereits möglich angesprochen; weitere Interessen waren „Flugfunk“ und APRS.
 2. Die konkrete Aufforderung, [razvanzeces/flowstation](https://github.com/razvanzeces/flowstation) zu prüfen.
 
-Die erste Antwort war eine breite Ideensammlung. Die zweite behauptete eine Repository-Prüfung und empfahl einen externen „FlowStation SDS Service Daemon“. Im übertragenen Verlauf folgen keine ausdrückliche Implementierungsfreigabe, keine Patchdatei, kein Commit, keine Installation und kein erfolgreicher Funk-Test dieses Daemons.
+Der erste Ansatz war eine breite Ideensammlung. Daraus entstand der Vorschlag eines externen „FlowStation SDS Service Daemon“. Eine verbindliche Implementierungsentscheidung, ein Patch, Commit, Deployment oder erfolgreicher Funk-Test für diesen Daemon ist nicht belegt.
 
-Beide fachlichen Antworten sind im übertragenen Kontext vorhanden, teils über mehrere Übertragungsblöcke verteilt. Die erste enthält auch die abschließenden Aussagen zu Robustheit, Store-and-forward und Endgeräteunterstützung; die zweite endet mit dem Vorschlag zum Parser, Router und Rückantwortpfad. Historische Verweise wie `turn4file0`, `turn5file0` und `turn6file0` lassen sich hier nicht zu den damaligen Originalabrufen auflösen. Deshalb wurde der Code neu an festen heutigen Commits geprüft.
+Die erhaltenen Konzepte betreffen Robustheit, Store-and-forward, Endgeräteunterstützung sowie Parser, Router und Rückantwortpfad. Frühere Quellenverweise sind nicht mehr auflösbar; der Code wurde deshalb an festen Repository-Commits erneut geprüft.
 
 ### 2.2 Ergänzende Verlaufssuche
 
-Die Suche bestätigte die Ausgangsfragen und lieferte keine eindeutig belegte spätere Korrektur derselben Unterhaltung. Daneben erschienen weitere SDS-Planungsnotizen: Echo, Uhrzeit, Terminalinfo, ZKN/Watchtower sowie TetraStatus, TetraDiag, TetraAlert, TetraPrint und optional TetraGuard. Sie sind als ergänzende Fortsetzungshinweise in Abschnitt 11 erfasst. Ihre vollständigen Originalnachrichten und die eindeutige Zuordnung zu diesem Chat fehlen.
+Die Suche bestätigte die Ausgangsfragen und lieferte keine eindeutig belegte spätere Korrektur derselben Unterhaltung. Daneben erschienen weitere SDS-Planungsnotizen: Echo, Uhrzeit, Terminalinfo, ZKN/Watchtower sowie TetraStatus, TetraDiag, TetraAlert, TetraPrint und optional TetraGuard. Sie sind als ergänzende Fortsetzungshinweise in Abschnitt 11 erfasst. Ihre vollständigen Originalnachrichten und die eindeutige Zuordnung zu dieser Entwicklungsphase fehlen.
 
-Andere Suchtreffer nannten Remote-Restart, PEI-over-IP, MQTT-/REST-Bridges und einen älteren WX/METAR-Funktionsstand. Diese Hinweise ersetzen keine Quellcodeprüfung und werden nicht als neue endgültige Entscheidungen dieses Chats ausgegeben. Ein älteres Handbuch und ein unspezifisch benannter Textanhang aus der Suche wurden nicht als aktuelle Implementierungsbelege verwendet.
+Andere Suchtreffer nannten Remote-Restart, PEI-over-IP, MQTT-/REST-Bridges und einen älteren WX/METAR-Funktionsstand. Diese Hinweise ersetzen keine Quellcodeprüfung und werden nicht als neue endgültige Entscheidungen dieses Vorhabens ausgegeben. Ein älteres Handbuch und ein unspezifisch benannter Textanhang aus der Suche wurden nicht als aktuelle Implementierungsbelege verwendet.
 
 ### 2.3 Zugängliche Anhänge
 
 Alle 25 bereitgestellten PDF-Dateien waren lokal lesbar. Ihre Titelseiten wurden zur Identifizierung geprüft. Vier unmittelbar relevante Normen wurden für gezielte Textprüfung extrahiert; insbesondere wurden SDS-Dienstbeschreibung, SDS-TL und Textnachrichten in EN 300 392-2 geprüft. Eine vollständige Lektüre aller Normen, eine Prüfung neuerer Normfassungen oder eine Konformitätsbewertung ist nicht erfolgt.
 
-Nicht verfügbar sind originale Chatlinks, sämtliche möglicherweise nicht übertragenen Nachrichten, ein damaliger Commit-Snapshot, reale Geräte- und Dienstkonfigurationen, Laufzeitlogs sowie Nachweise aus dem Live-Netz. Die Vollständigkeit gilt ausschließlich für den tatsächlich zugänglichen Inhalt.
+Nicht verfügbar sind ein vollständiges frühes Arbeitsprotokoll, ein damaliger Commit-Snapshot, reale Geräte- und Dienstkonfigurationen, Laufzeitlogs sowie Nachweise aus dem Live-Netz. Die Vollständigkeit gilt ausschließlich für den tatsächlich zugänglichen Inhalt.
 
-## 3. Ziel, Ausgangslage und Ergebnis des historischen Chats
+## 3. Ziel, Ausgangslage und Ergebnis des historischen Entwicklungsstands
 
 ### 3.1 Ziel
 
 Flowstation sollte als Schnittstelle zwischen TETRA-SDS und externen Informations- oder Automationsdiensten bewertet werden. Ein Funkgerät könnte kurze Kommandos senden, ein Dienst Daten abrufen oder eine Aktion ausführen und eine kompakte SDS an den Absender zurückgeben. Zusätzlich wurden Push-Meldungen an einzelne ISSIs oder Gruppen-GSSIs diskutiert.
 
-### 3.2 Damalige Ausgangslage laut Chat
+### 3.2 Historische Ausgangslage
 
 Die damalige Antwort beschrieb Flowstation als Rust-Projekt auf Basis von tetra-bluestation mit:
 
@@ -76,27 +74,26 @@ Die damalige Antwort beschrieb Flowstation als Rust-Projekt auf Basis von tetra-
 - einem WebSocket-Kommando `"sds"`, das `ControlCommand::SendSds` erzeugt;
 - hart gesetzter Absender-SSI `9999` im betreffenden Dashboard-Pfad.
 
-Diese Aussagen sind historische Chatbefunde ohne damalige Commitbindung. Die wichtigen Schnittstellen und die Upstream-Absenderadresse wurden am heute zugänglichen Upstream-Code erneut bestätigt. NetCore verwendet inzwischen andere lokale Systemadressen; siehe Abschnitt 7.
+Diese historischen Annahmen besitzen keine damalige Commitbindung. Die wichtigen Schnittstellen und die Upstream-Absenderadresse wurden am 03.10.2026 zugänglichen Upstream-Code erneut bestätigt. NetCore verwendet inzwischen andere lokale Systemadressen; siehe Abschnitt 7.
 
 ### 3.3 Tatsächliches historisches Ergebnis
 
-**Status: technische Ideensammlung und Architekturvorschlag.** Der Nutzer beauftragte die Machbarkeitsprüfung, nicht den Einbau der gesamten Liste. Eine verbindliche Providerwahl, ein fertiges Plugin-System oder eine feste Implementierungsreihenfolge sind nicht belegt.
+**Status: technische Ideensammlung und Architekturvorschlag.** Festgelegt war die Machbarkeitsprüfung; die gesamte Ideenliste besitzt keine Umsetzungsfreigabe. Eine verbindliche Providerwahl, ein fertiges Plugin-System oder eine feste Implementierungsreihenfolge sind nicht belegt.
 
-Die Empfehlung lautete: Fachlogik in einen externen Daemon auslagern, SDS im Funkstack empfangen und dekodieren, Kommandos routen, Service ausführen, Ergebnis formatieren und über den vorhandenen Control-Versandpfad zurücksenden. Die Aussage „Parser, Service-Router und Rückantwort fehlen“ muss heute differenziert werden: Für WX/METAR existiert dieser Ablauf bereits; ein universeller Bot für die gesamte Liste ist weiterhin nicht nachgewiesen.
+Die Empfehlung lautete: Fachlogik in einen externen Daemon auslagern, SDS im Funkstack empfangen und dekodieren, Kommandos routen, Service ausführen, Ergebnis formatieren und über den vorhandenen Control-Versandpfad zurücksenden. Die Aussage „Parser, Service-Router und Rückantwort fehlen“ muss am 03.10.2026 differenziert werden: Für WX/METAR existiert dieser Ablauf bereits; ein universeller Bot für die gesamte Liste ist weiterhin nicht nachgewiesen.
 
 ## 4. Anforderungen, Entscheidungen und Begründungen
 
 | Punkt | Historischer Status | Begründung bzw. Grenze |
 |---|---|---|
 | SDS als Kanal für kurze Abfragen und Antworten | Idee/Machbarkeit untersucht | Kleine Text- und Datenpakete passen zum SDS-Bearer; konkrete Antwortlängen und Kodierung müssen zum Endgerät passen. |
-| Wetter als Einstieg | Nutzer nannte Wetter als bereits möglich | Heute durch WX-/METAR-Code belegbar, jedoch ohne Betriebsnachweis dieses Chats |
+| Wetter als Einstieg | Wetter als bereits mögliche Funktion genannt | Am 03.10.2026 durch WX-/METAR-Code belegbar, jedoch ohne Betriebsnachweis dieses Vorhabens |
 | APRS und Luftfahrtinformationen | Ausdrückliches Nutzerinteresse | Technischer Umfang wurde noch nicht verbindlich festgelegt. |
-| Externer SDS-Service-Daemon | Empfehlung des Assistenten | Externe APIs, Caching und Fachlogik sollen getrennt vom zeitkritischen Funkstack arbeiten. Keine endgültige Architekturfreigabe überliefert. |
+| Externer SDS-Service-Daemon | Architekturvorschlag | Externe APIs, Caching und Fachlogik sollen getrennt vom zeitkritischen Funkstack arbeiten. Keine endgültige Architekturfreigabe überliefert. |
 | Modularer Service-Router/Plugins | Architekturidee | Erweiterbarkeit für Wetter, APRS, ADS-B, Pegel, Monitoring und Alarme |
-| Antwort an die ursprüngliche Absender-ISSI | Bestandteil des Vorschlags | Erforderlich für brauchbares Request/Response; heute für WX konkret implementiert |
+| Antwort an die ursprüngliche Absender-ISSI | Bestandteil des Vorschlags | Erforderlich für brauchbares Request/Response; am 03.10.2026 für WX konkret implementiert |
 | Push an ISSI/GSSI | Idee | Geeignet für Warnungen und Ereignisse; darf nicht mit vorhandenen Dienstpfaden doppelt aufgebaut werden. |
-| Statuswerte `40001–40007` als Shortcuts | Beispiel des Assistenten | Keine bestätigte Belegung und keine ETSI-standardisierten Funktionsnamen |
-| Änderungen und Speicherung dieser Abschlussdokumentation | Beschlossen/beauftragt | Ausschließlich Archivdatei und Archivindex auf dem vorhandenen Branch `Archiving`; kein Merge, kein Force-Push, keine Produktivcodeänderung |
+| Statuswerte `40001–40007` als Shortcuts | Beispielvorschlag | Keine bestätigte Belegung und keine ETSI-standardisierten Funktionsnamen |
 
 Es wurde kein SDS-Service ausdrücklich verworfen. Die Reihenfolge „einfach / gut machbar / wild“ aus der Antwort ist eine grobe Einschätzung, keine belastbare Aufwandsschätzung.
 
@@ -104,9 +101,9 @@ Es wurde kein SDS-Service ausdrücklich verworfen. Die Reihenfolge „einfach / 
 
 Alle Beispiele in diesem Abschnitt sind historische Bedienideen, keine automatisch verfügbaren Befehle. Konkrete Datenwerte in Beispielantworten waren illustrativ.
 
-| Bereich | Genannte Funktionen, Quellen und Kommandos | Heutige Einordnung |
+| Bereich | Genannte Funktionen, Quellen und Kommandos | Am 03.10.2026 geprüfte Einordnung |
 |---|---|---|
-| Wetter und Umwelt | DWD/WarnWetter, aktuelle Bedingungen, Regenradarstatus, Wind-/Gewitter-/Unwetterwarnungen, UV-Index, Sonnenauf-/untergang; `WX HAMBURG` | WX/METAR vorhanden; diese komplette Umwelt-Liste nicht implementiert nachgewiesen |
+| Wetter und Umwelt | DWD/WarnWetter, aktuelle Bedingungen, Regenradarstatus, Wind-/Gewitter-/Unwetterwarnungen, UV-Index, Sonnenauf-/untergang; `WX HAMBURG` | WX/METAR vorhanden; diese komplette Umwelt-Liste Implementierung nicht nachgewiesen |
 | Pegel/Hochwasser | Pegelstand, Trend und Warnungen; `WATERLEVEL` | Eigenständiger Abfragedienst nicht nachgewiesen; Warnfeed und Live-Pegelabfrage sind verschiedene Funktionen. |
 | Luftfahrt | Lokales ADS-B mit dump1090/readsb/tar1090; `PLANE`, `PLANE OVERHEAD`; Kennung, Typ, Höhe, Kurs, Entfernung | Idee; kein geprüfter SDS-ADS-B-Handler |
 | APRS | APRS-IS, aprs.fi oder lokaler SDR; `APRS DB0ABC`, `APRS NEAR`; Position, Bewegung, Alter; automatische APRS→SDS-Übertragung | Abfragen und Gegenrichtung offen; vorhandener Brew-LIP→APRS-IS-Pfad ist gesondert dokumentiert. |
@@ -118,7 +115,7 @@ Alle Beispiele in diesem Abschnitt sind historische Bedienideen, keine automatis
 | KI/Diagnose | `ASK Warum ist Node04 offline?`, `LOG LAST`; kurze Logdiagnose und Automationshilfe | Idee; kein SDS-KI-Handler geprüft, keine Verlässlichkeit einer automatischen Ursachenbehauptung belegt |
 | Kameras/Sensorik | `CAM NODE04`, Snapshot-Link oder Kurzstatus, Temperatur-/Wasserstandsabfragen | Idee; große Bilddaten gehören nicht in einen einzelnen SDS-Text. |
 | Hilfe/Command-Menü | `HELP` mit WX/APRS/PLANE/NET/PING/GPS/NODE/ALERT; Serviceentdeckung am Funkgerät | Universelles Menü offen; der vorhandene WX-Parser ignoriert HELP. |
-| Monitoring-/Softwareintegration | Uptime Kuma, Prometheus, Grafana, GitLab/Gitea-Deploystatus, Home Assistant, OPNsense, Paperless, Pretix, FreePBX | Integrationsideen; MQTT/Home-Assistant-Grundlagen heute vorhanden, konkrete SDS-Adapter dieser gesamten Liste nicht bestätigt |
+| Monitoring-/Softwareintegration | Uptime Kuma, Prometheus, Grafana, GitLab/Gitea-Deploystatus, Home Assistant, OPNsense, Paperless, Pretix, FreePBX | Integrationsideen; MQTT/Home-Assistant-Grundlagen am 03.10.2026 vorhanden, konkrete SDS-Adapter dieser gesamten Liste nicht bestätigt |
 | Webhooks | SDS→Webhook und Webhook→SDS; manuelle SDS über Dashboard/API | SDS-Versand/API vorhanden; allgemeine Webhook-Bridge mit Ingress/Antwortkorrelation offen |
 | Weitere SDR-Daten | AIS, Pager, APRS, ADS-B, Wettersonden, Satelliten, LoRa, PMR-Scan, DMR-Beacons | Als Datendienst-Ideen erwähnt; kein Implementierungs- oder Betriebsnachweis dieser Adapter |
 | Spielerische Automation | Kaffeemaschinenstatus mit `COFFEE`, Tier-/Raumstatus mit `CAT` | Nebenideen; die damalige „Bürokatze Dagur“-Formulierung war sachlich falsch: Dagur ist Jans Hund. |
@@ -141,7 +138,7 @@ PING
 GPS
 ```
 
-**Status: Idee.** `WX` ohne Ortsangabe war in der Startliste enthalten. Der heute geprüfte WX-Parser akzeptiert dagegen nur `WX <location>` oder `METAR <ICAO>`; ein nacktes `WX` ist damit kein bestätigter Aufruf.
+**Status: Idee.** `WX` ohne Ortsangabe war in der Startliste enthalten. Der am 03.10.2026 geprüfte WX-Parser akzeptiert dagegen nur `WX <location>` oder `METAR <ICAO>`; ein nacktes `WX` ist damit kein bestätigter Aufruf.
 
 ### 6.2 Vorgeschlagene Status-Shortcuts
 
@@ -157,7 +154,7 @@ GPS
 
 Diese Tabelle ist kein gültiger NetCore-Adressplan. Eine **Ziel-ISSI** bezeichnet den Empfänger, ein **pre-coded Statuswert** die in U-STATUS/D-STATUS übertragene Information. Dieselbe Zahl kann in beiden Feldern vorkommen und hat dann eine andere Bedeutung. Auch ein Text `STATUS 40004` ist ohne Parser kein U-STATUS-Paket.
 
-Der eigenständige Wetter-Archivchat nennt `40004` als Beispiel einer Serviceadresse. Das ist eine andere Verwendung derselben Zahl und begründet keine Reservierung. Vor Umsetzung müssen Service-ISSIs, Status-Shortcuts und vorhandene Systemadressen gemeinsam abgeglichen werden.
+Der eigenständige Wetter-Entwicklungsnotizen nennt `40004` als Beispiel einer Serviceadresse. Das ist eine andere Verwendung derselben Zahl und begründet keine Reservierung. Vor Umsetzung müssen Service-ISSIs, Status-Shortcuts und vorhandene Systemadressen gemeinsam abgeglichen werden.
 
 ## 7. Zusätzlich geprüfter Repository-Stand am 2026-10-03
 
@@ -180,7 +177,7 @@ Relevante Pfade:
 - `crates/tetra-pdus/src/cmce/pdus/u_sds_data.rs` und `d_sds_data.rs`: Luftschnittstellen-PDUs;
 - `crates/tetra-saps/src/control/enums/sds_user_data.rs`: SDS-Nutzdatenmodell.
 
-`SendSds` enthält mehr als die im historischen Chat verkürzt genannten Felder:
+`SendSds` enthält mehr als die im historischen Entwicklungsstand verkürzt genannten Felder:
 
 ```rust
 SendSds {
@@ -193,7 +190,7 @@ SendSds {
 }
 ```
 
-Das ist eine verkürzte Wiedergabe der tatsächlich geprüften Enum-Variante, keine neue API. `SendRawSdsType4` und das heutige zentrale `DeliverSds` haben jeweils andere Zuständigkeiten. Raw-Type-4-Nutzdaten dürfen nicht unbeabsichtigt ein zweites Mal als Text/SDS-TL verpackt werden. Statusversand besitzt den eigenen `SendStatus`-Pfad.
+Das ist eine verkürzte Wiedergabe der tatsächlich geprüften Enum-Variante, keine neue API. `SendRawSdsType4` und das geprüfte zentrale `DeliverSds` haben jeweils andere Zuständigkeiten. Raw-Type-4-Nutzdaten dürfen nicht unbeabsichtigt ein zweites Mal als Text/SDS-TL verpackt werden. Statusversand besitzt den eigenen `SendStatus`-Pfad.
 
 Der historische Hinweis auf `crates/tetra-saps/src/control/` beschreibt eine Schnittstellenfamilie; die konkrete `ControlCommand`-Definition liegt im geprüften Code unter `net_control/commands.rs`.
 
@@ -210,7 +207,7 @@ Der ausgewertete WebSocket-Zweig setzt `dest_is_group: false`. Dass die allgemei
 
 ### 7.4 WX-/METAR-Dienst ist bereits eingebaut
 
-**Status: implementiert auf beiden geprüften NetCore-Snapshots und im geprüften Upstream; kein Betriebsnachweis dieser Archivierung.**
+**Status: implementiert auf beiden geprüften NetCore-Snapshots und im geprüften Upstream; kein Betriebsnachweis der Quellenprüfung vom 03.10.2026.**
 
 Geprüfte Funktionen und Dateien:
 
@@ -318,7 +315,7 @@ Der Dienst arbeitet mit individuellen, positionsbezogenen Warnungen, dauerhafter
 
 ### 7.7 APRS: vorhandener Teilpfad, fehlender Abfragebot
 
-**Status: LIP→APRS-IS-Forwarder im mitgeführten Brew-Server implementiert; heutiger Betrieb nicht bestätigt.**
+**Status: LIP→APRS-IS-Forwarder im mitgeführten Brew-Server implementiert; geprüfter Betrieb nicht bestätigt.**
 
 `misc/brew-server/src/aprs.rs` nimmt dekodierte TETRA-LIP-Positionen entgegen, entkoppelt sie über eine Queue und sendet APRS-Objektberichte über eine wiederverbindende APRS-IS-Verbindung. Das ist **keine** Implementierung von `APRS <CALL>`, `APRS NEAR` oder APRS→SDS-Rückantworten.
 
@@ -335,7 +332,7 @@ Die Existenz unter `misc/brew-server/` beweist weder, dass der in Jans Netz lauf
 
 ### 7.9 Statusübersicht
 
-| Funktion | Historischer Chat | Heutiger Nachweis |
+| Funktion | Historischer Entwicklungsstand | Am 03.10.2026 geprüfter Nachweis |
 |---|---|---|
 | SDS RF/lokal/Brew/Control | Als vorhanden beschrieben | konkrete SDS-/Control-Logik geprüft |
 | Dashboard-SDS | Als vorhanden beschrieben, Quelle `9999` | Upstream bestätigt; NetCore verwendet `4010001` |
@@ -349,7 +346,7 @@ Die Existenz unter `misc/brew-server/` beweist weder, dass der in Jans Netz lauf
 | HELP/PING im WX-Dienst | als mögliche Kommandos vorgeschlagen | Parser ignoriert diese bewusst |
 | Status→IP/Temperatur/Info | Monitoringidee | lokaler Status-Kommandopfad vorhanden |
 | Vollständiger Plugin-/Bot-Katalog | Idee | keine entsprechende fertige Implementierung nachgewiesen |
-| Erfolgreicher Daemon-/TBS-/MS-Livetest dieses Chats | keiner überliefert | keiner durchgeführt |
+| Erfolgreicher Daemon-/TBS-/MS-Livetest dieses Vorhabens | keiner überliefert | keiner durchgeführt |
 
 Negativaussagen beziehen sich auf den beschriebenen Prüfumfang. Es wurde nicht jede Datei des gesamten Projekts inhaltlich untersucht und keine exhaustive Git-Historienanalyse ausgeführt.
 
@@ -373,13 +370,13 @@ Negativaussagen beziehen sich auf den beschriebenen Prüfumfang. Es wurde nicht 
 
 Router-Beispielparameter: Default-TTL `300 s`, maximale TTL `86400 s`, maximal `5` Versuche, Retry zunächst `2 s` bis `60 s`, Deduplikationsfenster `30 s`, Presence-Timeout `90 s`. Die HTTP-Body-Grenze von `2097152` Bytes und interne Payload-Grenze von `2048` Bytes sind **keine** zulässige Größe einer einzelnen TETRA-Type-4-Luftnachricht.
 
-Das geprüfte Router-Beispiel läuft als `open_lab` ohne Benutzerkonten, Token oder TLS. Das ist ein realer Konfigurationsbefund und begrenzt seine Eignung als frei erreichbares Anwendungsgateway. Eine spätere Dienstidentitäts-/RBAC-Integration ist als Fortsetzungspunkt aufzunehmen, nicht als in diesem Chat fertiggestellt auszugeben.
+Das geprüfte Router-Beispiel läuft als `open_lab` ohne Benutzerkonten, Token oder TLS. Das ist ein realer Konfigurationsbefund und begrenzt seine Eignung als frei erreichbares Anwendungsgateway. Eine spätere Dienstidentitäts-/RBAC-Integration ist als Fortsetzungspunkt aufzunehmen, nicht als in dieser Entwicklungsphase fertiggestellt auszugeben.
 
 ## 9. Fehler, Diagnose, Lösungen und verbleibende technische Probleme
 
-### 9.1 Keine ursprüngliche Fehlerbehebung in diesem Chat
+### 9.1 Keine ursprüngliche Fehlerbehebung in dieser Entwicklungsphase
 
-Im historischen SDS-Service-Chat wurde kein Fehlerlog analysiert und kein reparierter Betriebsablauf dokumentiert. Die folgenden Punkte stammen aus der heutigen Codeprüfung und werden deshalb nicht als damalige Nutzerstörungen ausgegeben.
+Im historischen SDS-Service-Entwurf wurde kein Fehlerlog analysiert und kein reparierter Betriebsablauf dokumentiert. Die folgenden Punkte stammen aus der geprüften Codeprüfung und werden deshalb nicht als damalige Nutzerstörungen ausgegeben.
 
 ### 9.2 Schutz vor WX-Antwortschleifen
 
@@ -391,14 +388,14 @@ Die geprüfte Lösung ist `is_sds_tl_report`: mindestens vier Bytes, PID `0x82` 
 
 ### 9.3 Überholte Aussagen und Kommentare
 
-- „Inbound-Parser und Rückantwort fehlen“: für einen allgemeinen Bot noch nicht nachgewiesen, für WX/METAR heute überholt.
-- „WX/METAR benötigt zwingend einen externen Daemon“: heute falsch; vorhandener Dienst läuft in der TBS.
+- „Inbound-Parser und Rückantwort fehlen“: für einen allgemeinen Bot noch nicht nachgewiesen, für WX/METAR am 03.10.2026 überholt.
+- „WX/METAR benötigt zwingend einen externen Daemon“: am 03.10.2026 falsch; vorhandener Dienst läuft in der TBS.
 - „Quelle ist immer 9999“: trifft auf den geprüften Upstream-Dashboard-Zweig zu; NetCore setzt dort `4010001`.
-- „LROP allein löst Wetter aus“: veraltete Kommentare; heutiger Parser und Negativtest ignorieren nackte ICAO-Eingaben.
-- „Alle Funkgeräte können jedes Beispiel anzeigen“: aus dem Chat nicht ableitbar; Emoji/Unicode und konkrete SDS-TL-Profile sind geräteabhängig zu prüfen.
+- „LROP allein löst Wetter aus“: veraltete Kommentare; geprüfter Parser und Negativtest ignorieren nackte ICAO-Eingaben.
+- „Alle Funkgeräte können jedes Beispiel anzeigen“: aus den Arbeitsnotizen nicht ableitbar; Emoji/Unicode und konkrete SDS-TL-Profile sind geräteabhängig zu prüfen.
 - „SDS funktioniert auch bei schlechtem Netz garantiert“: keine belastbare Zustellgarantie; Erreichbarkeit, Funkressourcen, Retry/TTL und Reports müssen berücksichtigt werden.
 
-Die verwandte [Wetter-Archivdatei](2026-10-03_flowstation-wetterdaten-sds-weatherbot.md) enthält die Aussage, allgemeine Wetterdaten und ein WX-Abfragepfad seien nicht nachgewiesen. Die hier geprüften Dateien belegen einen wttr.in-WX-Pfad mit Rückantwort. Das ist ein sachlicher Widerspruch im aktuellen Archivbestand. Diese andere Chatdatei wurde in diesem Auftrag nicht überschrieben; eine spätere gezielte Korrektur sollte interaktive allgemeine WX-Daten von einem noch offenen DWD-/Forecast-WeatherBot unterscheiden.
+Die verwandte [Wetter-Archivdatei](2026-10-03_flowstation-wetterdaten-sds-weatherbot.md) enthält die Aussage, allgemeine Wetterdaten und ein WX-Abfragepfad seien nicht nachgewiesen. Die hier geprüften Dateien belegen einen wttr.in-WX-Pfad mit Rückantwort. Das ist ein sachlicher Widerspruch im aktuellen Archivbestand. Diese andere Quelldatei wurde bei der Quellenprüfung nicht überschrieben; eine spätere gezielte Korrektur sollte interaktive allgemeine WX-Daten von einem noch offenen DWD-/Forecast-WeatherBot unterscheiden.
 
 ### 9.4 Offene Implementierungsfragen
 
@@ -416,7 +413,7 @@ Die verwandte [Wetter-Archivdatei](2026-10-03_flowstation-wetterdaten-sds-weathe
 
 ### 10.1 Historisch tatsächlich ausgeführt
 
-Keine Installation, kein Deployment, keine Reparatur und kein erfolgreicher Test eines SDS-Service-Daemons ist im ursprünglichen Chat belegt. Die damalige Repository-Inspektion wurde behauptet, aber ihre Originaltool-Ausgaben/Commitbindung sind hier nicht vollständig verfügbar.
+Keine Installation, kein Deployment, keine Reparatur und kein erfolgreicher Test eines SDS-Service-Daemons ist im ursprünglichen Entwicklungsstand belegt. Die damalige Repository-Inspektion wurde behauptet, aber ihre Originaltool-Ausgaben/Commitbindung sind hier nicht vollständig verfügbar.
 
 ### 10.2 Für diese Archivierung tatsächlich durchgeführt
 
@@ -424,7 +421,7 @@ Keine Installation, kein Deployment, keine Reparatur und kein erfolgreicher Test
 
 Zwei zunächst angenommene Quellpfade lieferten 404, weil `tetra-config/src/bluestation.rs` modularisiert unter `bluestation/` liegt und Telemetrie unter `tetra-entities/src/net_telemetry/events.rs` definiert ist. Die korrekten Pfade wurden über den Git-Baum ermittelt und gelesen. Das waren Recherchefehler, keine Fehler des Projekts.
 
-Es wurden keine externen Wetter-/APRS-/ADS-B-Provider aufgerufen, keine produktiven SDS gesendet und keine TBS, LXC oder VM verändert. Die ausgeführten Dokumentprüfungen werden beim Speichern separat bewertet; sie sind keine Funktionsabnahme des SDS-Stacks.
+Für diese Quellenprüfung wurden keine externen Wetter-/APRS-/ADS-B-Provider aufgerufen und keine produktiven SDS gesendet. Die Befunde liefern keine Funktionsabnahme des SDS-Stacks.
 
 ### 10.3 Vorhandene Installations-/Startbefehle, hier nicht ausgeführt
 
@@ -443,28 +440,28 @@ cargo run -p netcore-sds-router -- --config /etc/netcore/sds-router.toml
 
 Die Kopieranweisung ist ein Ersteinrichtungsbeispiel und darf bei späterer Fortsetzung keine vorhandene Betriebsdatei unbesehen ersetzen. Installer, Updater und Uninstaller liegen unter `system-backend/sds-router/install/`; die Unit verwendet den genannten persistenten Konfigurationspfad.
 
-Für den vorgeschlagenen universellen SDS-Service-Daemon gibt es in diesem Chat keinen erfolgreich ausgeführten Installationsbefehl, keine definierte systemd-Unit und keinen festgelegten Runtime-Stack. Die Beispielstruktur `/services/weather.py`, `/services/aprs.py`, `/services/adsb.py`, `/services/netmon.py`, `/services/alerts.py` war eine Modulskizze, keine nachgewiesene Projektstruktur.
+Für den vorgeschlagenen universellen SDS-Service-Daemon gibt es in dieser Entwicklungsphase keinen erfolgreich ausgeführten Installationsbefehl, keine definierte systemd-Unit und keinen festgelegten Runtime-Stack. Die Beispielstruktur `/services/weather.py`, `/services/aprs.py`, `/services/adsb.py`, `/services/netmon.py`, `/services/alerts.py` war eine Modulskizze, keine nachgewiesene Projektstruktur.
 
 ### 10.4 Im Repository vorhandene Tests, hier nicht ausgeführt
 
 | Testbereich | Gelesene Beispiele | Aussagegrenze |
 |---|---|---|
-| WX-Parser/Decoder/TOML | `request_metar_prefix`, `request_wx_prefix`, `request_only_two_commands`, `decode_basic`, `decode_gust_and_negative_temp`, `write_toml_replace_section` | Tests vorhanden; keine Ausführung oder Providerabnahme in diesem Auftrag |
+| WX-Parser/Decoder/TOML | `request_metar_prefix`, `request_wx_prefix`, `request_only_two_commands`, `decode_basic`, `decode_gust_and_negative_temp`, `write_toml_replace_section` | Tests vorhanden; keine Ausführung oder Providerabnahme bei der Quellenprüfung |
 | SDS lokal/Brew/Gruppen | `test_sds_local_delivery`, `test_sds_brew_forward`, `test_sds_from_brew_to_local`, `test_sds_group_delivery` | Testcode vorhanden; kein aktuelles PASS behauptet |
 | Funkzustand/Energy Economy | `test_sds_to_in_call_ms_is_deferred_then_delivered_on_mcch`, `test_sds_to_ee_ms_defers_until_monitoring_window` | decken modellierte Stackzustände ab, keine gemessene Funkzustellung |
 | Status-Kommandos | `test_u_status_command_ip_replies_to_authorized`, `test_u_status_command_unauthorized_no_reply` | einschließlich historischer Zieladressierung prüfen |
 | Router | `text_message_is_wrapped_as_sds_tl_type4`, `fixed_size_sds_rejects_non_exact_payload_length`, `durable_idempotency_survives_restart_conflicts_and_deletion`, `at_most_once_never_retransmits_after_restart_or_disconnect` | relevante Testfälle vorhanden; hier nicht ausgeführt |
 | Statische Routerprüfung | `tools/check_sds_router.py` | Struktur-/Quelltextprüfung, kein gleichwertiger Integrationstest |
 
-Da dieser Auftrag ausschließlich Dokumentation ändert, wurde kein Cargo-Build und keine bestehende Funktionstest-Suite gestartet. Neue Testfälle wurden nicht als Scheinnachweis hinzugefügt.
+Da die Dokumentation ausschließlich Dokumentation ändert, wurde kein Cargo-Build und keine bestehende Funktionstest-Suite gestartet. Neue Testfälle wurden nicht als Scheinnachweis hinzugefügt.
 
 ## 11. Ergänzende SDS-Fortsetzungshinweise aus der Verlaufssuche
 
-Diese Punkte stammen aus indirekten Suchtreffern zu weiteren SDS-Planungsdiskussionen. Sie sind **keine eindeutig nachgewiesene spätere Freigabe dieses Originalchats**:
+Diese Punkte stammen aus indirekten Suchtreffern zu weiteren SDS-Planungsdiskussionen. Sie sind **keine eindeutig nachgewiesene spätere Freigabe dieses ursprünglichen Entwicklungsstands**:
 
 | Bezeichnung/Idee | Indirekt genannter Wert oder Inhalt | Weiterer Klärungsbedarf |
 |---|---|---|
-| Echo/Uhrzeit | kurze Rückantwort/Zeitauskunft | Syntax, Adresse und heutige Umsetzung unbekannt |
+| Echo/Uhrzeit | kurze Rückantwort/Zeitauskunft | Syntax, Adresse und geprüfte Umsetzung unbekannt |
 | Terminalinfo | Geräte-/Teilnehmerauskunft | Registry/Directory-Quelle und Berechtigungen bestimmen |
 | ZKN/Watchtower | Status-/Überwachungsdienste | fachlichen Umfang im Originalkontext prüfen |
 | TetraStatus | `40010` | Zahlenrolle/Reservierung nicht gesichert |
@@ -472,14 +469,14 @@ Diese Punkte stammen aus indirekten Suchtreffern zu weiteren SDS-Planungsdiskuss
 | TetraAlert | `40032` | mit vorhandenem Alert Service abgleichen |
 | TetraPrint | `40033` | Druckworkflow, Empfänger und Freigaben im Originalkontext prüfen |
 | TetraGuard, optional | `40034` | Funktion und Berechtigung offen |
-| Remote-Restart | anderer Chat: U-STATUS `50005`, historisch an `9999` | heutige Systemadresse und konkrete Konfiguration prüfen; nicht als SDS-Textkommando übernehmen |
+| Remote-Restart | angrenzende Entwicklungsnotiz: U-STATUS `50005`, historisch an `9999` | geprüfte Systemadresse und konkrete Konfiguration prüfen; nicht als SDS-Textkommando übernehmen |
 | PEI-over-IP/MQTT/REST | zusätzliche Gateways und Transportbrücken | von bereits vorhandenen Control-/Router-/IoT-Schnittstellen abgrenzen |
 
 Die Zahlen werden bewusst nicht in die historische Tabelle `40001–40007` eingemischt. Dazu fehlen Original-Adressplan und nachgewiesene endgültige Festlegungen.
 
 ## 12. Roadmap-Kandidaten und konkrete nächste Schritte
 
-Keine verbindliche neue Priorität oder Frist wurde im historischen Chat vereinbart. Die folgende Reihenfolge ist eine **heutige technische Empfehlung auf Basis des geprüften Stands**, kein bereits zugesagter Implementierungsplan. Sie wird ausschließlich hier im Archiv erfasst.
+Keine verbindliche neue Priorität oder Frist wurde im historischen Entwicklungsstand vereinbart. Die folgende Reihenfolge ist eine **geprüfte technische Empfehlung auf Basis des geprüften Stands**, kein bereits zugesagter Implementierungsplan. Sie wird ausschließlich hier im Archiv erfasst.
 
 1. **Adressplan und wirksame Konfiguration prüfen.** Code-Defaults, Repository-`config.toml`, Runtime-Overrides und tatsächlich betriebene TBS abgleichen. Service-ISSIs, U-STATUS-Shortcuts und `4010001` gemeinsam dokumentieren. Voraussetzung für kollisionsfreies Routing.
 2. **Vorhandene Bausteine als Basis verwenden.** SDS Router/Application-Outbox, lokaler WX-Dienst, Alert Service und IoT Gateway gegen die gewünschten Fachfunktionen abgrenzen. Einen neuen Daemon nur für die noch fehlende Fachlogik vorsehen.
@@ -522,15 +519,15 @@ Die folgenden Links verweisen auf feste geprüfte Commits. Sie bleiben von spät
 | [SDS-Tests](https://github.com/JanHG98/netcore-tetra/blob/98fae39a4cb041d14e2a3633a4e36782124f79da/crates/tetra-entities/tests/test_sds_bs.rs) | vorhandene lokale/Brew-/Status-/EE-Testfälle |
 | [Flowstation README](https://github.com/razvanzeces/flowstation/blob/0f4faa98b1abe9ec295cf7a94a7a1fa4b3a869b8/README.md) | Upstream-Herkunft, Dashboard, Funktionsliste |
 | [Flowstation Dashboard](https://github.com/razvanzeces/flowstation/blob/0f4faa98b1abe9ec295cf7a94a7a1fa4b3a869b8/crates/tetra-entities/src/net_dashboard/server.rs) | Upstream-SDS-Absender `9999` |
-| [Flowstation WX-Service](https://github.com/razvanzeces/flowstation/blob/0f4faa98b1abe9ec295cf7a94a7a1fa4b3a869b8/crates/tetra-entities/src/net_dashboard/wx_service.rs) | heutiger Upstream-WX-/METAR-Parser |
+| [Flowstation WX-Service](https://github.com/razvanzeces/flowstation/blob/0f4faa98b1abe9ec295cf7a94a7a1fa4b3a869b8/crates/tetra-entities/src/net_dashboard/wx_service.rs) | geprüfter Upstream-WX-/METAR-Parser |
 
 Weiter gelesen: Router-Dokumente `docs/architecture.md` und `docs/application-routing.md`, `src/gateway.rs`, `systemd/netcore-sds-router.service`, `install/install.sh`, `tools/check_sds_router.py`, NetCore-Dashboard-Konfiguration und Telemetrie-Events. Die tatsächlichen Zugangsdaten aus Konfigurationen wurden nicht in dieses Dokument übernommen.
 
-Es gibt keinen im Originalchat belegten Implementierungs-PR oder Release für den vorgeschlagenen Daemon. Andere Projekt-PRs werden deshalb nicht als Nachweis dieser Umsetzung angeführt. Der neue Archivcommit ist über die Git-Historie dieser Datei und die Abschlussmeldung identifizierbar; eine Datei kann ihre eigene resultierende Commit-SHA nicht sinnvoll vorab enthalten.
+Es gibt keinen im ursprünglichen Entwicklungsstand belegten Implementierungs-PR oder Release für den vorgeschlagenen Daemon. Andere Projekt-PRs werden deshalb nicht als Nachweis dieser Umsetzung angeführt.
 
 ### 13.2 Normenbestand und tatsächlicher Prüfumfang
 
-| Anhang | Identifikation anhand der Titelseite | Verwendung in dieser Archivierung |
+| Anhang | Identifikation anhand der Titelseite | Verwendung bei der Quellenprüfung vom 03.10.2026 |
 |---|---|---|
 | `en_3003920308v010401p.pdf` | EN 300 392-3-8 V1.4.1: Generic Speech Format Implementation | Titelseite; keine SDS-Service-Detailprüfung |
 | `en_30039209v010701p.pdf` | EN 300 392-9 V1.7.1: allgemeine Supplementary Services | Titelseite |
@@ -562,10 +559,6 @@ Unmittelbar relevant ist EN 300 392-2: SDS umfasst vordefinierte Statusmeldungen
 
 Brew-Anbindung ist durch ihre Existenz nicht als vollständige ETSI-ISI/ANF-ISISDS-Implementierung zertifiziert. Ebenso sind die mitgelieferten Entwürfe keine Nachweise implementierter Supplementary Services. Normenbestand, Codeumfang und erfolgreiche Konformitätsprüfung bleiben getrennt.
 
-## 14. Archivierung und Speichergrenzen
+## 14. Quellenumfang
 
-Diese Abschlussdokumentation ist eindeutig dem breiten SDS-Service-/Gateway-Chat zugeordnet. Der separate Wetterchat und die separate Basisstations-ISSI-Dokumentation wurden gelesen bzw. als bestehende Archiveinträge erkannt und werden nicht überschrieben.
-
-Zum Auftrag gehören genau diese Datei und die Ergänzung des vorhandenen `Docs/archive/README.md`. Zwischenzeitliche Änderungen anderer Chats müssen vor der Commit-Erzeugung durch erneutes Laden des Branch-HEADs und des Indexes berücksichtigt werden. Der Git-Baum wird auf dessen bestehendem Baum aufgebaut; die Branch-Referenz darf ausschließlich per Fast-forward aktualisiert werden. Bei einer konkurrierenden Branchbewegung wird auf dem neuen Stand neu aufgebaut, niemals erzwungen gepusht.
-
-Die gespeicherte Fassung wird anschließend anhand des tatsächlichen Commits und der Dateien auf `Archiving` geprüft. Der Archivcommit verändert keine Dateien außerhalb von `Docs/archive/` und führt keinen Branch-Merge aus. Das manuelle Archivieren des Chats bleibt beim Nutzer.
+Diese Notizen betreffen die breite SDS-Service- und Gateway-Konzeption. Wetterabruf und Basisstations-ISSI besitzen jeweils eigene Entwicklungsnotizen.

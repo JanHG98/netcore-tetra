@@ -1,35 +1,31 @@
-# NetCore Academy: Moodle-Kurssystem vom Einstieg bis zum Bitdecoder
+# Brainstorming: NetCore Academy – Moodle-Kurssystem vom Einstieg bis zum Bitdecoder
 
-## 1. Metadaten und Auswertungsumfang
+Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
+
+## 1. Projektstand und Quellenbasis
 
 | Feld | Wert |
 | --- | --- |
 | Archiv-ID | `NETCORE-ACADEMY-CHAT-01` |
 | Thema | Kurse und Lerninhalte für NetCore-Tetra: Bedienung, Betrieb, Integrationen, HF, Protokolle, Software und Bitdecodierung |
-| Ursprünglicher Chattitel | Nicht als separate Metadaten verfügbar. Der sichtbare Einstieg lautet „idee ein Moodle für netcore tetra?“; dies ist keine bestätigte Titelangabe. |
-| Chatlink / Chat-ID | Nicht verfügbar; kein Link konstruiert. |
 | Historischer Inhaltsstand | Academy-Ausgabe 1.0, datiert 2026-10-05, deutsch |
-| Erstellung der Abschlussdokumentation | 2026-10-06, Europe/Berlin |
+| Erstellung der Entwicklungsnotizen | 2026-10-06, Europe/Berlin |
 | Repository | `JanHG98/netcore-tetra` |
-| Ausschließlicher Schreibbranch | `Archiving` |
+| Ablagebranch | `Archiving` |
 | Geprüfter Archivstand vor dieser Archivierung | `5d98ac893b10e3dd9b5e0a1a4de5751c52ead60d` |
 | Zusätzlich geprüfter Produktstand | `main@9116c15d645458f99e236712b67a1ad970432791` |
-| Schreibbereich | Ausschließlich `Docs/archive/`, einschließlich zugehöriger Assets |
-| Eigener Archivierungscommit | In der Git-Historie dieser Datei nachvollziehbar; nach Speicherung separat verifiziert und in der Abschlussmeldung genannt. |
 
-Ausgewertet werden der hier zugängliche Verlauf, die erhaltene Arbeitszusammenfassung der vorherigen Erstellung, die drei tatsächlich erhaltenen Academy-Dateien und die 25 erneut bereitgestellten PDF-Anhänge. Die vollständigen ursprünglichen Autorenprogramme und Rohprotokolle sämtlicher damaliger Prüfaufrufe sind nach der automatischen Workspace-Bereinigung nicht mehr vorhanden. Ihre historischen Ergebnisse werden deshalb von heute erneut ausgeführten Prüfungen unterschieden. Die bearbeitbaren Inhaltsdaten und das ausführbare Lehrprogramm sind im erhaltenen ZIP vorhanden.
+Quellenbasis sind die erhaltenen Entwicklungsnotizen, die drei Academy-Dateien und die 25 bereitgestellten PDF-Anhänge. Die ursprünglichen Autorenprogramme und Rohprotokolle sind nach der Bereinigung des Arbeitsbereichs nicht mehr vollständig vorhanden. Historisch gemeldete Ergebnisse und die erneuten Prüfungen vom 06.10.2026 werden deshalb getrennt geführt. Bearbeitbare Inhaltsdaten und ausführbare Lehrprogramme sind im ZIP erhalten.
 
 Die 24 Einzelnormen wurden erneut als Text erschlossen; maßgebliche Tabellen für SYNC, MAC-RESOURCE, D-SDS-DATA, π/4-DQPSK und den Codec wurden gezielt nachgelesen. Das ist keine vollständige fachliche Abnahme aller 3.961 Seiten. `ETSI.pdf` besitzt 4.100 Seiten; für diese Archivierung wurden seine ersten sieben Seiten und Dateimetadaten geprüft. Die Sammeldatei wird nicht als zusätzliche eigenständige Norm gezählt. Ein vollständiger zeilenweiser Vergleich der Sammlung mit allen Einzeldokumenten wurde nicht durchgeführt.
 
-**Ergebnis des Fachchats:** ein ausgearbeitetes Kurssystem als Inhalte- und Importpaket. Eine Moodle-Instanz, ein installierter NetCore-Patch oder ein erfolgreicher On-Air-Betrieb wurden dadurch nicht hergestellt.
+**Ergebnis der Academy-Ausarbeitung:** ein ausgearbeitetes Kurssystem als Inhalte- und Importpaket. Eine Moodle-Instanz, ein installierter NetCore-Patch oder ein erfolgreicher On-Air-Betrieb wurden dadurch nicht hergestellt.
 
-## 2. Ziel, Ausgangslage und tatsächlich erteilter Auftrag
+## 2. Ziel, Ausgangslage und Arbeitsumfang
 
-Der Einstieg war die Idee eines Moodle für NetCore-Tetra. Der konkrete Folgeauftrag lautete sinngemäß, ein vollständiges Kurssystem mit Kursen und Inhalten aufzubauen, vom Anfänger bis zur Analyse einzelner Bits. Die Formulierung „also nur die Kurse und Inhalte“ grenzt den Auftrag auf Lehrmaterial ein. Eine Installation, eine veröffentlichte Lernplattform, ein Login-/SSO-Rollout und Eingriffe in eine laufende Funkanlage gehörten nicht dazu.
+Ausgangspunkt war eine Moodle-Lernplattform für NetCore-Tetra. Festgelegt wurde zunächst ein vollständiges Kurssystem mit Kursen und Inhalten vom Anfänger bis zur Analyse einzelner Bits. Der erste Umfang beschränkt sich auf Lehrmaterial; Installation, Plattformbetrieb und Login-/SSO-Rollout sind spätere Aufgaben.
 
 Als fachliche Grundlage lagen die bereitgestellten ETSI-Dokumente und die im Erstellungsdurchlauf gelesenen `main`-Dateien `README.md` und `ROADMAP.md` vor. NetCore-spezifische Themen wie Restore, zentrale Gruppensteuerung, Deployment, SIP-Fallback, MQTT/HA, Drive und RBAC sollten anhand ihres tatsächlichen Entwicklungsstands behandelt werden. Normative Fähigkeit, vorhandene Implementierung und nachgewiesene Endgerätewirkung bleiben getrennt.
-
-Das Speichern dieser Abschlussdokumentation wurde am 2026-10-06 ausdrücklich autorisiert: bestehender Branch `Archiving`, Zusammenfassung und Archivindex anlegen/ergänzen, nur Änderungen dieses Auftrags committen und pushen, Bilder mit sichern, kein Force-Push, kein Branchmerge und keine Änderungen außerhalb `Docs/archive/`.
 
 ## 3. Statusbegriffe, Anforderungen und Entscheidungen
 
@@ -38,10 +34,10 @@ Das Speichern dieser Abschlussdokumentation wurde am 2026-10-06 ausdrücklich au
 | Begriff | Bedeutung in diesem Archiv |
 | --- | --- |
 | Idee | Erwogener Umfang ohne belegte Umsetzung oder verbindliche technische Festlegung. |
-| Beschlossen/geplant | Der Nutzer hat den Inhalt oder die Richtung beauftragt; technische Ausführung und Abnahme können noch fehlen. |
+| Beschlossen/geplant | Inhalt oder Richtung sind festgelegt; technische Ausführung und Abnahme können noch fehlen. |
 | Implementiert | Inhalt oder Softwaredatei existiert im untersuchten Artefakt bzw. im ausdrücklich genannten Repository-Stand. |
 | Getestet | Eine konkret benannte Prüfung wurde ausgeführt und ihr Ergebnis ist zugänglich. Die jeweilige Prüfgrenze bleibt bestehen. |
-| Im Betrieb bestätigt | Eine tatsächliche Installation oder Endgerätewirkung ist durch zugängliche Betriebsbelege bestätigt. Im Academy-Fachchat liegt dafür kein Nachweis vor. |
+| Im Betrieb bestätigt | Eine tatsächliche Installation oder Endgerätewirkung ist durch zugängliche Betriebsbelege bestätigt. Für die Academy liegt dafür kein Nachweis vor. |
 
 ### 3.2 Endgültiger Umfang
 
@@ -55,7 +51,7 @@ Das Speichern dieser Abschlussdokumentation wurde am 2026-10-06 ausdrücklich au
 | Reale Normstruktur in den Bitkursen | Implementiert, ausgewählte Tabellen erneut geprüft | Ausgabe, Richtung, Modulation und Offsetbezug explizit angeben; begrenzte Lehrparser nicht als vollständigen RF-Decoder ausgeben. |
 | NetCore-Fehler als Lernfälle | Implementiert | Offene Restore- und MM-Gruppenprobleme dienen der Fehleranalyse, werden durch ein Lehrmodell nicht als behoben behauptet. |
 | Lernstunden / Abschlüsse | Planungs- und Lehrmodell | 278 Stunden für die Kurse, zusätzlich Stufenprojekte; keine garantierte Dauer und keine externe Zertifizierung. |
-| Moodle-Import und automatische Freischaltungen | Noch nicht getestet bzw. nicht konfiguriert | XML, CSV und Book-ZIPs sind vorhanden; Liveimport, Kursregeln und Nutzerprüfung fehlen. |
+| Moodle-Import und automatische Freischaltungen | Noch nicht getestet bzw. nicht konfiguriert | XML, CSV und Book-ZIPs sind vorhanden; Liveimport, Kursregeln und Test mit Lernenden fehlen. |
 
 ## 4. Historisch erzeugtes Ergebnis und erhaltene Dateien
 
@@ -104,7 +100,7 @@ Die damaligen temporären Autorendateien `content.py`, `stage01.py` bis `stage11
 | `kategorien.csv` | Manifest: eine Oberkategorie und zwölf Unterkategorien | Kein behaupteter nativer Kategorie-Import; Kategorien zuerst tatsächlich anlegen. |
 | `kurssystem.json` | Vollständige strukturierte Inhalte, Lernstufen, Lernziele, Fälle, Fragen, Antworten, Projekte, Pfade und Quellen | Änderbare Datenbasis; Original-Exporter/Renderer fehlt. |
 | `labore/lehrlabore.py` | Acht lokale Python-Labore mit eingebauten Prüfungen | Python ab 3.10 wegen Typnotation; Standardbibliothek, kein Netz- oder Hardwarezugriff. |
-| `labore/laborergebnisse.json` | Ursprünglich erzeugte Laborergebnisse | Heute erneut erzeugte Ergebnisse stimmen als JSON-Werte überein. |
+| `labore/laborergebnisse.json` | Ursprünglich erzeugte Laborergebnisse | Zum Prüfstand vom 06.10.2026 erneut erzeugte Ergebnisse stimmen als JSON-Werte überein. |
 
 Die JSON-Daten enthalten `title`, `version`, `date`, `language`, `levels`, `courses`, `capstones`, `assessment`, `paths`, `sources`, `project_sources` und `web_sources`. Ein Kurs enthält `id`, `level`, `title`, `hours`, `prerequisites`, `sources`, `lessons`, `lab`, `questions`, `essay` und `outcomes`. Lektionen besitzen eigene IDs wie `NC057-L1`. Antwortindizes sind im JSON nullbasiert; die XML-Zuordnung wurde gegen den tatsächlichen Antworttext geprüft.
 
@@ -390,7 +386,7 @@ Der Lehrstand folgt einer durchgehenden Beweisregel: **Auslösung, Annahme, Auss
 | SDS / PEI / ISI | Richtung, Protokollschicht, SDS-TL, Anwendungskennung und Nutzlast getrennt | SDS-Typ allein ist keine universelle Anwendungsbedeutung. NetCore Transit ist nicht ETSI ISI. |
 | MQTT / Home Assistant | QoS, Deduplizierung, Ablaufzeit, Korrelation und Ergebnisrückmeldung | Verbundene Clients oder Transport-QoS allein beweisen keine Aktorwirkung. |
 | Leitstelle / Audio | Mikrofon, Headset, PTT, Recording, TTS, NFC und Ressourcenrechte | Kartenlesung ist keine vollständige Autorisierung; Rufanzeige ist kein Audionachweis. |
-| Deployment / Betrieb | Discovery, Provisionierung, Ready-Schranke, Upgrade, Logs, NFS, Backup/Restore | Historische Feature-Arbeit und heutiges main sind getrennt; negativer Healthwert darf nicht als Erfolg verschwinden. |
+| Deployment / Betrieb | Discovery, Provisionierung, Ready-Schranke, Upgrade, Logs, NFS, Backup/Restore | Historische Feature-Arbeit und geprüftes main sind getrennt; negativer Healthwert darf nicht als Erfolg verschwinden. |
 | IAM / RBAC | Identität, Dienstrolle und konkrete Ressource; Maschinenidentitäten und Funkidentitäten getrennt | Menschliches Web-IAM ist keine TETRA-Authentisierung; zentraler Login ist noch geplant. |
 | Drive / Plugins | Dateiversionen, Freigaben, lokaler Start, spätere zentrale Anmeldung, Browser-Formate | Inhaltsdaten in einer Datenbank sind nicht dasselbe wie Dateibytes; Planungsartefakte sind keine installierte Cloud. |
 | RF / DSP | Beide Linkbudgets, Impedanz, VSWR, IQ, FFT, π/4-DQPSK, Kanalkette und Codec | Ideale Symbole und Rechenbeispiele ersetzen keine gemessene RF-/Timing-/Konformitätsprüfung. |
@@ -400,9 +396,9 @@ Der Lehrstand folgt einer durchgehenden Beweisregel: **Auslösung, Annahme, Auss
 
 Für **Moodle selbst** wurden keine Version, Serveradresse, Container-/VM-ID, DNS-Domäne, Datenbank, Speicherpfade, Mailzustellung, Cronkonfiguration oder produktive Loginanbindung festgelegt. Es gibt keine behauptete Academy-systemd-Unit und keinen Academy-Netzwerkport. Das Offline-Lehrprogramm benötigt weder einen Dienst noch einen offenen Port.
 
-Behandelte NetCore-Dateien sind unter anderem `config.toml`, `README.md`, `ROADMAP.md`, `crates/tetra-entities/src/mm/mm_bs.rs`, `crates/tetra-entities/src/cmce/subentities/cc_bs/procedures/restoration.rs`, `crates/tetra-entities/src/net_control_room/worker.rs` und `system-backend/group-core/src/state.rs`. Bei Reparaturen muss der aktive Hauptstack vom gleichnamigen `ms-mode/`-Baum unterschieden werden. Keine dieser Produktdateien wird durch den Archivauftrag geändert.
+Behandelte NetCore-Dateien sind unter anderem `config.toml`, `README.md`, `ROADMAP.md`, `crates/tetra-entities/src/mm/mm_bs.rs`, `crates/tetra-entities/src/cmce/subentities/cc_bs/procedures/restoration.rs`, `crates/tetra-entities/src/net_control_room/worker.rs` und `system-backend/group-core/src/state.rs`. Bei Reparaturen muss der aktive Hauptstack vom gleichnamigen `ms-mode/`-Baum unterschieden werden. Keine dieser Produktdateien wird durch die Quellenprüfung vom 06.10.2026 geändert.
 
-Die heute gelesene SIP-Dokumentation nennt die feste lokale TBS-Bridge zu `127.0.0.1:5060`, drei fehlgeschlagene Prüfungen als Standard vor Failover und 30 Sekunden stabile zentrale Erreichbarkeit vor Rückkehr. Das sind dokumentierte Standards des geprüften Codes, keine in diesem Chat gemessenen Betriebswerte. KMF ist in seiner README mit WebUI-Port `8190` und Transit mit `8200` beschrieben; diese Angaben sind Kurs-/Repository-Kontext und keine Academy-Endpunkte. Weitere Dienstports werden nicht aus anderen Chats oder Annahmen übernommen.
+Die zum Prüfstand vom 06.10.2026 gelesene SIP-Dokumentation nennt die feste lokale TBS-Bridge zu `127.0.0.1:5060`, drei fehlgeschlagene Prüfungen als Standard vor Failover und 30 Sekunden stabile zentrale Erreichbarkeit vor Rückkehr. Das sind dokumentierte Standards des geprüften Codes, keine für diesen Entwicklungsstand gemessenen Betriebswerte. KMF ist in seiner README mit WebUI-Port `8190` und Transit mit `8200` beschrieben; diese Angaben sind Kurs-/Repository-Kontext und keine Academy-Endpunkte. Weitere Dienstports werden nicht aus anderen Arbeitsphasen oder Annahmen übernommen.
 
 Die CSV-Kurse besitzen `shortname=NCxxx`, `idnumber=NETCORE-NCxxx`, `format=topics`, `visible=0`, `lang=de`, `enablecompletion=1` und `category_path=NetCore Academy / NN Stufenname`. Sie werden damit zunächst verborgen angelegt. Kategorie-IDs lauten im Manifest `NETCORE-ACADEMY` bzw. `NETCORE-LEVEL-NN`.
 
@@ -505,44 +501,44 @@ Für jede reale TETRA-Kanalkette müssen Kanaltyp, Code, Rate, Punktierung, Reih
 
 Authentisierung, Air Interface Encryption und Ende-zu-Ende-Verschlüsselung sind getrennte Funktionen. Schlüsselrollen, TSIM/UICC/APDU und KMF werden als eigene Bereiche behandelt; Web-RBAC ersetzt keine Funk-Security. Die Lehrsammlung enthält Entwürfe und unterschiedliche Editionsstände. DMO-Detailimplementierung benötigt zusätzlich die passende EN/ETS-300-396-Familie; die vollständige DGNA-Stage-3-Implementierung benötigt die dafür maßgebliche zusätzliche Norm. Diese Themen werden nicht aus dem bloßen Vorhandensein von Kursüberschriften als abgedeckte Decoderzweige behauptet.
 
-## 9. Heute zusätzlich überprüfter Repository-Stand
+## 9. Zum Prüfstand vom 06.10.2026 zusätzlich überprüfter Repository-Stand
 
 ### 9.1 Stände und Abweichungen zum historischen Lehrmaterial
 
-Der Produktstand wurde am 2026-10-06 read-only gegen `main@9116c15d645458f99e236712b67a1ad970432791` geprüft. Der Archivstand vor diesem Auftrag war `Archiving@5d98ac893b10e3dd9b5e0a1a4de5751c52ead60d`. `Archiving` besitzt einen älteren Dokumentationsbaum: eine Root-`ROADMAP.md` fehlt dort; seine README-Blob-SHA lautet `80dbc3d5f5ff94083ed1b90c4d0256d40fb126fe`. Er wird deswegen nicht anstelle des heutigen main als Produktreferenz verwendet und nicht mit main zusammengeführt.
+Der Produktstand wurde am 2026-10-06 read-only gegen `main@9116c15d645458f99e236712b67a1ad970432791` geprüft. Der Archivstand vor diesem Auftrag war `Archiving@5d98ac893b10e3dd9b5e0a1a4de5751c52ead60d`. `Archiving` besitzt einen älteren Dokumentationsbaum: eine Root-`ROADMAP.md` fehlt dort; seine README-Blob-SHA lautet `80dbc3d5f5ff94083ed1b90c4d0256d40fb126fe`. Er wird deswegen nicht anstelle des geprüften main als Produktreferenz verwendet und nicht mit main zusammengeführt.
 
 Die im Kurs-JSON gespeicherten historischen Quellen sind **Blob-SHAs von Dateien**, keine nachträglich behaupteten damaligen Commit-SHAs:
 
-| Quelle | Historisch im Paket gespeicherter Blob | Heute in main geprüft | Folgerung |
+| Quelle | Historisch im Paket gespeicherter Blob | Zum Prüfstand vom 06.10.2026 in main geprüft | Folgerung |
 | --- | --- | --- | --- |
-| GH01 `README.md` | `8e2b552ed4ad6bca0656569296aa1c148b9c54da` | Derselbe Blob | Die damalige gelesene README entspricht bytegleich der heutigen geprüften main-Datei. |
-| GH02 `ROADMAP.md` | `457ff1796cf94584e3f373495b11aed8aa54c897` | Derselbe Blob | Die damalige Roadmap entspricht bytegleich der heutigen geprüften main-Datei. |
+| GH01 `README.md` | `8e2b552ed4ad6bca0656569296aa1c148b9c54da` | Derselbe Blob | Die damalige gelesene README entspricht bytegleich der geprüften main-Datei. |
+| GH02 `ROADMAP.md` | `457ff1796cf94584e3f373495b11aed8aa54c897` | Derselbe Blob | Die damalige Roadmap entspricht bytegleich der geprüften main-Datei. |
 
-Der ursprüngliche komplette Commit des ersten Academy-Erstellungsdurchlaufs wurde im erhaltenen Kurs-JSON nicht gespeichert. Er wird nicht rückwirkend erfunden. Im heutigen main wurden keine Moodle-/Academy-Dateipfade oder -Texttreffer gefunden. Im vor dem Schreiben gelesenen Archivindex und Archivverzeichnis gab es keine eindeutig dieser Academy zugehörige Dokumentation. Durch diesen Archivauftrag werden die Lehrunterlagen erstmals unter dem hier benannten Archivpfad versioniert.
+Der ursprüngliche komplette Commit des ersten Academy-Erstellungsdurchlaufs wurde im erhaltenen Kurs-JSON nicht gespeichert. Er wird nicht rückwirkend erfunden. Im geprüften main wurden keine Moodle-/Academy-Dateipfade oder -Texttreffer gefunden. Im vor dem Schreiben gelesenen Archivindex und Archivverzeichnis gab es keine eindeutig dieser Academy zugehörige Dokumentation. Durch diesen Prüfdurchlauf vom 06.10.2026 werden die Lehrunterlagen erstmals unter dem hier benannten Archivpfad versioniert.
 
 ### 9.2 Direkte Codebefunde mit Kursbezug
 
-| Bereich / Kursbezug | Heutiger Befund | Status / Konsequenz | Gepinnte Quelle |
+| Bereich / Kursbezug | Geprüfter Befund | Status / Konsequenz | Gepinnte Quelle |
 | --- | --- | --- | --- |
 | Restore Einzelruf; NC041–NC043, NC055 | Der individuelle Zweig von `fsm_on_u_call_restore` vergibt bei gesetztem Sendewunsch `TransmissionGrant::Granted`, ohne dort das Sprechrecht des anderen Teilnehmers zu prüfen und den passenden Simplex-Floor-Owner zu setzen. Zugehörigkeit/aktiver Ruf und Restore-Zustandsübergänge werden dagegen geprüft. | Z02.1 weiterhin offen; Lehrmodell ist kein Produktionsfix. | [crates/tetra-entities/src/cmce/subentities/cc_bs/procedures/restoration.rs](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/crates/tetra-entities/src/cmce/subentities/cc_bs/procedures/restoration.rs) |
 | Restore Gruppenruf; NC042–NC043 | Der Gruppenzweig prüft `tx_active`/`source_issi` und kann `grant_floor` aufrufen. Nach dem Grant ist im aktiven Restorehandler kein entsprechender Auftrag an die untere RF-Steuerung zum Start der Uplink-Überwachung vorhanden. | Z02.2 weiterhin offen; stummer Restoreteilnehmer/Timer/Release müssen am aktiven Pfad geprüft werden. | [crates/tetra-entities/src/cmce/subentities/cc_bs/procedures/restoration.rs](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/crates/tetra-entities/src/cmce/subentities/cc_bs/procedures/restoration.rs) |
 | Zentrale Gruppenbefehle; NC012, NC039, NC048 | Group Core erzeugt `GroupAccessPolicyApply` und `GroupDgnaApply`. Der Worker routet beide an MM. Der MM-Control-Dispatcher behandelt nur `ControlCommand::Dgna`; zentrale Typen landen im Zweig „ignoring unsupported control command“. | Z02.5 weiterhin offen; zentrale Annahme ist keine Endgerätewirkung. | [crates/tetra-entities/src/mm/mm_bs.rs](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/crates/tetra-entities/src/mm/mm_bs.rs) |
 | Capabilities; NC036, NC039, NC050 | Angekündigt werden `dgna=true`, `group_policy=false`, `subscriber_policy=false` und `call_restore_context=false`. | Lokales DGNA nicht mit vollständig unterstützter zentraler Gruppenpolicy gleichsetzen. | [crates/tetra-entities/src/net_control_room/protocol.rs](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/crates/tetra-entities/src/net_control_room/protocol.rs) |
 | Mehrzellen-Restore; NC045, NC049, NC060 | MAIN-COMPAT dokumentiert weiterhin keinen integrierten MM-/CMCE-Kontextimport/-export für laufende Rufe. Die deaktivierte Capability ist dazu konsistent. | Kein hier bestätigtes Seamless Handover; MM-/CMCE-/Medien-/Floor-Integration und Zwei-TBS-Abnahme offen. | [Docs/CENTRAL_NETWORK_ROLLOUT.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/Docs/CENTRAL_NETWORK_ROLLOUT.md) |
-| Deployment und neuere Syslog-Arbeit; NC022, NC024–NC025 | Die aktuelle Roadmap beschreibt die Übernahmelücke des historischen Feature-Stands `bbf039729b9b05f8d623b11195ca24a124f68d16`. Pfadsuche in main bestätigt kein `deployment-core` und keine entsprechenden neuen Discovery/Pi-VPN-/rsyslog-Dateien; ein älterer `provisioning-core` und Observability-Bestand existieren. | Z01.1 bleibt erster globaler Schritt. Vollständiger Tip-Vergleich/Integration wurden in diesem Archivauftrag nicht ausgeführt. | [ROADMAP.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md) |
+| Deployment und neuere Syslog-Arbeit; NC022, NC024–NC025 | Die aktuelle Roadmap beschreibt die Übernahmelücke des historischen Feature-Stands `bbf039729b9b05f8d623b11195ca24a124f68d16`. Pfadsuche in main bestätigt kein `deployment-core` und keine entsprechenden neuen Discovery/Pi-VPN-/rsyslog-Dateien; ein älterer `provisioning-core` und Observability-Bestand existieren. | Z01.1 bleibt erster globaler Schritt. Vollständiger Tip-Vergleich/Integration wurden bei der Quellenprüfung vom 06.10.2026 nicht ausgeführt. | [ROADMAP.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md) |
 | Readiness-Rückgabe; NC022, NC025 | Der Deploy-Apply-Pfad ruft `check_health(..., ready=True)` auf, ohne dessen `(bool, detail)`-Rückgabe an dieser Stelle auszuwerten. Der separate Statuspfad zählt Fehler und liefert einen Fehlerstatus. | Z01.3 weiterhin relevant; kein aktuell gemessener Deploymentfehler behauptet. | [deploy/open-lab/netcore-deploy.py](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/deploy/open-lab/netcore-deploy.py) |
 | Bestandsdrift; NC018, NC021, NC024 | Beispiel-Inventory enthält 25 `[[services]]`-Einträge, der generierte Servicekatalog 24 Dienste. | Keine aktuelle Zahl laufender LXCs daraus ableiten; kein Live-Inventar geprüft. | [deploy/open-lab/inventory.example.toml](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/deploy/open-lab/inventory.example.toml) |
 | SIP und lokaler Fallback; NC008, NC027, NC045 | Dokumentierter Pfad über festen lokalen Asterisk, zentralen Switch und direktes PBX-Fallback; `edge_media`. Laufende Dialoge werden beim Wegwechsel nicht migriert. | Quell-/Dokumentationsstand, keine neue SIP-/RTP-Abnahme. | [system-backend/sip-switch/README.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/system-backend/sip-switch/README.md) |
-| IAM und Drive; NC029, NC048 | Beide Fachroadmaps markieren IAM bzw. Drive als geplant. Keycloak/eigener Identity-LXC sind Empfehlungen; Drive-Backend/D0 offen. Lokaler Drive-Start D0–D5 und Plugins D7–D9 warten nicht auf D6/IAM. | Keine produktive zentrale Anmeldung und keine installierte Drive-Cloud durch den Academy-Chat bestätigt. | [Docs/NETCORE_DRIVE_ROADMAP.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/Docs/NETCORE_DRIVE_ROADMAP.md) |
+| IAM und Drive; NC029, NC048 | Beide Fachroadmaps markieren IAM bzw. Drive als geplant. Keycloak/eigener Identity-LXC sind Empfehlungen; Drive-Backend/D0 offen. Lokaler Drive-Start D0–D5 und Plugins D7–D9 warten nicht auf D6/IAM. | Keine produktive zentrale Anmeldung und keine installierte Drive-Cloud durch die Academy-Ausarbeitung bestätigt. | [Docs/NETCORE_DRIVE_ROADMAP.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/Docs/NETCORE_DRIVE_ROADMAP.md) |
 | KMF und Transit; NC045–NC047, NC050 | KMF hat Lab-Provider und keine D-OTAR-Air-PDU-Codierung/TA-Implementierung. Transit beschreibt `netcore-transit-v1`, ausdrücklich noch kein ETSI ISI. | Normative Security-/OTAR-/ISI-Abnahme bleibt ein eigener Ausbau. | [system-backend/kmf/README.md](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/system-backend/kmf/README.md) |
 
 Ergänzende direkte Quellen: [Group Core](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/system-backend/group-core/src/state.rs), [Befehlsvertrag](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/crates/tetra-entities/src/net_control/commands.rs), [Worker](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/crates/tetra-entities/src/net_control_room/worker.rs), [IAM-Roadmap](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/Docs/CENTRAL_IDENTITY_RBAC_ROADMAP.md), [Transit](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/system-backend/transit/README.md), [Servicekatalog](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/deploy/open-lab/generated/service-catalog.json) und [Edge-Fallback](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/Docs/EDGE_FALLBACK.md).
 
 Die genannten aktiven MM-/Restore-/Worker-/Capability-Dateien und `CENTRAL_NETWORK_ROLLOUT.md` unterscheiden sich im geprüften direkten Vergleich zwischen Archiving und main nicht. Die Unterschiede betreffen unter anderem neuere Roadmap-/README-/Drive-Dokumentation. Dieser begrenzte Vergleich ist keine Behauptung, beide gesamten Branches seien identisch.
 
-### 9.3 Was heute nicht geprüft oder geändert wurde
+### 9.3 Was zum Prüfstand vom 06.10.2026 nicht geprüft oder geändert wurde
 
-Kein Cargo-Build, keine produktiven Rust-Tests, keine CI-Ausführung, kein Dienststart, kein Container-/Pi-Zugriff und keine On-Air-Messung wurden durch den Archivauftrag ausgeführt. Vorhandene Tests im Worker oder in anderen Repository-Dateien wurden gelesen, aber nicht als heute bestanden ausgegeben. Es wurden keine Restore-/MM-Fixes entwickelt und keine Roadmapdateien außerhalb des Archivs geändert. Die Zustandsbeobachtung belegt weiterhin offene Anschlussstellen, keine automatische Umsetzung durch Dokumentation.
+Kein Cargo-Build, keine produktiven Rust-Tests, keine CI-Ausführung, kein Dienststart, kein Container-/Pi-Zugriff und keine On-Air-Messung wurden durch die Quellenprüfung vom 06.10.2026 ausgeführt. Vorhandene Tests im Worker oder in anderen Repository-Dateien wurden gelesen, aber nicht als zum Prüfstand vom 06.10.2026 bestanden ausgegeben. Es wurden keine Restore-/MM-Fixes entwickelt und keine Roadmapdateien außerhalb des Archivs geändert. Die Zustandsbeobachtung belegt weiterhin offene Anschlussstellen, keine automatische Umsetzung durch Dokumentation.
 
 ## 10. Befehle, erfolgreich ausgeführte Prüfungen und spätere Importabläufe
 
@@ -559,7 +555,7 @@ Die folgende Tabelle dokumentiert die Art der ausgeführten Schritte. Lokale tem
 | `pdftotext -layout` und `pdfinfo` | 24 individuelle PDFs erschlossen; Sammeldatei-Metadaten und erste sieben Seiten geprüft. | Texterschließung bedeutet keine vollständige fachliche Normabnahme. |
 | ZIP-Entpackung und CRC-Prüfung | Äußeres ZIP sowie 60 innere Book-ZIPs gültig. | Kein Moodle-Liveimport. |
 | `python3 labore/lehrlabore.py all` | Acht Labore beendet, Exit 0; Ergebnisse entsprechen dem ursprünglichen Ergebnis-JSON. | Isolierte Lehrmodelle ohne RF/Netz. Ausgeführt mit Python 3.12.14. |
-| Inhalts-/XML-/CSV-/PDF-Prüfung | PASS, Details in den archivierten Prüfberichten. | Kein Browser-/Moodle-Nutzertest. |
+| Inhalts-/XML-/CSV-/PDF-Prüfung | PASS, Details in den archivierten Prüfberichten. | Kein Browser-/Moodle-Test mit Lernenden. |
 | PDF-Vorschauen rendern | Zwölf Kontaktbögen und drei Detailseiten erzeugt; Titel-/Anhangs-/Feldtabellen stichprobenartig visuell geprüft. | Rekonstruktionen aus dem finalen PDF, keine ursprünglichen PNG-Bytes. |
 
 ### 10.2 Reproduzierbare lokale Nutzung
@@ -579,7 +575,7 @@ Weitere Einzelaufrufe sind `bits`, `rf` und `coding`. Ein Fehlerfall im Lehrpars
 
 ### 10.3 Moodle-Übernahme: vorgeschlagener, noch nicht ausgeführter Ablauf
 
-1. Isolierte Moodle-Testinstanz und deren konkrete Version/Betriebsparameter festlegen. In diesem Chat wurde keine solche Instanz eingerichtet.
+1. Isolierte Moodle-Testinstanz und deren konkrete Version/Betriebsparameter festlegen. In dieser Arbeitsphase wurde keine solche Instanz eingerichtet.
 2. Oberkategorie `NetCore Academy` und die zwölf Unterkategorien anhand `kategorien.csv` tatsächlich anlegen. Die `category_path`-Werte im Kurs-CSV benötigen die vorhandenen Kategorien.
 3. `moodle_kurse.csv` über den Kursupload einlesen; Vorschau prüfen. Kurs-IDs, Kategoriezuordnung, Sprache, verborgene Sichtbarkeit und Abschlussverfolgung kontrollieren. Das erstellt zunächst Kursrahmen.
 4. In jedem Kurs eine **Buch**-Aktivität anlegen und das zugehörige `moodle_buecher/NCxxx.zip` über den nativen HTML-Kapitelimport einlesen. Die sechs Dateien sind `01_Lektion.html` bis `04_Lektion.html`, `05_Praxis.html` und `06_Loesungen.html`. Die Kapitelreihenfolge prüfen.
@@ -588,7 +584,7 @@ Weitere Einzelaufrufe sind `bits`, `rf` und `coding`. Ein Fehlerfall im Lehrpars
 7. Lernendenansicht mit Testkonto prüfen: Kategorie/Kurszugang, Reihenfolge, Fragen, Feedback, manuelle Bewertung, Abschluss und Lösungen. Dozentenmaterial/Lösungen so platzieren, dass die beabsichtigte Prüfung nicht vorab beantwortet wird.
 8. Erst nach Importabnahme und fachlichem Pilot die Kurse sichtbar schalten. Moodle-Backup/Restore für Kurse, Dateien und Bewertungen gesondert testen.
 
-Dieser Ablauf ist eine Fortsetzungsanleitung und kein ausgeführtes Deployment. Kein CLI-Massenimport, `.mbz`-Backup oder automatischer Import aller 60 Bücher wurde geliefert. Die verwendeten Importformate wurden historisch gegen die offiziellen Moodle-Seiten geprüft; ein Test gegen eine heute installierte Moodle-Version fehlt weiterhin.
+Dieser Ablauf ist eine Fortsetzungsanleitung und kein ausgeführtes Deployment. Kein CLI-Massenimport, `.mbz`-Backup oder automatischer Import aller 60 Bücher wurde geliefert. Die verwendeten Importformate wurden historisch gegen die offiziellen Moodle-Seiten geprüft; ein Test gegen eine zum Prüfstand vom 06.10.2026 installierte Moodle-Version fehlt weiterhin.
 
 ## 11. Tests und belastbare Ergebnisse
 
@@ -598,13 +594,13 @@ Die erhaltene Arbeitszusammenfassung beschreibt: Kurs-/Lektionen-IDs und Vorauss
 
 Bei der PDF-Sichtung entstanden zunächst 138 Seiten. Drei ungünstige Umbrüche betrafen einen isolierten Absatz, den letzten Teil einer MAC-Tabelle und das Ende des Glossars. Die finale Korrektur entfernte einen redundanten Vorspannabsatz, fasste beide MAC-Präfixfälle in einer gemeinsamen Tabelle zusammen und setzte das Glossar kompakter in zwei Spalten. Das endgültig erhaltene PDF hat 135 Seiten. Die damaligen Zwischenversionen sind nicht erhalten und werden nicht neu erfunden.
 
-Historische Kontaktbögen deckten das finale Kursbuch ab; Detailansichten wurden für die SYNC-Lektion und die SYNC-/MAC-Feldtabellen angezeigt. Historische Roh-Testlogs und ursprüngliche Renderprogramme sind heute nicht mehr vollständig verfügbar.
+Historische Kontaktbögen deckten das finale Kursbuch ab; Detailansichten wurden für die SYNC-Lektion und die SYNC-/MAC-Feldtabellen angezeigt. Historische Roh-Testlogs und ursprüngliche Renderprogramme sind zum Prüfstand vom 06.10.2026 nicht mehr vollständig verfügbar.
 
-### 11.2 Heute erneut ausgeführte Artefaktprüfungen
+### 11.2 Zum Prüfstand vom 06.10.2026 erneut ausgeführte Artefaktprüfungen
 
-Ergebnis: **PASS**. [Maschinenlesbarer Prüfbericht](assets/2026-10-06_netcore-academy/pruefbericht-2026-10-06.json) und [heutige Laborergebnisse](assets/2026-10-06_netcore-academy/laborergebnisse-2026-10-06.json).
+Ergebnis: **PASS**. [Maschinenlesbarer Prüfbericht](assets/2026-10-06_netcore-academy/pruefbericht-2026-10-06.json) und [geprüfte Laborergebnisse](assets/2026-10-06_netcore-academy/laborergebnisse-2026-10-06.json).
 
-| Prüfung | Heute bestätigtes Ergebnis |
+| Prüfung | Zum Prüfstand vom 06.10.2026 bestätigtes Ergebnis |
 | --- | --- |
 | Kurs-IDs / Stufen | `NC001`–`NC060`, zwölf Stufen mit jeweils fünf Kursen. |
 | Lektionen und Abhängigkeiten | 240 eindeutige Lektionen; Inhalte/Lernziele/Fälle/Lösungen/Raster vorhanden; gültige frühere Voraussetzungen, kein Zyklus. |
@@ -640,13 +636,13 @@ Nicht belegt sind: Liveimport in Moodle, tatsächliche Testaktivitäten/Abschlus
 | Potenziell verschobener MAC-Reader | Ein bei π/4-DQPSK unzulässig eingelesenes Immediate-Napping-Bit verschiebt folgende Felder. | Bedingte Präsenz explizit erklärt; Lehrparser nur für den unterstützten Zweig. |
 | Pauschales „SDS ist eine Anwendung“ | Typ/Schicht/Richtung allein reichen nicht für die Nutzdatenbedeutung. | CMCE-Präfix, SDS-TL und Anwendung getrennt; Calling SSI nicht als Empfänger ausgegeben. |
 | Allgemeine CRC/Permutation als TETRA-Verfahren | Eigenes Lehrbeispiel könnte fälschlich als Normimplementierung verstanden werden. | Parameter und Spielmodell ausdrücklich benannt; keine allgemeine TETRA-CRC-Zusage. |
-| Normfunktion als fertiges NetCore-Feature | Dokumentierte Standards decken Fähigkeiten ab, die nicht im aktiven Code umgesetzt sind. | Historische Quellen und heutiger Code getrennt; Restore-/Gruppen-/Handover-Lücken bleiben offen. |
+| Normfunktion als fertiges NetCore-Feature | Dokumentierte Standards decken Fähigkeiten ab, die nicht im aktiven Code umgesetzt sind. | Historische Quellen und geprüfter Code getrennt; Restore-/Gruppen-/Handover-Lücken bleiben offen. |
 | Komplette Lernplattform statt Inhaltsauftrag | Würde den ausdrücklich eingegrenzten Umfang erweitern. | Kein Server/SSO/Deployment erzeugt; Inhalte und native Teilimporte geliefert. |
 | Ein Importpaket als fertiges Moodle-Kursbackup | CSV, Book-ZIP und XML richten unterschiedliche Teile ein. | Kein `.mbz` behauptet; Reihenfolge und manueller Konfigurationsbedarf dokumentiert. |
-| Frühere lokale Autoren- und Bilddateien fehlen | Automatische Workspace-Bereinigung, kein vom Nutzer veranlasstes Löschen. | Finale HTML/PDF/ZIP wiederhergestellt; Bildvorschauen rekonstruiert; Buildskript-Lücke offen benannt. |
-| Archivbranch enthält ältere Projektplanung | Root-Roadmap fehlt dort; Dateien unterscheiden sich vom heutigen main. | Produktbefunde auf gepinntes main beziehen; nur Archivdateien im Zielbranch ergänzen. |
+| Frühere lokale Autoren- und Bilddateien fehlen | Automatische Workspace-Bereinigung, kein durch den Betreiber veranlasstes Löschen. | Finale HTML/PDF/ZIP wiederhergestellt; Bildvorschauen rekonstruiert; Buildskript-Lücke offen benannt. |
+| Archivbranch enthält ältere Projektplanung | Root-Roadmap fehlt dort; Dateien unterscheiden sich vom geprüften main. | Produktbefunde auf gepinntes main beziehen; nur Archivdateien im Zielbranch ergänzen. |
 
-Es gibt keinen im Fachchat bestätigten Fehler bei einem tatsächlich ausgeführten Moodle-Import, weil dieser nicht stattfand. Restore-/DGNA-Probleme sind hier Lern- und Quellbefunde; keine neu gemessene Störung einer laufenden Anlage. Frühe allgemeine Moodle-Integrationsideen wie LDAP/OAuth können später relevant sein, wurden aber nicht als installierte Academy-Anmeldung beschlossen oder getestet.
+Es gibt keinen im Fachentwurf bestätigten Fehler bei einem tatsächlich ausgeführten Moodle-Import, weil dieser nicht stattfand. Restore-/DGNA-Probleme sind hier Lern- und Quellbefunde; keine neu gemessene Störung einer laufenden Anlage. Frühe allgemeine Moodle-Integrationsideen wie LDAP/OAuth können später relevant sein, wurden aber nicht als installierte Academy-Anmeldung beschlossen oder getestet.
 
 ## 13. Noch relevante Ideen, Wünsche und offene Aufgaben
 
@@ -665,19 +661,19 @@ Es gibt keinen im Fachchat bestätigten Fehler bei einem tatsächlich ausgeführ
 | A09: Kursversionierung und Betrieb | Inhalt 1.0 vorhanden | Inhalte/Fragen/Fixtures versionieren; nach Änderungen an Restore, IAM, Drive oder Deployment betroffene Kurse aktualisieren, fachliche Nachweise erhalten. |
 | A10: Moodle-Plattformbetrieb | Idee außerhalb des ursprünglichen Inhaltsauftrags | Hosting, Datenbank, Mail/Cron, Dateispeicher, Backup/Restore und Login bei gesondertem Plattformauftrag festlegen. |
 
-Diese A-IDs sind **Roadmap-Kandidaten dieses Archivdokuments**, keine schon übernommenen Root-Roadmap-Aufgaben und keine Erweiterung der Freigabe auf Installationen. Die vorgeschlagenen Pilotkurse sind eine Archivierungs-Fortsetzungsempfehlung, keine im historischen Fachchat ausdrücklich beschlossene Reihenfolge.
+Die A-IDs sind Vorschläge für die weitere Academy-Planung. Sie wurden noch nicht in die Root-Roadmap übernommen. Auch die Pilotkursfolge ist eine Empfehlung, keine bereits festgelegte Reihenfolge.
 
 ### 13.2 In den Kursen bewahrte kleine und größere Nebenideen
 
 Der vorhandene Stoff bewahrt unter anderem: Geräteprofile/Codeplugs und Herstellervergleich; DMO-/Notruf-/Netzausfallverhalten; Status und Position; zentrale Gruppenprofile/Attach/Detach/DGNA; NINA/KATWARN und eigene Warnungen; TTS und Recording; NFC-Operatorzuordnung; MQTT/HA-Aktoren mit echter Ergebnisrückmeldung; NFS-/Datenbank-Backup/Restore; Raspberry-Pi-/SXceiver-Abnahme; Discovery/Imagebuilder und Pi-VPN-Policy nach vertrauenswürdigen Netzen; Syslog/Observability; I²C-Sensoren, Temperatur-/Spannungsskalierung, Watchdog/Power-Control und Pager; RF-Messpfad, Duplexer/VSWR, Antennenroute und IQ/Clipping; TSIM/UICC/APDU; lokale Ausnahmezugänge/Break Glass; Last/HA und gesperrte/veraltete Zustände; Drive-Synchronisation/Freigaben/Plugins; Rust-Feldreader, aktive Hauptstackpfade und Timeout-/Timer-/Floor-Races.
 
-Diese Kursgegenstände sind nicht automatisch zusätzliche Implementierungswünsche mit eigener Freigabe. Konkrete Netzfrequenzen, Hardwarepins, produktive Adresseinträge, Gerätefirmware und Passwörter wurden für die Academy nicht neu festgelegt. Beispielwerte `MCC=901`, `MNC=1510`, `CC=1`, `SSI=4010001` und 418 MHz sind nachvollziehbare Lehrkontexte; sie sind keine Abnahme der tatsächlichen Anlage oder vollständiger Frequenzplan.
+Die Kursgegenstände sind Lernstoff; daraus folgt kein eigener Implementierungsauftrag. Konkrete Netzfrequenzen, Hardwarepins, produktive Adresseinträge, Gerätefirmware und Passwörter wurden für die Academy nicht neu festgelegt. Beispielwerte `MCC=901`, `MNC=1510`, `CC=1`, `SSI=4010001` und 418 MHz sind nachvollziehbare Lehrkontexte; sie sind keine Abnahme der tatsächlichen Anlage oder vollständiger Frequenzplan.
 
 ## 14. Nächste Schritte und bereits gültige Projektprioritäten
 
-**Für das Lehrpaket** kann als unabhängiger nächster Schritt ein begrenzter Moodle-Testimport mit nachvollziehbarem Prüfprotokoll erfolgen, wenn ein entsprechender Plattformauftrag und eine Instanz vorliegen. Der aktuelle Archivauftrag endet mit versionierter Zusammenfassung, erhaltenen Inhalten, Bildern und Index; er startet diesen Import nicht.
+**Für das Lehrpaket** bietet sich ein begrenzter Moodle-Testimport mit Prüfprotokoll an. Dafür müssen zuerst eine Testinstanz und der Plattformumfang feststehen. Der Import ist noch nicht ausgeführt.
 
-**Für das NetCore-Gesamtprojekt** gilt die heute geprüfte [Root-Roadmap](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md): **Z01.1 zuerst**, vollständiger Quellvergleich des fehlenden Deployment-/Syslog-Feature-Stands und prüfbarer Integrationsplan; anschließend Z01.2 Integration, Z01.3 Inventory/Ready/CI, Z01.4 Installation/Upgrade/Recovery. Die gezielten P0-Blöcke **Z02.1 Einzelruf-Restore**, **Z02.2 Gruppenruf-Uplink-Watch** und **Z02.5 zentrale Gruppenzuweisungen** bleiben relevante direkte Lern-/Entwicklungsfälle. Sie werden durch die Academy nicht als erledigt markiert.
+**Für das NetCore-Gesamtprojekt** gilt die am 06.10.2026 geprüfte [Root-Roadmap](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md): **Z01.1 zuerst**, vollständiger Quellvergleich des fehlenden Deployment-/Syslog-Feature-Stands und prüfbarer Integrationsplan; anschließend Z01.2 Integration, Z01.3 Inventory/Ready/CI, Z01.4 Installation/Upgrade/Recovery. Die gezielten P0-Blöcke **Z02.1 Einzelruf-Restore**, **Z02.2 Gruppenruf-Uplink-Watch** und **Z02.5 zentrale Gruppenzuweisungen** bleiben relevante direkte Lern-/Entwicklungsfälle. Sie werden durch die Academy nicht als erledigt markiert.
 
 Weitere Abhängigkeiten: stabile Einzelzelle/Core-E2E vor umfassender Mehrzellenabnahme; reale SDS-/MQTT-/SIP-/Audio-/Recording-Pfade mit Zielnachweis; IAM M0/M1 als Architektur-/Pilotstrang; Drive D0 und lokaler Betrieb unabhängig von fertigem IAM, spätere D6-Migration und Plugin-Ausbau. Normative Funk-Security/OTAR und echtes ETSI ISI benötigen jeweils eigene Implementierungs- und Interoperabilitätsnachweise.
 
@@ -721,7 +717,7 @@ Besonders zu kennzeichnen sind **S08 Final Draft** (TSIM-Anwendung, 2005), **S14
 ### 15.2 Repository- und Webquellen
 
 - [main-Prüfcommit](https://github.com/JanHG98/netcore-tetra/commit/9116c15d645458f99e236712b67a1ad970432791) und [Archiving-Prüfcommit](https://github.com/JanHG98/netcore-tetra/commit/5d98ac893b10e3dd9b5e0a1a4de5751c52ead60d).
-- Historische kursinterne GH01/GH02-Dateiblobs sind in Abschnitt 9.1 präzisiert; heutige Direktbefunde und gepinnte Dateilinks stehen in Abschnitt 9.2.
+- Historische kursinterne GH01/GH02-Dateiblobs sind in Abschnitt 9.1 präzisiert; geprüfte Direktbefunde und gepinnte Dateilinks stehen in Abschnitt 9.2.
 - Die offiziellen, historisch verwendeten Quellen für MQTT, SIP, RTP, Rust und Moodle sind unten aufgeführt. Ihre komplette Webfassung wurde im Archivierungsdurchlauf nicht neu abgenommen; sie bleiben Literatur-/Importreferenzen des Lehrpakets.
 
 - W01: [MQTT Version 5.0 OASIS Standard 2019](https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html).
@@ -733,12 +729,11 @@ Besonders zu kennzeichnen sind **S08 Final Draft** (TSIM-Anwendung, 2005), **S14
 - M02: [Moodle Kursupload](https://docs.moodle.org/en/Upload_courses).
 - M03: [Moodle Buchkapitelimport](https://docs.moodle.org/en/Book_settings).
 
-
 ## 16. Bilder und Archivassets
 
-Im zugänglichen Fachchat gibt es keine separaten vom Nutzer hochgeladenen Fotos oder ImageGen-Entwürfe. Sichtbar bzw. in der erhaltenen Arbeitszusammenfassung beschrieben sind gerenderte PDF-Vorschauen: Kontaktbögen über das Kursbuch und die Detailseiten 117, 128 und 129. Die ursprünglich erzeugten PNG-Bytes und frühere Layout-Zwischenstände wurden nicht erhalten.
+Erhalten sind gerenderte PDF-Vorschauen in Form von Kontaktbögen und den Detailseiten 117, 128 und 129. Separate Fotos oder Designentwürfe sind nicht vorhanden. Die ursprünglichen PNGs und frühen Layout-Zwischenstände fehlen.
 
-Für den Archivauftrag wurden aus dem **unveränderten finalen 135-Seiten-PDF** zwölf Kontaktbögen und drei Detailseiten neu gerendert. Sie sind ausdrücklich **Ansichtsrekonstruktionen**, keine bytegleichen Original-Chatbilder. Die finalen Seiteninhalte sind vollständig über das erhaltene PDF wieder lesbar; die Kontaktbögen decken Seiten 1–135 ab. Frühere Vorschauen der verworfenen 138-Seiten-Zwischenfassung können damit nicht exakt rekonstruiert werden.
+Für den Prüfdurchlauf vom 06.10.2026 wurden aus dem **unveränderten finalen 135-Seiten-PDF** zwölf Kontaktbögen und drei Detailseiten neu gerendert. Sie sind ausdrücklich **Ansichtsrekonstruktionen**, keine bytegleichen Originalbilder. Die finalen Seiteninhalte sind vollständig über das erhaltene PDF wieder lesbar; die Kontaktbögen decken Seiten 1–135 ab. Frühere Vorschauen der verworfenen 138-Seiten-Zwischenfassung können damit nicht exakt rekonstruiert werden.
 
 - [Assetverzeichnis und Bildindex](assets/2026-10-06_netcore-academy/README.md).
 - [Bildmanifest mit Seitenbezug und SHA-256](assets/2026-10-06_netcore-academy/bildmanifest.json).
@@ -751,13 +746,12 @@ Für den Archivauftrag wurden aus dem **unveränderten finalen 135-Seiten-PDF** 
 
 ![Rekonstruierte SYNC-Feldtabelle aus dem finalen Kursbuch](assets/2026-10-06_netcore-academy/bilder/detail-128.png)
 
-## 17. Verbleibende Auswertungslücken und Fortsetzungsgrenzen
+## 17. Offene Belege und Fortsetzungsgrenzen
 
-1. Ursprünglicher exakter Chattitel, Chatlink und vollständige frühe Assistentenantwort zur Moodle-Idee sind nicht als eigenständige Quellen verfügbar. Die ausdrücklichen Nutzeraufträge und das tatsächlich erstellte Ergebnis sind vorhanden; aus einer möglichen frühen Empfehlung wird keine spätere Installation abgeleitet.
-2. Ursprüngliche Autoren-/Render-/Exportskripte, temporäre Zwischenversionen und alle Rohprüflogs fehlen nach der Workspace-Bereinigung. Erhalten sind vollständige Inhalte, Importdateien, ausführbare Labore und deren damalige Ergebnisse; heute geprüfte Befunde sind zusätzlich archiviert.
-3. Die PDF-Kontaktbögen/Detailbilder sind neu gerenderte Ansichten. Für bytegleiche historische Bildbelege müssten die damaligen PNGs nachgereicht werden; eine Norm-/Kursfortsetzung ist trotzdem aus PDF/HTML/JSON möglich.
-4. Die vollständige Sammel-PDF und sämtliche Normklauseln wurden für die Archivierung nicht fachlich Satz für Satz gelesen. Ausgewählte Bit-/Codec-Tabellen sind gezielt belegt; zusätzliche DMO-/DGNA-Normen und Editionspflege bleiben offen.
-5. Kein Moodle-Host, Nutzerzugang, installierter Pi/TBS-Build, LXC-Livezustand, echter Capture, Endgerät oder vollständiger CI-Lauf war Prüfgegenstand. Aussagen „im Betrieb bestätigt“ werden daher für die Academy und ihre Produktfälle nicht gesetzt.
-6. Root-Roadmap- und Fachroadmap-Kandidaten stehen nur in dieser Zusammenfassung. Außerhalb `Docs/archive/` wurde nichts geändert; Archiving wurde nicht mit main oder anderen Branches zusammengeführt.
+1. Ursprüngliche Autoren-/Render-/Exportskripte, temporäre Zwischenversionen und alle Rohprüflogs fehlen nach der Workspace-Bereinigung. Erhalten sind vollständige Inhalte, Importdateien, ausführbare Labore und deren damalige Ergebnisse; zum Prüfstand vom 06.10.2026 geprüfte Befunde sind zusätzlich archiviert.
+2. Die PDF-Kontaktbögen/Detailbilder sind neu gerenderte Ansichten. Für bytegleiche historische Bildbelege müssten die damaligen PNGs nachgereicht werden; eine Norm-/Kursfortsetzung ist trotzdem aus PDF/HTML/JSON möglich.
+3. Die vollständige Sammel-PDF und sämtliche Normklauseln wurden für die Archivierung nicht fachlich Satz für Satz gelesen. Ausgewählte Bit-/Codec-Tabellen sind gezielt belegt; zusätzliche DMO-/DGNA-Normen und Editionspflege bleiben offen.
+4. Kein Moodle-Host, Lernendenzugang, installierter Pi/TBS-Build, LXC-Livezustand, echter Capture, Endgerät oder vollständiger CI-Lauf war Prüfgegenstand. Aussagen „im Betrieb bestätigt“ werden daher für die Academy und ihre Produktfälle nicht gesetzt.
+5. Root-Roadmap- und Fachroadmap-Kandidaten stehen nur in dieser Zusammenfassung. Außerhalb `Docs/archive/` wurde nichts geändert; Archiving wurde nicht mit main oder anderen Branches zusammengeführt.
 
-Die Dokumentation dient als technischer Fortsetzungspunkt mit konkreten Artefakten und Prüfnachweisen. Das Archivieren des Chatthreads übernimmt der Nutzer nach eigener Prüfung.
+Die erhaltenen Inhalte, Importdateien und Prüfnachweise bilden die Grundlage für die nächste Academy-Arbeitsphase.

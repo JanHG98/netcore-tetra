@@ -1,51 +1,47 @@
-# NetCore-Tetra – Technische Abschlussdokumentation: Control Room, Windows-UI, RBAC, Status-Tableau und Directory-API
+# Brainstorming: Control Room, Windows-UI, RBAC, Status-Tableau und Directory-API
 
-> **Archivcharakter:** Dieses Dokument sichert den zugänglichen Verlauf dieses Entwicklungs- und Diagnosechats. Es ist weder eine Freigabe der historischen ZIP-Pakete noch eine Bestätigung, dass die zuletzt vorgeschlagenen Änderungen auf den Zielsystemen funktionieren. Historischer Chatstand, tatsächlich beobachteter Betrieb und am 03.10.2026 gelesener Repository-Code sind ausdrücklich getrennt.
+> **Arbeitsstand:** Historische Entwicklungspakete, beobachteter Betrieb und Repository-Code vom 03.10.2026 sind getrennt zu betrachten. Die zuletzt vorgeschlagenen Änderungen wurden auf den Zielsystemen nicht vollständig bestätigt.
 >
-> **Wichtigste Übergabe:** Die Namensauflösung und die Konsistenz von Statustext, Statusnummer und Farbe wurden in diesem Chat nicht erfolgreich Ende-zu-Ende abgenommen. Die später im Repository vorhandene Directory-Anbindung ist ein Quellcodebefund, kein nachträglicher Betriebsnachweis. Die historische Anweisung, den vollständigen LXC-Repository-Ordner zu löschen und anschließend lediglich das Komponenten-ZIP zu entpacken, ist falsch und darf nicht als Reparaturanleitung verwendet werden.
+> **Offen:** Namensauflösung sowie Konsistenz von Statustext, Statusnummer und Farbe wurden nicht vollständig Ende-zu-Ende abgenommen. Die Directory-Anbindung im Repository ist ein Codebefund, kein Betriebsnachweis. Die historische Anleitung, das vollständige LXC-Repository zu löschen und nur das Komponenten-ZIP zu entpacken, ist falsch und darf nicht verwendet werden.
 
-## 1. Metadaten und Geltungsbereich
+## 1. Rahmen und Quellenstand
 
 | Merkmal | Angabe |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema dieses Archivs | Aufbau des Control-Room-Kerns; native Windows-Bedienoberfläche; Benutzeranmeldung/RBAC; Multi-Monitor-Fenster; Live-Karte; Status-Tableau; Anbindung des vorhandenen NetCore Directory Servers; wiederholte Build- und Integrationsfehler |
-| Ursprünglicher Chattitel | Im verfügbaren Verlauf nicht zuverlässig sichtbar; der Titel dieses Dokuments ist eine beschreibende Archivüberschrift, kein rekonstruierter Originaltitel. |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link erfunden. |
 | Historische Zeitanker | Aus den erhaltenen Terminalausgaben: 30.06.2026 und 01.07.2026. Das ist keine gesicherte Datierung sämtlicher Nachrichten. |
 | Erstellungsdatum | 03.10.2026; lokale Zeitzone Europe/Berlin, UTC+02:00 |
 | Zielrepository | `JanHG98/netcore-tetra` |
-| Einziger Schreibbranch dieses Auftrags | `Archiving` |
+| Geprüfter Branch | `Archiving` |
 | Geprüfter Archivbranch vor dieser Dokumentation | `df575519c7cf066d771511743175f22fede0826d` |
 | Zugehöriger Tree | `2e2cafefda12ed804ab756bbb724cc2e9cc888ab` |
 | Zusätzlich gelesener Default-Branch | `main` bei `6aa9be8f74ab731f72dc133a5f8e90c5018c626d` |
-| Schreibumfang | Ausschließlich diese Abschlussdokumentation und der Index `Docs/archive/README.md`; keine Quellcode-, Konfigurations-, Roadmap- oder Deploymentänderung außerhalb des Archivs. |
-| Commit dieser Archivierung | Über die Git-Historie der Datei nachvollziehbar; der beim Schreiben entstandene Commit wird in der Abschlussmeldung genannt. Er ist nicht mit dem oben festgehaltenen Prüfreferenz-Commit gleichzusetzen. |
 
-Der initial gelesene Branch `Archiving` lag zwölf Commits vor dem geprüften `main`, ohne Rückstand. Dieser Vorsprung bestand **nicht ausschließlich aus Archivdateien**: Er enthielt auch bereits vorhandene Dashboard-/Dienst-WebUI-Änderungen und Tests. Diese Arbeiten gehören nicht zu diesem Archivierungsauftrag und sind unverändert zu bewahren. [R01] [R02] [R03]
+Der initial gelesene Branch `Archiving` lag zwölf Commits vor dem geprüften `main`, ohne Rückstand. Dieser Vorsprung bestand **nicht ausschließlich aus Archivdateien**: Er enthielt auch bereits vorhandene Dashboard-/Dienst-WebUI-Änderungen und Tests. Der Branch-Vorsprung lässt sich deshalb nicht pauschal als reine Archivierung einordnen. [R01] [R02] [R03]
 
 ### 1.1 Was zugänglich war – und was nicht
 
-Ausgewertet wurden die sichtbaren Nutzeranweisungen, Terminalausgaben, Screenshots, gezeigten Codeänderungen und späteren Korrekturen. Zusätzlich wurden die sechs erhaltenen eingefügten Textdateien, die Dateiinventare der verfügbaren ZIP-Pakete und die relevanten aktuellen Repository-Dateien herangezogen. Das letzte ZIP wurde hinsichtlich Integrität, Inhalt und des gemeldeten `resolved.len()`-Fehlers gezielt untersucht.
+Grundlagen sind Anforderungen, Terminalausgaben, Screenshots, Codeänderungen und spätere Korrekturen. Erhalten sind sechs Textdateien, die ZIP-Paketinventare und relevante Repository-Dateien. Beim letzten ZIP wurden Integrität, Inhalt und der gemeldete `resolved.len()`-Fehler gezielt geprüft.
 
-Im Chat sind zahlreiche längere Abschnitte nur als ausgelassene Nachrichtenblöcke vorhanden. Insbesondere Teile der ersten Implementierungen, früherer Installationsanleitungen und mancher Toolausgaben fehlen. Die Herkunft einzelner Schritte lässt sich deshalb nicht lückenlos rekonstruieren. Sichtbare Generator-Skripte oder eine Assistentenaussage „gebaut“ ersetzen keine fehlende Compiler- oder Testausgabe.
+Frühe Implementierungs-, Installations- und Diagnoseabschnitte sind nur teilweise erhalten. Generator-Skripte oder Fertigmeldungen ersetzen fehlende Compiler- und Testausgaben nicht.
 
-Die beigefügten ETSI-Dateien wurden für dieses Archiv **als Referenzbestand eingeordnet**, nicht vollständig fachlich geprüft. Es gibt im sichtbaren Verlauf keinen belastbaren Nachweis, dass die konkreten UI-/Directory-Fixes anhand dieser Normen validiert wurden. Weder die Software noch die Statusnummernzuordnung erhalten durch ihre Beilage einen Konformitätsnachweis.
+Die beigefügten ETSI-Dateien wurden für diese Entwicklungsnotizen **als Referenzbestand eingeordnet**, nicht vollständig fachlich geprüft. Es gibt im sichtbaren Verlauf keinen belastbaren Nachweis, dass die konkreten UI-/Directory-Fixes anhand dieser Normen validiert wurden. Weder die Software noch die Statusnummernzuordnung erhalten durch ihre Beilage einen Konformitätsnachweis.
 
-Die aktuellen produktiven Konfigurationen, Prozesse, Datenbanken, Directory-Inhalte und Funkgeräte waren während dieser Archivierung nicht direkt erreichbar. Der GitHub-Connector erlaubte das Lesen des Repositorys. Ein zusätzlicher Clone aus der Arbeitsumgebung scheiterte an der Namensauflösung von GitHub; dadurch wurde kein vollständiger lokaler Repository-Build ausgeführt. Diese Grenze betrifft den lokalen Build, nicht den erfolgreichen Repository-Lesezugriff.
+Produktive Konfigurationen, Prozesse, Datenbanken, Directory-Inhalte und Funkgeräte waren für die Quellenprüfung vom 03.10.2026 nicht direkt erreichbar. Repository-Lesezugriffe waren möglich; der lokale Clone scheiterte an der GitHub-Namensauflösung. Ein vollständiger lokaler Repository-Build wurde deshalb nicht ausgeführt.
 
 ### 1.2 Verwendete Statusbegriffe
 
 | Status | Bedeutung in diesem Dokument |
 |---|---|
 | **Idee** | Angeregt, aber nicht als fertige Anforderung oder Umsetzung nachgewiesen. |
-| **Beschlossen/geplant** | Vom Nutzer verlangt oder ausdrücklich bestätigt; Umsetzung kann noch fehlen. |
+| **Beschlossen/geplant** | Ausdrücklich verlangt oder ausdrücklich bestätigt; Umsetzung kann noch fehlen. |
 | **Implementiert – Artefakt** | In untersuchtem ZIP beziehungsweise sichtbarem erzeugtem Quelltext enthalten; nicht automatisch im Git oder auf einem Zielgerät vorhanden. |
 | **Implementiert – Repository** | Am ausdrücklich genannten Commit im Quellcode nachvollzogen. |
 | **Getestet** | Ein konkreter Test und sein Ergebnis sind sichtbar. Umfang und Grenzen werden benannt. |
-| **Im Betrieb bestätigt** | Nutzerlog, Ausgabe oder Screenshot belegt das betreffende Verhalten auf einem Zielsystem. Das gilt nur für das beobachtete Verhalten, nicht pauschal für das gesamte Paket. |
+| **Im Betrieb bestätigt** | Betriebslog, Ausgabe oder Screenshot belegt das betreffende Verhalten auf einem Zielsystem. Das gilt nur für das beobachtete Verhalten, nicht pauschal für das gesamte Paket. |
 | **Unbestätigt/offen** | Behauptung, Diagnose oder Funktion ohne ausreichenden Nachweis beziehungsweise mit späterem Gegenbefund. |
-| **Überholt/zurückgezogen** | Durch spätere Nutzerentscheidung ersetzt oder fachlich/technisch nicht als weiterer Arbeitsweg geeignet. |
+| **Überholt/zurückgezogen** | Durch spätere Projektentscheidung ersetzt oder fachlich/technisch nicht als weiterer Arbeitsweg geeignet. |
 
 ## 2. Ziel, Ausgangslage und Ergebnis in einem Überblick
 
@@ -59,7 +55,7 @@ Die Arbeit verlief in drei Schwerpunkten:
 
 ### 2.1 Belastbar erreicht
 
-Der historische Verlauf belegt einen laufenden Control-Room-Dienst mit verbundenem TBS-Node, abrufbaren API-Daten und aktivierter SQLite-Persistenz. Eine Command-Historie überstand einen Dienstneustart. Die native Windows-UI wurde gestartet; Screenshots zeigen reale Karten, Teilnehmer-/Statusansichten, Cluster und später getrennte Gerätekarten. Eine zwischenzeitlich wegen Node-Authentifizierung offline erscheinende Basisstation wurde vom Nutzer wieder als online bestätigt.
+Der historische Verlauf belegt einen laufenden Control-Room-Dienst mit verbundenem TBS-Node, abrufbaren API-Daten und aktivierter SQLite-Persistenz. Eine Command-Historie überstand einen Dienstneustart. Die native Windows-UI wurde gestartet; Screenshots zeigen reale Karten, Teilnehmer-/Statusansichten, Cluster und später getrennte Gerätekarten. Eine zwischenzeitlich wegen Node-Authentifizierung offline erscheinende Basisstation wurde ausdrücklich wieder als online bestätigt.
 
 ### 2.2 Nicht als abgeschlossen anzusehen
 
@@ -67,19 +63,19 @@ Die korrekten Directory-Namen waren bis zu den letzten eindeutigen UI-Rückmeldu
 
 Die Labels „Final-Fix“, „Directory-First“, „Deep-Index“ und „Verified“ waren Bezeichnungen der gelieferten Entwicklungsstände. Sie sind **keine Abnahmekriterien und keine belastbaren Qualitätsnachweise**.
 
-## 3. Endgültige Anforderungen und Entscheidungen aus diesem Chat
+## 3. Endgültige Anforderungen und Entscheidungen aus dieser Entwicklungsphase
 
 ### 3.1 Rollen der Systeme
 
 **Beschlossen/geplant:** Die Basisstation betreibt den Funkstack und ihre vorhandene lokale Weboberfläche. Der Control-Room-LXC soll für diesen historischen Entwurf Backend und CLI bleiben; die eigentliche Operator-Oberfläche soll auf dem Windows-Rechner laufen. Die GUI soll nicht auf der TBS oder dem LXC gebaut werden müssen.
 
-Der Nutzer stellte ausdrücklich klar, dass der TBS-Maschinentoken in deren `config.toml` verbleiben kann. Dafür wird kein auffälliges Token-Bedienfeld in der Basisstations-WebUI benötigt. Menschliche Benutzer und Maschinenanmeldung sind getrennte Sachverhalte.
+Der TBS-Maschinentoken darf ausdrücklich in der `config.toml` der TBS verbleiben. Dafür wird kein auffälliges Token-Bedienfeld in der Basisstations-WebUI benötigt. Menschliche Benutzer und Maschinenanmeldung sind getrennte Sachverhalte.
 
-**Heutige Abweichung:** Der geprüfte Repository-Stand enthält inzwischen eine Control-Room-WebUI und weitere Backend-Funktionen. Das wird in Abschnitt 12 als spätere Repository-Entwicklung dokumentiert und nicht rückwirkend zur ursprünglichen Entscheidung dieses Chats erklärt.
+**Am 03.10.2026 geprüfte Abweichung:** Der geprüfte Repository-Stand enthält inzwischen eine Control-Room-WebUI und weitere Backend-Funktionen. Das wird in Abschnitt 12 als spätere Repository-Entwicklung dokumentiert und nicht rückwirkend zur ursprünglichen Entscheidung dieses Vorhabens erklärt.
 
 ### 3.2 Menschlicher Login und RBAC
 
-Die zuerst aufgebaute Bedienung mit Operator-/Admin-Tokens wurde durch eine spätere ausdrückliche Nutzerentscheidung ersetzt:
+Die zuerst aufgebaute Bedienung mit Operator-/Admin-Tokens wurde durch eine spätere ausdrückliche Projektentscheidung ersetzt:
 
 - Beim Start der Windows-EXE sind Benutzername und Passwort manuell einzugeben.
 - Die Anwendung zeigt Funktionen entsprechend der Benutzerrolle.
@@ -95,25 +91,25 @@ Der TBS-Token für `/node` bleibt dabei Maschinenauthentifizierung. „Weg vom T
 
 ### 3.3 Das Directory ist ein bestehender Server – keine zweite Stammdatendatei
 
-Dies ist die wichtigste mehrfach wiederholte Korrektur des Nutzers:
+Dies ist die wichtigste mehrfach wiederholte Korrektur der Projektplanung:
 
 > Namen, Statusdefinitionen und Gruppenzuordnungen sollen aus der API des vorhandenen NetCore Directory Servers kommen. Sie sollen nicht auf Windows oder im Control-Room-LXC erneut in TOML gepflegt werden.
 
 Erforderlich sind insbesondere Gerätenamen, Kurzbezeichnungen, Gerätetypen, Gruppen-/Statusgruppenbezeichnungen, Mitgliedschaften, Statustexte und die dazugehörigen Codes/Farben. Ein lokaler Clientcache ist als technische Umsetzung denkbar, aber keine zusätzliche administrative Datenquelle. Die Pflege bleibt zentral.
 
-Die im Chat vorgeschlagenen lokalen TOML-Einträge und die später als Test angebotenen manuellen JSON-Importe erfüllen diese Anforderung nicht als Dauerlösung. Auch ein neuer Import-Endpunkt reicht nicht, solange keine tatsächliche Quelle ihn automatisch befüllt.
+Die in den Arbeitsnotizen vorgeschlagenen lokalen TOML-Einträge und die später als Test angebotenen manuellen JSON-Importe erfüllen diese Anforderung nicht als Dauerlösung. Auch ein neuer Import-Endpunkt reicht nicht, solange keine tatsächliche Quelle ihn automatisch befüllt.
 
 ### 3.4 Windows-UI, Bedienbarkeit und Multi-Window
 
 Die gesamte Anwendung soll responsive sein: passende Eingabefeldgrößen, keine abgeschnittenen Menüleisten, kein stufenweises Driftverhalten und keine unbenutzbare Verteilung von Schaltflächen. Die mehrfach gezeigte diagonale beziehungsweise treppenförmige Anordnung war ausdrücklich ein Fehler, keine gewünschte Gestaltung.
 
-Das obere Menü muss Aktionen tatsächlich auslösen. Reine Dekoration oder Schaltflächen ohne Funktion wurden beanstandet. Der Nutzer verlangte eine aufgeräumte Arbeitsansicht ohne ständig sichtbare API-/Profilangaben und ohne einstellbare Refresh-Bedienung; die Aktualisierung soll fest bei einer Sekunde liegen.
+Das obere Menü muss Aktionen tatsächlich auslösen. Reine Dekoration oder Schaltflächen ohne Funktion wurden beanstandet. Festgelegt ist eine aufgeräumte Arbeitsansicht ohne ständig sichtbare API-/Profilangaben und ohne einstellbare Refresh-Bedienung; die Aktualisierung soll fest bei einer Sekunde liegen.
 
 Jedes Modul soll als **echtes Betriebssystemfenster** aus dem Hauptfenster herauslösbar sein. Das Verschieben muss über alle Monitore funktionieren. Nur innerhalb des Hauptfensters verschiebbare GUI-Panels genügen nicht.
 
 ### 3.5 Karte und Standorte
 
-**Beschlossen/geplant:** Eine echte Online-Karte statt weißer Pseudofläche; Verschieben mit der Maus; dosiertes Mausrad-Zoom; flüssige Bedienung; Geräteinformationen beim Klick. Der Nutzer meldete ausdrücklich ungefähr acht Zoomstufen pro Mausradraster als zu empfindlich.
+**Beschlossen/geplant:** Eine echte Online-Karte statt weißer Pseudofläche; Verschieben mit der Maus; dosiertes Mausrad-Zoom; flüssige Bedienung; Geräteinformationen beim Klick. Die beobachteten ungefähr acht Zoomstufen pro Mausradraster sind zu empfindlich.
 
 Im Tab `Standorte` bleibt die Tabelle, im Tab `Karte` die Kartenansicht. Die Karte soll nicht zusätzlich unter `Standorte` und die komplette Standortliste nicht noch einmal unter der Karte erscheinen.
 
@@ -133,13 +129,13 @@ Die spätere Präzisierung ersetzt die zuerst gelieferte Sammelliste:
 - Die Elemente sollen per Maus verschoben und sinnvoll angeordnet werden können.
 - Die Legende soll sauber ausgerichtet sein, nicht in einem Bogen oder durch fortlaufendes Layoutwachstum driften.
 
-Der Nutzer bezeichnete solche Elemente auch als „Tab“. Die gelieferten Implementierungen verwendeten Karten/Kacheln. Ob zusätzlich individuell abtrennbare OS-Fenster pro Gerät gewünscht sind, wurde nicht abschließend festgelegt; die sichere Anforderung ist die individuelle Anzeige und Maus-Anordnung innerhalb des Tableaus.
+Die Anforderung beschreibt einzeln angeordnete „Tabs“; die Implementierungen verwenden Karten/Kacheln. Ob zusätzlich individuell abtrennbare OS-Fenster pro Gerät gewünscht sind, wurde nicht abschließend festgelegt; die sichere Anforderung ist die individuelle Anzeige und Maus-Anordnung innerhalb des Tableaus.
 
 ### 3.7 Lieferung, Git und Anleitungen
 
-Der Nutzer verlangt komplette betroffene Dateien in **einem ZIP**, keine Patchdateien und keine verteilten manuellen Quellcodekorrekturen auf vielen Geräten. Jede Lieferung benötigt eine vollständige, systemspezifische Schrittfolge: Wo entpacken beziehungsweise aus Git beziehen, welche Komponenten bauen, welche Prozesse schließen, welcher Dienst neu starten, welche Version prüfen.
+Für Lieferungen sind komplette betroffene Dateien in **einem ZIP** verbindlich, keine Patchdateien und keine verteilten manuellen Quellcodekorrekturen auf vielen Geräten. Jede Lieferung benötigt eine vollständige, systemspezifische Schrittfolge: Wo entpacken beziehungsweise aus Git beziehen, welche Komponenten bauen, welche Prozesse schließen, welcher Dienst neu starten, welche Version prüfen.
 
-Alte UI-Binaries sollen kontrolliert entfernt oder ersetzt werden. Dies autorisiert nicht das Löschen des gesamten Repositorys oder produktiver Konfigurationen und Datenbanken. `.vs` und Build-Erzeugnisse sollen nicht versioniert werden. Nach einer `.gitignore`-Bereinigung meldete der Nutzer nur noch sieben statt ungefähr 1.800 Änderungen; das ist eine historische Nutzerbeobachtung, kein heutiger Repository-Diff.
+Alte UI-Binaries sollen kontrolliert entfernt oder ersetzt werden. Dies autorisiert nicht das Löschen des gesamten Repositorys oder produktiver Konfigurationen und Datenbanken. `.vs` und Build-Erzeugnisse sollen nicht versioniert werden. Nach einer `.gitignore`-Bereinigung waren nur noch sieben statt ungefähr 1.800 Änderungen sichtbar; das ist eine historische Betriebsbeobachtung, kein am 03.10.2026 geprüfter Repository-Diff.
 
 ## 4. Historische Architektur und Datenfluss
 
@@ -191,13 +187,13 @@ Als Node-Nachrichten waren `Hello`, `Heartbeat`, `Telemetry`, `ControlAck`, `Con
 
 Im untersuchten letzten ZIP baut die UI als eigenständiges Cargo-Projekt mit eigenem `[workspace]` über `--manifest-path`. Das UI-Paket trägt weiterhin die Cargo-Version `1.3.0`; die sichtbaren UI-Bezeichnungen `v5.x` sind davon getrennte Zeichenketten. Deshalb beweist eine Compilerzeile mit `netcore-control-room-ui v1.3.0` nicht, welche UI-Unterversion im Fenster läuft.
 
-Die UI-Manifeste nennen `eframe`/`egui_extras` 0.27; Nutzer-Builds zeigten konkret 0.27.2. Weitere Abhängigkeiten sind `reqwest` 0.12 mit Blocking/JSON/rustls, `serde`, `serde_json`, `toml` 0.8, `dirs-next` 2 und `image` 0.25 mit PNG/JPEG. Der Operator verwendet ebenfalls `reqwest` und ist in die Root-Workspace-Vererbung eingebunden. Der Kern verwendet unter anderem `tetra-core`, `tetra-entities`, `clap`, `chrono`, `tungstenite`, `uuid`, `tracing`, `rusqlite` 0.32 mit gebündeltem SQLite sowie Auth-Hilfsbibliotheken.
+Die UI-Manifeste nennen `eframe`/`egui_extras` 0.27; Buildausgaben zeigten konkret 0.27.2. Weitere Abhängigkeiten sind `reqwest` 0.12 mit Blocking/JSON/rustls, `serde`, `serde_json`, `toml` 0.8, `dirs-next` 2 und `image` 0.25 mit PNG/JPEG. Der Operator verwendet ebenfalls `reqwest` und ist in die Root-Workspace-Vererbung eingebunden. Der Kern verwendet unter anderem `tetra-core`, `tetra-entities`, `clap`, `chrono`, `tungstenite`, `uuid`, `tracing`, `rusqlite` 0.32 mit gebündeltem SQLite sowie Auth-Hilfsbibliotheken.
 
 Im Kernmanifest des letzten ZIP steht `tetra-entities` mit `default-features = false`. Außerdem ist ein leeres Kompatibilitätsfeature `asterisk` vorgesehen. Hintergrund ist die Vermeidung einer unnötigen RF-/Codec-Abhängigkeitskette beim Bau des LXC-Dienstes. Das erklärt den Ansatz, ersetzt aber keinen vollständigen Feature-Graph- und Buildtest.
 
 ## 5. Historische System-, Pfad- und Parameterübersicht
 
-Alle Angaben in diesem Abschnitt sind historische Beobachtungen oder explizit gekennzeichnete Vorgaben. Sie sind keine Abfrage der heute tatsächlich laufenden Infrastruktur.
+Alle Angaben in diesem Abschnitt sind historische Beobachtungen oder explizit gekennzeichnete Vorgaben. Sie sind keine Abfrage der am 03.10.2026 tatsächlich laufenden Infrastruktur.
 
 | Element | Wert / Bedeutung | Nachweisgrenze |
 |---|---|---|
@@ -224,13 +220,13 @@ Alle Angaben in diesem Abschnitt sind historische Beobachtungen oder explizit ge
 | Directory-Port im späteren Pull-Code | TCP `8095` | Quellcode-Default, nicht bestätigte reale Directory-Adresse |
 | Pull-Default | `http://127.0.0.1:8095` | Gilt relativ zum LXC-Prozess; nicht automatisch der separate Directory-Server |
 
-Wichtige Umgebungsvariablennamen waren `NETCORE_CONTROL_ROOM_NODE_TOKEN`, in der überholten Tokenphase `NETCORE_CONTROL_ROOM_OPERATOR_TOKEN` und `NETCORE_CONTROL_ROOM_ADMIN_TOKEN`, später `NETCORE_CONTROL_ROOM_API`, `NETCORE_CONTROL_ROOM_USER`, `NETCORE_CONTROL_ROOM_NODE_ID` und `NETCORE_CONTROL_ROOM_OPERATOR_ID`. Für die Directory-Anbindung sind heute insbesondere `NETCORE_DIRECTORY_API`, `NETCORE_DIRECTORY_URL` und `NETCORE_DIRECTORY_BASE_URL` relevant. **Es werden hier nur Bezeichner dokumentiert, keine Werte von Zugangsdaten.**
+Wichtige Umgebungsvariablennamen waren `NETCORE_CONTROL_ROOM_NODE_TOKEN`, in der überholten Tokenphase `NETCORE_CONTROL_ROOM_OPERATOR_TOKEN` und `NETCORE_CONTROL_ROOM_ADMIN_TOKEN`, später `NETCORE_CONTROL_ROOM_API`, `NETCORE_CONTROL_ROOM_USER`, `NETCORE_CONTROL_ROOM_NODE_ID` und `NETCORE_CONTROL_ROOM_OPERATOR_ID`. Für die Directory-Anbindung sind am 03.10.2026 insbesondere `NETCORE_DIRECTORY_API`, `NETCORE_DIRECTORY_URL` und `NETCORE_DIRECTORY_BASE_URL` relevant. **Es werden hier nur Bezeichner dokumentiert, keine Werte von Zugangsdaten.**
 
 ### 5.1 Funkparameter als Kontext der beobachteten TBS
 
 Die Übersicht zeigte MCC `901`, MNC `1510`, Location Area `1`, Colour Code `1`, System Code `1`, Main Carrier `720`, Secondary Carrier `721` und aktivierten Dual-Carrier-Betrieb. Der erhaltene TBS-Startlog nennt die Trägerpaare DL/UL `418.000/408.000 MHz` und `418.025/408.025 MHz`, mit expliziten SDR-Mittenfrequenzen TX/RX `418.0125/408.0125 MHz`.
 
-Der gleiche Log nennt SXceiver-Hardwareversion `1.2`, eine Abtastrate von `600000` und den logischen Timeslot-Mapper v2.8 mit `C2 TS1 control/guard`. Diese Angaben beschreiben den damaligen Trägerkontext, nicht eine in diesem Chat abgenommene Dual-Carrier-Funktion. Für die eigentliche Dual-Carrier-Historie existieren gesonderte Archivdokumente.
+Der gleiche Log nennt SXceiver-Hardwareversion `1.2`, eine Abtastrate von `600000` und den logischen Timeslot-Mapper v2.8 mit `C2 TS1 control/guard`. Diese Angaben beschreiben den damaligen Trägerkontext, nicht eine in dieser Entwicklungsphase abgenommene Dual-Carrier-Funktion. Für die eigentliche Dual-Carrier-Historie existieren gesonderte Archivdokumente.
 
 Der TBS-Log nennt `service_name=tetra`. Aus dem Journal-Prozessnamen `bluestation-bs` darf deshalb nicht ungeprüft auf den systemd-Unitnamen geschlossen werden. Ebenso ist ein Fehler der Control-Room-Anmeldung nicht automatisch ein RF- oder Trägerproblem.
 
@@ -306,13 +302,13 @@ Zu Beginn wurden Node-Anbindung, Overview-/Detail-API, Operator-Client, Konfigur
 
 Ein LXC-Build zog zunächst `soapysdr-sys` in den Abhängigkeitsgraphen. Die Bibliothek beziehungsweise `SoapySDR.pc` fehlte, und `pkg-config` schlug fehl. Dazu wurden Dependency-/Cargo-Fixes geliefert. Die spätere Trennung der Backendabhängigkeiten ist in den Manifestauszügen sichtbar; eine genaue Zuordnung sämtlicher frühen Paketversionen zu einzelnen Commits ist nicht möglich.
 
-Der folgende Rust-Ownership-Fehler war im Nutzerlog eindeutig:
+Der folgende Rust-Ownership-Fehler war im Betriebslog eindeutig:
 
 ```text
 E0382: use of moved value: response_value
 ```
 
-`response_value` wurde in eine bestehende Antwortliste verschoben und danach nochmals zur Anlage einer neuen Liste benötigt. Der Nutzer führte damals die Clone-Korrektur und die Entfernung von `OptionalExtension` aus dem Import aus. Danach meldete Cargo einen erfolgreichen Release-Build. Der spätere Wunsch nach vollständigen Dateien ersetzt diese Art verteilter manueller Hotfixes als bevorzugten Lieferweg.
+`response_value` wurde in eine bestehende Antwortliste verschoben und danach nochmals zur Anlage einer neuen Liste benötigt. Die Clone-Korrektur und die Entfernung von `OptionalExtension` aus dem Import wurden damals ausgeführt. Danach meldete Cargo einen erfolgreichen Release-Build. Der spätere Wunsch nach vollständigen Dateien ersetzt diese Art verteilter manueller Hotfixes als bevorzugten Lieferweg.
 
 Nach Anlage der Konfiguration, des Dienstkontos und der Unit startete der Dienst mit SQLite. Ein Kick-Auftrag wurde angenommen, beantwortet, in SQLite abgelegt und nach einem Dienstneustart wieder angezeigt. Anschließend folgten Tokenauthentifizierung, Tokenregistry und dann der ausdrückliche Wechsel auf Benutzername/Passwort.
 
@@ -321,22 +317,22 @@ Nach Anlage der Konfiguration, des Dienstkontos und der Unit startete der Dienst
 | Entwicklungsstand | Thema | Einordnung |
 |---|---|---|
 | Native UI v1 | Erste native Windows-Oberfläche mit Modulnavigation und Tabellen | Im Betrieb durch Screenshot bestätigt; noch sehr einfache, unpassende Größenverhältnisse |
-| v2 | Multiwindow-/Kartenansatz | Nutzer beanstandet unveränderte Ansicht beziehungsweise nur interne Fenster |
-| v3 | Echte OS-Fenster über mehrere Monitore | Als Paket geliefert; Nutzer erklärt anschließend, es passe, und verlangt die echte Karte |
+| v2 | Multiwindow-/Kartenansatz | Unveränderte Ansicht beziehungsweise nur interne Fenster beanstandet |
+| v3 | Echte OS-Fenster über mehrere Monitore | Als Paket geliefert; Fensteransatz bestätigt, echte Karte als nächster Ausbau festgelegt |
 | v4 / v4.1 | Reale Kartenkacheln; Fix eines E0502-Borrow-Konflikts | Reale Karte später sichtbar |
-| v4.2–v4.4 | Pan/Zoom, flüssigere Karte, Geräteinfos, geringere Mausradempfindlichkeit | Nutzerfeedback dokumentiert Defizite und Verbesserungswünsche; keine vollständige Performance-Abnahme |
+| v4.2–v4.4 | Pan/Zoom, flüssigere Karte, Geräteinfos, geringere Mausradempfindlichkeit | Gestaltungsfeedback dokumentiert Defizite und Verbesserungswünsche; keine vollständige Performance-Abnahme |
 | v4.6 / v4.7 | Teilnehmer-/Positionsbereinigung, Directory-Nutzung | Namen-/Gruppenintegration später weiterhin fehlerhaft |
 | v5 / v5.1 / v5.2 | Benutzer/Passwort; CLI- und UI-Ownership-Buildfixes | Loginmaske und spätere Adminansicht sichtbar |
-| v5.3 | Node-Token/Basic-Kompatibilität nach Offline-/Broken-pipe-Schleife | Nutzer bestätigt TBS wieder online |
+| v5.3 | Node-Token/Basic-Kompatibilität nach Offline-/Broken-pipe-Schleife | TBS wieder online bestätigt |
 | v5.4 / v5.5 | Responsive Login/UI und Rollen-Ausblendung | Gefordert und geliefert; lückenhafte Rollenabnahme |
 | v5.6–v5.8 | Leitstellenlayout, responsive Nachbesserungen, kompakter Header | Wiederholte Screenshots mit abgeschnittenem Header und driftenden Controls |
 | v5.9 | Clean Workspace, funktionierendes Menü, feste Aktualisierung | Neue Feldnamenfehler verhindern zunächst Build |
 | v5.9.1 / v5.9.2 | Korrektur nicht vorhandener Command-Eingabefelder | Folgefehler dokumentiert; spätere UI wieder sichtbar |
 | v5.9.3 | Feste Navigationszeile statt driftender Pfeilbuttons | Implementierung im Generator sichtbar; allein noch kein Beleg für alle Größen/DPI |
 | v5.10 | Kartencluster, Spiderfy, Auswahl und Cluster-Geräteliste | Clusteransicht in späteren Screenshots sichtbar |
-| v5.10.1 | Standorttabelle unter der Karte entfernt | Explizite Nutzeranforderung; späterer Sourcebefund erhält die Trennung |
+| v5.10.1 | Standorttabelle unter der Karte entfernt | Explizite Anforderung; späterer Sourcebefund erhält die Trennung |
 
-Die visuellen Referenzen umfassten neben SELECTRIC unter anderem Einsatzleitplätze, Telefonie-/Kommunikationsoberflächen, Objektstatus, Personalverwaltung und Sirenenkarten. Daraus darf nicht abgeleitet werden, dass Telefonie, Video, Einsatzdisposition, Personalmanagement oder Sirenensteuerung in diesem Chat vollständig implementiert wurden. Die Bilder dienten zunächst der gewünschten Informationsdichte und Bediengestaltung.
+Die visuellen Referenzen umfassten neben SELECTRIC unter anderem Einsatzleitplätze, Telefonie-/Kommunikationsoberflächen, Objektstatus, Personalverwaltung und Sirenenkarten. Daraus darf nicht abgeleitet werden, dass Telefonie, Video, Einsatzdisposition, Personalmanagement oder Sirenensteuerung in dieser Entwicklungsphase vollständig implementiert wurden. Die Bilder dienten zunächst der gewünschten Informationsdichte und Bediengestaltung.
 
 ### 7.3 Status-Tableau v5.11 bis v5.11.9
 
@@ -347,9 +343,9 @@ Die visuellen Referenzen umfassten neben SELECTRIC unter anderem Einsatzleitplä
 | v5.11.2 | Doppeltes Derive entfernt | UI-Screenshot vorhanden; Status-SDS erscheinen im Tableau noch nicht korrekt |
 | v5.11.3 | SDS-Fallback und einzeilige Legende | Unterschiedlich lange innere Arrays erzeugen E0308 |
 | v5.11.4 | Slice-Liste `&[(u64, &[&str])]` | Buildfix geliefert, fachlicher Status weiterhin nicht übernommen |
-| v5.11.5 | IDs/Protokolle als JSON-Zahl oder numerischer String | Hypothese über Datentypen; weiterhin kein erfolgreicher Statuswechsel laut Nutzer |
+| v5.11.5 | IDs/Protokolle als JSON-Zahl oder numerischer String | Hypothese über Datentypen; weiterhin kein erfolgreicher Statuswechsel laut Betriebsbeobachtung |
 | v5.11.6 | Tatsächliche Felder `source_issi` und `protocol_id`; Diagnosezähler | Statuskandidaten und Text sichtbar; Nummer/Farbe und Namen weiterhin fehlerhaft |
-| v5.11.7 | Eigene Karten für ungruppierte Geräte; erweitertes Namensfallback | Nutzer zeigt teils noch v5.11.6; keine sichere Namensabnahme |
+| v5.11.7 | Eigene Karten für ungruppierte Geräte; erweitertes Namensfallback | Screenshots zeigen teils noch v5.11.6; keine sichere Namensabnahme |
 | v5.11.8 | Warning-Cleanup und weitere Directory-/Statusheuristik | `id_key_variants` versehentlich gelöscht, entfernte Struct-Felder noch initialisiert |
 | v5.11.9 | Fehlende ID-Hilfe und Initializer korrigiert | Screenshot bestätigt eigene Gerätekarten; erneuter Layoutdrift, weiterhin ISSIs und falsche Statuszahl |
 
@@ -363,13 +359,13 @@ Die Zahlen wie „16/50 SDS-Zeilen als Statuskandidaten erkannt“ belegen nur d
 | v5.12.1 | Zentrale Daten bevorzugen; lokale Werte nur ergänzend; Rohdaten durchsuchen | Erneute Nutzerbeanstandung fehlender Namen |
 | v5.12.2 | Rekursiver Deep-Index für ISSI/Namensfelder | Wieder keine Namen; zahlreiche unbenutzte Variablen/Hilfsfunktionen im erfolgreichen Build |
 | Diagnose danach | Control-Room-API liefert nur `hide_infrastructure` | Konkreter Nachweis, dass diese API-Sicht keine Stammdaten enthält |
-| Zwischenvorschlag | Namen manuell in LXC-TOML eintragen | Vom Nutzer als nicht zielführend zurückgewiesen |
+| Zwischenvorschlag | Namen manuell in LXC-TOML eintragen | Ausdrücklich als nicht zielführend zurückgewiesen |
 | v5.13.0 | Dynamisches Directory, Import-/Merge-API, resolved-Sicht, CLI-Import | Kein automatischer Bezug des vorhandenen Directory Servers; Kernproblem allein dadurch nicht gelöst |
 | v5.14.0 | Directory-API-Pull über fünf native Endpunkte | Sourceansatz vorhanden; Buildfehler wegen `.len()` auf `serde_json::Value` |
 | v5.14.1 | Objektlänge über `as_object()` | Im Artefakt korrigiert; keine eindeutige abschließende Nutzerabnahme |
 | v5.14.2 | Grep-Prüfung und Versionsmarker | Kein Nachweis eines vollständigen Builds oder funktionierenden Live-Directory. Gefährliche Neuinstallationsempfehlung wird hier ausdrücklich zurückgezogen. |
 
-Der wesentliche Erkenntnisgewinn entstand nicht durch immer mehr mögliche Namensfelder, sondern durch die Abfrage der tatsächlich konsumierten Datenquelle. Die vorherige Annahme, die Basisstation habe ihre Namen zwingend nur lokal, war nicht belegt. Der heute geprüfte TBS-Code besitzt ausdrücklich einen Client für den vorhandenen Directory Server. [R10] [R11]
+Der wesentliche Erkenntnisgewinn entstand nicht durch immer mehr mögliche Namensfelder, sondern durch die Abfrage der tatsächlich konsumierten Datenquelle. Die vorherige Annahme, die Basisstation habe ihre Namen zwingend nur lokal, war nicht belegt. Der am 03.10.2026 geprüfte TBS-Code besitzt ausdrücklich einen Client für den vorhandenen Directory Server. [R10] [R11]
 
 ## 8. Konkrete Betriebs- und Testnachweise
 
@@ -381,7 +377,7 @@ Diese Ausgaben bestätigen frühe HTTP-Funktionalität und die Übermittlung von
 
 ### 8.2 LXC-Start, Telemetrie und SQLite
 
-Der Nutzer zeigte am 01.07.2026 den erfolgreichen Release-Build nach dem Ownership-Fix. Danach wurden Dienstkonto, Konfigurationsverzeichnis, Datenverzeichnis und systemd-Unit eingerichtet.
+Der erfolgreiche Release-Build nach dem Ownership-Fix ist durch die Ausgabe vom 01.07.2026 belegt. Danach wurden Dienstkonto, Konfigurationsverzeichnis, Datenverzeichnis und systemd-Unit eingerichtet.
 
 Im Startlog um 11:13:59 UTC standen SQLite-Persistenz, null geladene Historieneinträge, `bind=0.0.0.0:9010`, `node_path=/node`, `ui_path=/ui` und eine WebSocket-Verbindung von `10.0.1.20`. Die anschließende Overview-Abfrage zeigte einen verbundenen Node, unter anderem 1.357 Telemetrieereignisse und zwölf Heartbeats, aber noch keine Teilnehmer. Spätere Ausgaben zeigten weitere steigende Zähler.
 
@@ -412,13 +408,13 @@ Die HTTP-/CLI-Annahme meldete `queued`. In SQLite stand kurz darauf `completed`.
 
 ### 8.4 Authentifizierung und systemd-Umgebung
 
-Nach einer zunächst ungeschützten beziehungsweise noch nicht wirksam aktualisierten Instanz folgten Startfehler, weil bei eingeschalteter Authentifizierung kein Node-Token aufgelöst wurde. Der Nutzer hatte zwischenzeitlich Werte in Felder eingetragen, die Namen von Umgebungsvariablen erwarten.
+Nach einer zunächst ungeschützten beziehungsweise noch nicht wirksam aktualisierten Instanz folgten Startfehler, weil bei eingeschalteter Authentifizierung kein Node-Token aufgelöst wurde. Zwischenzeitlich waren konkrete Werte in Felder eingetragen worden, die Namen von Umgebungsvariablen erwarten.
 
 Die erhaltene Textdatei 50 belegt zusätzlich einen eigenständigen Fehler: `override.conf` enthielt Zuweisungen außerhalb eines Abschnitts. systemd meldete `Assignment outside of section. Ignoring.` Der gezeigte Drop-in enthielt `EnvironmentFile` und `ExecStart`, aber keinen `[Service]`-Header. Somit ist nicht allein ein falscher Tokenwert als Ursache zu dokumentieren.
 
-Später zeigte der Nutzer `/health` mit HTTP 200, `/api/overview` ohne gültige Autorisierung mit HTTP 401 und eine erfolgreiche Übersicht mit dem passenden Operator-Token. Eine Admin-Tokenliste war ebenfalls sichtbar. Diese Tests gehören zur **überholten menschlichen Tokenphase**.
+Spätere Tests zeigten `/health` mit HTTP 200, `/api/overview` ohne gültige Autorisierung mit HTTP 401 und eine erfolgreiche Übersicht mit dem passenden Operator-Token. Eine Admin-Tokenliste war ebenfalls sichtbar. Diese Tests gehören zur **überholten menschlichen Tokenphase**.
 
-Ein weiterer Dienststatus bestätigte um 12:37:53 UTC den laufenden Kern, SQLite, aktivierte Tokenauthentifizierung und eine Node-Verbindung. Im späteren Benutzer-/Passwort-Stand sind Login und angemeldete UI sichtbar; sämtliche früheren Token-CLI-Aufrufe dürfen nicht unverändert als heutige Loginanleitung gelten.
+Ein weiterer Dienststatus bestätigte um 12:37:53 UTC den laufenden Kern, SQLite, aktivierte Tokenauthentifizierung und eine Node-Verbindung. Im späteren Benutzer-/Passwort-Stand sind Login und angemeldete UI sichtbar; sämtliche früheren Token-CLI-Aufrufe dürfen nicht unverändert als geprüfte Loginanleitung gelten.
 
 ### 8.5 „Basisstation offline“ trotz Verbindungsversuchen
 
@@ -434,7 +430,7 @@ Gleichzeitig dokumentieren sie die offenen Fehler: rein numerische Namen, doppel
 
 ### 8.7 Der entscheidende Directory-Befund
 
-Der Nutzer lieferte als Antwort der **Control-Room-API**:
+Belegte Antwort der **Control-Room-API**:
 
 ```json
 {
@@ -442,7 +438,7 @@ Der Nutzer lieferte als Antwort der **Control-Room-API**:
 }
 ```
 
-Diese Antwort enthält keine Teilnehmer, Namen, Gruppen oder Statusdefinitionen. Ein UI-Parser kann aus ihr keine echten Namen gewinnen. Sie beweist aber **nicht**, dass der separate NetCore Directory Server keine Namen besitzt. Die Nutzerbeobachtung, dass die Basisstation Namen korrekt auflöst, bleibt damit vereinbar.
+Diese Antwort enthält keine Teilnehmer, Namen, Gruppen oder Statusdefinitionen. Ein UI-Parser kann aus ihr keine echten Namen gewinnen. Sie beweist aber **nicht**, dass der separate NetCore Directory Server keine Namen besitzt. Die Betriebsbeobachtung, dass die Basisstation Namen korrekt auflöst, bleibt damit vereinbar.
 
 Die richtige Diagnosefrage lautet: Welche tatsächliche Directory-URL verwendet die funktionierende TBS, welche URL verwendet der LXC, welche Antworten liefern beide, und wie werden diese Antworten zwischen den Diensten übersetzt? Die reale Directory-IP wurde in den zugänglichen Nutzerausgaben nicht eindeutig ermittelt.
 
@@ -450,7 +446,7 @@ Die richtige Diagnosefrage lautet: Welche tatsächliche Directory-URL verwendet 
 
 ### 9.1 Compiler- und Abhängigkeitsfehler
 
-| Fehler | Konkreter Sachverhalt | Lösung / heutige Einordnung |
+| Fehler | Konkreter Sachverhalt | Lösung / geprüfte Einordnung |
 |---|---|---|
 | `soapysdr-sys` Custom-Build fehlgeschlagen | LXC-Build benötigte unerwartet SoapySDR; `pkg-config` fand `SoapySDR.pc` nicht | Abhängigkeiten/Features des Kerns isolieren. Der spätere Artefaktstand deaktiviert Defaultfeatures von `tetra-entities`; kein Anlass, die gesamte RF-Umgebung blind auf den LXC zu kopieren. |
 | E0382 `response_value` | JSON-Wert vor zweiter Verwendung verschoben | Clone vor dem Einfügen; danach erfolgreicher Nutzerbuild belegt |
@@ -467,7 +463,7 @@ Die richtige Diagnosefrage lautet: Welche tatsächliche Directory-URL verwendet 
 | E0308 Statusmuster | Innere Rust-Arrays unterschiedlich lang | Slice-Liste mit referenzierten Slices; in v5.11.4 geliefert |
 | E0425 `id_key_variants` | Beim Entfernen einer unbenutzten Nachbarfunktion versehentlich mit gelöscht | Hilfsfunktion wiederherstellen; Funktionsgrenzen nicht per zu breitem Regex entfernen |
 | E0560 `ResolvedSettings` | Felder entfernt, aber im Initializer noch vorhanden | Definition und Initialisierung gemeinsam ändern |
-| E0599 `serde_json::Value.len()` | Resolved-JSON ist kein direkt längenbestimmbares Map-Objekt | `resolved.as_object().map(|object| object.len()).unwrap_or(0)`; im letzten ZIP und heutigen Repository vorhanden |
+| E0599 `serde_json::Value.len()` | Resolved-JSON ist kein direkt längenbestimmbares Map-Objekt | `resolved.as_object().map(|object| object.len()).unwrap_or(0)`; im letzten ZIP und am 03.10.2026 geprüften Repository vorhanden |
 
 ### 9.2 Laufzeit-, Integrations- und Datenfehler
 
@@ -477,27 +473,27 @@ Die richtige Diagnosefrage lautet: Welche tatsächliche Directory-URL verwendet 
 
 **Statustext versus Statusnummer:** Die gelieferten Implementierungen priorisieren Codes und Texte unterschiedlich. Ein jüngerer SDS-Text kann mit einem älteren Subscriber-/Directory-Code kombiniert werden. Außerdem wurden verschiedene Statusbeschreibungen durch hartcodierte Wörter auf dieselbe Nummer reduziert. Das erklärt mögliche Inkonsistenzen im Code; die jeweilige Live-Ursache muss mit dem konkreten Payload bestätigt werden.
 
-**ESM versus Betriebsstatus:** `ESM aktiv`, `ESM aus`, Registrierung und Onlinezustand sind nicht der vom Benutzer gesendete betriebliche Status. Eine Darstellung als Ersatztext muss als andere Information erkennbar bleiben. Sie darf nicht unbemerkt eine betriebliche Statuszahl bestimmen.
+**ESM versus Betriebsstatus:** `ESM aktiv`, `ESM aus`, Registrierung und Onlinezustand sind nicht der ausdrücklich gesendete betriebliche Status. Eine Darstellung als Ersatztext muss als andere Information erkennbar bleiben. Sie darf nicht unbemerkt eine betriebliche Statuszahl bestimmen.
 
-**Begrenztes SDS-Fenster:** Ein aus nur den letzten Nachrichten abgeleiteter Status kann verschwinden, sobald diese Nachrichten aus dem Fenster fallen. Im heutigen UI-Code werden weiterhin nur 50 SDS-Zeilen geladen. Das ist eine konkrete technische Ursache für potenziell unvollständige Zustandsrekonstruktion; für einen stabilen aktuellen Status braucht es einen eigenen, pro Gerät fortgeschriebenen Zustand. [R07]
+**Begrenztes SDS-Fenster:** Ein aus nur den letzten Nachrichten abgeleiteter Status kann verschwinden, sobald diese Nachrichten aus dem Fenster fallen. Im geprüften UI-Code werden weiterhin nur 50 SDS-Zeilen geladen. Das ist eine konkrete technische Ursache für potenziell unvollständige Zustandsrekonstruktion; für einen stabilen aktuellen Status braucht es einen eigenen, pro Gerät fortgeschriebenen Zustand. [R07]
 
 **Layout-/Interaktionsfehler:** Normaler Wrap-/Horizontal-Layoutfluss, wechselnde verfügbare Breiten, geerbte Ausrichtung und manuell gezeichnete Flächen wurden mehrfach verändert. Die damalige alleinige Erklärung „horizontal verursacht den Drift“ war ohne isolierten Layouttest nicht ausreichend belegt. Freies Platzieren im Canvas behebt nicht automatisch Clipping, Überlappung, Maus-Hit-Tests, DPI oder Layoutpersistenz.
 
-**Falsche Installationsannahmen:** Manche Screenshots zeigten noch eine ältere Versionszeile. Das rechtfertigt eine Kontrolle von EXE-Pfad und laufendem Prozess, aber keine generelle Behauptung, der Nutzer habe alle späteren ZIPs falsch entpackt. Die knappe Rückmeldung „immernoch“ muss zunächst einer konkreten Fehlerklasse zugeordnet werden.
+**Falsche Installationsannahmen:** Manche Screenshots zeigten noch eine ältere Versionszeile. Das rechtfertigt eine Kontrolle von EXE-Pfad und laufendem Prozess, Die Screenshots beweisen keine generell falsche Installation späterer Pakete. Weitere Fehlermeldungen sind einer konkreten Fehlerklasse zuzuordnen.
 
 ### 9.3 Warnings richtig einordnen
 
-Der Nutzer zeigte unter anderem ungenutzte Variablen `config_path`, `username_source`, ungenutzte Struct-Felder wie `owner`, alte Toolbar-/Marker-Helfer und mehrere nicht mehr verwendete Merge-/Raw-Directory-Funktionen. Die Builds endeten teilweise ausdrücklich erfolgreich mit 6 beziehungsweise 19 Warnings.
+Die Buildausgaben zeigen unter anderem ungenutzte Variablen `config_path`, `username_source`, ungenutzte Struct-Felder wie `owner`, alte Toolbar-/Marker-Helfer und mehrere nicht mehr verwendete Merge-/Raw-Directory-Funktionen. Die Builds endeten teilweise ausdrücklich erfolgreich mit 6 beziehungsweise 19 Warnings.
 
 Eine Warning stoppt diesen Build nicht von sich aus. Daraus folgt aber nicht, dass unbenutzte Integrationsfunktionen bedeutungslos für die Diagnose sind: Wenn die benötigte Datenauflösung nie aufgerufen wird, kann genau das ein Verdrahtungsproblem anzeigen. Die korrekte Aussage ist deshalb: **Die Warning ist nicht automatisch die Laufzeitursache; ihre betroffene Funktion und ihr fehlender Aufruf sind dennoch zu prüfen.**
 
-Warnings wurden in diesem Chat wiederholt durch unkontrolliertes Entfernen von Code bekämpft und führten dabei zu neuen Fehlern. Eine pauschale Unterdrückung mit `allow(dead_code)` wäre ebenfalls keine funktionale Lösung.
+Warnings wurden in dieser Entwicklungsphase wiederholt durch unkontrolliertes Entfernen von Code bekämpft und führten dabei zu neuen Fehlern. Eine pauschale Unterdrückung mit `allow(dead_code)` wäre ebenfalls keine funktionale Lösung.
 
 ## 10. Verworfene, ersetzte und zurückgezogene Ansätze
 
 ### 10.1 Menschliche Tokens statt Benutzeranmeldung
 
-Durch die spätere Nutzerentscheidung überholt. Frühere Admin-/Operator-Tokenverwaltung bleibt historische Entwicklungsarbeit; neue Anleitungen müssen zwischen menschlichem Login und TBS-Token unterscheiden.
+Durch die spätere Projektentscheidung überholt. Frühere Admin-/Operator-Tokenverwaltung bleibt historische Entwicklungsarbeit; neue Anleitungen müssen zwischen menschlichem Login und TBS-Token unterscheiden.
 
 ### 10.2 Lokale Stammdaten in `operator.toml` oder LXC-TOML
 
@@ -505,13 +501,13 @@ Als dauerhafter Arbeitsweg ausdrücklich verworfen. Verbindungsparameter dürfen
 
 ### 10.3 Manuelle Beispielnamen und JSON-Import
 
-Die vorgeschlagenen Gerätenamen wurden teilweise aus Referenzbildern beziehungsweise Beispielen übernommen. Sie sind keine vom Nutzer gelieferten tatsächlichen Namenszuordnungen. Solche Einträge dürfen nicht produktiv importiert werden, um einen optischen Erfolg vorzutäuschen.
+Die vorgeschlagenen Gerätenamen wurden teilweise aus Referenzbildern beziehungsweise Beispielen übernommen. Sie sind keine bereitgestellten tatsächlichen Namenszuordnungen. Solche Einträge dürfen nicht produktiv importiert werden, um einen optischen Erfolg vorzutäuschen.
 
 Der v5.13-Importkanal kann technisch eine Administrationsfunktion sein, erfüllt aber ohne automatischen Client nicht den gewünschten Datenfluss. Ein Neustartverlust eines nur im Speicher gehaltenen Imports muss ebenfalls berücksichtigt werden.
 
 ### 10.4 Zwingender TBS-Directory-Push als vermeintliche Dauerlösung
 
-Ein Push der Basisstation wurde als möglicher Weg vorgeschlagen. Er war aber keine nachgewiesene notwendige Architekturentscheidung des Nutzers. Die spätere Anforderung richtet sich auf den vorhandenen Directory Server. Der aktuelle TBS-Client zeigt, dass ein direkter zentraler API-Abruf bereits vorgesehen ist. Ein zusätzlicher TBS-Push wäre nur nach begründetem Architekturentscheid sinnvoll, nicht als Ersatz für das Lesen der vorhandenen Schnittstelle. [R10] [R11]
+Ein Push der Basisstation wurde als möglicher Weg vorgeschlagen. Er war aber keine nachgewiesene notwendige Architekturentscheidung der Projektplanung. Die spätere Anforderung richtet sich auf den vorhandenen Directory Server. Der aktuelle TBS-Client zeigt, dass ein direkter zentraler API-Abruf bereits vorgesehen ist. Ein zusätzlicher TBS-Push wäre nur nach begründetem Architekturentscheid sinnvoll, nicht als Ersatz für das Lesen der vorhandenen Schnittstelle. [R10] [R11]
 
 ### 10.5 Rekursiver „Universal“-Namensindex
 
@@ -532,11 +528,11 @@ Die Archivprüfung hat am tatsächlichen ZIP festgestellt:
 - Der Backend- und Operator-Build benötigt genau diesen übergeordneten Workspace und weitere Crates.
 - Das Entfernen des bestehenden Repositorys kann zusätzlich `.git`, lokale Änderungen und installationsspezifische Dateien vernichten.
 
-Das ZIP war ein Satz vollständiger **betroffener Dateien**, kein vollständiger Ersatz des gesamten Repositorys. Eine erfolgreiche Ausführung der gefährlichen Löschanweisung ist im Chat nicht belegt. Künftige Schritte müssen den vorhandenen Arbeitsbaum zunächst inventarisieren und sichern; alte Quellen dürfen nicht ungeprüft über den heutigen Stand kopiert werden.
+Das ZIP war ein Satz vollständiger **betroffener Dateien**, kein vollständiger Ersatz des gesamten Repositorys. Eine erfolgreiche Ausführung der gefährlichen Löschanweisung ist in den Arbeitsnotizen nicht belegt. Künftige Schritte müssen den vorhandenen Arbeitsbaum zunächst inventarisieren und sichern; alte Quellen dürfen nicht ungeprüft über den geprüften Stand kopiert werden.
 
 ## 11. Sichere Befehls- und Ablaufreferenz
 
-Dieser Abschnitt bewahrt wichtige Abläufe, trennt aber historische Ausführung von heutigen Vorschlägen. Es werden keine Zugangsdaten eingebettet. Die Prüfungen sollten in einem kontrollierten Wartungsfenster erfolgen, sobald sie den Betrieb verändern.
+Dieser Abschnitt bewahrt wichtige Abläufe, trennt aber historische Ausführung von geprüften Vorschlägen. Es werden keine Zugangsdaten eingebettet. Die Prüfungen sollten in einem kontrollierten Wartungsfenster erfolgen, sobald sie den Betrieb verändern.
 
 ### 11.1 Historisch erfolgreich benutzte Befehlsformen
 
@@ -562,7 +558,7 @@ sqlite3 /var/lib/netcore-control-room/control-room.sqlite3 \
 
 Der Dienststatus und die Logs wurden mit `systemctl status netcore-control-room --no-pager -l` und `journalctl -u netcore-control-room` geprüft. Ein Service-Start sowie ein gezielter Neustart zur Persistenzkontrolle sind historisch belegt.
 
-### 11.2 Heutige rein lesende Vorprüfung – vorgeschlagen, nicht auf Jans System ausgeführt
+### 11.2 Am 03.10.2026 geprüfte rein lesende Vorprüfung – vorgeschlagen, nicht auf Jans System ausgeführt
 
 ```bash
 cd /opt/netcore/flowstation
@@ -576,7 +572,7 @@ systemctl show netcore-control-room -p FragmentPath -p ExecStart -p MainPID
 journalctl -u netcore-control-room -n 80 --no-pager
 ```
 
-`systemctl cat` ist für die lokale Prüfung der Unit und ihrer Drop-ins sinnvoll. Seine Ausgabe kann aber Umgebungswerte beziehungsweise Zugangsdaten enthalten und darf nicht ungeprüft in Git oder einen Chat kopiert werden. Auch vollständige Konfigurationsdateien werden nicht als Diagnosenachweis veröffentlicht.
+`systemctl cat` ist für die lokale Prüfung der Unit und ihrer Drop-ins sinnvoll. Seine Ausgabe kann aber Umgebungswerte beziehungsweise Zugangsdaten enthalten und darf nicht ungeprüft in Git oder Diagnoseprotokolle kopiert werden. Auch vollständige Konfigurationsdateien werden nicht als Diagnosenachweis veröffentlicht.
 
 Zur Directory-Diagnose bei aktivierter HTTP-Basic-Anmeldung kann `curl` das Passwort interaktiv abfragen:
 
@@ -611,7 +607,7 @@ Historisch wurde in CMD aus dem Repository-Root gebaut:
 cargo build --release --manifest-path system-backend\control-room\ui\Cargo.toml
 ```
 
-Auf Linux müssen in derselben Manifestpfadangabe `/` statt der CMD-Backslashes verwendet werden. Der Nutzer hatte einen Windows-Pfad auf der TBS-Shell ausgeführt; daraus entstand `system-backendcontrol-roomuiCargo.toml`, das nicht existierte.
+Auf Linux müssen in derselben Manifestpfadangabe `/` statt der CMD-Backslashes verwendet werden. Ein Windows-Pfad war auf der TBS-Shell ausgeführt worden; daraus entstand `system-backendcontrol-roomuiCargo.toml`, das nicht existierte.
 
 Die UI besitzt im untersuchten Paket einen eigenen Workspace. Deshalb sollte der tatsächliche Cargo-Targetpfad ermittelt und nicht zwischen zwei möglichen EXEs geraten werden. Folgende PowerShell-Prüfung ist ein **neuer vorgeschlagener Ablauf**, nicht eine historisch ausgeführte Reparatur:
 
@@ -639,13 +635,13 @@ Die Sicherung des bisherigen Binary verhindert einen unbemerkten Start der alten
 
 ## 12. Zusätzlich geprüfter Repository-Stand am 03.10.2026
 
-Dieser Abschnitt beschreibt **nicht den historischen Endstand des Chats**, sondern gelesenen Code am Commit `df575519c7cf066d771511743175f22fede0826d` auf `Archiving`. Es wurde kein Live-Deployment und kein vollständiger Cargo-/GUI-Test dieses Commits durchgeführt.
+Dieser Abschnitt beschreibt **nicht den historischen Entwicklungsendstand**, sondern gelesenen Code am Commit `df575519c7cf066d771511743175f22fede0826d` auf `Archiving`. Es wurde kein Live-Deployment und kein vollständiger Cargo-/GUI-Test dieses Commits durchgeführt.
 
 ### 12.1 Der Directory-Pull ist inzwischen im Quellcode vorhanden
 
-`bins/netcore-control-room/src/http.rs` besitzt heute die Directory-Routen, `SharedDirectory`, `directory_upstream_base`, `fetch_netcore_directory_upstream`, `netcore_directory_api_to_control_room` und `sync_directory_upstream`. Die fehlerhafte Zählung `resolved.len()` ist in den geprüften relevanten Routinen durch eine Objektlängenabfrage ersetzt. Der historische v5.14.2-Marker wird inzwischen in `/health` als `build_fix` ausgegeben. [R04] [R05]
+`bins/netcore-control-room/src/http.rs` besitzt am 03.10.2026 die Directory-Routen, `SharedDirectory`, `directory_upstream_base`, `fetch_netcore_directory_upstream`, `netcore_directory_api_to_control_room` und `sync_directory_upstream`. Die fehlerhafte Zählung `resolved.len()` ist in den geprüften relevanten Routinen durch eine Objektlängenabfrage ersetzt. Der historische v5.14.2-Marker wird inzwischen in `/health` als `build_fix` ausgegeben. [R04] [R05]
 
-Damit wäre die pauschale Aussage „es gibt noch keinen API-Pull“ für diesen heutigen Commit falsch. Offen bleibt, ob Jans laufender Dienst genau diesen Stand verwendet und ob er mit der richtigen Adresse arbeitet.
+Damit wäre die pauschale Aussage „es gibt noch keinen API-Pull“ für diesen geprüften Commit falsch. Offen bleibt, ob Jans laufender Dienst genau diesen Stand verwendet und ob er mit der richtigen Adresse arbeitet.
 
 ### 12.2 Unterschied zwischen TBS-Client und Control-Room-Client
 
@@ -653,7 +649,7 @@ Der TBS-Dashboard-Client `crates/tetra-entities/src/net_dashboard/radioid.rs` tr
 
 Die Gerätenormalisierung der TBS akzeptiert eine native Liste, ein Objekt mit `devices`-Liste oder eine bereits ISSI-indizierte Objektform. Die Control-Room-Pull-Konvertierung erwartet für die fünf Upstream-Ressourcen dagegen zunächst Arrays. Ein funktionierender TBS-Lookup ist daher kein Beweis, dass der LXC mit seiner eigenen Konfiguration und seinem anderen Parser dieselbe Antwort erfolgreich verarbeitet.
 
-### 12.3 Tatsächliches heutiges Directory-Datenmodell
+### 12.3 Tatsächliches geprüftes Directory-Datenmodell
 
 `system-backend/directory/netcore-directory.py` enthält einen Python-/SQLite-Dienst mit nativen Geräte-, Basisstations-, Gruppen-, Gerätegruppen- und Status-APIs. In den Tabellen liegen unter anderem:
 
@@ -684,11 +680,11 @@ Folgende Punkte sind **statische Prüfbeobachtungen beziehungsweise daraus abgel
 
 Diese Befunde begründen konkrete Prüf- und Refactoringaufgaben. Sie rechtfertigen nicht, ohne Payload-/Netztest eine einzelne davon als bereits bewiesene Ursache der historischen Fehler zu benennen. [R05] [R06]
 
-### 12.5 Heutige UI: Namen vorhanden verdrahtet, Statusmodell weiterhin inkonsistent
+### 12.5 Am 03.10.2026 geprüfte UI: Namen vorhanden verdrahtet, Statusmodell weiterhin inkonsistent
 
-Der geprüfte UI-Einstieg trägt jetzt **`Native UI v5.15.0 · Packet Data / Multi-PDCH`**. Das ist eine spätere Entwicklung als die abschließenden v5.14.2-Pakete dieses Chats. Die Datei besitzt weiterhin Directory-, Tableau-, Karten- und Benutzerlogik. [R08]
+Der geprüfte UI-Einstieg trägt jetzt **`Native UI v5.15.0 · Packet Data / Multi-PDCH`**. Das ist eine spätere Entwicklung als die abschließenden v5.14.2-Pakete dieses Vorhabens. Die Datei besitzt weiterhin Directory-, Tableau-, Karten- und Benutzerlogik. [R08]
 
-`refresh_directory()` versucht zuerst `/api/directory/resolved`, dann bei einem Abruffehler `/api/directory`. Ein rekursiver Namensindex wird aufgebaut; strukturierte Directory-Daten werden zusätzlich geladen und mit lokalen Restwerten ergänzt. Bei bestimmten Fehlern wird weiterhin auf `local_directory` zurückgefallen. Die lokale Ergänzungs-/Fallbacklogik ist also im heutigen Code nicht vollständig entfernt, obwohl sie keine zweite Stammdatenpflege erzwingen soll. [R07]
+`refresh_directory()` versucht zuerst `/api/directory/resolved`, dann bei einem Abruffehler `/api/directory`. Ein rekursiver Namensindex wird aufgebaut; strukturierte Directory-Daten werden zusätzlich geladen und mit lokalen Restwerten ergänzt. Bei bestimmten Fehlern wird weiterhin auf `local_directory` zurückgefallen. Die lokale Ergänzungs-/Fallbacklogik ist also im geprüften Code nicht vollständig entfernt, obwohl sie keine zweite Stammdatenpflege erzwingen soll. [R07]
 
 `refresh_all()` ruft die APIs nacheinander auf, darunter weiterhin `/api/sds?limit=50`. Die Tableau-Anzeige kann somit keinen vollständigen historischen Status aller Geräte allein aus diesem Fenster garantieren. Auch die Refresh-Bedienung ist nicht überall verschwunden: Abgetrennte OS-Fenster zeigen im betrachteten Code weiterhin API-Angabe und Refreshbutton. [R07] [R09]
 
@@ -712,7 +708,7 @@ Der `DirectoryStatusConfig` der UI enthält in dem geprüften Ausschnitt `name`,
 
 `subscriber_status_label()` verwendet bei fehlendem betrieblichem Status auch `energy_saving_mode` und Onlinezustand. Dies ist eine explizite technische Quelle der sichtbaren ESM-Texte. Diese Information sollte künftig separat ausgewiesen werden. [R15]
 
-### 12.6 Heutige UI: echte Modulfenster und individuelle Kacheln
+### 12.6 Am 03.10.2026 geprüfte UI: echte Modulfenster und individuelle Kacheln
 
 `render_detached_windows()` verwendet `ctx.show_viewport_immediate` mit stabil abgeleiteten Viewport-IDs. Die zu öffnenden Tabs werden anhand von `can_access_tab()` gefiltert. Das ist ein konkreter Quellcodebeleg für native Modulfenster und RBAC-Berücksichtigung, aber kein neuer Mehrmonitor-/DPI-Test. [R09]
 
@@ -720,25 +716,25 @@ Das Tableau besitzt inzwischen einen Canvas mit pro Karte gespeicherten Offsets,
 
 ### 12.7 Spätere Repository-Entwicklung: Open Lab, WebUI und Federation
 
-Der heutige Kern hat zusätzlich die Module `gateway`, `operations` und `webui`. Er startet einen Poller für föderierte Dienste und kann Node-Gateway-Telemetrie aufnehmen. Die HTTP-Routen enthalten unter anderem Health-Live/Ready, Metriken, Services, Incidents, Shift-Log und weitere v1-Sichten. [R04] [R16]
+Der geprüfte Kern hat zusätzlich die Module `gateway`, `operations` und `webui`. Er startet einen Poller für föderierte Dienste und kann Node-Gateway-Telemetrie aufnehmen. Die HTTP-Routen enthalten unter anderem Health-Live/Ready, Metriken, Services, Incidents, Shift-Log und weitere v1-Sichten. [R04] [R16]
 
-Die aktuelle Beispielkonfiguration bezeichnet den Betrieb ausdrücklich als **Open Lab** und setzt `auth.enabled = false`. Sie nennt zusätzlich Federation-Polling mit fünf Sekunden, 1.200 ms Request-Timeout, eine Fehlergrenze von drei und Operations-Zustandsdateien unter `/var/lib/netcore-control-room/`. Das sind heutige Repository-Vorgaben, nicht die letzte bewiesene Sicherheitskonfiguration des historischen LXC. [R17]
+Die aktuelle Beispielkonfiguration bezeichnet den Betrieb ausdrücklich als **Open Lab** und setzt `auth.enabled = false`. Sie nennt zusätzlich Federation-Polling mit fünf Sekunden, 1.200 ms Request-Timeout, eine Fehlergrenze von drei und Operations-Zustandsdateien unter `/var/lib/netcore-control-room/`. Das sind Repository-Vorgaben, nicht die letzte bewiesene Sicherheitskonfiguration des historischen LXC. [R17]
 
 Daraus ergeben sich zwei Übergaberegeln:
 
 1. Die historische Benutzer-/Passwort-Anforderung darf nicht durch blindes Kopieren der neuen Beispielkonfiguration unbemerkt deaktiviert werden.
-2. Die neuen WebUI-/Federation-/Packet-Data-Funktionen dürfen nicht durch ein altes Komplettdateien-ZIP zurückgesetzt werden. Für die Fortsetzung ist der heutige Git-Stand die Integrationsbasis, nicht das zuletzt im Chat angebotene Artefakt.
+2. Die neuen WebUI-/Federation-/Packet-Data-Funktionen dürfen nicht durch ein altes Komplettdateien-ZIP zurückgesetzt werden. Für die Fortsetzung ist der geprüfte Git-Stand die Integrationsbasis, nicht das zuletzt in den Arbeitsnotizen angebotene Artefakt.
 
 ## 13. Anforderungs- und Nachweismatrix zur Übergabe
 
-| Thema | Historisch beschlossen | Historischer Nachweis | Heutiger Sourcebefund / verbleibende Arbeit |
+| Thema | Historisch beschlossen | Historischer Nachweis | Am 03.10.2026 geprüfter Sourcebefund / verbleibende Arbeit |
 |---|---|---|---|
-| LXC-Kern und Node-Anbindung | Ja | Laufender Dienst, Hello/Telemetrie | Heute zusätzlich Gateway/Federation; tatsächlichen Deploymentstand feststellen |
+| LXC-Kern und Node-Anbindung | Ja | Laufender Dienst, Hello/Telemetrie | Am 03.10.2026 zusätzlich Gateway/Federation; tatsächlichen Deploymentstand feststellen |
 | SQLite-Command-Historie | Ja | Neustarttest erfolgreich | Schema-/Migrationsabgleich gegen aktuellen Betrieb fehlt |
 | Kick-Erfolg | Bedienfunktion vorgesehen | Auftrag beendet, aber `success: false` | Erfolgreichen und negativen Fachfall getrennt testen |
-| Benutzer/Passwort | Ja, ersetzt menschliche Tokens | Login und Admin-UI sichtbar | Heutige Open-Lab-Vorgabe separat behandeln; aktive Konfiguration prüfen |
+| Benutzer/Passwort | Ja, ersetzt menschliche Tokens | Login und Admin-UI sichtbar | Am 03.10.2026 geprüfte Open-Lab-Vorgabe separat behandeln; aktive Konfiguration prüfen |
 | Viewer ohne Adminmenü | Ja | Wunsch und Nachbesserung, kein kompletter Rollenbericht | Source-Gating vorhanden; API-/Fenster-/Logout-Negativtests fehlen |
-| Echte OS-Fenster | Ja | Nutzer bestätigt Zwischenstand passend | `show_viewport_immediate` vorhanden; DPI/Multimonitor kontrollieren |
+| Echte OS-Fenster | Ja | Zwischenstand bestätigt | `show_viewport_immediate` vorhanden; DPI/Multimonitor kontrollieren |
 | Reale Karte | Ja | Kartenkacheln und Geräte sichtbar | Performance-, Cache- und Offlinegrenzen prüfen |
 | Cluster/Spiderfy | Ja | Im Screenshot sichtbar | Große Cluster, gleiche Koordinaten und Auswahl testen |
 | Nur jüngste Position | Ja | Bereinigung geliefert | Zeit-/Identitätsregeln und Multi-Node-Dedupe abnehmen |
@@ -748,7 +744,7 @@ Daraus ergeben sich zwei Übergaberegeln:
 | Eigene Kachel je ungruppiertem Gerät | Ja | Screenshots v5.11.9/v5.12 | Source vorhanden; Live-Abgleich mit echten Gruppen erforderlich |
 | Maus-Anordnung | Ja | Grid/Reset sichtbar; keine vollständige Drag-Abnahme | Source vorhanden; Clipping, Persistenz, Reset und Fensterwechsel testen |
 | Komplettdateien statt Patches | Ja | Viele ZIPs geliefert | Reproduzierbares, kompatibles und geprüftes Paket statt ungetesteter Dateisersetzung |
-| Warning-freier, verifizierter Build | Nutzer fordert Cleanup | Wiederholte Fehler/Warnungen | Vollständige Buildmatrix und sichere Refaktorierung erforderlich |
+| Warning-freier, verifizierter Build | Cleanup gefordert | Wiederholte Fehler/Warnungen | Vollständige Buildmatrix und sichere Refaktorierung erforderlich |
 
 ## 14. Noch relevante Ideen, kleine Wünsche und offene Designfragen
 
@@ -764,7 +760,7 @@ Die folgenden Punkte bleiben als Roadmap-Kandidaten erhalten. Wo sie nur vorgesc
 
 **Betrieb/Lieferung:** Verlässlicher Versionsnachweis für Backend und EXE; ein klarer Installationsort; keine veraltete EXE über eine andere Verknüpfung starten; vollständige Anleitung für jedes Zielsystem; `.vs` und Buildartefakte ausgeschlossen; keine manuelle Nachpflege identischer Namen auf mehreren Geräten.
 
-**Authentifizierung:** Rolle und sichtbare Module konsistent nach Login/Logout aktualisieren; bereits geöffnete unzulässige Fenster schließen; keine erneute Vermischung von TBS-Token, Benutzerpasswort und Directory-Zugriff. Eine spätere zentrale Identity-/RBAC-Roadmap existiert im heutigen Repository-Kontext, wurde hier aber nicht als bereits ausgerollte Lösung geprüft.
+**Authentifizierung:** Rolle und sichtbare Module konsistent nach Login/Logout aktualisieren; bereits geöffnete unzulässige Fenster schließen; keine erneute Vermischung von TBS-Token, Benutzerpasswort und Directory-Zugriff. Eine spätere zentrale Identity-/RBAC-Roadmap existiert im am 03.10.2026 geprüften Repository-Kontext, wurde hier aber nicht als bereits ausgerollte Lösung geprüft.
 
 ## 15. Priorisierte nächste Schritte und Abhängigkeiten
 
@@ -774,7 +770,7 @@ Die Prioritäten in diesem Abschnitt sind eine aus dem dokumentierten Zustand ab
 
 **CR-ARCH-01: Tatsächlichen Source-/Binary-Stand feststellen.** LXC-Commit, Änderungen, ExecStart, laufendes Binary und Windows-EXE-Pfad erfassen. Zwischen Compilerfehler, leerem Directory, falschem Status und alter Anzeige unterscheiden. Keine weitere Versionsnummer allein als Lösung ausgeben.
 
-**CR-ARCH-02: Reproduzierbare Buildprüfung.** Den heutigen vollständigen Workspace verwenden. Kern und Operator auf dem LXC-Zieltyp, UI für Windows prüfen. Compilation, vorhandene Tests und fachliche Abnahme getrennt protokollieren. Keine globale Regex-Entfernung von Funktionen; keine stillen Fallbacks auf ältere Arbeitsverzeichnisse beim Paketbau.
+**CR-ARCH-02: Reproduzierbare Buildprüfung.** Den geprüften vollständigen Workspace verwenden. Kern und Operator auf dem LXC-Zieltyp, UI für Windows prüfen. Compilation, vorhandene Tests und fachliche Abnahme getrennt protokollieren. Keine globale Regex-Entfernung von Funktionen; keine stillen Fallbacks auf ältere Arbeitsverzeichnisse beim Paketbau.
 
 **CR-ARCH-03: Sichere Updatepakete.** Manifest mit Basiscommit, vollständiger Dateiliste, Zielpfaden und Hashes; Konfigurationen und Daten ausnehmen beziehungsweise explizit migrieren. Erst erfolgreichen Build sichern, dann kontrollierter Dienstwechsel. Die zurückgezogene Löschanleitung nicht weiterverwenden.
 
@@ -794,7 +790,7 @@ Die Prioritäten in diesem Abschnitt sind eine aus dem dokumentierten Zustand ab
 
 **CR-ARCH-09: Gruppenfachlichkeit präzisieren.** Funk-GSSI, organisatorische Gerätegruppe und synchronisierte Statusgruppe unterscheiden. Gruppenstatus bei abweichenden Mitgliedern festlegen: letzter autorisierter Gruppenstatus, definierte Aggregation oder sichtbarer Mischzustand – nicht beliebig das erste Gerät. Mitgliedschaften/Details und gruppenlose Einzelgeräte prüfen.
 
-**CR-ARCH-10: RBAC und Security-Modus abgleichen.** Historische Loginanforderung gegen heutige Open-Lab-Konfiguration dokumentiert entscheiden. Viewer-/Operator-/Admin-API-Tests, Direktaufrufe, bereits offene Fenster, Logout und Benutzeränderungen prüfen. Eine Laborkonfiguration nicht als sichere Betriebsfreigabe ausgeben.
+**CR-ARCH-10: RBAC und Security-Modus abgleichen.** Historische Loginanforderung gegen geprüfte Open-Lab-Konfiguration dokumentiert entscheiden. Viewer-/Operator-/Admin-API-Tests, Direktaufrufe, bereits offene Fenster, Logout und Benutzeränderungen prüfen. Eine Laborkonfiguration nicht als sichere Betriebsfreigabe ausgeben.
 
 **CR-ARCH-11: UI-Interaktion stabilisieren.** Drag-Hit-Tests, Größenwechsel, DPI, Scrollbereich und Mausbedienung zusammen testen. Einstellungen je Arbeitsplatz nur dann persistieren, wenn Format, Rücksetzung und Benutzerbezug definiert sind. API-/Refreshreste in Nebenfenstern bereinigen; Hauptmenüaktionen vollständig durchtesten.
 
@@ -808,7 +804,7 @@ Die Prioritäten in diesem Abschnitt sind eine aus dem dokumentierten Zustand ab
 
 ## 16. Empfohlene Abnahmetests für die Fortsetzung
 
-**Nicht in dieser Archivierung ausgeführt.** Diese Matrix definiert, was ein künftiges „fertig“ belegen muss.
+**Nicht bei der Quellenprüfung vom 03.10.2026 ausgeführt.** Diese Matrix definiert, was ein künftiges „fertig“ belegen muss.
 
 | Test | Aufbau | Erwartung |
 |---|---|---|
@@ -832,9 +828,9 @@ Die Prioritäten in diesem Abschnitt sind eine aus dem dokumentierten Zustand ab
 
 ## 17. Quellen und Nachweisregister
 
-### 17.1 Historische Chatbelege
+### 17.1 Historische Arbeitsgrundlagen
 
-Die Original-Chat-URL ist nicht verfügbar. Folgende Belege sind im zugänglichen Verlauf identifizierbar; ihre Bezeichnungen dienen der späteren Suche und sind keine erfundenen externen Quellen.
+Die folgenden Kennungen verweisen auf erhaltene Entwicklungs- und Betriebsbelege.
 
 | Kennung | Beleg | Aussagekraft |
 |---|---|---|
@@ -844,17 +840,17 @@ Die Original-Chat-URL ist nicht verfügbar. Folgende Belege sind im zugängliche
 | H04 | Eingefügter Text(48).txt | LXC-Buildfehler durch fehlendes SoapySDR/pkg-config |
 | H05 | Eingefügter Text(49).txt | TBS-Start, Trägerparameter, SXceiver, Brew, Dashboard, akzeptiertes Control-Room-Hello |
 | H06 | Eingefügter Text(50).txt | Fehlendes Node-Token, Restartschleife, Drop-in ohne gültigen Abschnitt |
-| H07 | Nutzerlog Release-Build nach `response_value.clone()` | Früher erfolgreicher Kern-/Operator-Build |
-| H08 | Nutzerlog Command-ID und SQLite-/Neustartabfrage | Command-Audit dauerhaft; Kick-Antwort fachlich negativ |
-| H09 | Nutzerlog HTTP 200/401 und gültiger Operator-Aufruf | Tatsächliche Authentifizierungstests der Tokenphase |
-| H10 | Nutzerlog `/node` unauthorized plus TBS Broken pipe | Node-Authentifizierungsfehler mit Reconnectschleife |
-| H11 | Nutzerbestätigung „jetzt ist die wieder online“ | Wiederhergestellte Node-Sicht nach Auth-Fix |
+| H07 | Betriebslog Release-Build nach `response_value.clone()` | Früher erfolgreicher Kern-/Operator-Build |
+| H08 | Betriebslog Command-ID und SQLite-/Neustartabfrage | Command-Audit dauerhaft; Kick-Antwort fachlich negativ |
+| H09 | Betriebslog HTTP 200/401 und gültiger Operator-Aufruf | Tatsächliche Authentifizierungstests der Tokenphase |
+| H10 | Betriebslog `/node` unauthorized plus TBS Broken pipe | Node-Authentifizierungsfehler mit Reconnectschleife |
+| H11 | Betriebsrückmeldung „jetzt ist die wieder online“ | Wiederhergestellte Node-Sicht nach Auth-Fix |
 | H12 | Screenshots Native UI, Karten-/Cluster- und Tableau-Versionen | Gezeigte Darstellung/Versionslabel; keine vollständige Backend- oder Featureabnahme |
 | H13 | Nutzerantwort `{"hide_infrastructure": true}` | Leere Stammdatensicht des konkret abgefragten Control Rooms |
-| H14 | Nutzer-Compilerfehler E0599 in `http.rs` | `.len()` auf `serde_json::Value` verhinderte den damaligen Kernbuild |
+| H14 | Compilerfehler E0599 in `http.rs` | `.len()` auf `serde_json::Value` verhinderte den damaligen Kernbuild |
 | H15 | Abschließende kurze Rückmeldungen „immernoch“ | Fortbestehende Unzufriedenheit/Fehler; ohne neue Ausgabe nicht eindeutig einer Fehlerklasse zuordenbar |
 
-Die im Chat sichtbaren Stack-Versionen `v1.3.0-02130261` und `v1.3.0-691c6fb7` sind historische Ausgabezeichenketten. Sie wurden nicht zu einem vollständigen Git-Commit und einem konkreten ZIP-/Deploymentstand aufgelöst. Für die historischen UI-/Directory-Pakete wurde kein verlässlicher PR oder Release-Tag nachgewiesen. Deshalb werden keine PR-Nummern oder Commitzuordnungen ergänzt.
+Die in den Arbeitsnotizen sichtbaren Stack-Versionen `v1.3.0-02130261` und `v1.3.0-691c6fb7` sind historische Ausgabezeichenketten. Sie wurden nicht zu einem vollständigen Git-Commit und einem konkreten ZIP-/Deploymentstand aufgelöst. Für die historischen UI-/Directory-Pakete wurde kein verlässlicher PR oder Release-Tag nachgewiesen. Deshalb werden keine PR-Nummern oder Commitzuordnungen ergänzt.
 
 ### 17.2 Unveränderliche Repository-Referenzen der Archivprüfung
 
@@ -874,8 +870,8 @@ Die folgenden Links beziehen sich auf den festgehaltenen Prüfreferenz-Commit; s
 - **R13:** Tableau-Statusauswahl, Textinferenz und Drag-Verarbeitung.
 - **R14:** Tableau-Legende und Canvas-Platzierung.
 - **R15:** Namensauflösung und ESM-/Online-Statusfallback der UI.
-- **R16:** Heutiger Backend-Start mit Operations/Gateway.
-- **R17:** Heutige Open-Lab-Beispielkonfiguration.
+- **R16:** Am 03.10.2026 geprüfter Backend-Start mit Operations/Gateway.
+- **R17:** Am 03.10.2026 geprüfte Open-Lab-Beispielkonfiguration.
 
 [R01]: https://github.com/JanHG98/netcore-tetra/commit/df575519c7cf066d771511743175f22fede0826d
 [R02]: https://github.com/JanHG98/netcore-tetra/commit/6aa9be8f74ab731f72dc133a5f8e90c5018c626d
@@ -1014,13 +1010,13 @@ netcore-control-room-v5-14-2-directory-pull-verified-files.zip
 
 Die Pakete enthalten teilweise gleichnamige Dateien und viele historische `*_APPLY.md`-Anleitungen. Ihre Paketbezeichnung ist kein Herkunftsbeweis des installierten Binary. Alte Anweisungen können außerdem widersprüchliche Auth-, Directory- und Installationsansätze enthalten; die ausdrücklichen Korrekturen dieses Archivs haben für die Fortsetzung Vorrang vor einem unkritischen Wiederausführen solcher Anleitungen.
 
-Die ZIPs und Screenshots werden durch diesen Auftrag nicht zusätzlich in Git kopiert. Die dauerhafte Archivdatei bewahrt Namen, Grenzen und entscheidende Befunde; die zukünftige Verfügbarkeit der ursprünglichen Chat-Downloads ist damit nicht garantiert.
+Namen und Befunde der ZIPs und Screenshots sind dokumentiert. Die Originaldateien bleiben für eine vollständige Reproduktion erforderlich.
 
 ### 18.3 Bilder und übrige Anhänge
 
-Die sichtbaren Nutzer-Screenshots wurden als Nachweis der gezeigten Programmversion und Darstellung berücksichtigt. Sie zeigen keine gesicherte vollständige Backendkonfiguration. Die Referenzbilder zu SELECTRIC, EDP-/Einsatzleitplätzen, Kommunikationssoftware, Objektstatus, Personalübersichten und Sirenenkarten wurden als Gestaltungsvorlagen eingeordnet. Personen-, Patienten- und fremde Namensdaten aus Referenzbildern werden nicht als NetCore-Stammdaten übernommen.
+Die sichtbaren Programmscreenshots wurden als Nachweis der gezeigten Programmversion und Darstellung berücksichtigt. Sie zeigen keine gesicherte vollständige Backendkonfiguration. Die Referenzbilder zu SELECTRIC, EDP-/Einsatzleitplätzen, Kommunikationssoftware, Objektstatus, Personalübersichten und Sirenenkarten wurden als Gestaltungsvorlagen eingeordnet. Personen-, Patienten- und fremde Namensdaten aus Referenzbildern werden nicht als NetCore-Stammdaten übernommen.
 
-Die sechs eingefügten Textdateien 45 bis 50 sind ausdrücklich als Nutzerlogs berücksichtigt. Andere ausgelassene Nachrichten beziehungsweise fehlende Toolausgaben wurden nicht durch erfundene Inhalte ersetzt.
+Die sechs eingefügten Textdateien 45 bis 50 sind ausdrücklich als Betriebslogs berücksichtigt. Fehlende Diagnoseausgaben bleiben als Quellenlücke bestehen.
 
 ### 18.4 ETSI-Referenzbestand
 
@@ -1058,8 +1054,8 @@ Insbesondere ist `protocol_id = 218` in diesem Archiv ein **beobachteter projekt
 
 ## 19. Abschluss und Wiederaufnahmehinweis
 
-Der Chat hat einen real verwendeten Control-Room-Kern und eine laufende native Bedienoberfläche hervorgebracht, aber keine abgeschlossene Directory-/Statusintegration. Die größte Fehlerquelle der Arbeit war das wiederholte Bearbeiten der Darstellung ohne vorherigen Nachweis der tatsächlich verfügbaren Datenquelle und ihres Vertrags. Dazu kamen unvollständige Buildprüfungen, fehleranfällige Generatoränderungen und teilweise unpräzise Deploymentanleitungen.
+Der Entwicklungsstand umfasst einen real verwendeten Control-Room-Kern und eine laufende native Bedienoberfläche, aber keine abgeschlossene Directory-/Statusintegration. Die größte Fehlerquelle der Arbeit war das wiederholte Bearbeiten der Darstellung ohne vorherigen Nachweis der tatsächlich verfügbaren Datenquelle und ihres Vertrags. Dazu kamen unvollständige Buildprüfungen, fehleranfällige Generatoränderungen und teilweise unpräzise Deploymentanleitungen.
 
 Für die Wiederaufnahme gilt: **Zuerst den aktuellen vollständigen Git-Stand und den tatsächlichen Directory-Datenfluss prüfen; dann einen gemeinsamen strukturierten Geräte-/Statuszustand verwenden; erst danach Layout und Komfort weiter ausbauen.** Keine erfundenen Namen, keine Wortteilheuristik als maßgeblicher Statusplan und keine Wiederholung der Repository-Löschanweisung.
 
-Der heutige Quellcodebefund ist gegenüber dem historischen Chat fortgeschritten, enthält aber weiterhin relevante offene Stellen. Weder ein positiver Healthcheck noch eine nichtleere Indexzahl, ein erfolgreiches ZIP-CRC-Ergebnis oder ein Versionslabel ersetzt die konkreten Abnahmetests aus Abschnitt 16.
+Der geprüfte Quellcodebefund ist gegenüber dem historischen Entwicklungsstand fortgeschritten, enthält aber weiterhin relevante offene Stellen. Weder ein positiver Healthcheck noch eine nichtleere Indexzahl, ein erfolgreiches ZIP-CRC-Ergebnis oder ein Versionslabel ersetzt die konkreten Abnahmetests aus Abschnitt 16.

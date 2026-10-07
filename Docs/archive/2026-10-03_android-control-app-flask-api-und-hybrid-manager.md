@@ -1,64 +1,60 @@
-# Abschlussdokumentation: Android-Control-App, Flask-API und Hybrid-Manager
+# Brainstorming: Android-Control-App, Flask-API und Hybrid-Manager
 
-## 1. Metadaten und Geltungsbereich
+## 1. Rahmen und Quellenstand
 
 | Feld | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Android-App zur Basisstationsverwaltung; bestehender Flask-Control-Server; JSON-Vertrag; Start/Stop; Statusanzeige; V2-Dateiansicht; Signatur- und `last_version`-Diagnose |
-| Ursprünglicher Chattitel | Im zugänglichen Verlauf nicht eindeutig verfügbar; der Dokumenttitel ist eine nachträgliche Themenbeschreibung. |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link rekonstruiert oder erfunden. |
-| Historischer Zeitraum | Nachweisbare Log- und State-Daten vor allem vom 7. Mai 2026; ältere Metadaten vom 28./30. April und 6. Mai. Nicht alle Nachrichten besitzen sichtbare Zeitstempel. |
+| Historischer Zeitraum | Nachweisbare Log- und State-Daten vor allem vom 7. Mai 2026; ältere Metadaten vom 28./30. April und 6. Mai. Weitere Schritte sind nicht durchgehend datiert. |
 | Erstellt | 2026-10-03, Europe/Berlin |
 | Repository | `JanHG98/netcore-tetra` |
 | Geprüfter Zielbranch | `Archiving` |
 | Geprüfter Ausgangscommit | `855ec68e4379983b8a59725723d1ad99bc8fcb47` |
 | Zugehöriger Root-Tree | `c3c3ddad768ac60a72f5e2138afe4e7fff50f9b2` |
-| Änderungsumfang dieses Archivauftrags | Diese Markdown-Datei und der zugehörige Eintrag in `Docs/archive/README.md`; keine App-, Server-, Schlüssel-, Konfigurations- oder Betriebsänderungen. |
-| Archivierungsstatus | Technische Übergabe mit ausdrücklich offenen Punkten; keine Erklärung einer vollständig fehlerfreien Anwendung. |
 
 **Wichtigste Übergabeinformation:** Das gepostete Stationsplugin definiert Start/Stop als **`GET /stations/set/<node_id>/<desired_state>`** mit `RUN` oder `STOP`. Die belegte Stationsliste ist ein **nach Node-ID indiziertes Objekt mit `meta`, `state` und `urls`**, keine Liste flacher Stationsobjekte. Diese beiden Verträge dürfen bei einer Fortsetzung nicht erneut geraten oder durch Änderungen am Server passend gemacht werden. [C04, C05]
 
-**Ebenso wichtig:** Für die Meldung `FEHLER: last_version-Datei ist defekt.` ist im zugänglichen Material **keine erfolgreich bestätigte Reparatur mit belegtem Dateipfad und Dienst** enthalten. Frühere Assistenzantworten behaupteten mehrfach, eine bereits bekannte Lösung wiederzugeben, ohne den Nachweis zu liefern. Diese Antworten sind ausdrücklich **keine belastbaren Betriebsanleitungen**. [C08]
+**Offener Fehler:** Für `FEHLER: last_version-Datei ist defekt.` fehlt eine bestätigte Reparatur mit eindeutigem Dateipfad, Dateiformat und ausführendem Dienst. Die bisherigen Reparaturansätze sind unbestätigt und eignen sich nicht als Betriebsanleitung. [C08]
 
-### 1.1 Grenzen der Auswertung
+### 1.1 Grenzen der Quellenlage
 
-Der bereitgestellte Chat enthält einen großen ausgelassenen Anfangsblock und zahlreiche weitere Kennzeichnungen ausgelassener Nachrichten. Viele vollständige Kotlin-Dateien, die im Verlauf angefordert oder offenbar ausgegeben wurden, liegen deshalb nicht als zugänglicher Quelltext vor. Sichtbar sind unter anderem Nutzerkorrekturen, Screenshots, Compiler- und Logcat-Ausgaben, zwei ursprüngliche Kotlin-Ausschnitte, der ursprüngliche Flask-Einstieg und Kontext sowie die vollständigen geposteten Stations- und Generatorplugins.
+Die historische Quelllage ist unvollständig. Vollständige Kotlin-Endfassungen fehlen; erhalten sind Screenshots, Compiler- und Logcat-Ausgaben, zwei Kotlin-Ausgangsausschnitte, der Flask-Einstieg samt Kontext sowie vollständige Stations- und Generatorplugins.
 
-Zusätzlich wurden tatsächlich vorhandene Laufzeitdateien geprüft: ein älteres Server-Fix-ZIP mit zwei Python-Dateien, dessen bereits entpackte identische Dateien, sowie die verfügbaren Screenshots. Die Dateisuche in den Projektquellen lieferte überwiegend ETSI-Unterlagen, aber keine wiedergewonnenen vollständigen Kotlin-Endfassungen. Eine gezielte Rücksuche lieferte nochmals die Start-/Stop-Route und den Vorschlag zur Redirect-Behandlung, jedoch keine belegte `last_version`-Lösung und keinen Chatlink.
+Zusätzlich geprüft wurden ein älteres Server-Fix-ZIP mit zwei Python-Dateien, die identischen entpackten Dateien und die verfügbaren Screenshots. Die Projektquellen enthalten überwiegend ETSI-Unterlagen. Die Start-/Stop-Route und ein Ansatz zur Redirect-Behandlung sind nachvollziehbar; vollständige Kotlin-Endfassungen und eine belegte `last_version`-Lösung fehlen.
 
-Die Dokumentation trennt daher vier Ebenen: **historischer Nutzernachweis**, **sichtbarer oder als Anhang vorhandener Code**, **heutiger Repository-Befund** und **neue technische Ableitung für die Fortsetzung**. Fehlende historische Inhalte werden nicht mit anderen Projektchats aufgefüllt.
+Die Befunde beziehen sich jeweils auf historische Betriebsbelege, erhaltenen Code, den Repository-Stand vom 03.10.2026 oder neue Fortsetzungsansätze. Diese Ebenen bleiben getrennt.
 
 ### 1.2 Statusbegriffe
 
 | Status | Bedeutung in dieser Dokumentation |
 |---|---|
 | Idee | Diskutiert, ohne eindeutigen Umsetzungsauftrag oder Nachweis. |
-| Beschlossen/geplant | Vom Nutzer verlangt oder ausdrücklich festgelegt; Umsetzung nicht automatisch belegt. |
+| Beschlossen/geplant | Verbindlich verlangt oder festgelegt; Umsetzung nicht automatisch belegt. |
 | Implementiert | Konkreter zugänglicher Code oder erzeugtes Artefakt vorhanden; Speicherort und Version werden genannt. |
-| Getestet | Ein konkreter Test und sein Ergebnis sind sichtbar oder im Archivlauf tatsächlich durchgeführt worden. |
-| Im Betrieb bestätigt | Nutzerbeobachtung oder Betriebsbeleg zeigt die Funktion im damaligen Aufbau; kein Nachweis des heutigen Deployments oder einer dauerhaften Fehlerfreiheit. |
+| Getestet | Ein konkreter Test und sein Ergebnis sind sichtbar oder bei der Quellenprüfung durchgeführt worden. |
+| Im Betrieb bestätigt | Betriebsbeobachtung oder Betriebsbeleg zeigt die Funktion im damaligen Aufbau; kein Nachweis des geprüften Deployments oder einer dauerhaften Fehlerfreiheit. |
 | Unbestätigt/widersprochen | Behauptung ohne Nachweis beziehungsweise ausdrücklich korrigierter Ansatz. |
 
 ## 2. Ziel, Ausgangslage und Themen
 
 Die Android-Anwendung `NetCoreTetraControl` soll den vorhandenen Control-Server bedienen, Basisstationen darstellen, Start und Stop auslösen sowie Stationsdetails und später Konfigurationsdateien innerhalb der App anzeigen. Der Control-Server verwaltet signierte Sollzustände und Konfigurationen; das BREW-Backend ist eine getrennte Komponente. Der vorhandene Webzugriff funktionierte bereits, während die App wiederholt falsche Modelle, falsche Aktionsrouten oder unzutreffende Statusannahmen verwendete. [C01–C06]
 
-Ausgangsproblem war zunächst eine fest eincodierte Serveradresse. Danach entstanden mehrere aufeinanderfolgende Probleme: DNS-Erreichbarkeit, fehlende Stationslisten trotz grüner Serveranzeige, unpassende JSON-Auswertung, irreführende Aktivitätsfilter, Start-/Stop-404, abgebrochene HTTP-Antworten, Kotlin-/Compose-Buildfehler, ein Runtime-Absturz durch eine nicht implementierte `weight`-Funktion, zu große Kopfbereiche und ein zeitweise funktionsloser Details-Button. Schließlich wurde eine lokale V2-Kopie angelegt und eine rein interne Dateiansicht gewünscht. Am Ende kehrte die Diskussion zur Basisstation mit Signaturwarnung und defekter `last_version`-Datei zurück. [C06–C08]
+Ausgangsproblem war zunächst eine fest eincodierte Serveradresse. Danach entstanden mehrere aufeinanderfolgende Probleme: DNS-Erreichbarkeit, fehlende Stationslisten trotz grüner Serveranzeige, unpassende JSON-Auswertung, irreführende Aktivitätsfilter, Start-/Stop-404, abgebrochene HTTP-Antworten, Kotlin-/Compose-Buildfehler, ein Runtime-Absturz durch eine nicht implementierte `weight`-Funktion, zu große Kopfbereiche und ein zeitweise funktionsloser Details-Button. Schließlich wurde eine lokale V2-Kopie angelegt und eine rein interne Dateiansicht gewünscht. Zuletzt blieben die Signaturwarnung der Basisstation und die defekte `last_version`-Datei offen. [C06–C08]
 
 ## 3. Endgültige Anforderungen und Entscheidungen
 
 | Anforderung | Letzte belastbare Festlegung | Status und Begründung |
 |---|---|---|
 | Serveradresse | In der App einstellbar; Wechsel zwischen lokalem Netz, VPN, Domain und Testserver ohne Neubau | Beschlossen; mehrere Screenshots mit wechselnden Adressen belegen eine vorhandene Serverauswahl. Dauerhafte Speicherung und Verhalten nach Prozessneustart nicht abgenommen. |
-| DNS | Control: `CT-H-DEV-04`; BREW: `CT-H-DEV-01`; funktionierender Control-FQDN: `ct-h-dev-04.netcore-tetra.de` | Historisch im Betrieb bestätigt, nachdem der Nutzer die serverseitige BREW-Adresse selbst angepasst hatte. |
-| Bestehendes JSON | Die aktuellen JSON-Daten bleiben unverändert | Ausdrückliche Randbedingung; App muss den vorhandenen Vertrag lesen. Frühere Server-Fix-Experimente sind keine Freigabe für spätere API-Umbauten. |
+| DNS | Control: `CT-H-DEV-04`; BREW: `CT-H-DEV-01`; funktionierender Control-FQDN: `ct-h-dev-04.netcore-tetra.de` | Historisch im Betrieb bestätigt, nach Anpassung der serverseitigen BREW-Adresse. |
+| Bestehendes JSON | Die vorhandenen JSON-Daten bleiben unverändert | Ausdrückliche Randbedingung; App muss den vorhandenen Vertrag lesen. Frühere Server-Fix-Experimente sind keine Freigabe für spätere API-Umbauten. |
 | Start/Stop | In der App reparieren; vorhandene funktionierende WebUI-Route verwenden | Ausdrücklich beschlossen; keine neue Serverroute, kein weiteres GET-/POST-Raten. |
 | Statusfilter | Erreichbarkeit und tatsächlich aktive Sender nicht mit Soll-RUN oder bloßer Registrierung verwechseln | Doppel-Filter diskutiert/beauftragt; spätere Korrektur ersetzt „angemeldet“ durch „aktiv senden“. Korrekte Live-Datenversorgung nicht belegt. |
 | Darstellung | Kopfbereich und Filter kompakter, ohne unleserlich kleine Bedienung; genügend Fläche für Stationsliste | Beschlossen; kompaktere Versionen sichtbar, aber wiederkehrende Kürzungen und Layoutregressionen. |
 | Details | Details-Button muss einen tatsächlichen Dialog öffnen | Zunächst defekt; später durch Screenshot eines geöffneten Dialogs im Betrieb bestätigt. |
 | Dateiansicht | Klick etwa auf `config.toml` öffnet eine Ansicht direkt in der App; kein externer Link, Browser oder Downloadablauf | Beschlossen/geplant für V2; finale Implementierung und Test nicht zugänglich. |
-| V1/V2 | Bestehenden Stand sichern und separat weiterentwickeln | Nutzer bestätigte Kopie des Projektordners mit angehängtem `_V2`; kein belegter Git-Tag oder Entwicklungsbranch. |
+| V1/V2 | Bestehenden Stand sichern und separat weiterentwickeln | Kopie des Projektordners bestätigt mit angehängtem `_V2`; kein belegter Git-Tag oder Entwicklungsbranch. |
 | Lieferform bei weiterer Arbeit | Ganze betroffene Dateien, einschließlich Imports, Package, Models und tatsächlich verwendeter UI-Funktionen; keine Platzhalter, Dummys oder leeren Handler | Wiederholt ausdrücklich festgelegt. Keine ZIP-Pflicht und keine bloßen Austauschfragmente. Erläuterungen formatiert, nicht als ein unstrukturierter Gesamtblock. |
 | Betriebsreparatur | Bereits funktionierende Lösung zu `last_version` wiederfinden statt neue Pfade/Dienste erfinden | Beschlossenes Anliegen, im zugänglichen Verlauf nicht erfüllt. |
 
@@ -74,8 +70,8 @@ Die historischen Farbvarianten wechselten von Gelb/Schwarz zu Dunkelblau/Cyan. D
 | Flask-Control-Server | Stationsregister, Sollzustände, Konfigurationsdateien, WebUI und JSON-Zugriff | Original-`app.py`, `control_context.py`, Stationsplugin und Generatorplugin. |
 | BREW-Backend | Separater Backenddienst mit eigenem Health-Endpunkt und eigenen Zählern | `CT-H-DEV-01.netcore-tetra.de:8081`; nicht mit Control-Server oder Stations-Health gleichsetzen. |
 | Stations-Health-Agent | Auf der Basisstation Dienst-, Prozess-, Konfigurations- und Signaturstatus liefern | Vom Control-Server unter Port `8088`, Pfad `/health`, abgefragt; vollständiger Agentcode/Unit fehlt. |
-| `bluestation_hybrid_manager.sh` | Lokaler Manager auf der TBS; meldet den Fehler der Versionsdatei | Im Nutzerlog direkt nachgewiesen; Installationspfad, vollständiger Code und ausführende Unit unbekannt. |
-| BlueStation-Sender | Tatsächlicher Funkprozess bzw. dessen Betrieb | Nur mittelbare Health-/Prozessindikatoren vorhanden; kein unabhängiger HF-Nachweis aus dem App-Chat. |
+| `bluestation_hybrid_manager.sh` | Lokaler Manager auf der TBS; meldet den Fehler der Versionsdatei | Im Betriebslog direkt nachgewiesen; Installationspfad, vollständiger Code und ausführende Unit unbekannt. |
+| BlueStation-Sender | Tatsächlicher Funkprozess bzw. dessen Betrieb | Nur mittelbare Health-/Prozessindikatoren vorhanden; kein unabhängiger HF-Nachweis aus dem App-Entwicklung. |
 
 Die belegten Verbindungen sind: App → Control-HTTP; Browser → Control-WebUI; Control → BREW-Health; Control → DNS/Ping/Stations-Health. Die App-Anzeige darf nicht allein aus dem Erfolg des ersten Weges ableiten, dass alle übrigen Komponenten online sind.
 
@@ -104,7 +100,7 @@ Der Terminalprompt belegt `/opt/netcore-tetra-control/plugins`. Zusammen mit dem
 | `/opt/netcore-tetra-control/keys/state_private_key.pem` | State-Signierschlüssel; Inhalt nicht enthalten |
 | `/opt/netcore-tetra-control/templates/generator.html` | Vom Generatorplugin erwartete HTML-Basisdatei |
 
-**Nicht verwechseln:** Die WebUI zeigt für TBS01 in einem zugänglichen Screenshot als tatsächlich geladene Konfiguration **`/run/bluestation/config.toml`** an. Dieser Pfad wurde bei der Archivierung im Bildausschnitt gelesen. Er widerspricht einer ungeprüften Gleichsetzung mit `config.toml` im Home-Projektordner, verrät aber **nicht** den Pfad von `last_version`. [A02]
+**Nicht verwechseln:** Die WebUI zeigt für TBS01 in einem zugänglichen Screenshot als tatsächlich geladene Konfiguration **`/run/bluestation/config.toml`** an. Dieser Pfad wurde bei der Quellenprüfung vom 03.10.2026 im Bildausschnitt gelesen. Er widerspricht einer ungeprüften Gleichsetzung mit `config.toml` im Home-Projektordner, verrät aber **nicht** den Pfad von `last_version`. [A02]
 
 ### 4.4 State- und Konfigurationsversionierung
 
@@ -114,7 +110,7 @@ Der Terminalprompt belegt `/opt/netcore-tetra-control/plugins`. Zusammen mit dem
 
 Der State wird als formatiertes JSON mit sortierten Schlüsseln und abschließendem Zeilenumbruch geschrieben. Anschließend signiert der Code die exakten Dateibytes mit einem als Ed25519 geprüften privaten Schlüssel und speichert die Signatur Base64-kodiert mit Zeilenumbruch. Die Implementierung des getrennten `config_signer.py` wurde nicht bereitgestellt: Das kryptographische Detail der Konfigurationssignatur darf nicht allein aus dem State-Signiercode abgeleitet werden.
 
-Die nächste **Konfigurationsversion** wird dagegen aus der Kommentarzeile `# CONFIG_VERSION=` der aktiven `config.toml` gelesen und erhöht; fehlt die Datei oder scheitert die Ermittlung, liefert der sichtbare Code `1`. **State-Version, Config-Version und lokaler `last_version`-Merker sind nicht ohne Prüfung dasselbe.** Die frühere Assistenz setzte deren Bedeutung teilweise ungeprüft gleich. [C03, C08]
+Die nächste **Konfigurationsversion** wird dagegen aus der Kommentarzeile `# CONFIG_VERSION=` der aktiven `config.toml` gelesen und erhöht; fehlt die Datei oder scheitert die Ermittlung, liefert der sichtbare Code `1`. **State-Version, Config-Version und lokaler `last_version`-Merker sind nicht ohne Prüfung dasselbe.** Die frühere Gleichsetzung war nicht belegt. [C03, C08]
 
 ## 5. Verbindlicher historischer HTTP-/JSON-Vertrag
 
@@ -122,9 +118,9 @@ Die nächste **Konfigurationsversion** wird dagegen aus der Kommentarzeile `# CO
 
 | Verbindung | Adresse/Parameter | Nachweisgrenze |
 |---|---|---|
-| App → Control | `http://ct-h-dev-04.netcore-tetra.de:8080` | Historisch funktionierende vollständige DNS-Adresse in App und Nutzerprüfung |
-| Control-Kurzname | `http://ct-h-dev-04:8080` | Ein App-Screenshot zeigt Offline; später liefern beide `/api/nodes`-Adressen laut Nutzer dasselbe JSON. Clientkontexte nicht gleichsetzen. |
-| Frühere Control-IP | `10.0.1.186:8080` | Im Ausgangswunsch/festen Codekontext genannt; historisch, nicht heutige Konfiguration |
+| App → Control | `http://ct-h-dev-04.netcore-tetra.de:8080` | Historisch funktionierende vollständige DNS-Adresse in App und Prüfung am Zielsystem |
+| Control-Kurzname | `http://ct-h-dev-04:8080` | Ein App-Screenshot zeigt Offline; später liefern beide `/api/nodes`-Adressen laut Betriebsprüfung dasselbe JSON. Clientkontexte nicht gleichsetzen. |
+| Frühere Control-IP | `10.0.1.186:8080` | Im Ausgangswunsch/festen Codekontext genannt; historisch, nicht geprüfte Konfiguration |
 | Weitere beobachtete Control-IP | `10.0.1.31:8080` | In App-Screenshot erreichbar; keine abschließende IP-Zuordnung aus der Chronologie erzwingen |
 | Control → BREW | `http://CT-H-DEV-01.netcore-tetra.de:8081/health` | Im ursprünglichen Kontext und im Fix-Artefakt gleich hinterlegt |
 | BREW-WebUI | `http://CT-H-DEV-01.netcore-tetra.de:8081/` | Verlinkt im Dashboard |
@@ -132,11 +128,11 @@ Die nächste **Konfigurationsversion** wird dagegen aus der Kommentarzeile `# CO
 | TBS01 / TBS02 | `SRV-M-RPi-TBS01` / `SRV-M-RPi-TBS02`; Screenshot-IP `10.0.1.20` / `10.0.1.21` | Historische WebUI-Beobachtungen, kein aktueller Netzscan |
 | Stations-DNS-Fallback | `.netcore-tetra.de` | Wird bei Node-IDs ohne Punkt als zweiter Auflösungskandidat verwendet |
 
-Alle genannten Webverbindungen verwenden im historischen Material HTTP. Daraus folgt keine Freigabe zum öffentlichen Exponieren der Verwaltungsrouten. VPN-/Domain-Wechsel ist ein App-Wunsch, kein in diesem Chat nachgewiesenes VPN- oder TLS-Deployment.
+Alle genannten Webverbindungen verwenden im historischen Material HTTP. Daraus folgt keine Freigabe zum öffentlichen Exponieren der Verwaltungsrouten. VPN-/Domain-Wechsel ist ein App-Wunsch, kein in dieser Entwicklungsphase nachgewiesenes VPN- oder TLS-Deployment.
 
 ### 5.2 Registry: `GET /api/nodes`
 
-Der Nutzer prüfte sowohl die Kurznamens- als auch die FQDN-Adresse. Beide lieferten ein Objekt mit fünf Schlüsseln `SRV-M-RPi-TBS01` bis `SRV-M-RPi-TBS05`. Jeder Wert enthält `meta`, `state` und `urls`. Der exakt passende Rückgabetyp ist auf Strukturebene **eine Map von String auf ControlNode**. Der sichtbare Serververtrag verlangt keinen äußeren Wrapper `stations` oder `nodes`. [C04, C05]
+Getestet wurden sowohl die Kurznamens- als auch die FQDN-Adresse. Beide lieferten ein Objekt mit fünf Schlüsseln `SRV-M-RPi-TBS01` bis `SRV-M-RPi-TBS05`. Jeder Wert enthält `meta`, `state` und `urls`. Der exakt passende Rückgabetyp ist auf Strukturebene **eine Map von String auf ControlNode**. Der sichtbare Serververtrag verlangt keinen äußeren Wrapper `stations` oder `nodes`. [C04, C05]
 
 | JSON-Pfad je Node | Typ/Inhalt | Verwendung |
 |---|---|---|
@@ -225,8 +221,8 @@ Der lokale Projektpfad in den Compilerfehlern lautet `C:/Users/janho/AndroidStud
 | Datei/Symbol | Sichtbarer Stand |
 |---|---|
 | `de/netcore/tetra/mobile/MainActivity.kt` | Oft vollständig angefordert; mehrere inkompatible Zwischenstände durch Logs belegt; keine vollständige finale Kotlin-Datei zugänglich |
-| `api/ApiService.kt` | Früher Nutzerstand mit dynamischem `@Url` und `getHealth`, `getStationState`, `getText`, `getAction`; spätere vollständige Endfassung fehlt |
-| `api/RetrofitClient.kt` | Früher vollständiger Nutzerstand: feste `BASE_URL`, OkHttp mit BODY-Logging, Scalars-Converter vor Gson-Converter, lazy `ApiService` |
+| `api/ApiService.kt` | Früher Ausgangsstand mit dynamischem `@Url` und `getHealth`, `getStationState`, `getText`, `getAction`; spätere vollständige Endfassung fehlt |
+| `api/RetrofitClient.kt` | Früher vollständiger Ausgangsstand: feste `BASE_URL`, OkHttp mit BODY-Logging, Scalars-Converter vor Gson-Converter, lazy `ApiService` |
 | `models/ControlNode.kt` | Für Map-Werte mit `meta`, `state`, `urls` benötigt; wiederholte Redeclarations zeigen inkonsistente Modellverteilung |
 | `models/HealthResponse`, `models/StationState` | Bereits vorhandene Modelle, deren erneute Definition später Compilerkonflikte erzeugte |
 | `LoadedConfig`, `SignatureInfo`, `SenderProcess`, `HealthSummary` | Ebenfalls mehrfach deklariert; endgültige Dateiaufteilung nicht belegt |
@@ -239,7 +235,7 @@ Der frühe Retrofit-Client enthält `BASE_URL = "http://ct-h-dev-04:8080/"`. Die
 
 ### 7.2 Bedeutung der Filter
 
-Die Filter entwickelten sich von „Inaktive Stationen anzeigen“ über RUN-/STOP-Auswahl zu „nur erreichbare“ und „nur aktiv sendende“. Der Nutzer widersprach ausdrücklich der Gleichsetzung von „aktiv“ mit Soll-RUN und ersetzte später „angemeldet“ durch aktive Sender.
+Die Filter entwickelten sich von „Inaktive Stationen anzeigen“ über RUN-/STOP-Auswahl zu „nur erreichbare“ und „nur aktiv sendende“. Verbindlich gilt: „aktiv“ bedeutet tatsächlich senden, nicht Soll-RUN oder bloße Anmeldung.
 
 Mehrere sichtbare Zwischenstände waren semantisch nicht abgenommen: „Nur RUN“ und „STOP anzeigen“ sind keine zwei unabhängigen Achsen für Erreichbarkeit und Senden; fünf bekannte Nodes sind keine fünf aktiven Anmeldungen; ein fehlendes Telemetriefeld beweist keinen ausgeschalteten Sender. Ein späterer Screenshot zeigt fünf erreichbare Stationen, während ein früherer WebUI-/App-Vergleich nur zwei erreichbare Stationen zeigt. Ohne zugänglichen endgültigen Auswertecode ist daraus weder ein realer Ausfall noch eine tatsächlich vollständige Erreichbarkeit abzuleiten. [C04, C06]
 
@@ -251,7 +247,7 @@ Der Details-Button war zunächst wirkungslos. Ein späterer Screenshot zeigt ein
 
 ### 7.4 V2 und interne Dateiansicht
 
-Der Nutzer kopierte den bestehenden Projektordner und hängte `_V2` an. Diese Sicherung ist eine ausdrücklich bestätigte lokale Aktion; eine echte Git-Baseline, ein Versions-Tag, ein separater Application-ID-Suffix oder eine parallele Installation auf dem Gerät wurden nicht nachgewiesen.
+Der bestehende Projektordner wurde als lokale Sicherung mit dem Suffix `_V2` kopiert. Diese Sicherung ist eine ausdrücklich bestätigte lokale Aktion; eine echte Git-Baseline, ein Versions-Tag, ein separater Application-ID-Suffix oder eine parallele Installation auf dem Gerät wurden nicht nachgewiesen.
 
 Für V2 soll ein Klick etwa auf `urls.config` die Datei in einer eigenen App-Ansicht öffnen. Verbindlich sind der Verbleib in der App und der Verzicht auf externen Browser oder Downloadablauf. Die Anwendung muss dazu zwar HTTP-Inhalte abrufen, darf daraus aber keinen externen Dateihandler-/Download-Workflow machen.
 
@@ -261,9 +257,9 @@ Für V2 soll ein Klick etwa auf `urls.config` die Datei in einer eigenen App-Ans
 
 ### 8.1 DNS und getrennte Backend-Verbindungen
 
-Anfangs war der Control-Server über eine IP erreichbar, während `BREW Backend nicht erreichbar · offline · <urlopen error timed out>` angezeigt wurde. Der Kurzname des Control-Servers erschien in einer App-Aufnahme offline; der vollständige Name erreichte den Control-Server. Nachdem der Nutzer auf dem Control-Server die IP durch den BREW-DNS-Namen ersetzt hatte, meldeten WebUI und App das Backend wieder online. [C01, C06]
+Anfangs war der Control-Server über eine IP erreichbar, während `BREW Backend nicht erreichbar · offline · <urlopen error timed out>` angezeigt wurde. Der Kurzname des Control-Servers erschien in einer App-Aufnahme offline; der vollständige Name erreichte den Control-Server. Nachdem auf dem Control-Server die IP durch den BREW-DNS-Namen ersetzt worden war, meldeten WebUI und App das Backend wieder online. [C01, C06]
 
-**Belegt gelöst:** Der damalige Backendzugriff funktionierte nach dieser Nutzeränderung wieder. **Nicht belegt:** DNS-Suchsuffix-/VPN-/Android-Resolverkonfiguration im Detail. Die spätere Nutzerprüfung beider `/api/nodes`-Namen erfolgte nicht nachweislich unter denselben Netzwerkbedingungen wie der frühere App-Fehler.
+**Belegt gelöst:** Der damalige Backendzugriff funktionierte nach dieser Nutzeränderung wieder. **Nicht belegt:** DNS-Suchsuffix-/VPN-/Android-Resolverkonfiguration im Detail. Die spätere Prüfung am Zielsystem beider `/api/nodes`-Namen erfolgte nicht nachweislich unter denselben Netzwerkbedingungen wie der frühere App-Fehler.
 
 ### 8.2 Online-Anzeige ohne Stationen und falsche Modellierung
 
@@ -284,11 +280,11 @@ Erst der vollständig gepostete Stationscode stellt den Vertrag eindeutig klar: 
 
 ### 8.4 `unexpected end of stream`: Wirkung und Rückmeldung getrennt
 
-Der Fehler trat beim Laden der Stationsliste sowie nach Start/Stop auf. Der Nutzer beobachtete nach einem solchen Aktionsfehler, dass manuelles Aktualisieren den scheinbar bereits angenommenen neuen Zustand zeigte; Stop verhielt sich entsprechend. Später erschien eine RUN-Erfolgsmeldung gleichzeitig mit einer gescheiterten Listenaktualisierung. [C06]
+Der Fehler trat beim Laden der Stationsliste sowie nach Start/Stop auf. Nach einem solchen Aktionsfehler zeigte manuelles Aktualisieren den scheinbar bereits angenommenen neuen Zustand; Stop verhielt sich entsprechend. Später erschien eine RUN-Erfolgsmeldung gleichzeitig mit einer gescheiterten Listenaktualisierung. [C06]
 
 **Direkt aus dem Plugin ableitbar:** Schreiben/Signieren findet vor dem Redirect statt. Ein Fehler beim anschließenden Abruf oder Lesen der Antwort kann deshalb auftreten, obwohl der Sollzustand bereits geändert wurde. Der Redirect führt zur aufwendigeren `/stations`-WebUI mit seriellen Health-Prüfungen.
 
-**Historisch vorgeschlagener App-Fix:** Aktionsaufruf als direkter OkHttp-GET ohne automatisches Folgen des Redirects, anschließend separater Refresh; Detailsdialog ergänzen. Diese Absicht ist aus der Rücksuche verfügbar. Die vollständige letzte Implementierung fehlt und der spätere Nutzerbericht zeigt weiterhin sporadische Lesefehler. Daher keine Behauptung einer abschließenden Fehlerbehebung.
+**Historisch vorgeschlagener App-Fix:** Aktionsaufruf als direkter OkHttp-GET ohne automatisches Folgen des Redirects, anschließend separater Refresh; Detailsdialog ergänzen. Diese Absicht ist aus der Rücksuche verfügbar. Die vollständige letzte Implementierung fehlt und der spätere Betriebsbericht zeigt weiterhin sporadische Lesefehler. Daher keine Behauptung einer abschließenden Fehlerbehebung.
 
 **Nicht bewiesene eigentliche Stream-Ursache:** Abbruchstelle in HTTP-Headern oder Body, Verbindungspool-Wiederverwendung, Proxy, Timeout, Längen-/Encodingproblem oder Parserfehler lassen sich aus der knappen UI-Meldung allein nicht unterscheiden. Es fehlen die vollständige Exception-Kette, Request-/Response-Header und korrelierte Serverlogs. Ein pauschales „Gson ist schuld“ oder „mehr Timeout löst es“ wäre nicht belegt.
 
@@ -312,11 +308,11 @@ Logcat-Meldungen zu Debugger-Wartezustand, Emulatorgrafik, Play-Store-RPC und Ei
 
 Die Anzeige „Signatur nicht OK / fehlt“ stammt in der WebUI aus einer zusammenfassenden Bewertung von `signature.ok`; im Kontext wird nur der exakte Booleanwert `True` als erfolgreich gewertet. Die sichtbare Oberfläche kann daher zwischen fehlender Bewertung, fehlender Signatur und tatsächlichem Validierungsfehler nicht zuverlässig unterscheiden. In einer App mit unpassendem Datenmodell kann zusätzlich eine falsch interpretierte oder nicht gelieferte Bewertung angezeigt werden. [C03, C05]
 
-Die frühere Assistenzbehauptung, die Warnung beweise zwingend ein ungültiges lokales `config.toml`-/`.sig`-Paar, war zu weitgehend. Ebenso unbestätigt sind die vorgeschlagenen Downloads direkt in `/home/jan/netcore-tetra`, der passende lokale Eigentümer und der vorgeschlagene Neustartdienst. Der Screenshotpfad `/run/bluestation/config.toml` ist ein zusätzlicher Grund, nicht ungeprüft eine andere lokale Datei zu überschreiben. Es gibt keinen belegten erfolgreichen Abschluss der Signaturdiagnose. [C08; A02]
+Die Warnung allein beweist kein ungültiges lokales `config.toml`-/`.sig`-Paar. Ebenso unbestätigt sind die vorgeschlagenen Downloads direkt in `/home/jan/netcore-tetra`, der passende lokale Eigentümer und der vorgeschlagene Neustartdienst. Der Screenshotpfad `/run/bluestation/config.toml` ist ein zusätzlicher Grund, nicht ungeprüft eine andere lokale Datei zu überschreiben. Es gibt keinen belegten erfolgreichen Abschluss der Signaturdiagnose. [C08; A02]
 
 ### 8.7 `last_version-Datei ist defekt`
 
-Der maßgebliche Nutzerlog lautet:
+Der maßgebliche Betriebslog lautet:
 
 ```text
 May 07 20:16:45 SRV-M-RPi-TBS01 bluestation_hybrid_manager.sh[2042361]: FEHLER: last_version-Datei ist defekt.
@@ -326,12 +322,12 @@ Dieser Log belegt Host, Managername, Zeitpunkt und Fehlermeldung. Er belegt **ni
 
 | Früherer Vorschlag | Quellenlage | Archivbewertung |
 |---|---|---|
-| `/var/lib/netcore-tetra/last_version` auf 1 setzen | Vom Nutzer mit Verweis auf eine andere frühere Lösung zurückgewiesen | Nicht als Lösung übernehmen. |
-| `/home/jan/netcore-tetra/last_version` auf 1 setzen | Danach von der Assistenz behauptet, ohne Ausgabe der tatsächlichen Managerkonfiguration | Unbestätigt; nicht als richtigen Pfad etablieren. |
-| `bluestation-config-agent.service` neu starten | Nutzer: „haben wir doch gar nicht“ | Ausdrücklich widersprochen. |
-| Stattdessen `bluestation.service` neu starten | Anschließender Assistenzvorschlag ohne Unit-Beleg | Unbestätigt, kein Ersatz für Diensterkennung. |
+| `/var/lib/netcore-tetra/last_version` auf 1 setzen | Ausdrücklich mit Verweis auf eine andere frühere Lösung zurückgewiesen | Nicht als Lösung übernehmen. |
+| `/home/jan/netcore-tetra/last_version` auf 1 setzen | Weiterer Pfadvorschlag ohne belegte Managerkonfiguration | Unbestätigt; nicht als richtigen Pfad etablieren. |
+| `bluestation-config-agent.service` neu starten | Dienst ausdrücklich als nicht vorhanden bestätigt | Ausdrücklich widersprochen. |
+| Stattdessen `bluestation.service` neu starten | Anschließender Entwicklungsvorschlag ohne Unit-Beleg | Unbestätigt, kein Ersatz für Diensterkennung. |
 | `printf "1\n"`, `chown jan:jan`, `chmod 644`, `cat -A` | Als Reparatur vorgeschlagen | Keine sichtbare erfolgreiche Ausführung oder passende Formatprüfung. |
-| Datei löschen und neu erzeugen | „Holzhammer“-Vorschlag der Assistenz | Nicht bestätigt; keine Standardreparatur aus diesem Archiv. |
+| Datei löschen und neu erzeugen | Unbestätigter Neuinitialisierungsansatz | Nicht bestätigt; keine Standardreparatur aus diesem Archiv. |
 
 Die Vermutung „kein sauberer Integer, eventuell CRLF“ ist eine mögliche, aber **nicht durch den Managerquelltext oder Dateibytes bewiesene** Erklärung. Auch die Aussage, dieser Merker sei sicher die zuletzt akzeptierte Server-State-Version, ist ungeprüft.
 
@@ -349,7 +345,7 @@ Im Laufzeitbereich war `netcore_tetra_control_server_fix.zip` tatsächlich verf�
 | ZIP-Mitglied `app.py` | 4258 Bytes, 175 Zeilen | `9048bb3f84e4b99e944461a0455ecc9dc7d561cb0ae1103667348ec21a37c8f7` |
 | ZIP-Mitglied `control_context.py` | 24031 Bytes, 815 Zeilen | `f3b00edd2ec15caed21b40be1ce501b8fbfc4c06fb5e0f7ff715e33b471e6347` |
 
-Das Artefakt beweist, dass ein konkreter Server-Fix erzeugt wurde, **nicht** dass diese Fassung vollständig installiert, erfolgreich getestet oder später weiterhin aktiv war. Eine exakte Erzeugungszeit oder Zuordnung zu jeder ausgelassenen Antwort wird nicht behauptet. Der Nutzer verlangte später ausdrücklich einzelne vollständige Dateien statt dieses ZIP-Workflows.
+Das Artefakt beweist, dass ein konkreter Server-Fix erzeugt wurde, **nicht** dass diese Fassung vollständig installiert, erfolgreich getestet oder später weiterhin aktiv war. Die genaue Erzeugungszeit ist nicht belegt. Für die weitere Entwicklung sind einzelne vollständige Dateien statt des ZIP-Workflows festgelegt.
 
 ### 9.2 Unterschiede zum ursprünglichen Servercode
 
@@ -363,25 +359,25 @@ Die erzeugten flachen Stationsobjekte enthalten Identitäten, Host/IP, Lock, Sol
 
 Im ZIP wird `load_plugins()` **vor** den zusätzlichen App-Routen ausgeführt. Das später vollständig gepostete Stationsplugin registriert ebenfalls `GET /api/nodes`, dort jedoch mit dem ursprünglichen Map-Vertrag. Eine Kombination beider Quellstände registriert somit dieselbe URL/Methode unter zwei unterschiedlichen Flask-Endpunkten (`stations_api_nodes` und `api_nodes`) mit inkompatiblen Antwortformen. [C05; A01, `app.py`:53,149–151]
 
-Das ist ein konkreter **statischer Integrationskonflikt**, der in der Abschlussprüfung erkannt wurde. Welche Regel in einer tatsächlich installierten Kombination bedient wurde und ob genau diese Kombination damals aktiv war, ist nicht nachgewiesen. Ein dafür versuchter isolierter Flask-Test konnte in der Archivumgebung mangels Flask nicht gestartet werden. Die vom Nutzer später gepostete Antwort bestätigt jedenfalls den ursprünglichen Map-Vertrag für den beobachteten Zugriff.
+Das ist ein konkreter **statischer Integrationskonflikt**, der in der Quellenprüfung erkannt wurde. Welche Regel in einer tatsächlich installierten Kombination bedient wurde und ob genau diese Kombination damals aktiv war, ist nicht nachgewiesen. Ein dafür versuchter isolierter Flask-Test konnte in der Archivumgebung mangels Flask nicht gestartet werden. Die ausdrücklich später gepostete Antwort bestätigt jedenfalls den ursprünglichen Map-Vertrag für den beobachteten Zugriff.
 
-Die Zusatzrouten des ZIP sind deshalb **keine verbindliche neue API-Baseline**. Die spätere ausdrückliche Vorgabe lautet, das aktuelle JSON unverändert zu lassen und die App anzupassen. Das historische ZIP darf nicht ungeprüft erneut auf den Server kopiert werden.
+Die Zusatzrouten des ZIP sind deshalb **keine verbindliche neue API-Baseline**. Die spätere ausdrückliche Vorgabe lautet, das vorhandene JSON unverändert zu lassen und die App anzupassen. Das historische ZIP darf nicht ungeprüft erneut auf den Server kopiert werden.
 
-## 10. Heute geprüfter Repository-Stand — getrennt vom Chat
+## 10. Repository-Befund vom 03.10.2026
 
 ### 10.1 Prüfverfahren und Reichweite
 
-Am 2026-10-03 wurde `Archiving` über den GitHub-Connector gelesen und auf Commit `855ec68e4379983b8a59725723d1ad99bc8fcb47` fixiert. Root- und ausgewählte Teilbäume wurden geprüft, ebenso der vollständige vorhandene Archivindex sowie relevante aktuelle Dateien. Die rekursive Gesamtbaumantwort und einige große Baumantworten wurden in der Werkzeugausgabe gekürzt; daher wird keine vollständige Negativsuche über jeden Pfad behauptet. [R01–R04]
+Der Quellenabgleich vom 03.10.2026 bezieht sich auf `Archiving` bei Commit `855ec68e4379983b8a59725723d1ad99bc8fcb47`. Geprüft wurden Root- und ausgewählte Teilbäume sowie relevante Dateien. Wegen gekürzter Gesamtbaumausgaben ist keine vollständige Negativsuche über sämtliche Pfade belegt. [R01–R04]
 
 Die ergänzende GitHub-Codesuche nach `last_version`, `10_stations_plugin.py` und `MainActivity.kt` lieferte keine Treffer. Diese Suche deckt laut Werkzeugvertrag den **Defaultbranch** ab; die Repository-Metadaten nennen dafür `main`. Sie ist ausdrücklich kein vollständiger Suchnachweis für `Archiving`. Der direkte, auf den Prüfcommit fixierte Abruf von `app/src/main/java/de/netcore/tetra/mobile/MainActivity.kt` lieferte 404. [R05]
 
-Ein zusätzlicher lokaler Git-Clone für einen vollständigen Offline-Abgleich scheiterte an der DNS-Auflösung der Archivumgebung. Ein ergänzender Snapshot-Download gelang ebenfalls nicht. **Der GitHub-Connector war dagegen lesbar und besitzt Schreibzugriff; diese Einschränkung ist kein behaupteter Verlust des Repository-Zugriffs.**
+Ein vollständiger lokaler Offline-Abgleich war nicht möglich: Clone und Snapshot-Download scheiterten. Die relevanten Repository-Dateien konnten über die API gelesen werden.
 
 ### 10.2 Ergebnisse
 
-| Gegenstand | Heute verifiziert | Was daraus nicht folgt |
+| Gegenstand | Am 03.10.2026 verifiziert | Was daraus nicht folgt |
 |---|---|---|
-| Zielbranch und Archiv | `Archiving` und vorhandener `Docs/archive/README.md` lesbar; vorhandene fremde Chatarchive berücksichtigt | Kein vollständiger Export dieses historischen Chats vorhanden |
+| Zielbranch und Archiv | `Archiving` und vorhandener `Docs/archive/README.md` lesbar; vorhandene fremde Archivnotizen berücksichtigt | Kein vollständiger Export dieses historischen Entwicklungsstands vorhanden |
 | Android-Quellstand | Kein Android-Projekt am geprüften Root erkennbar; direkte Standardpfadabfrage für `MainActivity.kt` 404 | Kein Beweis, dass es auf keinem anderen Pfad/Branch/Repository einen App-Stand gibt |
 | Historischer Flask-Server/Hybrid-Manager | Gepostete Dateien bzw. Anhang verfügbar, aber kein zugehöriger aktueller Repositorypfad in der durchgeführten Prüfung eindeutig zugeordnet | Keine Aussage, dass die damalige Serverinstallation entfernt oder vollständig migriert wurde |
 | Aktueller Basisstations-Updater | `install/update-basisstation.sh` tatsächlich gelesen | Kein Nachweis einer `last_version`-Reparatur; nicht mit dem historischen Hybrid-Manager gleichsetzen |
@@ -389,34 +385,34 @@ Ein zusätzlicher lokaler Git-Clone für einen vollständigen Offline-Abgleich s
 
 Der aktuelle Updater verwendet standardmäßig `CONFIG_PATH=/etc/netcore/config.toml`. Er versucht zunächst den konfigurierten `service_name` und danach `tetra.service`, `bluestation.service`, `tetra-bluestation.service`, `bluestation-bs.service`. Außerdem ermittelt er das wirklich gestartete Binary über MainPID/`/proc` bzw. ExecStart. Das bestätigt gerade **keinen einzelnen pauschal richtigen Dienstnamen** für den historischen Aufbau. [R03, Zeilen 18–26 und 108–150]
 
-Die heutige Provisioning-Core-README beschreibt eine zentrale Teilnehmer-/Geräte-/Gruppenverwaltung auf Standardport `8125/tcp`, die Subscriber Core (`8100`) und Group Core (`8110`) bündelt. Das ist ein benachbarter neuerer Verwaltungsbaustein und **nicht** der im Chat nachgewiesene Control-Server auf `8080`. Es wurde nur die README verifiziert, nicht dessen gesamter Code oder Livebetrieb. [R04]
+Die am 03.10.2026 geprüfte Provisioning-Core-README beschreibt eine zentrale Teilnehmer-/Geräte-/Gruppenverwaltung auf Standardport `8125/tcp`, die Subscriber Core (`8100`) und Group Core (`8110`) bündelt. Das ist ein benachbarter neuerer Verwaltungsbaustein und **nicht** der in den Arbeitsnotizen nachgewiesene Control-Server auf `8080`. Es wurde nur die README verifiziert, nicht dessen gesamter Code oder Livebetrieb. [R04]
 
 ### 10.3 Nicht nachweisbar als „inzwischen behoben“
 
-Aus dem Repository-Abgleich lässt sich keiner der folgenden Punkte als heute abschließend behoben markieren: Android-Streamfehler, korrekte aktive-Sender-Telemetrie, finale Modellkonsistenz, interner Dateiviewer, Signaturwarnung oder `last_version`-Defekt. Der sichtbare spätere Fortschritt bei Liste, Actions und Details ist ein **historischer Betriebsbefund**, keine verifizierte aktuelle App-Version.
+Aus dem Repository-Abgleich lässt sich keiner der folgenden Punkte als am 03.10.2026 abschließend behoben markieren: Android-Streamfehler, korrekte aktive-Sender-Telemetrie, finale Modellkonsistenz, interner Dateiviewer, Signaturwarnung oder `last_version`-Defekt. Der sichtbare spätere Fortschritt bei Liste, Actions und Details ist ein **historischer Betriebsbefund**, keine verifizierte aktuelle App-Version.
 
 ## 11. Tests, Betriebsbeobachtungen und Grenzen
 
 | Prüfung | Ergebnis | Status/Grenze |
 |---|---|---|
-| Nutzer prüft beide Control-DNS-Varianten für `/api/nodes` | Gleiches gepostetes JSON mit fünf Nodes | Historisch getestet; keine heutige Remoteabfrage |
-| BREW-DNS-Änderung durch Nutzer | Backend in App/WebUI wieder online | Historisch im Betrieb bestätigt |
+| Prüfung beider Control-DNS-Varianten für `/api/nodes` | Gleiches gepostetes JSON mit fünf Nodes | Historisch getestet; keine geprüfte Remoteabfrage |
+| BREW-DNS-Änderung | Backend in App/WebUI wieder online | Historisch im Betrieb bestätigt |
 | App zeigt Liste mit fünf Stationen | Mehrfach sichtbar | Anzeige bestätigt; Telemetriesemantik nicht damit abgenommen |
-| Start/Stop über korrigierten Weg | Nutzer sieht nach manuellem Refresh offenbar angenommenen Befehl; weitere State-Versionen sichtbar | Sollzustandswirkung teilweise bestätigt, Rückmeldung/Refresh weiter fehlerhaft; tatsächliches Senden nicht unabhängig bewiesen |
+| Start/Stop über korrigierten Weg | Manueller Refresh zeigt offenbar angenommenen Befehl; weitere State-Versionen sichtbar | Sollzustandswirkung teilweise bestätigt, Rückmeldung/Refresh weiter fehlerhaft; tatsächliches Senden nicht unabhängig bewiesen |
 | Details-Button | Später geöffneter Dialog mit vollständigen Daten sichtbar | Historisch im Betrieb bestätigt |
-| Interner Config-Viewer | Nur Auftrag sichtbar | Nicht als getestet markieren |
-| V2-Kopie | Nutzer bestätigt kopierten Projektordner mit `_V2` | Lokale Aktion bestätigt, kein Git-Baseline-Nachweis |
+| Interner Config-Viewer | Anforderung ohne Implementierungsbeleg | Nicht als getestet markieren |
+| V2-Kopie | Kopierter Projektordner bestätigt mit `_V2` | Lokale Aktion bestätigt, kein Git-Baseline-Nachweis |
 | Signaturreparatur / Reset auf 1 | Keine passende Erfolgsrückmeldung im zugänglichen Verlauf | Unbestätigt |
 | Archivprüfung: ZIP-Mitglieder gegen entpackte Dateien | Beide byteidentisch, SHA-256 ermittelt | Tatsächlich am 2026-10-03 durchgeführt |
 | Archivprüfung: Python-Quellen aus ZIP | `ast.parse()` und `compile(..., 'exec')` für beide Dateien ohne Syntaxfehler | Syntaxprüfung, kein Import-/Flask-/Betriebstest |
 | Archivprüfung: isolierter Flask-Routenversuch | Vor Ausführung mit `ModuleNotFoundError: No module named 'flask'` abgebrochen | Nicht erfolgreich getestet; keine fingierte Routing-Abnahme |
-| Android-Build, Emulatorlauf, echter TBS-/BREW-Zugriff im Archivlauf | Nicht durchgeführt | Kein lokaler vollständiger Android-Quellstand und kein Zugriff auf Jans Verwaltungsnetz |
+| Android-Build, Emulatorlauf, echter TBS-/BREW-Zugriff im Archivlauf | Nicht durchgeführt | Kein lokaler vollständiger Android-Quellstand und kein Zugriff auf das Verwaltungsnetz |
 
 ## 12. Befehle und Abläufe
 
 ### 12.1 Tatsächlich belegte historische Aktionen
 
-Der Nutzer gab auf dem Control-Server im Verzeichnis `/opt/netcore-tetra-control/plugins` den Inhalt von `10_stations_plugin.py` und `20_generator_plugin.py` mit `cat` aus. Die Ausgaben sind Primärbelege für Routen und Quelltext. Die JSON-Aufrufe über beide Control-DNS-Adressen sowie die lokale `_V2`-Kopie sind ebenfalls vom Nutzer bestätigt. [C04, C05, C07]
+Auf dem Control-Server wurde im Verzeichnis `/opt/netcore-tetra-control/plugins` der Inhalt von `10_stations_plugin.py` und `20_generator_plugin.py` mit `cat` ausgegeben. Die Ausgaben sind Primärbelege für Routen und Quelltext. Die JSON-Aufrufe über beide Control-DNS-Adressen sowie die lokale `_V2`-Kopie sind ebenfalls ausdrücklich bestätigt. [C04, C05, C07]
 
 ### 12.2 Lesende Anschlussdiagnose — neu formuliert, nicht im Betrieb ausgeführt
 
@@ -448,7 +444,7 @@ Auch diese Befehle sind **neu vorgeschlagene, nicht ausgeführte Diagnose**. Alt
 
 ### 12.3 Nicht als Runbook übernehmen
 
-Die früher vorgeschlagenen Befehle zum direkten Download von `config.toml` und `.sig` in einen geratenen Home-Pfad, zum Löschen oder Zurücksetzen einer geratenen `last_version`-Datei und zum Neustart eines geratenen Dienstes sind in Abschnitt 8 dokumentiert, aber **nicht zur Wiederverwendung freigegeben**. Die Archivierung führt keinen dieser Eingriffe aus.
+Die früher vorgeschlagenen Befehle zum direkten Download von `config.toml` und `.sig` in einen geratenen Home-Pfad, zum Löschen oder Zurücksetzen einer geratenen `last_version`-Datei und zum Neustart eines geratenen Dienstes sind in Abschnitt 8 dokumentiert, aber **nicht zur Wiederverwendung freigegeben**.
 
 ## 13. Verworfene, ersetzte und problematische Ansätze
 
@@ -475,7 +471,7 @@ Die folgende Reihenfolge ist eine **aus den Blockern abgeleitete Priorisierung f
 | P1 | Kompaktes responsives Layout fertigstellen | Teilweise sichtbar | Stationstitel lesbar, Aktionen bedienbar, ausreichend Scrollfläche auch bei größerer Systemschrift |
 | P1 | Signaturdiagnose an tatsächlich geladener Datei durchführen | Offen | Health-Rohdaten, geladener Pfad, passende Signatur und Verifier-Zuordnung prüfen; kein Zugriff auf private Schlüssel nötig |
 | P2 | Serverauswahl über Prozess-/Geräteneustart abnehmen | Funktion teilweise bestätigt | Lokales Netz/VPN/FQDN/Testserver; relative Datei-/Action-URLs verwenden dieselbe ausgewählte Basis |
-| P2 | V1-Baseline und V2-Entwicklung nachvollziehbar versionieren | Ordnerkopie bestätigt; Git-Lösung Idee/Empfehlung | Nutzbares Restore-Artefakt, eindeutige Versionskennzeichnung; kein solcher Branch in diesem Archivauftrag angelegt |
+| P2 | V1-Baseline und V2-Entwicklung nachvollziehbar versionieren | Ordnerkopie bestätigt; Git-Lösung Idee/Empfehlung | Nutzbares Restore-Artefakt, eindeutige Versionskennzeichnung; kein solcher Branch in der Quellenprüfung angelegt |
 | P2 | Wiedergefundenen Server-Fix nur inventarisieren und Installed-State-Abgleich durchführen | Artefakt geprüft; Deployment offen | Doppelte `/api/nodes`-Registrierung und Wrapper/Map nicht vermischen; keine automatische Rückinstallation |
 | P2 | Generatorfälle mit abweichender Node-ID/Device-ID testen | Neuer Prüfkandidat | Save-Pending adressiert Registry-Node korrekt; Template-Patching tatsächlich wirksam |
 | P2 | Fehler-/Zustandsmatrix automatisieren | Neue technische Empfehlung | Tests für Map, leere Antwort, 404, Redirect, abgebrochenen Body, Sperre, unbekannte Telemetrie und Dateiansicht |
@@ -488,20 +484,20 @@ Für eine Abschlussabnahme fehlen insbesondere: wiederholte RUN-/STOP-Zyklen mit
 
 ## 15. Quellen, Anhänge und Nachvollziehbarkeit
 
-### 15.1 Chat-Primärquellen
+### 15.1 Historische Arbeitsgrundlagen
 
 | Kürzel | Zugängliche Quelle |
 |---|---|
-| C01 | Nutzerwunsch „zurück zur App“ mit einstellbarer Control-URL und DNS-Namen; spätere Nutzerbestätigung der serverseitigen DNS-Anpassung |
-| C02 | Vom Nutzer gepostete ursprüngliche vollständige `app.py` mit Plugin-Lader, Dashboard und `/health` |
-| C03 | Vom Nutzer gepostete ursprüngliche vollständige `control_context.py` mit State-/Signier-/Health-Funktionen |
+| C01 | Einstellbare Control-URL und DNS-Namen; spätere Betriebsrückmeldung der serverseitigen DNS-Anpassung |
+| C02 | Bereitgestellte ursprüngliche vollständige `app.py` mit Plugin-Lader, Dashboard und `/health` |
+| C03 | Bereitgestellte ursprüngliche vollständige `control_context.py` mit State-/Signier-/Health-Funktionen |
 | C04 | Vollständig gepostete Antwort beider `/api/nodes`-Adressen mit fünf Nodes und `meta/state/urls` |
 | C05 | Terminalausgabe `cat 10_stations_plugin.py` und `cat 20_generator_plugin.py` aus `/opt/netcore-tetra-control/plugins` |
-| C06 | App-/WebUI-Screenshots, Compilerfehler und Logcat vom 7. Mai 2026; wiederholte ausdrückliche Nutzerkorrekturen zu kompletten Dateien und App-only-Fixes |
-| C07 | Nutzerbestätigung der `_V2`-Ordnerkopie und Auftrag zur rein internen Config-Dateiansicht; Screenshot des funktionierenden Detailsdialogs |
-| C08 | Nutzerkorrekturen zu `last_version`, ausdrücklich nicht vorhandenem Config-Agent-Dienst, Signaturwarnung und Hybrid-Manager-Log; dazu die unbestätigten Assistenzvorschläge |
+| C06 | App-/WebUI-Screenshots, Compilerfehler und Logcat vom 7. Mai 2026; wiederholte ausdrückliche Präzisierungen zu kompletten Dateien und App-only-Fixes |
+| C07 | Betriebsrückmeldung der `_V2`-Ordnerkopie und Auftrag zur rein internen Config-Dateiansicht; Screenshot des funktionierenden Detailsdialogs |
+| C08 | Präzisierungen zu `last_version`, ausdrücklich nicht vorhandenem Config-Agent-Dienst, Signaturwarnung und Hybrid-Manager-Log; dazu die unbestätigten Entwicklungsvorschläge |
 
-Die Kürzel bezeichnen die hier zugänglichen Nachrichten, nicht erfundene externe Chatlinks. Die nicht sichtbaren vollständigen Kotlin-Antworten können damit nicht nachträglich wiederhergestellt werden.
+Die Kürzel verweisen auf erhaltene Arbeitsgrundlagen. Vollständige Kotlin-Endfassungen lassen sich daraus nicht wiederherstellen.
 
 ### 15.2 Relevante lokale Artefakte
 
@@ -517,11 +513,11 @@ Die Kürzel bezeichnen die hier zugänglichen Nachrichten, nicht erfundene exter
 | `9c689fd9-a206-4ebb-9071-28bbd9e28efe.png` | Aktionsfehler `unexpected end of stream` in einer späteren App-Version |
 | `c559ed4d-201f-4bc8-9f18-3b439188e4f4.png` | Geöffneter Detailsdialog TBS01 mit Version 97 und Dateipfaden |
 
-Die Namen dienen der Wiedererkennung der Originalanhänge. Sie sind keine behaupteten Repository-Dateien. Screenshots und ZIP werden durch diesen Auftrag nicht zusätzlich nach Git kopiert; die technischen Ergebnisse sind im Markdown bewahrt.
+Die Namen dienen der Zuordnung der Originalanhänge. Die technischen Ergebnisse sind dokumentiert; eine zusätzliche Ablage der Screenshots und des ZIPs in Git ist nicht belegt.
 
 ### 15.3 ETSI-Projektunterlagen
 
-Zusätzlich verfügbar sind 24 einzelne ETSI-PDFs und die Sammlung `ETSI.pdf` mit laut bereitgestelltem Dateitext 4100 Seiten. Ihre sichtbaren Titelseiten/Inhaltsangaben wurden für die Relevanzzuordnung berücksichtigt; es wurde **keine vollständige Normenauswertung** für dieses App-Archiv vorgenommen. Keine dieser Unterlagen belegt eine Retrofit-Route, ein lokales `last_version`-Format oder einen installierten Dienst. Die in diesem Chat verwendete State-/Config-Signierung wird nicht als Nachweis einer TETRA-Air-Interface-Sicherheitsfunktion dargestellt.
+Zusätzlich verfügbar sind 24 einzelne ETSI-PDFs und die Sammlung `ETSI.pdf` mit laut bereitgestelltem Dateitext 4100 Seiten. Ihre sichtbaren Titelseiten/Inhaltsangaben wurden für die Relevanzzuordnung berücksichtigt; es wurde **keine vollständige Normenauswertung** für dieses App-Archiv vorgenommen. Keine dieser Unterlagen belegt eine Retrofit-Route, ein lokales `last_version`-Format oder einen installierten Dienst. Die in dieser Entwicklungsphase verwendete State-/Config-Signierung wird nicht als Nachweis einer TETRA-Air-Interface-Sicherheitsfunktion dargestellt.
 
 | Dateien | Zugeordnetes Thema laut bereitgestellten Dokumenttiteln |
 |---|---|
@@ -538,7 +534,7 @@ Zusätzlich verfügbar sind 24 einzelne ETSI-PDFs und die Sammlung `ETSI.pdf` mi
 | `ets_30039214e01v.pdf` | Final draft prETS 300 392-14, September 1997, PICS-Proforma |
 | `ETSI.pdf` | Umfangreiche bereitgestellte Sammlung; keine vollständige Gleichheits-/Duplikatprüfung gegen die Einzeldateien |
 
-### 15.4 Heute verifizierte Repository-Referenzen
+### 15.4 Repository-Referenzen vom 03.10.2026
 
 Alle folgenden Quellverweise sind auf den gelesenen Ausgangscommit fixiert, nicht auf einen später beweglichen Defaultbranch:
 
@@ -548,7 +544,7 @@ Alle folgenden Quellverweise sind auf den gelesenen Ausgangscommit fixiert, nich
 - **R04:** [Provisioning-Core-README](https://github.com/JanHG98/netcore-tetra/blob/855ec68e4379983b8a59725723d1ad99bc8fcb47/system-backend/provisioning-core/README.md), Blob-SHA `f44a48815437da922091f3c820274601b569a20a`.
 - **R05:** GitHub-Contents-Abfrage für `app/src/main/java/de/netcore/tetra/mobile/MainActivity.kt` mit `ref=855ec68e4379983b8a59725723d1ad99bc8fcb47`: HTTP 404; ergänzende Defaultbranch-Suchen ohne Treffer, mit den in Abschnitt 10 genannten Grenzen.
 
-Ein historischer App-Commit, Release-Tag oder zugehöriger PR wurde nicht identifiziert. Vorhandene Archive anderer Themen, insbesondere des Windows-Control-Rooms, sind nicht dieselbe Anwendung und wurden nicht mit diesem Chat zusammengeführt. Der Archivcommit selbst ist über die Git-Historie dieser Datei und die Abschlussmeldung des Archivauftrags nachvollziehbar.
+Ein historischer App-Commit, Release-Tag oder zugehöriger PR wurde nicht identifiziert. Der Windows-Control-Room ist eine eigene Anwendung und liefert keinen Implementierungsnachweis für diese Android-App.
 
 ## 16. Kompakte Übergabe
 

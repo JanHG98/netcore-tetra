@@ -1,44 +1,40 @@
-# Technische Abschlussdokumentation: Standalone-TETRA-Basisstation – Konfigurationsparameter, Teilnehmer-/Gruppenidentitäten und PHY-Grundlagen
+# Brainstorming: Standalone-TETRA-Basisstation – Konfiguration und PHY-Grundlagen
 
-> **Ergebnis dieses Chats:** Für die selbst entwickelte NetCore-Tetra-Basisstation wurde geklärt, welche Angaben tatsächlich zur Konfiguration einer eigenständigen TETRA-Zelle gehören, welche Werte nur für Teilnehmer- oder Gruppendienste benötigt werden und welche Aussagen aus dem frühen Gespräch technisch zu korrigieren sind. Die wichtigste PHY-Korrektur lautet **π/4-DQPSK**; für die Zellenkonfiguration sind insbesondere MCC/MNC, Frequenzband, Hauptträger, Frequenzoffset, Duplex-Spacing-Index, Reverse-Operation, Location Area und Colour Code relevant. Eine Nachbarzellenliste ist für den ausdrücklich gewünschten Standalone-Einzelzellenbetrieb nicht erforderlich.
+> **Ergebnis der Planung:** Für die selbst entwickelte NetCore-Tetra-Basisstation wurde geklärt, welche Angaben tatsächlich zur Konfiguration einer eigenständigen TETRA-Zelle gehören, welche Werte nur für Teilnehmer- oder Gruppendienste benötigt werden und welche Aussagen aus der frühen Planung technisch zu korrigieren sind. Die wichtigste PHY-Korrektur lautet **π/4-DQPSK**; für die Zellenkonfiguration sind insbesondere MCC/MNC, Frequenzband, Hauptträger, Frequenzoffset, Duplex-Spacing-Index, Reverse-Operation, Location Area und Colour Code relevant. Eine Nachbarzellenliste ist für den ausdrücklich gewünschten Standalone-Einzelzellenbetrieb nicht erforderlich.
 >
-> **Nachweisstand:** In diesem Chat wurde keine neue TBS-Funktion implementiert und kein Funk- oder Hardwaretest durchgeführt. Der heutige Repository-Abgleich bestätigt jedoch, dass die genannten Netz-/Zellenparameter und eine optionale ISSI-Whitelist im aktuellen NetCore-Tetra-Code vorhanden sind. Gleichzeitig wurde ein konkreter Dokumentationswiderspruch beim Duplex-Spacing im aktuellen Fallback-Config gefunden, der außerhalb dieses Archivauftrags korrigiert werden sollte.
+> **Nachweisstand:** In dieser Entwicklungsphase wurde keine neue TBS-Funktion implementiert und kein Funk- oder Hardwaretest durchgeführt. Der zusätzliche Repository-Abgleich bestätigt jedoch, dass die genannten Netz-/Zellenparameter und eine optionale ISSI-Whitelist im am Prüfdatum vorliegenden NetCore-Tetra-Code vorhanden sind. Gleichzeitig wurde ein konkreter Dokumentationswiderspruch beim Duplex-Spacing im am Prüfdatum vorliegenden Fallback-Config gefunden, der außerhalb dieses Dokumentationslaufs korrigiert werden sollte.
 
-## 1. Metadaten, Quellenbasis und Grenzen
+## Zielbild und Festlegungen
+
+- **Eigene Standalone-TBS** mit einer Zelle; Nachbarzellen, Handover und ISI gehören noch nicht zum ersten Ausbau.
+- Checkliste: Netzidentität, Carrier/Duplex, Teilnehmerzulassung, Gruppen, Zellzugang/Systeminformationen und PHY-/Scheduler-Parameter.
+- PHY-Grundlage: **π/4-DQPSK**, 25-kHz-Raster und vier TDMA-Timeslots.
+- Der Duplex-Spacing-Kommentar der Fallback-Konfiguration widerspricht dem ausführbaren Code; Zahlenwerte und ausgesendete Parameter müssen abgeglichen werden.
+
+## 1. Arbeitsstand und Quellenbasis
 
 | Feld | Inhalt |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Pflicht- und Betriebsparameter einer selbst entwickelten Standalone-TETRA-Basisstation; MCC/MNC, ISSI/GSSI, LA, Colour Code, Carrier/Duplex sowie π/4-DQPSK |
-| Ursprünglicher Chattitel | Nicht verfügbar. Der Dokumenttitel ist eine nachträgliche Sachbezeichnung. |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link konstruiert. |
-| Erstellungsdatum der Abschlussdokumentation | **2026-10-04**, Europe/Berlin |
+| Erstellungsdatum der Projektnotizen | **2026-10-04**, Europe/Berlin |
 | Zielrepository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
-| Ausschließlicher Schreibbranch | **Archiving** |
 | Geprüfter Eingangscommit von Archiving | **2a0eaa3da26f4240cbb08514420f5c1682b4f321** |
 | Geprüfter Eingangscommit – Nachricht | docs(archive): document WERMA relay Pi API and early boot signalling |
 | Archivdatei | **Docs/archive/2026-10-04_tetra-basisstation-konfiguration-und-phy-grundlagen.md** |
 | Archivindex | **Docs/archive/README.md** |
-| Schreibumfang | Ausschließlich Docs/archive/; keine Code-, Config-, Wiki- oder Hardwareänderung außerhalb des Archivs |
-| Chatbilder | Keine eigenständigen Bildanhänge dieses Chats verfügbar; daher nichts als Chatbild nach Git zu übernehmen |
 
-Der finale Archivcommit entsteht erst beim Speichern dieser Datei und des Indexes und kann deshalb nicht sinnvoll in denselben Commit hineingeschrieben werden. Seine tatsächliche SHA wird durch die Git-Historie und die Abschlussmeldung des Archivlaufs belegt.
+### 1.1 Geprüfter Entwurfsentwicklung
 
-### 1.1 Ausgewerteter Gesprächsverlauf
+Ausgangsliste für die eigene Basisstation: **MCC, MNC, GSSI, erlaubte ISSI, LAC, Colour Code, Uplink und Duplex-Tabellen-ID**. Daraus soll eine vollständige Parametercheckliste entstehen.
 
-Der zugängliche Verlauf dieses Chats enthält folgende fachliche Schritte:
+Festgelegt sind eine **Standalone-TBS** und eine **eigene Implementierung**. Nachbarzellen werden für die zunächst einzelne Zelle nicht benötigt; neben Konfigurationsfeldern sind ausgesendete Systeminformationen und lokale PHY-/Scheduler-Funktionen relevant. Die Modulation wird als **π/4-DQPSK** bezeichnet.
 
-1. Jan nannte als bisherige Liste für eine TETRA-Basisstation: MCC, MNC, GSSI, erlaubte ISSI, LAC, ColorCode, Uplink und Duplex-Tabellen-ID.
-2. Es wurde nach einer vollständigen Liste gefragt.
-3. Jan stellte klar, dass es eine **Standalone-TBS** werden soll und Nachbarzellen deshalb voraussichtlich nicht benötigt werden.
-4. Jan stellte nochmals klar, dass die Basisstation **selbst entwickelt/gebaut** wird und nicht nur ein Herstellergerät konfiguriert wird.
-5. Abschließend wurde die Schreibweise der Modulation geklärt: **π/4-DQPSK**.
-
-Es gab in diesem Chat keine Shellausgaben, Installationsprotokolle, Messbilder oder Funkmitschnitte. Frühere Assistenzantworten enthielten mehrere generische Beispiele und einige sachliche Fehler. Diese werden in dieser Abschlussdokumentation nicht unkritisch übernommen, sondern gegen den aktuellen Repository-Stand und die bereitgestellten ETSI-Unterlagen abgeglichen.
+Messbilder, Funkmitschnitte, Installationsprotokolle und Shellausgaben dieser Planungsphase fehlen. Generische frühe Beispiele sind gegen den Repository- und Normenstand zu prüfen.
 
 ### 1.2 Verfügbare Anhänge
 
-Im Projektkontext stehen 25 ETSI-PDFs zur Verfügung. Für dieses Gespräch besonders relevant waren:
+Im Projektkontext stehen 25 ETSI-PDFs zur Verfügung. Für diese Planung besonders relevant waren:
 
 - **en_30039202v030801p.pdf** – ETSI EN 300 392-2 V3.8.1, TETRA Voice plus Data, Part 2: Air Interface.
 - **en_30039201v010601p.pdf** – ETSI EN 300 392-1 V1.6.1, Part 1: General network design.
@@ -46,29 +42,29 @@ Im Projektkontext stehen 25 ETSI-PDFs zur Verfügung. Für dieses Gespräch beso
 - **en_30039401v030301p.pdf** – ETSI EN 300 394-1 V3.3.1, Radio Conformance Testing.
 - Weitere bereitgestellte Dateien behandeln ISI, Supplementary Services, Security, SIM/TSIM, Codec und Konformität und sind für die hier behandelte Grundkonfiguration nur nachrangig.
 
-Die PDFs wurden gezielt nach den für diesen Chat relevanten Parametern durchsucht. Es wurde **keine vollständige normative Review aller 25 Dokumente** behauptet. Das große Sammeldokument **ETSI.pdf** enthält mehrere Dokumente und wird nicht als ein einzelner Standard behandelt.
+Die PDFs wurden gezielt nach den für diese Planung relevanten Parametern durchsucht. Es wurde **keine vollständige normative Review aller 25 Dokumente** behauptet. Das große Sammeldokument **ETSI.pdf** enthält mehrere Dokumente und wird nicht als ein einzelner Standard behandelt.
 
 ### 1.3 Bildarchiv
 
-Für den aktuellen Chat wurden über die verfügbare Dateiansicht **0 eigenständige Bilddateien** gefunden. Die ETSI-PDFs enthalten eingebettete Deckblätter, Diagramme und Tabellen, diese sind jedoch Quellenmaterial und keine vom Nutzer in diesem Chat bereitgestellten Projektbilder. Sie wurden deshalb nicht als vermeintliche Chatbilder extrahiert oder dupliziert.
+Für den am Prüfdatum vorliegenden Unterlagen wurden über die verfügbare Dateiansicht **0 eigenständige Bilddateien** gefunden. Die ETSI-PDFs enthalten eingebettete Deckblätter, Diagramme und Tabellen, diese sind jedoch Quellenmaterial und keine ausdrücklich in dieser Entwicklungsphase bereitgestellten Projektbilder. Sie wurden deshalb nicht als vermeintliche Originalbilder extrahiert oder dupliziert.
 
 ### 1.4 Statusbegriffe
 
 | Status | Bedeutung in dieser Dokumentation |
 |---|---|
-| **Idee** | Im Gespräch vorgeschlagen oder als mögliche Erweiterung erwähnt. |
-| **Beschlossen/geplant** | Vom Nutzer ausdrücklich als Ziel oder Randbedingung gesetzt. |
+| **Idee** | In der Planung vorgeschlagen oder als mögliche Erweiterung erwähnt. |
+| **Beschlossen/geplant** | Ausdrücklich ausdrücklich als Ziel oder Randbedingung gesetzt. |
 | **Implementiert** | Im überprüften Repository als Code/Konfiguration vorhanden. |
 | **Getestet** | Ein konkreter Test wurde tatsächlich durchgeführt und das Ergebnis liegt vor. |
 | **Im Betrieb bestätigt** | Erfolgreicher Betrieb auf realer Hardware/Funkstrecke ist belegt. |
 
-Eine frühere Assistenzantwort ist weder Implementierungs- noch Testnachweis.
+Eine frühere Entwurfsfassung ist weder Implementierungs- noch Testnachweis.
 
 ---
 
 ## 2. Ziel und Ausgangslage
 
-Ziel des Gesprächs war keine allgemeine Einführung in TETRA, sondern eine belastbare Checkliste für die **eigene NetCore-Tetra-Basisstation**. Jan wollte sicherstellen, dass beim Aufbau einer Standalone-Zelle keine wesentlichen Konfigurationsparameter vergessen werden.
+Ziel der Planung war keine allgemeine Einführung in TETRA, sondern eine belastbare Checkliste für die **eigene NetCore-Tetra-Basisstation**. Beim Aufbau der Standalone-Zelle sollen keine wesentlichen Konfigurationsparameter fehlen.
 
 Die Ausgangsliste war:
 
@@ -81,7 +77,7 @@ Die Ausgangsliste war:
 - Uplink
 - Duplex-Tabellen-ID
 
-Das Gespräch zeigte, dass diese Liste drei verschiedene Ebenen vermischt:
+Das Planung zeigte, dass diese Liste drei verschiedene Ebenen vermischt:
 
 1. **Netz- und Zellidentität**
 2. **HF-/Carrierparameter**
@@ -113,7 +109,7 @@ Die vorhandene NetCore-Nachbarzellenfunktion kann für diesen Stand deaktiviert 
 
 Es handelt sich um eine selbst entwickelte Basisstation. Damit müssen nicht nur Bedienparameter, sondern auch die dahinterliegenden Protokollfelder, Carrierberechnung, Timing- und Modulationsanforderungen verstanden und korrekt umgesetzt werden.
 
-Der Schwerpunkt dieses Chats liegt dennoch auf **welche Werte benötigt werden**, nicht auf einer vollständigen Neuimplementierung der gesamten ETSI-Luftschnittstelle.
+Der Schwerpunkt dieser Planung liegt dennoch auf **welche Werte benötigt werden**, nicht auf einer vollständigen Neuimplementierung der gesamten ETSI-Luftschnittstelle.
 
 ### 3.3 Modulation
 
@@ -127,15 +123,15 @@ ausgeschrieben:
 
 **π/4-shifted Differential Quaternary Phase Shift Keying**
 
-Für die klassische phasenmodulierte TETRA-Luftschnittstelle ist dies die zentrale Modulationsart. Die ETSI-Luftschnittstelle kennt daneben auch weitere Modi wie π/8-D8PSK und QAM; diese ändern aber nicht die in diesem Chat getroffene Aussage zur π/4-DQPSK-Basis.
+Für die klassische phasenmodulierte TETRA-Luftschnittstelle ist dies die zentrale Modulationsart. Die ETSI-Luftschnittstelle kennt daneben auch weitere Modi wie π/8-D8PSK und QAM; diese ändern aber nicht die in dieser Entwicklungsphase getroffene Aussage zur π/4-DQPSK-Basis.
 
 Für π/4-DQPSK nennt ETSI eine Modulationsrate von **36 kbit/s**. Bei zwei Bits pro Symbol ergibt sich daraus **18 ksym/s**. Die erlaubten differentiellen Phasenübergänge sind ±π/4 und ±3π/4.
 
 ### 3.4 Keine pauschale direkte Frequenzeingabe als einziges Zellmodell
 
-**Status: durch aktuellen Repository-Stand präzisiert**
+**Status: durch am Prüfdatum vorliegenden Repository-Stand präzisiert**
 
-Die ursprüngliche Frage nach „Uplink“ ist sinnvoll aus Bedienersicht, aber der aktuelle NetCore-Tetra-Stack modelliert die Zelle primär über:
+Die ursprüngliche Frage nach „Uplink“ ist sinnvoll aus Bedienersicht, aber der am Prüfdatum vorliegende NetCore-Tetra-Stack modelliert die Zelle primär über:
 
 - Frequenzband
 - Carrier Number
@@ -160,7 +156,7 @@ Daraus werden Downlink und Uplink berechnet. Absolute SDR-Centerfrequenzen sind 
 | **Colour Code** | implementiert | 6 Bit, 0–63 | Zell-/Scrambling-Kontext | erforderlich |
 | **Subscriber Class** | implementiert im PDU-Modell | 16 Bit | Zugangs-/Teilnehmerklassensicht | je nach gewünschter Policy relevant |
 
-**Begriffspräzisierung:** Im Gespräch wurde „LAC“ verwendet. Im aktuellen NetCore-Code und in den relevanten TETRA-PDUs wird das Feld als **Location Area / LA** beziehungsweise <code>location_area</code> geführt. Es ist sinnvoll, intern im Projekt einheitlich „LA“ zu verwenden und „LAC“ nur als verständliche Umgangsbezeichnung zu behandeln.
+**Begriffspräzisierung:** In der Planung wurde „LAC“ verwendet. Im am Prüfdatum vorliegenden NetCore-Code und in den relevanten TETRA-PDUs wird das Feld als **Location Area / LA** beziehungsweise <code>location_area</code> geführt. Es ist sinnvoll, intern im Projekt einheitlich „LA“ zu verwenden und „LAC“ nur als verständliche Umgangsbezeichnung zu behandeln.
 
 ### 4.2 Kategorie B – Carrier- und Frequenzparameter
 
@@ -178,9 +174,9 @@ Daraus werden Downlink und Uplink berechnet. Absolute SDR-Centerfrequenzen sind 
 | **RX/TX Gain** | PHY-Parameter | geräteabhängig | SDR-Verstärkung | erforderlich abzustimmen, kein TETRA-SYSINFO-Feld |
 | **Clock/Reference** | Hardware/PHY | geräteabhängig | Frequenz- und Timingstabilität | erforderlich technisch zu beherrschen; GPS ist nicht pauschal vorgeschrieben |
 
-### 4.3 Frequenzberechnung im aktuellen NetCore-Tetra-Code
+### 4.3 Frequenzberechnung im am Prüfdatum vorliegenden NetCore-Tetra-Code
 
-Der aktuelle Code berechnet die Downlinkfrequenz als:
+Der am Prüfdatum vorliegende Code berechnet die Downlinkfrequenz als:
 
 ~~~text
 downlink_hz =
@@ -199,7 +195,7 @@ wenn reverse_operation == true:
     uplink_hz = downlink_hz + duplex_spacing_hz
 ~~~
 
-Damit ist die vom Nutzer genannte Angabe „Uplink“ für Planung und Prüfung weiterhin wichtig, aber im derzeitigen Stack **eine abgeleitete Größe**, sofern kein bewusst abweichender PHY-Override verwendet wird.
+Damit ist die ausdrücklich genannte Angabe „Uplink“ für Planung und Prüfung weiterhin wichtig, aber im derzeitigen Stack **eine abgeleitete Größe**, sofern kein bewusst abweichender PHY-Override verwendet wird.
 
 ### 4.4 Kategorie C – Teilnehmerzulassung
 
@@ -210,9 +206,9 @@ Damit ist die vom Nutzer genannte Angabe „Uplink“ für Planung und Prüfung 
 | **offenes Netz** | implementiertes Verhalten | leere Whitelist akzeptiert jeden Teilnehmer, soweit keine andere Policy blockiert | mögliche Entwicklungs-/Laboreinstellung |
 | **Teilnehmerprofil / Berechtigungen** | in zentralen NetCore-Diensten vorhanden | Name, Organisation, Dienste, Priorität usw. | für ausgebauten Betrieb, nicht zum bloßen Aussenden der Zelle zwingend |
 
-Die Nutzerformulierung **„Erlaubte ISSI“** lässt sich im aktuellen Stack direkt auf <code>[security].issi_whitelist</code> abbilden.
+Die Anforderung **„Erlaubte ISSI“** lässt sich im am Prüfdatum vorliegenden Stack direkt auf <code>[security].issi_whitelist</code> abbilden.
 
-Wichtig: „ISSI erlaubt“ und „ISSI aktuell registriert“ sind zwei verschiedene Zustände.
+Wichtig: „ISSI erlaubt“ und „ISSI zum Prüfdatum registriert“ sind zwei verschiedene Zustände.
 
 ### 4.5 Kategorie D – Gruppen
 
@@ -220,7 +216,7 @@ Wichtig: „ISSI erlaubt“ und „ISSI aktuell registriert“ sind zwei verschi
 |---|---|---|---|
 | **GSSI** | implementiert / Standard | Group Short Subscriber Identity, 24 Bit | nicht zum bloßen Zellbetrieb; erforderlich für Gruppenkommunikation |
 | **Gruppenmitgliedschaft** | Group Core vorhanden | legt organisatorische Zugehörigkeit fest | für zentral verwaltete Gruppen relevant |
-| **aktuelle Affiliation** | MM/Group Core unterstützt | welche GSSI ein Gerät aktuell auf der Luftschnittstelle empfängt | für Gruppenrufrouting relevant |
+| **am Prüfdatum vorliegende Affiliation** | MM/Group Core unterstützt | welche GSSI ein Gerät zum Prüfdatum auf der Luftschnittstelle empfängt | für Gruppenrufrouting relevant |
 | **DGNA** | Repository-Bausteine vorhanden | dynamische Gruppenzuweisung | optionale höhere Funktion |
 
 Eine GSSI ist daher **kein zwingender Basisstations-Identitätsparameter**. Sie wird benötigt, sobald die Standalone-TBS reale Gruppenrufe beziehungsweise Gruppenaffiliation unterstützen soll.
@@ -250,7 +246,7 @@ Diese Größen sind wichtig, aber normalerweise **keine statischen Installations
 - konkrete Burst-Typen
 - laufende Kanalbelegung
 - zufälliger Zugriff / Access Assignment
-- aktuelle Traffic-Channel-Zuweisung
+- am Prüfdatum vorliegende Traffic-Channel-Zuweisung
 
 Der Scheduler erzeugt und verwaltet diese Werte zur Laufzeit.
 
@@ -272,11 +268,11 @@ Für die hier relevante klassische phasenmodulierte TETRA-Luftschnittstelle wird
 
 TETRA verwendet in diesem Betriebsmodus **vier Timeslots pro TDMA-Frame**.
 
-Wichtige Korrektur gegenüber einer frühen Assistenzantwort:
+Wichtige Korrektur gegenüber einer frühen Entwurfsfassung:
 
 - extern/protokollseitig: **Timeslot 1 bis 4**
 - die zweibitige Codierung kann intern 0 bis 3 repräsentieren;
-- der aktuelle NetCore-Parser liest zwei Bits und addiert 1.
+- der am Prüfdatum vorliegende NetCore-Parser liest zwei Bits und addiert 1.
 
 Eine frühere Aussage „Timeslot-Nummerierung 0–3“ war deshalb als Protokollbeschreibung falsch beziehungsweise mindestens missverständlich.
 
@@ -291,7 +287,7 @@ Für eine Standalone-Einzelzelle muss die Basisstation selbst:
 - SYNC/SYSINFO korrekt senden;
 - ihre eigene Frame-/Multiframe-Zeit konsistent fortführen.
 
-**Nicht beschlossen und nicht normativ aus diesem Chat ableitbar:** „GPS ist zwingend“. GPS, GNSS, 10-MHz-Referenz oder andere externe Referenzen können technische Designoptionen sein, aber eine einzelne Zelle benötigt nicht allein wegen TDMA zwingend GPS. Für spätere synchronisierte Mehrzellenarchitekturen wird die Referenzfrage wesentlich wichtiger.
+**Nicht beschlossen und nicht normativ aus dieser Entwicklungsphase ableitbar:** „GPS ist zwingend“. GPS, GNSS, 10-MHz-Referenz oder andere externe Referenzen können technische Designoptionen sein, aber eine einzelne Zelle benötigt nicht allein wegen TDMA zwingend GPS. Für spätere synchronisierte Mehrzellenarchitekturen wird die Referenzfrage wesentlich wichtiger.
 
 ---
 
@@ -299,15 +295,15 @@ Für eine Standalone-Einzelzelle muss die Basisstation selbst:
 
 ### 6.1 Neighbor List
 
-**Status: für den aktuellen Zielbetrieb nicht erforderlich**
+**Status: für den am Prüfdatum vorliegenden Zielbetrieb nicht erforderlich**
 
 Wenn nur eine einzelne TBS existiert und kein Zellwechsel stattfinden soll, muss keine Nachbarzellenliste ausgesendet beziehungsweise gepflegt werden.
 
-Der aktuelle NetCore-Code unterstützt CA-Nachbarzellen, aber diese Funktion kann im Standalone-Aufbau ungenutzt bleiben.
+Der am Prüfdatum vorliegende NetCore-Code unterstützt CA-Nachbarzellen, aber diese Funktion kann im Standalone-Aufbau ungenutzt bleiben.
 
 ### 6.2 Seamless Handover
 
-Nicht Teil des Minimalumfangs dieses Chats. Es bleibt ein späterer Ausbaupunkt des Gesamtprojekts.
+Nicht Teil des Minimalumfangs dieser Planung. Es bleibt ein späterer Ausbaupunkt des Gesamtprojekts.
 
 ### 6.3 ISI zwischen SwMIs
 
@@ -315,9 +311,9 @@ Für den hier beschriebenen lokalen Einzelzellenbetrieb nicht erforderlich.
 
 ### 6.4 Ein frei erfundener „Cell ID = 16 Bit“-Pflichtwert
 
-Eine frühere Assistenzantwort hatte einen generischen „Cell ID, 16 Bit“ als Pflichtfeld genannt. Diese Aussage wird **verworfen**:
+Eine frühere Entwurfsfassung hatte einen generischen „Cell ID, 16 Bit“ als Pflichtfeld genannt. Diese Aussage wird **verworfen**:
 
-- im aktuellen top-level <code>CfgCellInfo</code> existiert kein solcher allgemeiner 16-Bit-Cell-ID-Parameter;
+- im am Prüfdatum vorliegenden top-level <code>CfgCellInfo</code> existiert kein solcher allgemeiner 16-Bit-Cell-ID-Parameter;
 - Nachbarzellen besitzen im CA-Modell einen eigenen Cell Identifier mit anderer Feldbreite;
 - daher darf kein nicht vorhandenes Pflichtfeld nur aus einer generischen Mobilfunkanalogie in NetCore-Tetra eingeführt werden.
 
@@ -466,13 +462,13 @@ Der Group Core ist als zentraler Dienst für:
 
 - GSSI-Stammdaten,
 - Mitgliedschaften,
-- aktuelle Affiliationen,
+- am Prüfdatum vorliegende Affiliationen,
 - DGNA
 
 dokumentiert.
 
 **Status: Dienst/Architektur im Repository vorhanden.**
-Ein Live-Test des Group Core wurde in diesem Chat nicht durchgeführt.
+Ein Live-Test des Group Core wurde in dieser Entwicklungsphase nicht durchgeführt.
 
 ### 7.9 Projektwiki zu ISSI/GSSI
 
@@ -500,7 +496,7 @@ Geprüfter Blob:
 
 **92f501078008bf58dd7a9b0bf34ee69861ec0ae4**
 
-Dort steht im aktuellen Stand sinngemäß:
+Dort steht im am Prüfdatum vorliegenden Stand sinngemäß:
 
 ~~~toml
 freq_band = 4
@@ -523,15 +519,15 @@ Der ausführbare Code verwendet eine Tabelle gemäß ETSI TS 100 392-15. Für:
 - Frequency Band = 4
 - Duplex-Spacing-Index = 0
 
-liefert die aktuelle Tabelle **10.000 kHz = 10 MHz**.
+liefert die am Prüfdatum vorliegende Tabelle **10.000 kHz = 10 MHz**.
 
 Zusätzlich enthält dieselbe Datei einen Rust-Test, der für Band 4 / Index 0 **10.000.000 Hz** erwartet.
 
 ### 8.3 Bewertung
 
-**Status: aktueller Repository-Widerspruch gefunden; nicht in diesem Auftrag behoben.**
+**Status: am Prüfdatum vorliegender Repository-Widerspruch gefunden; nicht bei der dokumentierten Prüfung behoben.**
 
-Der Kommentar im Fallback-Config ist damit irreführend. Das ist besonders relevant, weil der ursprüngliche Chat gerade nach „Duplex-Tabellen-ID“ fragt.
+Der Kommentar im Fallback-Config ist damit irreführend. Das ist besonders relevant, weil die Checkliste die Duplex-Tabellen-ID ausdrücklich umfasst.
 
 Folgerung:
 
@@ -544,7 +540,7 @@ Folgerung:
 
 ---
 
-## 9. Korrekturregister der frühen Chatantworten
+## 9. Korrekturregister der frühen Entwurfsfassungen
 
 Dieser Abschnitt ist wichtig, damit die Archivdatei nicht frühere Fehler konserviert.
 
@@ -553,25 +549,25 @@ Dieser Abschnitt ist wichtig, damit die Archivdatei nicht frühere Fehler konser
 | Colour Code 0–15 | **verworfen / falsch** | Colour Code ist 6 Bit → **0–63**. |
 | Timeslotnummerierung 0–3 | **verworfen als Protokollbeschreibung** | TETRA-Slots werden als **1–4** behandelt; zweibitige Codierung wird intern entsprechend umgesetzt. |
 | „4 Sprach + 1 Daten“-Timeslots | **verworfen / falsch** | Ein TDMA-Frame besitzt insgesamt **4 Timeslots**. Control/Traffic werden innerhalb dieser Struktur abgebildet. |
-| generische 16-Bit Cell ID als Pflichtparameter | **verworfen** | Kein solches top-level Pflichtfeld im aktuellen NetCore-Zellmodell. |
+| generische 16-Bit Cell ID als Pflichtparameter | **verworfen** | Kein solches top-level Pflichtfeld im am Prüfdatum vorliegenden NetCore-Zellmodell. |
 | RACH pauschal „TS3 in Multiframe 18“ | **verworfen / nicht belegt** | Random Access folgt den Control-/Access-Prozeduren; keine solche universale feste Zuordnung hier übernehmen. |
 | Guard Time pauschal 2,5 ms | **verworfen / nicht ausreichend belegt** | Burst-/Guard-Timing direkt aus EN 300 392-2 implementieren, nicht aus dieser alten Kurzantwort. |
 | „255 Bit pro Burst“ als generische Burstlänge | **verworfen / zu pauschal** | Es existieren unterschiedliche Burst-/Kanalstrukturen. |
 | GPS/NTP zwingend für TDMA | **verworfen als Zwangsaussage** | stabile Zeit-/Frequenzbasis erforderlich; GPS nur eine mögliche technische Quelle. |
 | Duplex-ID 1 beziehungsweise pauschal 10 MHz | **verworfen als allgemeine Regel** | Frequency Band + 3-Bit Duplex-Spacing-Index + Tabelle bestimmen den Abstand. |
 | „MNC 99 Test“ oder bestimmte BOS-Beispiele | **nur Beispiel, keine Projektfestlegung** | tatsächliche Netzwerte aus dem eigenen autorisierten Netzplan verwenden. |
-| SDS-Center-Adresse 0xFFFE | **nicht als Pflichtparameter übernommen** | kein aus diesem Chat verifizierter allgemeiner TBS-Pflichtwert. |
+| SDS-Center-Adresse 0xFFFE | **nicht als Pflichtparameter übernommen** | kein aus dieser Entwicklungsphase verifizierter allgemeiner TBS-Pflichtwert. |
 | Authentifizierung „Off“ oder TEA1 als Default | **nicht beschlossen** | Security separat und nach tatsächlich implementierter/gewünschter Sicherheitsklasse planen. |
 | RX Sensitivity –112 dBm, 10–40 W TX usw. | **nur generische Beispiele** | reale Grenzwerte hängen von Hardware, Zulassung und Konformitätsziel ab. |
 | IQ-Sampling 288 ksps und Clock <0,1 ppm als feste Projektwerte | **nicht beschlossen** | konkrete SDR-/Clockparameter aus Hardware, Modulationsqualität und Messung ableiten. |
 
 ---
 
-## 10. Historischer Chatstand versus heutiger Repository-Stand
+## 10. Historischer Planungsstand und Repository-Abgleich vom 04.10.2026
 
-### 10.1 Historischer Erkenntnisstand des Chats
+### 10.1 Historischer Erkenntnisstand
 
-Der Chat endete inhaltlich bei der Erkenntnis:
+Die Planung endete inhaltlich bei der Erkenntnis:
 
 - Standalone-TBS;
 - keine Nachbarn nötig;
@@ -594,17 +590,17 @@ Heute ist im Repository bereits deutlich mehr konkret:
 - Gruppen-/Affiliationslogik;
 - Group Core und weitere Backend-Dienste.
 
-Diese Implementierungen sind **nicht durch diesen Chat entstanden**. Sie werden hier nur als heutiger Vergleichsstand dokumentiert.
+Diese Implementierungen sind **nicht durch diese Planung entstanden**. Sie werden hier nur als geprüfter Vergleichsstand dokumentiert.
 
 ### 10.3 Nicht verifiziert
 
-Nicht geprüft beziehungsweise durch diesen Chat nicht nachgewiesen:
+Nicht geprüft beziehungsweise durch diese Planung nicht nachgewiesen:
 
-- welche Konfiguration aktuell auf der realen TBS geladen ist;
+- welche Konfiguration zum Prüfdatum auf der realen TBS geladen ist;
 - ob das ausführbare Binary exakt dem geprüften Branch entspricht;
-- welche MCC/MNC/LA/CC-Werte aktuell on-air gesendet werden;
+- welche MCC/MNC/LA/CC-Werte zum Prüfdatum on-air gesendet werden;
 - ob die realen Uplink-/Downlinkfrequenzen korrekt gemessen wurden;
-- ob Endgeräte aktuell erfolgreich campen und registrieren;
+- ob Endgeräte zum Prüfdatum erfolgreich campen und registrieren;
 - ob alle gewünschten GSSIs funktionieren;
 - Modulationsqualität/EVM;
 - Ausgangsleistung und Nebenwellen;
@@ -614,17 +610,17 @@ Nicht geprüft beziehungsweise durch diesen Chat nicht nachgewiesen:
 
 ---
 
-## 11. Entwicklungs-, Installations- und Betriebsabläufe aus diesem Chat
+## 11. Entwicklungs-, Installations- und Betriebsabläufe aus dieser Entwicklungsphase
 
 ### 11.1 Tatsächlich ausgeführt
 
-Im ursprünglichen Fachchat wurden **keine Installations-, Deployment- oder Reparaturbefehle** ausgeführt.
+In der ursprünglichen Planungsphase wurden **keine Installations-, Deployment- oder Reparaturbefehle** ausgeführt.
 
-Im Rahmen dieser Archivierung wurden nur Repository-Dateien und Standards lesend geprüft sowie diese Abschlussdokumentation unter Docs/archive/ geschrieben. Dies ist kein TBS-Funktionstest.
+Im Rahmen der Quellenprüfung wurden nur Repository-Dateien und Standards lesend geprüft sowie diese Notizen unter Docs/archive/ geschrieben. Dies ist kein TBS-Funktionstest.
 
 ### 11.2 Nur vorgeschlagen, nicht ausgeführt
 
-Frühere Antworten nannten sinngemäß:
+Frühere Entwürfe nannten sinngemäß:
 
 - Konfigurationschecklisten;
 - SDR-/IQ-Abgleich;
@@ -633,7 +629,7 @@ Frühere Antworten nannten sinngemäß:
 - GPS/10-MHz-Referenzen;
 - Loopback-Testmodi.
 
-Keines davon wurde in diesem Chat auf der realen Basisstation ausgeführt oder bestätigt.
+Keines davon wurde in dieser Entwicklungsphase auf der realen Basisstation ausgeführt oder bestätigt.
 
 ---
 
@@ -647,13 +643,13 @@ Keines davon wurde in diesem Chat auf der realen Basisstation ausgeführt oder b
 
 **Lösung:** NetCore-Dokumentation und Konfiguration mit **0–63** behandeln.
 
-**Status:** Korrektur in dieser Archivdokumentation abgeschlossen; keine Codeänderung erforderlich, da der aktuelle Code bereits 6 Bit modelliert.
+**Status:** Korrektur in dieser Archivdokumentation abgeschlossen; keine Codeänderung erforderlich, da der am Prüfdatum vorliegende Code bereits 6 Bit modelliert.
 
 ### 12.2 Falsche Timeslotdarstellung
 
 **Fehler:** 0–3 als TETRA-Timeslotnummern genannt.
 
-**Diagnose:** aktueller MAC-SYNC-Parser liest 2 Bit und bildet sie durch +1 auf die externe Nummerierung ab.
+**Diagnose:** am Prüfdatum vorliegender MAC-SYNC-Parser liest 2 Bit und bildet sie durch +1 auf die externe Nummerierung ab.
 
 **Lösung:** technische Dokumentation auf Slots **1–4** vereinheitlichen.
 
@@ -671,7 +667,7 @@ Keines davon wurde in diesem Chat auf der realen Basisstation ausgeführt oder b
 
 **Diagnose:** ausführbare Tabelle und Test erwarten 10 MHz.
 
-**Lösung:** außerhalb dieses Archivauftrags Config-Kommentar beziehungsweise intendierte Indexwahl korrigieren und danach Frequenzpaar messtechnisch prüfen.
+**Lösung:** außerhalb dieses Dokumentationslaufs Config-Kommentar beziehungsweise intendierte Indexwahl korrigieren und danach Frequenzpaar messtechnisch prüfen.
 
 **Status:** offen, Roadmap-Kandidat mit hoher Priorität.
 
@@ -693,7 +689,7 @@ Geprüft wurden auf Branch Archiving:
 - ISSI-Whitelist;
 - Group-Core-Beschreibung.
 
-**Ergebnis:** Die wesentlichen in dieser Abschlussdokumentation genannten Parameter sind im heutigen Code abgebildet.
+**Ergebnis:** Die wesentlichen in diesen Notizen genannten Parameter sind im geprüften Code abgebildet.
 
 ### 13.2 Standardabgleich
 
@@ -716,9 +712,9 @@ Gezielt geprüft wurden unter anderem:
 
 Im Repository existiert ein Test, der Band 4 / Duplex-Index 0 mit 10 MHz erwartet.
 
-**Wichtig:** Dieser Test wurde im Rahmen des Archivchats **nicht selbst ausgeführt**. Es wurde nur sein Quelltext überprüft. Deshalb Status:
+**Wichtig:** Dieser Test wurde im Rahmen des Projektarchiven **nicht selbst ausgeführt**. Es wurde nur sein Quelltext überprüft. Deshalb Status:
 
-**implementierter Test vorhanden, heute nicht ausgeführt.**
+**implementierter Test vorhanden, zum Prüfdatum nicht ausgeführt.**
 
 ### 13.4 RF-/Hardwaretest
 
@@ -734,25 +730,25 @@ Keine Aussage zu:
 - Duplexisolation,
 - Endgeräteinteroperabilität
 
-darf aus diesem Chat als erfolgreich getestet abgeleitet werden.
+darf aus dieser Entwicklungsphase als erfolgreich getestet abgeleitet werden.
 
 ---
 
 ## 14. Verworfene oder ersetzte Ansätze
 
-1. **Nachbarzellen als Pflichtbestandteil**  
+1. **Nachbarzellen als Pflichtbestandteil**\
    Für den geplanten Standalone-Betrieb verworfen. Erst bei Multicell erneut relevant.
 
-2. **Absolute Uplinkfrequenz als einziger Frequenzparameter**  
+2. **Absolute Uplinkfrequenz als einziger Frequenzparameter**\
    Durch das tatsächliche NetCore-Modell ersetzt: Band + Carrier + Offset + Duplexindex + Reverse-Flag; daraus wird UL/DL berechnet.
 
-3. **GSSI als Teil der minimalen Zellidentität**  
+3. **GSSI als Teil der minimalen Zellidentität**\
    Präzisiert: GSSI gehört zur Gruppenkommunikation, nicht zur elementaren RF-/Netzidentität der Zelle.
 
-4. **generischer 16-Bit Cell-ID-Zwang**  
-   Verworfen, da weder aus dem aktuellen top-level NetCore-Zellmodell noch aus dem hier geprüften Kontext als Pflicht ableitbar.
+4. **generischer 16-Bit Cell-ID-Zwang**\
+   Verworfen, da weder aus dem am Prüfdatum vorliegenden top-level NetCore-Zellmodell noch aus dem hier geprüften Kontext als Pflicht ableitbar.
 
-5. **GPS als zwingende Voraussetzung der Einzelzelle**  
+5. **GPS als zwingende Voraussetzung der Einzelzelle**\
    Ersetzt durch die allgemeinere Anforderung einer ausreichend stabilen und konformen Zeit-/Frequenzbasis.
 
 ---
@@ -761,10 +757,10 @@ darf aus diesem Chat als erfolgreich getestet abgeleitet werden.
 
 ### 15.1 Roadmap-Kandidaten – Priorität hoch
 
-1. **Duplex-Spacing-Widerspruch beheben.**  
+1. **Duplex-Spacing-Widerspruch beheben.**\
    Den irreführenden 5-MHz-Kommentar in <code>config.toml.fallback</code> gegen die tatsächliche Tabelle und gewünschte Funkplanung korrigieren.
 
-2. **Verbindlichen RF-/Netzplan dokumentieren.**  
+2. **Verbindlichen RF-/Netzplan dokumentieren.**\
    Pro TBS beziehungsweise Netz eindeutig festlegen:
    - MCC
    - MNC
@@ -779,21 +775,21 @@ darf aus diesem Chat als erfolgreich getestet abgeleitet werden.
    - Colour Code
    - System Code.
 
-3. **Parameter validieren, statt nur TOML zu parsen.**  
+3. **Parameter validieren, statt nur TOML zu parsen.**\
    Beim Start klare Range-/Konsistenzchecks für alle Luftschnittstellenfelder durchführen und abgeleitete UL/DL-Frequenzen sichtbar loggen.
 
-4. **RF-Abnahme mit Messmitteln.**  
+4. **RF-Abnahme mit Messmitteln.**\
    Vor normalem Antennenbetrieb mindestens Frequenz, Leistung, Spektrum, Modulationsqualität und TX/RX-Kopplung messen.
 
 ### 15.2 Priorität mittel
 
-5. **ISSI-Zulassungsmodell festlegen.**  
+5. **ISSI-Zulassungsmodell festlegen.**\
    Entscheidung zwischen offenem Labornetz und expliziter Whitelist; spätere zentrale Subscriber-Core-Policy dabei nicht mit lokaler RF-Registrierung vermischen.
 
-6. **GSSI-Basissatz definieren.**  
-   Nur für Gruppen, die tatsächlich benötigt werden. Gruppenstammdaten, Mitgliedschaft und aktuelle Affiliation getrennt halten.
+6. **GSSI-Basissatz definieren.**\
+   Nur für Gruppen, die tatsächlich benötigt werden. Gruppenstammdaten, Mitgliedschaft und am Prüfdatum vorliegende Affiliation getrennt halten.
 
-7. **Standalone-Abnahmeskript beziehungsweise Checkliste.**  
+7. **Standalone-Abnahmeskript beziehungsweise Checkliste.**\
    Einen reproduzierbaren Ablauf für:
    - BS start;
    - SYNC/SYSINFO prüfen;
@@ -808,7 +804,7 @@ darf aus diesem Chat als erfolgreich getestet abgeleitet werden.
    - Neustart/Recovery
    erstellen.
 
-8. **Dashboard/Provisioning-Wizard auf dieselbe Parametersemantik bringen.**  
+8. **Dashboard/Provisioning-Wizard auf dieselbe Parametersemantik bringen.**\
    Begriffe „LA“, „Colour Code“, „Duplex Spacing Index“ und „Carrier“ ohne GSM-/LTE-Analogien darstellen.
 
 ### 15.3 Priorität später
@@ -886,7 +882,7 @@ ABNAHME
 
 ### 17.1 Repository
 
-- [config.toml.fallback](https://github.com/JanHG98/netcore-tetra/blob/Archiving/config.toml.fallback) – Beispiel-/Fallback-Konfiguration; enthält aktuell den zu korrigierenden Duplex-Kommentar.
+- [config.toml.fallback](https://github.com/JanHG98/netcore-tetra/blob/Archiving/config.toml.fallback) – Beispiel-/Fallback-Konfiguration; enthält zum Prüfdatum den zu korrigierenden Duplex-Kommentar.
 - [crates/tetra-config/src/bluestation/sec_net.rs](https://github.com/JanHG98/netcore-tetra/blob/Archiving/crates/tetra-config/src/bluestation/sec_net.rs) – MCC/MNC.
 - [crates/tetra-config/src/bluestation/sec_cell.rs](https://github.com/JanHG98/netcore-tetra/blob/Archiving/crates/tetra-config/src/bluestation/sec_cell.rs) – Zellparameter.
 - [crates/tetra-core/src/freqs.rs](https://github.com/JanHG98/netcore-tetra/blob/Archiving/crates/tetra-core/src/freqs.rs) – Carrier-/Duplexberechnung.
@@ -906,7 +902,7 @@ Primäre Referenzen aus den bereitgestellten Anhängen:
 - ETSI EN 300 392-2 V3.8.1 – Air Interface.
 - ETSI EN 300 392-5 V2.7.1 – Peripheral Equipment Interface.
 - ETSI EN 300 394-1 V3.3.1 – Radio conformance testing.
-- ETSI TS 100 392-15 wird vom aktuellen NetCore-Frequenzcode explizit für Duplex Spacing referenziert; die entsprechende Logik ist in <code>freqs.rs</code> hinterlegt.
+- ETSI TS 100 392-15 wird vom am Prüfdatum vorliegenden NetCore-Frequenzcode explizit für Duplex Spacing referenziert; die entsprechende Logik ist in <code>freqs.rs</code> hinterlegt.
 
 ---
 
@@ -928,7 +924,7 @@ Erst danach sollte eine „Neue TBS“-Maske Werte automatisch provisionieren, d
 
 ## 19. Schlussstand
 
-Der Kern des Chats lässt sich auf eine klare Aussage reduzieren:
+**Festlegung für die weitere Entwicklung:**
 
 **Für eine selbst gebaute Standalone-TETRA-Basisstation reichen MCC/MNC/GSSI/ISSI/LA/Colour Code/Uplink/Duplex-ID als unsortierte Liste nicht aus.**
 
@@ -941,11 +937,11 @@ Die Zelle benötigt eine konsistente Kombination aus:
 - optionaler Teilnehmerzulassung,
 - und erst darüber liegend Gruppen-/Ruf-/Datendiensten.
 
-Für den aktuellen Standalone-Betrieb sind **Nachbarzellen nicht erforderlich**.
+Für den am Prüfdatum vorliegenden Standalone-Betrieb sind **Nachbarzellen nicht erforderlich**.
 
 Die korrekte Modulationsbezeichnung ist **π/4-DQPSK**.
 
-Die wichtigsten Korrekturen gegenüber den frühen Chatantworten sind:
+Die wichtigsten Korrekturen gegenüber den frühen Entwurfsfassungen sind:
 
 - Colour Code **6 Bit / 0–63**, nicht 0–15;
 - Timeslots **1–4**, nicht protokollseitig 0–3;
@@ -955,4 +951,4 @@ Die wichtigsten Korrekturen gegenüber den frühen Chatantworten sind:
 - GPS ist kein universelles Muss für eine einzelne Zelle;
 - GSSI ist ein Gruppenparameter, kein zwingender Bestandteil der minimalen Zellidentität.
 
-Der aktuelle NetCore-Tetra-Code bildet diese Kernparameter bereits weitgehend ab. Offen bleibt insbesondere die korrekte, verbindliche Funkplanung und die reale RF-/Endgeräteabnahme.
+Der am Prüfdatum vorliegende NetCore-Tetra-Code bildet diese Kernparameter bereits weitgehend ab. Offen bleibt insbesondere die korrekte, verbindliche Funkplanung und die reale RF-/Endgeräteabnahme.

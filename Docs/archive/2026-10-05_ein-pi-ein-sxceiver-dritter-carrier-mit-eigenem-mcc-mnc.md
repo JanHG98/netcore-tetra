@@ -1,49 +1,30 @@
-# Abschlussdokumentation: Ein Pi, ein SXceiver und ein dritter Carrier mit eigener MCC/MNC
+# Brainstorming: Ein Pi, ein SXceiver und zwei Netze auf drei Carriern
 
-## 1. Metadaten
+**Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
+
+## 1. Arbeitsstand
 
 - **Projekt:** NetCore-Tetra
 - **Repository:** `JanHG98/netcore-tetra`
 - **Ziel- und Archivbranch:** `Archiving`
 - **Archivpfad:** `Docs/archive/2026-10-05_ein-pi-ein-sxceiver-dritter-carrier-mit-eigenem-mcc-mnc.md`
 - **Erstellungsdatum dieser Zusammenfassung:** 2026-10-05, Zeitzone Europe/Berlin
-- **Ursprünglicher Chattitel:** im zugänglichen Verlauf nicht verfügbar
-- **Chatlink:** im zugänglichen Verlauf nicht verfügbar
 - **Deskriptives Thema:** dritter TETRA-Carrier mit eigener MCC/MNC auf genau einem Raspberry Pi und einem SXceiver
-- **Im Chat verwendeter Repository-Branch:** nicht genannt
-- **Im Chat verwendeter Repository-Commit:** nicht genannt
-- **Heute geprüfter Branch vor der Archivänderung:** `Archiving`
-- **Heute geprüfter Commit vor der Archivänderung:** `e69d0af678a2c122bea330ecb1a8a76d0ec56de8`
+- **In der Planung verwendeter Repository-Branch:** nicht genannt
+- **In der Planung verwendeter Repository-Commit:** nicht genannt
+- **Am Prüfdatum geprüfter Branch vor der Archivänderung:** `Archiving`
+- **Am Prüfdatum geprüfter Commit vor der Archivänderung:** `e69d0af678a2c122bea330ecb1a8a76d0ec56de8`
 - **Commit-Titel dieses Prüfstands:** `docs(archive): archive antenna mast mounting and 3D adapter chat`
 - **Remote-Abgleich vor dem Schreiben:** lokaler Branch und `origin/Archiving` waren bei `e69d0af678a2c122bea330ecb1a8a76d0ec56de8` identisch; Ahead/Behind `0/0`
 - **Zusätzlich beobachteter Remote-Stand von `main`:** `9116c15d645458f99e236712b67a1ad970432791`; `main` wurde für diesen Auftrag nicht ausgecheckt oder als Zielbranch verwendet
 
-### 1.1 Auswertungsgrundlage
+### 1.1 Quellenbasis und offene Umsetzung
 
-Ausgewertet wurden:
+Arbeitsgrundlagen sind die Mehrnetzplanung, die genannten Artefaktpfade, `Archiving` am Prüfcommit, einschlägige Source-/Konfigurations-/Testdateien, 25 ETSI-PDFs und die SXceiver-/SX1255-Dokumentation. Für die Kernaussagen wurden insbesondere EN 300 392-1 V1.6.1 und EN 300 392-2 V3.8.1 herangezogen.
 
-- der für diesen Archivierungslauf verfügbare Chatverlauf einschließlich der späteren ausdrücklichen Korrekturen des Nutzers;
-- die im Chat genannten Scratch-Artefakte und Dateipfade, soweit sie noch erreichbar waren;
-- der am 2026-10-05 frisch geklonte und mit dem Remote abgeglichene Branch `Archiving`;
-- die für dieses Thema einschlägigen Source-, Konfigurations-, Test- und Dokumentationsdateien;
-- 25 im Turn bereitgestellte ETSI-PDFs, insbesondere ETSI EN 300 392-1 V1.6.1 und ETSI EN 300 392-2 V3.8.1;
-- der im Repository eingebundene SoapySX-/SXceiver-Treiber;
-- die öffentlich dokumentierten SXceiver-Spezifikationen und das SX1255-Datenblatt für die Hardwaregrenzen.
+Das ursprüngliche Repository-ZIP und `output/netcore-tetra-multi-network-carrier.zip` sind nicht mehr verfügbar. Zu der vorgeschlagenen Mehrnetzlösung fehlen Branch, Commit, Diff, PR und Buildprotokoll; Compiler-, Rust-Test-, Pi-, SDR- und HF-Messlogs liegen nicht vor. Der Drei-Carrier-Kompromiss mit 418,050 MHz wurde nicht abschließend freigegeben. Originalbilder sind nicht vorhanden.
 
-### 1.2 Auswertungslücken
-
-Folgende Inhalte waren nicht oder nicht mehr zugänglich:
-
-- Der ursprüngliche Chattitel und der Chatlink wurden nicht überliefert.
-- Das anfangs untersuchte Repository-ZIP ist im aktuellen Turn nicht als Eingabedatei vorhanden.
-- Das im Chat mehrfach als fertig bereitgestellte Scratch-Artefakt
-  `output/netcore-tetra-multi-network-carrier.zip` ist nach einer automatischen Workspace-Bereinigung nicht mehr vorhanden.
-- Zu diesem ZIP fehlen Commit, Branch, Diff, PR und Buildprotokoll.
-- Es liegen keine Compiler-, `cargo check`-, `cargo test`-, `cargo clippy`-, Raspberry-Pi-, SDR- oder HF-Messlogs für die behauptete Mehrnetzlösung vor.
-- Die letzte vom Assistenten vorgeschlagene Kompromisslösung mit 418,050 MHz wurde vom Nutzer danach nicht ausdrücklich abgenommen.
-- Im zugänglichen Verlauf befinden sich keine eigenständigen Chatbilder oder Screenshots. Die 25 Anhänge sind PDFs und keine Bildanhänge.
-
-Die frühere lokale Arbeitskopie wurde durch Workspace-Wartung entfernt. Deshalb wurde das Repository für diesen Auftrag frisch vom Remote geklont. Zugangsdaten, Tokens, Passwörter, private Schlüssel und sonstige Secrets werden in dieser Dokumentation nicht übernommen.
+Der am 5. Oktober 2026 neu abgeglichene Repository-Stand ist daher die überprüfbare Codebasis. Frühere Fertigmeldungen werden als **unbelegt** erhalten und nicht zur Implementierung hochgestuft.
 
 ---
 
@@ -53,19 +34,19 @@ Dieses Dokument verwendet die folgenden Statuswerte streng:
 
 - **Idee:** diskutierter Ansatz ohne verbindliche Festlegung.
 - **Beschlossen/geplant:** als Anforderung oder Ziel festgelegt, aber nicht zwingend umgesetzt.
-- **Implementiert:** im heute geprüften Repository-Stand durch Source oder Konfiguration nachgewiesen.
+- **Implementiert:** im zum Prüfdatum geprüften Repository-Stand durch Source oder Konfiguration nachgewiesen.
 - **Getestet:** durch tatsächlich ausgeführte, nachvollziehbare Tests belegt.
-- **Im Betrieb bestätigt:** auf realer Zielhardware beziehungsweise mit realen Funkgeräten erfolgreich betrieben und vom Nutzer bestätigt.
-- **Im Chat als implementiert behauptet:** damalige Assistentenaussage ohne heutigen Repository-Nachweis.
+- **Im Betrieb bestätigt:** auf realer Zielhardware beziehungsweise mit realen Funkgeräten erfolgreich betrieben und durch Betriebsrückmeldung bestätigt.
+- **Frühere Fertigmeldung, unbelegt:** Behauptete Umsetzung ohne Repository- oder Ausführungsnachweis.
 - **Verworfen/ersetzt:** durch eine spätere ausdrückliche Korrektur oder Hardwaregrenze überholt.
 
-Eine Aussage im Chat allein ist kein Implementierungs- oder Testnachweis.
+Eine Aussage in der Planung allein ist kein Implementierungs- oder Testnachweis.
 
 ---
 
 ## 3. Kurzfazit
 
-Die endgültige Nutzeranforderung lautet:
+Die endgültige Projektanforderung lautet:
 
 > Genau ein Raspberry Pi, genau ein SXceiver, keine weitere HF-Hardware und eine softwareseitige Lösung für drei TETRA-Carrier, wobei der dritte Carrier eine eigene MCC/MNC und damit eine eigene logische Netzidentität besitzt.
 
@@ -74,7 +55,7 @@ Das technisch belastbare Ergebnis ist zweigeteilt:
 1. **Logisch ist die Anforderung möglich:** Ein gemeinsamer SDR-I/Q-Stream kann mehrere benachbarte Träger enthalten. Ein Carrier mit eigener MCC/MNC muss aber als eigener logischer Zell-/Netzkontext mit eigenem Main Carrier, MCCH, SYNC, Scrambling-Code, Registrierung und Rufzustand geführt werden. Er ist kein gewöhnlicher `secondary_carrier` derselben Zelle.
 2. **HF-seitig gelten unverrückbare Grenzen:** 418,000/418,025/418,050 MHz im Downlink und 408,000/408,025/408,050 MHz im Uplink passen bandbreitenseitig in den SXceiver-Datenstrom. 390 und 418 MHz gleichzeitig passen nicht in dessen bei 38,4 MHz Referenztakt maximal 600 kS/s schnellen Pfad und sind ausschließlich per Software nicht realisierbar. Zusätzlich liegen sowohl 390 MHz als auch der zugehörige 380-MHz-Uplink außerhalb des garantierten SX1255-/SXceiver-Bereichs von 400 bis 510 MHz.
 
-Entscheidend für die Fortsetzung: Die im Chat behauptete Umsetzung eines Mehrnetz-Launchers, eines zentralen SDR-Brokers, eines Schalters `--single-sxceiver`, der Mehrnetz-Beispielkonfigurationen und eines netzbewussten Subscriber-Core-Filters ist im heute geprüften Branch **nicht vorhanden**. Der aktuelle Code unterstützt eine Zelle mit Haupt- und optionalem Sekundärträger unter derselben MCC/MNC.
+Entscheidend für die Fortsetzung: Die in der Planung behauptete Umsetzung eines Mehrnetz-Launchers, eines zentralen SDR-Brokers, eines Schalters `--single-sxceiver`, der Mehrnetz-Beispielkonfigurationen und eines netzbewussten Subscriber-Core-Filters ist im zum Prüfdatum geprüften Branch **nicht vorhanden**. Der aktuelle Code unterstützt eine Zelle mit Haupt- und optionalem Sekundärträger unter derselben MCC/MNC.
 
 ---
 
@@ -82,7 +63,7 @@ Entscheidend für die Fortsetzung: Die im Chat behauptete Umsetzung eines Mehrne
 
 ### 4.1 Ursprüngliches Ziel
 
-Der Nutzer wollte zu der vorhandenen Dual-Carrier-Basisstation einen dritten Träger hinzufügen. Netz A sollte beispielhaft zwei Träger bei 418/408 MHz mit MCC/MNC `1/1` verwenden. Der dritte Träger sollte beispielhaft bei 390/380 MHz mit MCC/MNC `2/2` arbeiten.
+Zu der vorhandenen Dual-Carrier-Basisstation soll ein dritter Träger hinzukommen. Netz A sollte beispielhaft zwei Träger bei 418/408 MHz mit MCC/MNC `1/1` verwenden. Der dritte Träger sollte beispielhaft bei 390/380 MHz mit MCC/MNC `2/2` arbeiten.
 
 Der Wunsch war damit nicht nur ein Kapazitätsausbau derselben Zelle, sondern der parallele Betrieb zweier logischer TETRA-Netze:
 
@@ -91,9 +72,9 @@ Der Wunsch war damit nicht nur ein Kapazitätsausbau derselben Zelle, sondern de
 | Netz A | 418/408 MHz, zwei Carrier | MCC/MNC `1/1` |
 | Netz B | 390/380 MHz, ein Carrier | MCC/MNC `2/2` |
 
-Die Zahlen `1/1` und `2/2` waren Beispiele. Der Chat enthält keine endgültige Zuteilungs- oder Betriebsfreigabe für diese Werte.
+Die Zahlen `1/1` und `2/2` waren Beispiele. Die Dokumentation enthält keine endgültige Zuteilungs- oder Betriebsfreigabe für diese Werte.
 
-### 4.2 Im Chat behandelte Teilthemen
+### 4.2 In der Planung behandelte Teilthemen
 
 - Unterschied zwischen zusätzlichem Carrier derselben Zelle und eigenem TETRA-Netz;
 - MCC/MNC, MNI, Scrambling-Code, Main Carrier, MCCH, SYNC und BCCH;
@@ -113,21 +94,21 @@ Die Zahlen `1/1` und `2/2` waren Beispiele. Der Chat enthält keine endgültige 
 
 ## 5. Chronologie und spätere Korrekturen
 
-| Phase | Aussage oder Entscheidung | Status im damaligen Chat | Heutige Einordnung |
+| Phase | Aussage oder Entscheidung | Status im damaligen Arbeitsstand | Geprüfte Einordnung |
 |---:|---|---|---|
-| 1 | Dritter Carrier mit eigener MCC/MNC und eigenen Frequenzen; Beispiel 390/380 MHz parallel zu 418/408 MHz. | Nutzeranforderung | Ausgangswunsch. |
+| 1 | Dritter Carrier mit eigener MCC/MNC und eigenen Frequenzen; Beispiel 390/380 MHz parallel zu 418/408 MHz. | Projektanforderung | Ausgangswunsch. |
 | 2 | Ein Carrier mit anderer MCC/MNC soll nicht als bloßer Secondary Carrier derselben Zelle modelliert werden. | Beschlossen/geplant | Normativ und architektonisch bestätigt. |
 | 3 | Erste Architektur: getrennte vollständige BS-Prozesse, jeweils eigenes SDR oder eigener Host. | Geplant und später als umgesetzt behauptet | Durch spätere Ein-SDR-Vorgabe ersetzt; separates SDR/Host ist keine ETSI-Forderung. |
-| 4 | Multi-Cell-Launcher mit mehreren Konfigurationsdateien, Vorabvalidierung und Kollisionsprüfungen. | Als implementiert behauptet | Im heutigen Repository nicht vorhanden. |
-| 5 | Subscriber Core filtere Profile nach Home-MCC/MNC; `0/0` sei Wildcard. | Als implementiert behauptet | Im heutigen Repository nicht implementiert. |
-| 6 | Erste Übergabe verlangte für 390 und 418 MHz zwei SDRs oder zwei Hosts. | Vorgeschlagener Betriebsweg | Vom Nutzer ausdrücklich abgelehnt. |
-| 7 | Der Nutzer machte **ein einzelnes SDR** zur Pflicht. | Verbindliche Korrektur | Hat Vorrang. |
-| 8 | Neue Architektur: zentraler SDR-Broker öffnet das Gerät einmal; getrennte Netzstacks speisen einen gemeinsamen Mehrträger-DSP. | Geplant und später als implementiert behauptet | Technisch sinnvoller Zielentwurf; heutiger Repository-Nachweis fehlt. |
+| 4 | Multi-Cell-Launcher mit mehreren Konfigurationsdateien, Vorabvalidierung und Kollisionsprüfungen. | Als implementiert behauptet | Im geprüften Repository nicht vorhanden. |
+| 5 | Subscriber Core filtere Profile nach Home-MCC/MNC; `0/0` sei Wildcard. | Als implementiert behauptet | Im geprüften Repository nicht implementiert. |
+| 6 | Erste Übergabe verlangte für 390 und 418 MHz zwei SDRs oder zwei Hosts. | Vorgeschlagener Betriebsweg | Ausdrücklich als Betriebsweg abgelehnt. |
+| 7 | **Ein einzelnes SDR** wurde verbindlich festgelegt. | Verbindliche Korrektur | Hat Vorrang. |
+| 8 | Neue Architektur: zentraler SDR-Broker öffnet das Gerät einmal; getrennte Netzstacks speisen einen gemeinsamen Mehrträger-DSP. | Geplant und später als implementiert behauptet | Technisch sinnvoller Zielentwurf; geprüfter Repository-Nachweis fehlt. |
 | 9 | Für den vorhandenen SXceiver wurde 418,000/418,025/418,050 MHz vorgeschlagen. | Als implementiert behauptet | Bandbreitenseitig plausibel; nicht kompiliert oder auf HF getestet. |
-| 10 | Ein Breitband-SDR beziehungsweise externer Frequenzumsetzer wurde als Weg zu echten 390/418 MHz vorgeschlagen. | Zwischenidee | Durch die nächste Nutzerkorrektur ersetzt. |
-| 11 | Der Nutzer legte endgültig fest: ein Pi, ein SXceiver, keine zusätzliche HF-Hardware; die Lösung müsse softwareseitig arbeiten. | Endgültige Anforderung | Maßgebliche Zielplattform. |
-| 12 | Modus `--single-sxceiver` mit zwei Konfigurationen und erzwungenem gemeinsamem `driver=sx` wurde als fertig bezeichnet. | Als implementiert behauptet | Im heutigen CLI und Repository nicht vorhanden. |
-| 13 | Letzte Assistentenantwort: Drei benachbarte Carrier und zwei MCC/MNC seien möglich; 390/418 MHz gleichzeitig seien unmöglich. | Endgültiger Vorschlag | Physikalische Grenze bestätigt; Softwarefunktion weiterhin unimplementiert. |
+| 10 | Ein Breitband-SDR beziehungsweise externer Frequenzumsetzer wurde als Weg zu echten 390/418 MHz vorgeschlagen. | Zwischenidee | Durch die nächste spätere Korrektur ersetzt. |
+| 11 | Endgültig festgelegt: ein Pi, ein SXceiver, keine zusätzliche HF-Hardware; die Lösung muss softwareseitig arbeiten. | Endgültige Anforderung | Maßgebliche Zielplattform. |
+| 12 | Modus `--single-sxceiver` mit zwei Konfigurationen und erzwungenem gemeinsamem `driver=sx` wurde als fertig bezeichnet. | Als implementiert behauptet | Im geprüften CLI und Repository nicht vorhanden. |
+| 13 | Letzte frühere Ausarbeitung: Drei benachbarte Carrier und zwei MCC/MNC seien möglich; 390/418 MHz gleichzeitig seien unmöglich. | Endgültiger Vorschlag | Physikalische Grenze bestätigt; Softwarefunktion weiterhin unimplementiert. |
 
 ### 5.1 Vorrang der letzten Festlegung
 
@@ -160,7 +141,7 @@ Diese Ansätze dürfen nur als verworfene Historie betrachtet werden.
 
 ### 6.2 Drei Carrier, aber zwei logische Netze
 
-**Status: beschlossen/geplant; im heutigen Repository nicht implementiert**
+**Status: beschlossen/geplant; im geprüften Repository nicht implementiert**
 
 Der letzte technisch konsistente Beispielplan lautet:
 
@@ -172,7 +153,7 @@ Der letzte technisch konsistente Beispielplan lautet:
 
 Netz A darf Haupt- und Sekundärträger als eine logische Zelle behandeln. Netz B muss eine eigene logische Zelle beziehungsweise einen eigenen Netzkontext erhalten.
 
-Die Nummer `722` wurde im Chat nicht ausdrücklich genannt. Sie ist die für diese Abschlussdokumentation aus der im Repository verwendeten Frequenzformel und der vorgeschlagenen Trägermitte 418,050 MHz abgeleitete Fortsetzung von 720/721. Sie ist daher ein nachvollzogener NetCore-Projektwert und keine eigenständige damalige Nutzerfestlegung.
+Die Nummer `722` wurde in der Planung nicht ausdrücklich genannt. Sie ist die für diese Projektnotiz aus der im Repository verwendeten Frequenzformel und der vorgeschlagenen Trägermitte 418,050 MHz abgeleitete Fortsetzung von 720/721. Sie ist daher ein nachvollzogener NetCore-Projektwert und keine eigenständige damalige Festlegung.
 
 ### 6.3 Status der 390/380-MHz-Idee
 
@@ -204,7 +185,7 @@ Die Frequenz- und Netzkennungsbeispiele sind technische Rechenbeispiele, keine F
 
 ### 7.1 Netzidentität
 
-Die für diesen Archivierungslauf geprüften Normstellen ergeben:
+Die für diese Quellenprüfung geprüften Normstellen ergeben:
 
 - MCC und MNC bilden gemeinsam die Mobile Network Identity (MNI).
 - Ein TETRA-Netz besteht aus verbundenen Zellen, die dieselbe MCC/MNC-Kombination aussenden.
@@ -310,14 +291,14 @@ Der gemeinsame Dienst muss mindestens:
 
 ### 8.3 Prozessmodell
 
-Der Assistent stellte zuletzt einen zentralen SDR-Broker mit getrennten Netzprozessen beziehungsweise Netzstacks als bereits implementiert dar. Der Nutzer ratifizierte dieses konkrete Prozessmodell nicht, und der heute verfügbare Code belegt es nicht. Für eine Neuimplementierung bleibt die Entscheidung daher offen:
+Ein zentraler SDR-Broker mit getrennten Netzprozessen beziehungsweise Netzstacks wurde zuletzt als fertig beschrieben. Für dieses konkrete Prozessmodell liegen weder Freigabe noch Codebeleg vor. Für eine Neuimplementierung bleibt die Entscheidung daher offen:
 
 | Variante | Vorteil | Risiko/Aufwand |
 |---|---|---|
 | Ein Prozess, zwei getrennte Stackinstanzen und ein gemeinsamer RF-Dienst | keine externe Echtzeit-IPC; gemeinsame Zeitbasis einfacher | große Refaktorierung des aktuell singletonartig gestarteten Stacks; Fehlerisolation geringer |
 | RF-Broker plus getrennte Netzprozesse | klare Isolation von Netz- und Zustandsräumen | Echtzeit-IPC, Zero-Copy-/Queue-Design, Zeitstempel, Backpressure und Crash-Recovery werden kritisch |
 
-Vor einer Implementierung ist ein Architecture Decision Record erforderlich. Die damalige Assistentenantwort behauptete einen Prozessbroker, definierte aber weder Datenformat noch IPC, Queue-Größe, Latenzbudget oder Restart-Semantik.
+Vor einer Implementierung ist ein Architecture Decision Record erforderlich. Die damalige frühere Ausarbeitung behauptete einen Prozessbroker, definierte aber weder Datenformat noch IPC, Queue-Größe, Latenzbudget oder Restart-Semantik.
 
 ### 8.4 Notwendige logische Isolation
 
@@ -341,7 +322,7 @@ Pro Netz-/Zellkontext müssen mindestens getrennt bleiben:
 
 ### 9.1 SXceiver-Streammodell
 
-**Status: im gebündelten SoapySX-Treiber implementiert und per Quellcode statisch bestätigt; in diesem Archivierungslauf nicht am Gerät getestet**
+**Status: im gebündelten SoapySX-Treiber implementiert und per Quellcode statisch bestätigt; in dieser Quellenprüfung nicht am Gerät getestet**
 
 Der eingebundene SoapySX-Treiber zeigt:
 
@@ -378,11 +359,11 @@ Relevante Dateien:
 
 Die SXceiver-Dokumentation beschreibt wegen der Filter-/Dezimationsflanken ungefähr die halbe gewählte Sample-Rate als praktisch nutzbare Bandbreite. Für die Planung ist daher ungefähr 300 kHz nutzbares Spektrum konservativer als die idealisierte komplexe Nyquist-Spanne von insgesamt 600 kHz.
 
-Im Chat war zwischenzeitlich von ungefähr 1 MHz momentaner HF-Bandbreite die Rede. Das beschreibt allenfalls die maximale analoge RF-Doppelseitenbandbreite des SX1255-Siliziums, nicht die praktisch nutzbare Bandbreite des hier eingesetzten SoapySX-/I2S-Pfads. Für dieses Projekt ist die engere Streamgrenze maßgeblich.
+In der Planung war zwischenzeitlich von ungefähr 1 MHz momentaner HF-Bandbreite die Rede. Das beschreibt allenfalls die maximale analoge RF-Doppelseitenbandbreite des SX1255-Siliziums, nicht die praktisch nutzbare Bandbreite des hier eingesetzten SoapySX-/I2S-Pfads. Für dieses Projekt ist die engere Streamgrenze maßgeblich.
 
 ### 9.3 Drei benachbarte Carrier
 
-Bei Trägermittenfrequenzen 418,000, 418,025 und 418,050 MHz beträgt der Abstand zwischen den äußeren Mitten 50 kHz. Unter Einbeziehung der nominalen 25-kHz-Kanalbreiten ergibt sich ein ungefähr 75 kHz breiter Gesamtbereich. Das gleiche gilt für 408,000/408,025/408,050 MHz. Symmetrische gemeinsame SDR-Mitten wären 418,025 MHz für TX und 408,025 MHz für RX. Die heutigen Dual-Carrier-Mitten 418,0125/408,0125 MHz würden die drei Träger bei 600 kS/s zwar ebenfalls umfassen, sind aber nicht deren symmetrischer Mittelpunkt.
+Bei Trägermittenfrequenzen 418,000, 418,025 und 418,050 MHz beträgt der Abstand zwischen den äußeren Mitten 50 kHz. Unter Einbeziehung der nominalen 25-kHz-Kanalbreiten ergibt sich ein ungefähr 75 kHz breiter Gesamtbereich. Das gleiche gilt für 408,000/408,025/408,050 MHz. Symmetrische gemeinsame SDR-Mitten wären 418,025 MHz für TX und 408,025 MHz für RX. Die geprüften Dual-Carrier-Mitten 418,0125/408,0125 MHz würden die drei Träger bei 600 kS/s zwar ebenfalls umfassen, sind aber nicht deren symmetrischer Mittelpunkt.
 
 **Bewertung:** Bandbreitenseitig passen diese drei Träger deutlich in den 600-kS/s-Pfad beziehungsweise die konservativ angesetzten ungefähr 300 kHz Nutzbandbreite.
 
@@ -427,7 +408,7 @@ Diese Rechnung belegt die Unmöglichkeit des gleichzeitigen direkten Betriebs. S
 
 ---
 
-## 10. Heutiger Repository-Abgleich
+## 10. Geprüfter Repository-Abgleich
 
 ### 10.1 Prüfumfang
 
@@ -445,15 +426,15 @@ Der Branch `Archiving` wurde frisch geklont, vor dem Schreiben mit `origin/Archi
 
 ### 10.2 Tatsächlich vorhandener Betriebsentwurf
 
-**Status: implementiert; in diesem Archivierungslauf nur statisch geprüft**
+**Status: implementiert; in dieser Quellenprüfung nur statisch geprüft**
 
-Der heutige Code startet genau einen Stack aus genau einer TOML-Datei:
+Der geprüfte Code startet genau einen Stack aus genau einer TOML-Datei:
 
 - [`bins/bluestation-bs/src/main.rs`](../../bins/bluestation-bs/src/main.rs) definiert ein einziges positionsabhängiges Argument `config: String`.
 - Die Anwendung lädt genau eine `StackConfig` und erzeugt genau ein `SharedConfig`.
 - Der Stack erzeugt genau ein `RxTxDevSoapySdr`.
 
-Der heutige Konfigurationsentwurf kennt genau:
+Der geprüfte Konfigurationsentwurf kennt genau:
 
 - `main_carrier`;
 - optional `secondary_carrier`;
@@ -490,11 +471,11 @@ Relevante Datei:
 
 - [`crates/tetra-entities/src/umac/umac_bs.rs`](../../crates/tetra-entities/src/umac/umac_bs.rs)
 
-Damit ist der heutige Secondary Carrier **kein** eigener Main Carrier mit anderer MCC/MNC und eigenem MCCH.
+Damit ist der geprüfte Secondary Carrier **kein** eigener Main Carrier mit anderer MCC/MNC und eigenem MCCH.
 
 ### 10.4 Aktuelle Beispielkonfiguration
 
-Der heutige Branch enthält in `config.toml`:
+Der geprüfte Branch enthält in `config.toml`:
 
 ```toml
 [phy_io.soapysdr]
@@ -519,7 +500,7 @@ location_area = 1
 colour_code = 1
 ```
 
-Dies ist eine einzige MCC/MNC mit zwei Carriern. Es entspricht nicht dem Chatbeispiel `1/1` plus `2/2`.
+Dies ist eine einzige MCC/MNC mit zwei Carriern. Es entspricht nicht dem Planungsbeispiel `1/1` plus `2/2`.
 
 Zwei vorhandene Kommentare sind irreführend und dürfen für Frequenzrechnungen nicht als Wahrheit verwendet werden:
 
@@ -528,7 +509,7 @@ Zwei vorhandene Kommentare sind irreführend und dürfen für Frequenzrechnungen
 
 ### 10.5 Fehlende behauptete Dateien und Schalter
 
-Im heutigen Branch fehlen:
+Im geprüften Branch fehlen:
 
 ```text
 Docs/MULTI_NETWORK_CARRIER.md
@@ -548,20 +529,20 @@ Ebenfalls nicht vorhanden:
 - zentraler SDR-Broker;
 - Mehrnetz-IPC;
 - eigener Mehrnetz-systemd-Dienst;
-- die im Chat beschriebenen Kollisionsprüfungen für Dashboard, SIP, RTP, TUN, Node-ID, Policy- und Spooldateien.
+- die in der Planung beschriebenen Kollisionsprüfungen für Dashboard, SIP, RTP, TUN, Node-ID, Policy- und Spooldateien.
 
 ### 10.6 Subscriber Core
 
 **Teilweise implementiert, behauptete Netzfilterung fehlt**
 
-Heute vorhanden:
+Am Prüfdatum vorhanden:
 
 - `SubscriberProfile` enthält `home_mcc` und `home_mnc`;
 - Nodes speichern MCC und MNC;
 - Teilnehmer werden nach ISSI in einer `BTreeMap<u32, SubscriberProfile>` gespeichert;
 - damit ist die ISSI im aktuellen Datenmodell global eindeutig.
 
-Heute nicht vorhanden:
+Am Prüfdatum nicht vorhanden:
 
 - `policy_values()` filtert Profile nicht nach MCC/MNC des Zielnodes;
 - `schedule_sync_locked()` überträgt eine globale Liste autorisierter ISSIs;
@@ -575,13 +556,13 @@ Relevante Dateien:
 - [`system-backend/subscriber-core/README.md`](../../system-backend/subscriber-core/README.md)
 - [`crates/tetra-entities/src/net_control_room/protocol.rs`](../../crates/tetra-entities/src/net_control_room/protocol.rs)
 
-Die frühere Chatbehauptung, die netzbewusste Filterung und der Wildcard seien bereits eingebaut, ist für den heutigen Branch falsch.
+Die frühere frühere Fertigmeldung, die netzbewusste Filterung und der Wildcard seien bereits eingebaut, ist für den geprüften Branch falsch.
 
 ---
 
-## 11. Statusmatrix Chat gegenüber heutigem Repository
+## 11. Planungsstand und geprüfte Implementierung
 
-| Gegenstand | Idee | Beschlossen/geplant | Im Chat als implementiert behauptet | Heute im Branch implementiert | Getestet | Im Betrieb bestätigt |
+| Gegenstand | Idee | Beschlossen/geplant | In der Planung als implementiert behauptet | Am Prüfdatum im Branch implementiert | Getestet | Im Betrieb bestätigt |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
 | Ein Pi und ein SXceiver |  | ja | ja | bestehender Single-SDR-Startpfad, aber nicht Mehrnetz | nein | nein |
 | Dritter Carrier mit eigener MCC/MNC |  | ja | ja | nein | nein | nein |
@@ -597,13 +578,13 @@ Die frühere Chatbehauptung, die netzbewusste Filterung und der Wildcard seien b
 | `0/0` als Home-Netz-Wildcard |  | ja | ja | nein | nein | nein |
 | Global eindeutige ISSI | bestehende Einschränkung | als Grenze erkannt | nicht behoben | ja | nein; Persistenztest im Source vorhanden, in diesem Lauf nicht ausgeführt | unbekannt |
 | Mehrnetz-systemd-Unit | ja | ja | vorbereitet behauptet | nein | nein; historische Syntaxprüfungsbehauptung nicht reproduzierbar | nein |
-| TX-Backoff für drei Carrier | im Chat nicht sauber behandelt | jetzt Roadmap-Kandidat | nein | nicht nachgewiesen | nein | nein |
+| TX-Backoff für drei Carrier | in der Planung nicht sauber behandelt | jetzt Roadmap-Kandidat | nein | nicht nachgewiesen | nein | nein |
 
 ---
 
 ## 12. Befehle und deren tatsächlicher Status
 
-### 12.1 Im Chat vorgeschlagene Multi-SDR-/Mehrprozessbefehle
+### 12.1 In der Planung vorgeschlagene Multi-SDR-/Mehrprozessbefehle
 
 ```bash
 bluestation-bs --validate-only \
@@ -617,7 +598,7 @@ bluestation-bs \
   examples/multi-network/network-b-390.toml
 ```
 
-**Status:** nur vorgeschlagen beziehungsweise im Chat als möglich bezeichnet. Im heutigen Branch sind Option, Mehrfachargumente und Dateien nicht vorhanden. Diese Befehle würden mit dem aktuellen CLI nicht wie beschrieben funktionieren.
+**Status:** nur vorgeschlagen beziehungsweise in der Planung als möglich bezeichnet. Im geprüften Branch sind Option, Mehrfachargumente und Dateien nicht vorhanden. Diese Befehle würden mit dem aktuellen CLI nicht wie beschrieben funktionieren.
 
 ### 12.2 Letzter Ein-SXceiver-Befehl
 
@@ -627,15 +608,15 @@ bluestation-bs --single-sxceiver \
   examples/multi-network/network-b-418050.toml
 ```
 
-**Status:** im Chat als fertig dargestellt, aber weder ausgeführt noch heute implementiert. Der Befehl ist keine gültige Betriebsanweisung für den geprüften Branch.
+**Status:** in der Planung als fertig dargestellt, aber weder ausgeführt noch am Prüfdatum implementiert. Der Befehl ist keine gültige Betriebsanweisung für den geprüften Branch.
 
-### 12.3 Tatsächlicher heutiger CLI-Vertrag
+### 12.3 Tatsächlicher geprüfter CLI-Vertrag
 
 ```bash
 bluestation-bs <eine-config.toml>
 ```
 
-**Status:** durch Source belegt. In diesem Archivierungslauf nicht kompiliert oder gestartet.
+**Status:** durch Source belegt. In dieser Quellenprüfung nicht kompiliert oder gestartet.
 
 ### 12.4 Empfohlene künftige Validierung
 
@@ -655,11 +636,11 @@ Der konkrete spätere Schaltername ist offen; `--validate-only` darf erst dokume
 
 ---
 
-## 13. Im Chat behauptete Tests und ihre Grenzen
+## 13. In der Planung behauptete Tests und ihre Grenzen
 
 ### 13.1 Damals als durchgeführt bezeichnet
 
-Der Assistent behauptete folgende Prüfungen:
+Folgende Prüfungen wurden als durchgeführt angegeben; ihre Ausgaben fehlen:
 
 - TOML-Syntax;
 - Frequenzableitung;
@@ -682,9 +663,9 @@ Diese Aussagen konnten nicht reproduziert werden, weil das damalige ZIP und die 
 - `cargo clippy`;
 - vollständiger Rust-Build.
 
-Der damalige Assistent nannte eine fehlende Rust-Toolchain als Grund.
+Als damaliges Hindernis wurde eine fehlende Rust-Toolchain genannt.
 
-### 13.3 Prüfungen dieses Archivierungslaufs
+### 13.3 Prüfungen dieser Quellenprüfung
 
 **Erfolgreich durchgeführt:**
 
@@ -733,7 +714,7 @@ Diese Tests belegen keine Drei-Carrier-Skalierung, keinen zweiten MCC/MNC-Stack,
 
 **Rechnerisch und bandbreitenseitig geeigneter Zielansatz für die feste Hardware:** Carrier des zweiten Netzes in dasselbe schmale RF-Fenster legen, beispielsweise 418,050/408,050 MHz, sofern regulatorisch zulässig.
 
-**Status:** rechnerisch geeignet; nicht praktisch getestet und vom Nutzer nicht abschließend abgenommen.
+**Status:** rechnerisch geeignet; nicht praktisch getestet und nicht abschließend freigegeben.
 
 ### 14.3 Mehrere Prozesse öffnen dasselbe SDR
 
@@ -745,9 +726,9 @@ Diese Tests belegen keine Drei-Carrier-Skalierung, keinen zweiten MCC/MNC-Stack,
 
 ### 14.4 `-∞`-RSSI in Leerlauf-Slots
 
-Im Chat wurde behauptet, unbenutzte Timeslots lieferten `-∞` als RSSI und der neue Austauschpfad behandle dies verlustfrei.
+In der Planung wurde behauptet, unbenutzte Timeslots lieferten `-∞` als RSSI und der neue Austauschpfad behandle dies verlustfrei.
 
-**Status:** im heutigen Branch ist kein entsprechender Broker-/IPC-Pfad vorhanden. Die genaue Serialisierung und Prüfung können nicht rekonstruiert werden. Für einen künftigen IPC-Vertrag muss festgelegt werden, ob nicht endliche Floatwerte erlaubt, als `null`/Statusflag codiert oder in einen Sentineltyp überführt werden.
+**Status:** im geprüften Branch ist kein entsprechender Broker-/IPC-Pfad vorhanden. Die genaue Serialisierung und Prüfung können nicht rekonstruiert werden. Für einen künftigen IPC-Vertrag muss festgelegt werden, ob nicht endliche Floatwerte erlaubt, als `null`/Statusflag codiert oder in einen Sentineltyp überführt werden.
 
 ### 14.5 Teilnehmeridentität
 
@@ -775,7 +756,7 @@ Im Chat wurde behauptet, unbenutzte Timeslots lieferten `-∞` als RSSI und der 
 
 ### 15.2 Beliebiges Breitband-SDR
 
-**Verworfen:** der Nutzer legte den vorhandenen SXceiver fest.
+**Verworfen:** der vorhandene SXceiver wurde als Pflichtplattform festgelegt.
 
 ### 15.3 Externer Frequenzumsetzer
 
@@ -795,7 +776,7 @@ Im Chat wurde behauptet, unbenutzte Timeslots lieferten `-∞` als RSSI und der 
 
 ### 15.7 Frühere ZIPs als Repository-Wahrheit
 
-**Verworfen:** Das ZIP war ein nicht versioniertes Scratch-Artefakt und ist heute nicht verfügbar. Eine spätere Implementierung muss vom aktuellen Branch ausgehen oder der alte Stand muss als überprüfbarer Diff wiederbeschafft werden.
+**Verworfen:** Das ZIP war ein nicht versioniertes Scratch-Artefakt und ist am Prüfdatum nicht verfügbar. Eine spätere Implementierung muss vom aktuellen Branch ausgehen oder der alte Stand muss als überprüfbarer Diff wiederbeschafft werden.
 
 ---
 
@@ -803,7 +784,7 @@ Im Chat wurde behauptet, unbenutzte Timeslots lieferten `-∞` als RSSI und der 
 
 ### 16.1 Bestehende relevante Komponenten
 
-| Komponente | Rolle heute | Relevanz für Zielarchitektur |
+| Komponente | Rolle am Prüfdatum | Relevanz für Zielarchitektur |
 |---|---|---|
 | `bluestation-bs` | startet einen Stack aus einer TOML | muss mehrere logische Stackkontexte oder einen Brokerclient unterstützen |
 | `tetra-config` | globale Netz-/Zell-/PHY-Konfiguration | braucht klar getrennte gemeinsame RF- und per-Netz-Konfiguration |
@@ -815,7 +796,7 @@ Im Chat wurde behauptet, unbenutzte Timeslots lieferten `-∞` als RSSI und der 
 
 ### 16.2 Noch undefinierte Schnittstellen
 
-Der Chat definierte keine belastbaren Werte für:
+Die Planung definierte keine belastbaren Werte für:
 
 - Broker-Socket oder IPC-Protokoll;
 - Unix-Socket-/TCP-Port;
@@ -833,9 +814,9 @@ Solche Werte dürfen nicht aus dem damaligen ZIP erfunden werden.
 
 ### 16.3 Aktuelle Ports und Protokolle
 
-Der Mehrnetzchat legte keine konkreten neuen Ports fest. Die Behauptung, Dashboard-, SIP- und RTP-Portkollisionen würden validiert, nennt keine Portnummern und ist im heutigen Source nicht als Mehrnetzprüfung nachgewiesen.
+Die Mehrnetzplanung legte keine konkreten neuen Ports fest. Die Behauptung, Dashboard-, SIP- und RTP-Portkollisionen würden validiert, nennt keine Portnummern und ist im geprüften Source nicht als Mehrnetzprüfung nachgewiesen.
 
-Der Subscriber Core dokumentiert heute seine WebUI beispielhaft unter Port `8100`. Dies ist ein aktueller Repositorybefund und kein im Chat beschlossener Brokerport.
+Der Subscriber Core dokumentiert am Prüfdatum seine WebUI beispielhaft unter Port `8100`. Dies ist ein aktueller Repositorybefund und kein in der Planung beschlossener Brokerport.
 
 ---
 
@@ -947,7 +928,7 @@ Der Status **im Betrieb bestätigt** erfordert zusätzlich:
 - gleichzeitige Registrierung und Verkehr;
 - stabilen Dauerlauf;
 - bestätigte Recovery nach Stack- oder Dienstneustart;
-- ausdrückliche Abnahme durch den Nutzer.
+- ausdrückliche Abnahme am Zielsystem.
 
 ---
 
@@ -981,18 +962,18 @@ Der Status **im Betrieb bestätigt** erfordert zusätzlich:
 - [TETRA-Basisstation: Konfiguration und PHY-Grundlagen](2026-10-04_tetra-basisstation-konfiguration-und-phy-grundlagen.md)
 - [Basisstations-Funktionsroadmap](2026-10-04_basisstation-funktionsroadmap-einzelzelle-bis-multisite.md)
 
-Diese Dokumente ergänzen den Kontext, ersetzen aber nicht den heutigen Source-Abgleich.
+Diese Dokumente ergänzen den Kontext, ersetzen aber nicht den geprüften Source-Abgleich.
 
 ---
 
 ## 20. Quellen
 
-### 20.1 Im Chat genannte externe Quellen
+### 20.1 In der Planung genannte externe Quellen
 
-- SoapySX-Treiber: <https://github.com/tejeez/sxxcvr/blob/main/SoapySX/SoapySX.cpp>, im Chat und am 2026-10-05 referenziert; für den Source-Abgleich maßgeblich war die im geprüften Repository-Commit `e69d0af678a2c122bea330ecb1a8a76d0ec56de8` gebündelte Kopie
+- SoapySX-Treiber: <https://github.com/tejeez/sxxcvr/blob/main/SoapySX/SoapySX.cpp>, in der Planung und am 2026-10-05 referenziert; für den Source-Abgleich maßgeblich war die im geprüften Repository-Commit `e69d0af678a2c122bea330ecb1a8a76d0ec56de8` gebündelte Kopie
 - damaliger Semtech-Blogverweis: <https://blog.semtech.com/lora-corecell-reference-design-for-full-duplex-gateway-applications>
 
-### 20.2 Für diesen Archivierungslauf zusätzlich geprüft
+### 20.2 Am Prüfdatum zusätzlich geprüft
 
 - SXceiver-Spezifikationen: <https://sxceiver.com/doc/specs>, abgerufen am 2026-10-05
 - Semtech SX1255 Data Sheet, Dokument DS.SX1255.W.APP, Revision 3.1, März 2018; verwendeter Mouser-Spiegel, kein offizieller Semtech-Host: <https://www.mouser.com/datasheet/2/761/SEMT_S_A0005068298_1-2575674.pdf>
@@ -1036,20 +1017,20 @@ Alle 25 für diesen Turn bereitgestellten Anhänge waren PDFs. Die Titel und Sei
 | `en_30039202v030801p.pdf` | ETSI EN 300 392-2, Air Interface | V3.8.1, 2016-08 | 1.445 | `3f07b1e4ad73fabc16277a900006fc19844b3a882bbc2bc1d74d78f6156daf28` |
 | `ETSI.pdf` | Sammel-PDF; erste Seite ETSI EN 300 812 | V2.1.1 auf erster Teilquelle, 2001-12 | 4.100 | `9434dad1e7bc80ca39b0edadd8e3b9995fda5ae5f5c3dd565af05708d5059e38` |
 
-Nur EN 300 392-1 und EN 300 392-2 wurden für die Kernaussagen dieses Chats gezielt inhaltlich ausgewertet. Die übrigen Anhänge wurden inventarisiert, aber nicht als vollständig fachlich geprüfter Normensatz dargestellt.
+Nur EN 300 392-1 und EN 300 392-2 wurden für die Kernaussagen dieser Planung gezielt inhaltlich ausgewertet. Die übrigen Anhänge wurden inventarisiert, aber nicht als vollständig fachlich geprüfter Normensatz dargestellt.
 
 ---
 
 ## 22. Bilder und weitere Artefakte
 
-Im zugänglichen Chatverlauf und im bereitgestellten Ordner `project_sources/` sind keine eigenständigen Raster- oder Vektorbilder enthalten. Deshalb wurden für diesen Archiveintrag keine Bilddateien nach `Docs/archive/` kopiert.
+Zu dieser Mehrnetzplanung liegen keine eigenständigen Raster- oder Vektorbilder vor. Der Ordner `project_sources/` enthält die im Quelleninventar genannten PDF-Dateien.
 
-Die 25 PDF-Anhänge sind Dokumentquellen und keine Chatbilder. Sie wurden nicht in das Git-Repository dupliziert. Das frühere ZIP war ebenfalls kein Bild und ist heute nicht mehr verfügbar.
+Die 25 PDF-Anhänge sind Dokumentquellen und keine Originalbilder. Sie wurden nicht in das Git-Repository dupliziert. Das frühere ZIP war ebenfalls kein Bild und ist am Prüfdatum nicht mehr verfügbar.
 
 ---
 
 ## 23. Endgültiger Übergabestand
 
-Der Chat hat die fachlich richtige Zielrichtung herausgearbeitet: zwei logisch getrennte TETRA-Netze können einen gemeinsamen physischen SDR-Pfad nutzen, wenn alle Träger in dessen momentanes Spektrum passen und sämtliche Air-Interface- und Zustandsräume getrennt bleiben.
+Die Planung hat die fachlich richtige Zielrichtung herausgearbeitet: zwei logisch getrennte TETRA-Netze können einen gemeinsamen physischen SDR-Pfad nutzen, wenn alle Träger in dessen momentanes Spektrum passen und sämtliche Air-Interface- und Zustandsräume getrennt bleiben.
 
-Nicht erreicht wurde eine im Repository nachweisbare Umsetzung. Der heutige Branch besitzt wertvolle Vorarbeit in Form des Dual-Carrier-DSP, aber weder die zweite Netzinstanz noch den Single-SXceiver-Mehrnetz-Orchestrator. Der nächste sinnvolle Schritt ist daher kein weiterer ZIP-Hotfix, sondern eine saubere Architekturentscheidung vom aktuellen Branch aus, gefolgt von Config-/Datenmodelltests, RF-/DSP-Erweiterung und schrittweiser Hardwareabnahme.
+Nicht erreicht wurde eine im Repository nachweisbare Umsetzung. Der geprüfte Branch besitzt wertvolle Vorarbeit in Form des Dual-Carrier-DSP, aber weder die zweite Netzinstanz noch den Single-SXceiver-Mehrnetz-Orchestrator. Der nächste sinnvolle Schritt ist daher kein weiterer ZIP-Hotfix, sondern eine saubere Architekturentscheidung vom aktuellen Branch aus, gefolgt von Config-/Datenmodelltests, RF-/DSP-Erweiterung und schrittweiser Hardwareabnahme.

@@ -1,18 +1,18 @@
-# Technische Abschlussdokumentation: Router-SBC für NetCore-TETRA – Banana Pi BPI-R4, 5G und Wi-Fi 7
+# Brainstorming: BPI-R4 als NetCore-Router mit 5G und Wi-Fi 7
 
-> **Ergebnis dieses Chats:** Für einen künftigen NetCore-TETRA-Edge-/Basisstationsknoten wurde die Router-SBC-Klasse als besonders passend bewertet. Die zuletzt bevorzugte Ausbaurichtung ist ein **Banana Pi BPI-R4 mit 8 GB RAM**, ergänzt um ein **BPI-R4-NIC-BE14** als Wi-Fi-7-Access-Point-Modul, ein **Quectel RM520N-GL** als 5G-/LTE-WWAN-Modem und optional eine NVMe-SSD. Diese Auswahl ist eine **Planungs- und Beschaffungsempfehlung**, kein Nachweis einer Bestellung, Installation oder Inbetriebnahme. Ein BPI-R4 Pro bleibt als Ausbaualternative erhalten, wurde im Verlauf aber nicht mehr als zwingend beste Erstwahl betrachtet.
+**Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
+
+> **Festgehaltene Richtung:** Für einen künftigen NetCore-TETRA-Edge-/Basisstationsknoten wurde die Router-SBC-Klasse als besonders passend bewertet. Die zuletzt bevorzugte Ausbaurichtung ist ein **Banana Pi BPI-R4 mit 8 GB RAM**, ergänzt um ein **BPI-R4-NIC-BE14** als Wi-Fi-7-Access-Point-Modul, ein **Quectel RM520N-GL** als 5G-/LTE-WWAN-Modem und optional eine NVMe-SSD. Diese Auswahl ist eine **Planungs- und Beschaffungsempfehlung**, kein Nachweis einer Bestellung, Installation oder Inbetriebnahme. Ein BPI-R4 Pro bleibt als Ausbaualternative erhalten, wurde im Verlauf aber nicht mehr als zwingend beste Erstwahl betrachtet.
 >
-> **Repository-Abgleich am 05.10.2026:** Im aktuellen Hauptbranch ist die Idee eines mobilen Routers mit 5G, M.2-Funkmodul und Access Point bereits dokumentarisch erhalten. Für BPI-R4/R4-Pro werden dort Strombudget, Treiber, Antennen, AP-Betrieb und VPN-Übergänge ausdrücklich noch als offene Konkretisierungen geführt. Für die konkreten Produktnamen **RM520N**, **BE14**, **OpenWrt** und **wwan** ergab die heutige Code-/Dokumentensuche im Default-Branch keinen belastbaren Implementierungsnachweis. Der hier archivierte Hardware-Stack ist daher **nicht implementiert und nicht getestet**.
+> **Repository-Abgleich am 05.10.2026:** Im aktuellen Hauptbranch ist die Idee eines mobilen Routers mit 5G, M.2-Funkmodul und Access Point bereits dokumentarisch erhalten. Für BPI-R4/R4-Pro werden dort Strombudget, Treiber, Antennen, AP-Betrieb und VPN-Übergänge ausdrücklich noch als offene Konkretisierungen geführt. Für die konkreten Produktnamen **RM520N**, **BE14**, **OpenWrt** und **wwan** ergab die geprüfte Code-/Dokumentensuche im Default-Branch keinen belastbaren Implementierungsnachweis. Der hier archivierte Hardware-Stack ist daher **nicht implementiert und nicht getestet**.
 
-## 1. Metadaten
+## 1. Arbeitsstand
 
 | Feld | Inhalt |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Router-SBC für Basisstation/Edge-Node mit Ethernet, Wi-Fi-AP, 5G-SIM, VPN und optional NVMe |
-| Ursprünglicher Chattitel | Nicht verfügbar; im zugänglichen Verlauf wurde kein belastbarer Originaltitel geliefert. |
-| Ursprünglicher Chatlink | Nicht verfügbar; es wird kein Link konstruiert. |
-| Historischer Gesprächsstand | Die Hardware-/Preisdiskussion ist im sichtbaren Verlauf mit Stand **10.09.2026** gekennzeichnet; der Archivauftrag erfolgte am **05.10.2026**. |
+| Historischer Planungsstand | Hardware-/Preisplanung vom **10.09.2026**; Repository-Abgleich am **05.10.2026**. |
 | Erstellungsdatum dieser Zusammenfassung | **2026-10-05** |
 | Zielrepository | JanHG98/netcore-tetra |
 | Geprüfter Zielbranch vor Archivierung | **Archiving** |
@@ -22,47 +22,30 @@
 | Geprüfter main-Commit | **9116c15d645458f99e236712b67a1ad970432791** |
 | Ablage | Docs/archive/2026-10-05_bpi-r4-netcore-tetra-router-5g-wifi7-sbc.md |
 | Archivindex | Docs/archive/README.md |
-| Änderungsumfang | Ausschließlich diese Datei und der Archivindex unter Docs/archive/. Keine Änderung an Runtime-Code, Roadmap, Konfiguration oder Deployment. |
 
-Der spätere Archivcommit ist vom oben genannten Eingangs-Commit zu unterscheiden. Ein Dokumentationscommit bestätigt keine technische Umsetzung der beschriebenen Hardware.
+### 1.1 Quellenbasis und offene Abnahme
 
-### 1.1 Quellenbasis und Auswertungslücken
+Die Hardwareplanung vom 10. September 2026 umfasst die BPI-R4-Familie, 5G-/SIM-Anbindung, WLAN-AP-Modul, Routing, Failover und historische Preisfunde. Händlerpreise und Verfügbarkeit sind Momentaufnahmen und wurden am 5. Oktober nicht erneut erhoben.
 
-Ausgewertet wurde der in diesem Chat zugängliche Verlauf von der ursprünglichen Suche nach einem geeigneten SBC über die Diskussion der BPI-R4-Familie, 5G-/SIM-Integration, WLAN-AP-Modul, Router-/Failover-Idee bis zur historischen Preissuche.
-
-Es gibt in diesem Chat **keine eigenständigen vom Nutzer hochgeladenen Bilder oder Screenshots**, die zu diesem Thema gehören. Entsprechend wurden keine Chatbilder nach Docs/archive/ übernommen. Die im Projektkontext vorhandenen ETSI-PDFs sind allgemeines TETRA-Referenzmaterial und waren für die Auswahl eines Router-SBCs, eines 5G-Modems und eines Wi-Fi-Moduls nicht entscheidungsrelevant; sie wurden für diese Abschlussdokumentation nicht als Hardwarefreigabe interpretiert.
-
-Nicht verfügbar beziehungsweise nicht nachgewiesen sind insbesondere:
-
-- Kaufbelege, Bestellbestätigungen oder Inventarnummern für BPI-R4, BE14 oder RM520N-GL;
-- reale Board-Revision und konkrete Speicherbestückung eines vorhandenen Gerätes;
-- Fotos der Hardware, Antennen, Pigtails oder des späteren Gehäuses;
-- OpenWrt-/Linux-Konfiguration eines solchen Routers;
-- reale SIM-/Providerdaten;
-- WWAN-, QMI-/MBIM-, AP-, VLAN-, VPN- oder Failover-Logs;
-- Stromaufnahme-, Temperatur-, CPU-, Datendurchsatz- oder RF-Messungen;
-- ein On-Air-Test zusammen mit der TETRA-Basisstation;
-- ein belastbarer Original-Chattitel oder Chatlink.
-
-Die im Chat genannten Händlerpreise und Verfügbarkeiten waren Momentaufnahmen der damaligen Websuche und wurden **bei dieser Archivierung nicht erneut als aktuelle Marktpreise verifiziert**.
+Nicht belegt sind Bestellung, Inventarnummer, reale Boardrevision, Speicherbestückung, Antennen-/Gehäuseaufbau oder OpenWrt-Konfiguration. SIM-/Providerdaten sowie WWAN-, QMI-/MBIM-, AP-, VLAN-, VPN- und Failover-Protokolle fehlen ebenso wie Strom-, Temperatur-, Last- und HF-Messungen. Ein On-Air-Test mit der TETRA-Basisstation wurde nicht dokumentiert. Originalbilder dieser Hardwareplanung liegen nicht vor; ETSI-PDFs liefern keine Freigabe des Routeraufbaus.
 
 ### 1.2 Statusbegriffe
 
 | Status | Bedeutung |
 |---|---|
-| **Idee** | Im Chat vorgeschlagene Erweiterung oder Architekturidee ohne verbindliche Umsetzungszusage. |
+| **Idee** | In der Planung vorgeschlagene Erweiterung oder Architekturidee ohne verbindliche Umsetzungszusage. |
 | **Beschlossen/geplant** | Als Ziel oder bevorzugte Richtung erkennbar festgehalten; weiterhin kein Implementierungsnachweis. |
 | **Implementiert** | Im Repository als Code/Konfiguration nachweisbar. |
 | **Getestet** | Durch einen konkreten dokumentierten Test belegt. |
 | **Im Betrieb bestätigt** | Durch reale Laufzeit-/Hardwarebeobachtung nachgewiesen. |
 
-Für den in diesem Chat diskutierten BPI-R4-/BE14-/RM520N-Aufbau wurde **weder Implementierung noch Test noch Betrieb** belegt.
+Für den für diesen Arbeitsstand diskutierten BPI-R4-/BE14-/RM520N-Aufbau wurde **weder Implementierung noch Test noch Betrieb** belegt.
 
 ## 2. Ziel, Ausgangslage und behandelte Themen
 
 Ausgangspunkt war die Suche nach einem SBC für NetCore-TETRA, das nicht nur Rechenplattform für einen Basisstations- oder Edge-Knoten sein soll, sondern zugleich einen sinnvollen **Router- und Access-Point-Charakter** mitbringt.
 
-Der Nutzer nannte ausdrücklich den **Banana Pi BPI-R4 und Varianten der R4-Familie** als Beispiel. Im weiteren Verlauf verschob sich die Frage von einem allgemeinen SBC-Vergleich zu einer konkreteren Architektur:
+Ausgangspunkt sind der **Banana Pi BPI-R4 und Varianten der R4-Familie**. Daraus entstand eine konkrete Routerarchitektur:
 
 - NetCore-TETRA-Dienste beziehungsweise Edge-Funktionen lokal betreiben;
 - mehrere Ethernet-Ports für WAN, Backbone, Management oder Service nutzen;
@@ -79,11 +62,11 @@ Die Kosten sollten dabei praktisch bleiben: Beim späteren Preisvergleich galt a
 
 | Schritt | Inhalt | Status |
 |---|---|---|
-| 1 | Suche nach einem NetCore-TETRA-SBC mit eigenem WLAN/AP; BPI-R4-Familie als Ausgangsidee. | Nutzeranforderung |
+| 1 | Suche nach einem NetCore-TETRA-SBC mit eigenem WLAN/AP; BPI-R4-Familie als Ausgangsidee. | Projektanforderung |
 | 2 | Vergleich BPI-R4 Pro, BPI-R4, R4 Mini, R3 Mini sowie grobe Einordnung gegenüber Raspberry Pi 5. | Analyse/Empfehlung |
 | 3 | BPI-R4 Pro 8X zunächst als maximal ausbaufähige Variante genannt. | Frühe Empfehlung |
 | 4 | Standard-BPI-R4 später als pragmatischere Hauptwahl bewertet, insbesondere wegen reiferem Software-/OpenWrt-Umfeld. | Spätere Empfehlung; ersetzt die frühere Priorisierung als Erstwahl |
-| 5 | Nutzer hebt den Router-Ansatz hervor und fragt nach 5G-SIM über M.2/PCIe. | Konkretisierung |
+| 5 | Router-Ansatz mit 5G-SIM über M.2/PCIe konkretisiert. | Konkretisierung |
 | 6 | Quectel RM520N-GL als bevorzugtes 5G-Modem vorgeschlagen; SIM soll über den Board-SIM-Slot genutzt werden. | Hardwareempfehlung |
 | 7 | BPI-R4-NIC-BE14 als bevorzugtes Wi-Fi-7-AP-Modul vorgeschlagen. | Hardwareempfehlung |
 | 8 | Konkreter Stack wird zu BPI-R4 8 GB + BE14 + RM520N-GL + optional 512 GB/1 TB NVMe verdichtet. | Letzte technische Empfehlung |
@@ -93,7 +76,7 @@ Die Kosten sollten dabei praktisch bleiben: Beim späteren Preisvergleich galt a
 
 ### 3.1 Spätere Präzisierung gegenüber der ersten Empfehlung
 
-Die **frühe Empfehlung „R4 Pro 8X als Favorit“ ist nicht der letzte Stand des Chats**. Später wurde der **normale BPI-R4 in 8-GB-Ausführung** als vernünftigere Erstwahl bewertet, weil für eine NetCore-Basisstation nicht nur maximale I/O-Zahl, sondern auch ein möglichst gut gereiftes OpenWrt-/Treiberumfeld zählt.
+Die **frühe Empfehlung „R4 Pro 8X als Favorit“ ist nicht der letzte Stand der Planung**. Später wurde der **normale BPI-R4 in 8-GB-Ausführung** als vernünftigere Erstwahl bewertet, weil für eine NetCore-Basisstation nicht nur maximale I/O-Zahl, sondern auch ein möglichst gut gereiftes OpenWrt-/Treiberumfeld zählt.
 
 Der BPI-R4 Pro bleibt relevant, wenn später deutlich mehr PCIe-/M.2-/Ethernet-Ressourcen benötigt werden. Er ist damit **Ausbaualternative**, nicht verworfene Hardware.
 
@@ -115,22 +98,22 @@ Der geplante NetCore-Knoten soll möglichst viele der folgenden Rollen in einem 
 
 ### 4.2 Bevorzugter Hardware-Stack
 
-| Komponente | Letzte Empfehlung im Chat | Einordnung |
+| Komponente | Letzte Empfehlung in der Planung | Einordnung |
 |---|---|---|
 | SBC/Router | **Banana Pi BPI-R4, bevorzugt 8 GB** | Bevorzugte Erstwahl, nicht gekauft/nicht getestet |
-| WLAN | **BPI-R4-NIC-BE14** | Bevorzugtes AP-Modul für 2,4/5/6 GHz Wi-Fi 7; im Chat als native R4-Lösung gewählt |
+| WLAN | **BPI-R4-NIC-BE14** | Bevorzugtes AP-Modul für 2,4/5/6 GHz Wi-Fi 7; in der Planung als native R4-Lösung gewählt |
 | 5G | **Quectel RM520N-GL** | Bevorzugtes M.2-WWAN-Modul mit 5G/LTE-Fallback |
 | Storage | 512 GB oder 1 TB NVMe | Option/Empfehlung |
 | Router-OS | OpenWrt als naheliegende Routerplattform | Planung; keine NetCore-spezifische Installation belegt |
 | VPN | WireGuard als naheliegender Backhaul-Tunnel | Architekturidee; keine Konfiguration belegt |
 
-**Wichtig:** Der Nutzer hat keine Bestellung oder finale Stücklistenfreigabe dokumentiert. Die drei Hauptkomponenten wurden im Gespräch als konkrete Kaufkandidaten verdichtet, nicht als bereits vorhandene Hardware.
+**Stand:** Bestellung und finale Stücklistenfreigabe sind nicht dokumentiert. Die drei Hauptkomponenten wurden in der Diskussion als konkrete Kaufkandidaten verdichtet, nicht als bereits vorhandene Hardware.
 
 ## 5. Betrachtete Boardvarianten
 
 ### 5.1 Banana Pi BPI-R4
 
-Im Chat wurde der Standard-R4 als Sweet Spot für die Basisstation bewertet:
+In der Planung wurde der Standard-R4 als Sweet Spot für die Basisstation bewertet:
 
 - vier Cortex-A73-Kerne im MT7988-Umfeld;
 - 4/8-GB-Varianten, wobei für NetCore **8 GB** bevorzugt wurden;
@@ -141,7 +124,7 @@ Im Chat wurde der Standard-R4 als Sweet Spot für die Basisstation bewertet:
 - zusätzliche PCIe-/miniPCIe-Anbindung für das BE14-WLAN-Modul;
 - USB für lokale Peripherie beziehungsweise den TETRA-SDR/SXceiver.
 
-Diese Produktmerkmale stammen aus der damaligen Hardware-/Webanalyse im Chat. **Vor Bestellung müssen Board-Revision, Pin-/Lane-Zuordnung und aktuelle Herstellerdokumentation erneut geprüft werden.**
+Diese Produktmerkmale stammen aus der damaligen Hardware-/Webanalyse in der Planung. **Vor Bestellung müssen Board-Revision, Pin-/Lane-Zuordnung und aktuelle Herstellerdokumentation erneut geprüft werden.**
 
 ### 5.2 Banana Pi BPI-R4 Pro / 8X
 
@@ -151,7 +134,7 @@ Der Pro wurde als besonders ausbaufähige Option diskutiert:
 - potenziell zwei NVMe-Laufwerke beziehungsweise zusätzliche WWAN-Erweiterungen;
 - geeignet, wenn die Basisstation später noch deutlich mehr Edge-Dienste oder lokale Storage-/Netzfunktionen übernimmt.
 
-Als Nachteil wurde die komplexere Lane-/Overlay-Situation einzelner Key-M-/Key-B-Ressourcen angesprochen. Zudem wurde im Chat der Software-/Mainline-Stand gegenüber dem normalen R4 als weniger konservative Wahl betrachtet.
+Als Nachteil wurde die komplexere Lane-/Overlay-Situation einzelner Key-M-/Key-B-Ressourcen angesprochen. Zudem wurde in der Planung der Software-/Mainline-Stand gegenüber dem normalen R4 als weniger konservative Wahl betrachtet.
 
 **Status:** Alternative; nicht als zwingende Erstwahl beibehalten.
 
@@ -159,7 +142,7 @@ Als Nachteil wurde die komplexere Lane-/Overlay-Situation einzelner Key-M-/Key-B
 
 Der R4 Mini wurde wegen integriertem WLAN als attraktiv für kleine Geräte betrachtet, aber für einen vollwertigen NetCore-Knoten als zu knapp eingeordnet:
 
-- deutlich weniger RAM, im Gespräch 2 GB;
+- deutlich weniger RAM, in der Diskussion 2 GB;
 - schwächere A53-CPU-Klasse;
 - interessant für kleine portable Nodes, aber nicht für den kompletten Dienstestapel.
 
@@ -173,7 +156,7 @@ Der R3 Mini wurde als möglicher **BlueStation-/Portable-Node** eingeordnet:
 - NVMe-Möglichkeit;
 - M.2 für Mobilfunk.
 
-Er bleibt ein interessanter Spezialkandidat, ist aber nicht die favorisierte Hauptplattform dieses Chats.
+Er bleibt ein interessanter Spezialkandidat, ist aber nicht die favorisierte Hauptplattform dieser Planung.
 
 ### 5.5 Raspberry Pi 5 als Vergleich
 
@@ -185,7 +168,7 @@ Daraus folgt ein noch offener technischer Prüfpunkt: Wenn der TETRA-PHY sehr CP
 
 ### 6.1 5G-/SIM-Integration
 
-Im Chat wurde das **RM520N-GL** als bevorzugter Kandidat gewählt. Die damalige Begründung:
+In der Planung wurde das **RM520N-GL** als bevorzugter Kandidat gewählt. Die damalige Begründung:
 
 - M.2-Key-B-Formfaktor für WWAN;
 - 5G NR Sub-6;
@@ -295,7 +278,7 @@ Die besondere Stärke des Ansatzes ist die Kombination aus **Router, AP, WWAN, S
 - WireGuard als bevorzugte VPN-Idee;
 - NetCore-interne Dienste wie MQTT, Management-APIs und Observability nur über definierte Trust-Zonen.
 
-**Keine produktiven Ports, IP-Adressen oder VLAN-IDs wurden in diesem Chat festgelegt.**
+**Keine produktiven Ports, IP-Adressen oder VLAN-IDs wurden für diesen Arbeitsstand festgelegt.**
 
 ## 7. Failover-, Degraded- und Island-Mode-Ideen
 
@@ -338,7 +321,7 @@ Als zukünftiger lokaler Weiterbetrieb bei Totalausfall der Zentrale wurden skiz
 
 Ein Router-SBC mit 5G und Wi-Fi direkt neben TETRA-RF ist mechanisch praktisch, HF-technisch aber nicht automatisch harmlos.
 
-Im Chat bereits hervorgehoben:
+In der Planung bereits hervorgehoben:
 
 - 5G-/LTE- und Wi-Fi-Antennen nicht gedankenlos direkt neben TETRA-RF-Anschlüsse setzen;
 - räumliche Trennung, saubere Masse-/Schirmführung und geeignete Pigtails berücksichtigen;
@@ -386,7 +369,7 @@ Die Code-/Dokumentensuche ergab:
 - **BPI-R4/BPI-R4 Pro** tauchen in Docs/NetCore-Tetra-Komplettguide-2026-09-28.md auf.
 - Dort werden mobile Router mit **5G, M.2-Funkmodulen, Access Point und kleinem Switch** ausdrücklich als erhaltene Ausbauidee genannt.
 - Für die diskutierten BPI-R4-/R4-Pro-Varianten werden **Strombudget, Treiber, Antennen, AP-Betrieb und VPN-Übergänge** noch als zu konkretisieren beschrieben.
-- Für die konkreten Suchbegriffe **RM520N**, **BE14**, **OpenWrt** und **wwan** ergab die heutige Suche keine belastbaren Treffer, die eine Implementierung dieses Hardware-Stacks belegen.
+- Für die konkreten Suchbegriffe **RM520N**, **BE14**, **OpenWrt** und **wwan** ergab die geprüfte Suche keine belastbaren Treffer, die eine Implementierung dieses Hardware-Stacks belegen.
 - Andere Vorkommen von „Router“ im Repository, etwa SDS-Router oder interne Software-Router, sind nicht mit dem hier geplanten physischen BPI-Router gleichzusetzen.
 
 **Fazit:** Die Router-/5G-/AP-Idee ist dokumentarisch erhalten; der konkrete BPI-R4 + BE14 + RM520N-GL-Stack ist im geprüften main nicht als produktive Integration nachgewiesen.
@@ -397,7 +380,7 @@ Im Branch Archiving existiert bereits:
 
 - [2026-10-03_werma-racksignalisierung-bpi-r4-pro-und-rack-architektur.md](2026-10-03_werma-racksignalisierung-bpi-r4-pro-und-rack-architektur.md)
 
-Dort wird der **BPI-R4 Pro als Router-/Switch-Option eines Rack-Konzepts** behandelt. Das vorliegende Dokument konkretisiert den späteren eigenen Chat zu:
+Dort wird der **BPI-R4 Pro als Router-/Switch-Option eines Rack-Konzepts** behandelt. Das vorliegende Dokument konkretisiert die spätere Routerplanung zu:
 
 - Auswahl innerhalb der R4-Familie;
 - Standard-R4 versus Pro;
@@ -410,22 +393,21 @@ Dort wird der **BPI-R4 Pro als Router-/Switch-Option eines Rack-Konzepts** behan
 
 ### 10.3 Eingangsstand des Archivbranches
 
-Vor dieser Archivierung stand Archiving bei **d37658d8588a367d11e979bfd29b07a8a50f61ef**. Bestehende Archiveinträge wurden vor dem Schreiben gelesen und der neue Dateiname auf Kollision geprüft.
 
 ## 11. Relevante Dateien, Dienste, Konfigurationen, Ports und Pfade
 
-Repository-seitig wurde in diesem Chat keine neue Runtime-Datei festgelegt. Relevant sind aktuell:
+Repository-seitig wurde für diesen Arbeitsstand keine neue Runtime-Datei festgelegt. Relevant sind aktuell:
 
 - Docs/NetCore-Tetra-Komplettguide-2026-09-28.md – enthält die allgemeine mobile Router-/5G-/BPI-R4-Ausbauidee.
 - Docs/archive/2026-10-03_werma-racksignalisierung-bpi-r4-pro-und-rack-architektur.md – verwandtes Archiv zum BPI-R4 Pro als Rackrouter.
 - Docs/archive/README.md – Archivindex.
 - Diese Datei – Konkretisierung der Router-SBC-/5G-/Wi-Fi-Auswahl.
 
-Es gibt **keine** in diesem Chat belegte produktive OpenWrt-Konfiguration, keine konkreten Ports für Routermanagement und keine feste VLAN-/IP-Tabelle.
+Es gibt **keine** für diesen Arbeitsstand belegte produktive OpenWrt-Konfiguration, keine konkreten Ports für Routermanagement und keine feste VLAN-/IP-Tabelle.
 
 ## 12. Wichtige Befehle und Installations-/Deploymentabläufe
 
-In diesem Chat wurden **keine Installations-, OpenWrt-, QMI-/MBIM-, WireGuard- oder AP-Befehle erfolgreich auf realer Hardware ausgeführt**.
+Für diesen Arbeitsstand wurden **keine Installations-, OpenWrt-, QMI-/MBIM-, WireGuard- oder AP-Befehle erfolgreich auf realer Hardware ausgeführt**.
 
 Ein sinnvoller späterer reproduzierbarer Ablauf wäre:
 
@@ -458,7 +440,7 @@ Es gab keine Laufzeitfehler einer realen R4-Installation. Die relevanten Risiken
 
 ### Tatsächlich durchgeführt
 
-- technische Bewertung der Kandidaten im Chat;
+- technische Bewertung der Kandidaten in der Planung;
 - historische Web-/Preisrecherche am 10.09.2026;
 - aktueller GitHub-Abgleich am 05.10.2026:
   - Branch Archiving geprüft;
@@ -491,7 +473,7 @@ Repository-Suche ist ein **statischer Nachweis über vorhandene Dateien**, kein 
 
 Die folgende Tabelle ist ein **historischer Snapshot aus der damaligen Suche**, kein aktuelles Angebot vom 05.10.2026:
 
-| Teil | Historischer Fund | Genannter Preis | Bewertung im Chat |
+| Teil | Historischer Fund | Genannter Preis | Bewertung in der Planung |
 |---|---|---:|---|
 | BPI-R4 4 GB | Joom | ca. **264,96 €** | brauchbarer, aber nicht besonders günstiger Fund |
 | BPI-R4 4 GB | Micros, Polen | **182,97 € netto**, rechnerisch ca. **217,73 € brutto** vor Versand | möglicher günstigerer Board-Fund; Versand nicht verifiziert |
@@ -511,14 +493,14 @@ Für die **8-GB-Ausführung** wurde im damaligen Verlauf kein sauber verifiziert
 | R4 Mini als Haupt-BS | **Nicht bevorzugt.** Zu wenig RAM/CPU-Reserve für den angedachten Gesamtstack. |
 | R3 Mini als Haupt-BS | **Nicht bevorzugt.** Eher portable BlueStation-/Spezialrolle. |
 | Raspberry Pi 5 + USB-WLAN als Routerplattform | **Nicht bevorzugt für diesen Zweck.** CPU interessant, aber Router-I/O des BPI-R4 passt besser. |
-| BE19 statt BE14 | **Nicht gewählt.** BE14 im Chat als konservativere R4-Lösung bevorzugt. |
+| BE19 statt BE14 | **Nicht gewählt.** BE14 in der Planung als konservativere R4-Lösung bevorzugt. |
 | Nur „5G-Internet“ | **Erweitert.** 5G soll perspektivisch echter Backhaul/Fallback mit VPN sein. |
 
-Der ursprünglich angebotene breitere Vergleich mit weiteren Router-SBCs wie Radxa/FriendlyElec/OpenWrt One/CM5/RK3588 wurde in diesem Chat nicht mehr durchgeführt, weil der Nutzer die Diskussion auf BPI-R4, 5G und WLAN konkretisierte.
+Der ursprünglich angebotene breitere Vergleich mit weiteren Router-SBCs wie Radxa/FriendlyElec/OpenWrt One/CM5/RK3588 wurde für diesen Arbeitsstand nicht mehr durchgeführt, da BPI-R4, 5G und WLAN als Schwerpunkt festgehalten wurden.
 
 ## 17. Sämtliche noch relevanten Ideen, Wünsche und offenen Aufgaben
 
-Roadmap-Kandidaten aus diesem Chat; außerhalb Docs/archive/ wird durch diesen Auftrag nichts geändert:
+Roadmap-Kandidaten aus dieser Planung; außerhalb Docs/archive/ wird durch diesen Auftrag nichts geändert:
 
 1. **BPI-R4-Referenzhardware festlegen:** Standard-R4 8 GB gegen R4 Pro anhand realer Anforderungen final entscheiden.
 2. **BOM einfrieren:** BE14, exakte RM520N-GL-Variante, NVMe, Kühlung, Netzteil, Antennen, Pigtails, Gehäuse.
@@ -594,21 +576,21 @@ Diese Entscheidung beeinflusst CPU-Benchmark, Ausfallsicherheit, Wartung und RF-
 - **Verwandtes Archiv:** [WERMA-Racksignalisierung, BPI-R4 Pro und Rack-Architektur](2026-10-03_werma-racksignalisierung-bpi-r4-pro-und-rack-architektur.md)
 - **Archivindex:** [README.md](README.md)
 
-Es wurde in diesem Chat kein eigener Implementierungs-PR für den BPI-R4-/5G-/Wi-Fi-Stack identifiziert oder erstellt.
+Es wurde für diesen Arbeitsstand kein eigener Implementierungs-PR für den BPI-R4-/5G-/Wi-Fi-Stack identifiziert oder erstellt.
 
-### Historische externe Referenzen aus dem Chat
+### Historische externe Referenzen aus den Projektaufzeichnungen
 
 Die damalige Beratung verwies auf Hersteller-/Wiki-/OpenWrt-/Quectel-Seiten sowie Preisvergleichs-/Marketplace-Angebote. Diese Quellen dienten der damaligen Auswahl; ihre Verfügbarkeit, Revision und Preise wurden bei diesem Archivlauf nicht erneut vollständig verifiziert.
 
 ## 20. Bilder und Anhänge
 
-**Keine eigenständigen Chatbilder vorhanden.** Daher wurde kein Bildasset für diesen Chat in Docs/archive/ angelegt.
+**Keine eigenständigen Originalbilder vorhanden.** Daher wurde kein Bildasset für diese Planung in Docs/archive/ angelegt.
 
-Die im Projektkontext verfügbaren ETSI-PDFs sind fachliche TETRA-Referenzen, aber keine Anhänge dieses Hardware-Auswahlgesprächs im engeren Sinn und keine Freigabe für BPI-R4, BE14 oder RM520N-GL. Sie wurden nicht kopiert oder dupliziert.
+Die im Projektkontext verfügbaren ETSI-PDFs sind fachliche TETRA-Referenzen, aber keine Anhänge dieses Hardware-Auswahl im engeren Sinn und keine Freigabe für BPI-R4, BE14 oder RM520N-GL. Sie wurden nicht kopiert oder dupliziert.
 
 ## 21. Abschlussbewertung
 
-Der Kerngewinn dieses Chats ist die Verschiebung von „irgendein SBC mit WLAN“ zu einem **routerzentrierten NetCore-Edge-Node**.
+Der Kerngewinn dieser Planung ist die Verschiebung von „irgendein SBC mit WLAN“ zu einem **routerzentrierten NetCore-Edge-Node**.
 
 Die bevorzugte Richtung lautet:
 

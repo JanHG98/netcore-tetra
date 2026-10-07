@@ -1,34 +1,30 @@
-# Abschlussdokumentation: Virtuelle TBS, virtuelle Funkgeräte, SimAir und Handover-Testlabor
+# Brainstorming: Virtuelle TBS, Funkgeräte und SimAir-Testlabor
 
-## 1. Metadaten und Aussagegrenzen
+## 1. Rahmen und Aussagegrenzen
 
 | Merkmal | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Vollwertige virtuelle TETRA-Basisstationen und Funkgeräte mit Web-MMI, Positionssimulation und Mehrzellen-/Call-Restore-Tests |
-| Ursprünglicher Chattitel | Von der verfügbaren Chatoberfläche nicht bereitgestellt. Für das Archiv wurde der obige beschreibende Titel gewählt. |
-| Chatlink | Nicht verfügbar; im zugänglichen Verlauf wurde keine stabile Chat-URL oder Chat-ID geliefert. |
-| Historische Unterhaltung | 2026-09-11 |
-| Datum dieser Abschlussdokumentation | 2026-10-05, Europe/Berlin |
-| Ursprünglich vom Nutzer referenziertes Repository/Branch | JanHG98/netcore-tetra, Branch mqtt |
+| Historischer Entwurfsstand | 2026-09-11 |
+| Notizstand | 2026-10-05, Europe/Berlin |
+| Historisch referenziertes Repository/Branch | JanHG98/netcore-tetra, Branch mqtt |
 | Historischer Anhang | netcore-tetra-mqtt.zip |
 | SHA-256 des ausgewerteten ZIP-Anhangs | 150bdeb4622ee3e7a15bb817ef354228d6e0f0546c9ad2e5b79feeb612bd53d4 |
 | ZIP-Git-Metadaten | Keine .git-Historie enthalten; aus dem ZIP allein ist daher kein exakter historischer Commit ableitbar. |
-| Heute geprüfter Runtime-Branch | main |
-| Heute geprüfter main-Commit | 9116c15d645458f99e236712b67a1ad970432791 |
-| Zielbranch dieses Archivauftrags | Archiving |
+| Am Prüfstand 05.10.2026 geprüfter Runtime-Branch | main |
+| Am Prüfstand 05.10.2026 geprüfter main-Commit | 9116c15d645458f99e236712b67a1ad970432791 |
 | Vor dem Schreiben geprüfter Archiving-Commit | 1e264140796a4b1875ecf6f75aa088669f6d8108 |
 | Vor dem Schreiben geprüfter Archiving-Tree | 0c9bab792d26add85b2f82bfdd2a4691fe44d45f |
 | Ablage | Docs/archive/2026-10-05_virtuelle-tbs-funkgeraete-simair-handover-testlabor.md |
-| Änderungsumfang | Ausschließlich diese Archivdatei und Docs/archive/README.md; keine Runtime-, Roadmap- oder Konfigurationsänderung außerhalb Docs/archive/. |
 
-### 1.1 Ausgewertete Quellen
+### 1.1 Arbeitsgrundlage
 
-Ausgewertet wurden der gesamte in diesem Chat sichtbare Gesprächsverlauf, der vom Nutzer verlinkte damalige Branchzustand soweit heute noch rekonstruierbar, der Anhang netcore-tetra-mqtt.zip sowie der aktuelle Repository-Stand. Das ZIP enthält 2.586 Einträge und unter anderem den vollständigen Unterbaum ms-mode/, die zentralen Mobility-/Call-Control-Dokumente sowie die damaligen Zwei-Zellen-Tests.
+Der historische Stand stammt aus `netcore-tetra-mqtt.zip`: 2.586 Einträge einschließlich `ms-mode/`, Mobility-/Call-Control-Dokumenten und Zwei-Zellen-Tests. Das ZIP enthält keine Git-Historie und kann keinem exakten historischen Commit zugeordnet werden.
 
-Der Branch mqtt ist am 2026-10-05 nicht mehr als eigener Branch auffindbar. Die GitHub-Branch-Abfrage auf mqtt leitete auf main um; eine Branch-Suche nach mqtt ergab keinen Treffer. Deshalb wird der historische Chatstand aus dem ZIP und den damals im Chat zitierten Dateien rekonstruiert und strikt vom heutigen main-Stand getrennt.
+Der Branch `mqtt` war am **2026-10-05** nicht mehr auffindbar. Historischer ZIP-Stand und `main@9116c15d645458f99e236712b67a1ad970432791` werden daher getrennt bewertet.
 
-Relevante heutige Dateien wurden gegen main@9116c15d645458f99e236712b67a1ad970432791 geprüft. Dazu gehören insbesondere:
+Relevante geprüfte Dateien wurden gegen main@9116c15d645458f99e236712b67a1ad970432791 geprüft. Dazu gehören insbesondere:
 
 - ms-mode/docs/MS_MODE.md
 - ms-mode/crates/tetra-pdus/src/phy/traits/rxtx_dev.rs
@@ -42,15 +38,13 @@ Relevante heutige Dateien wurden gegen main@9116c15d645458f99e236712b67a1ad97043
 - bins/bluestation-bs/src/main.rs
 - Docs/archive/2026-10-05_android-tetra-modul-virtueller-airlink-und-realtime-core.md
 
-### 1.2 Auswertungslücken
+### 1.2 Offene Nachweise
 
-Es gibt keinen vollständigen exportierten Chatdatensatz außerhalb der sichtbaren Unterhaltung. Ursprünglicher Chattitel und Chatlink fehlen. Das ZIP enthält keine Git-Historie, deshalb kann sein Inhalt keinem exakten historischen SHA zugeordnet werden.
+Eigenständige Bilder des Simulationsentwurfs liegen nicht vor. Projektgrafiken im ZIP sind allgemeine Quellen, keine Belege eines laufenden Testlabors.
 
-In diesem Chat wurden keine eigenständigen Bilder, Screenshots oder Diagrammdateien vom Nutzer hochgeladen. Der ZIP-Anhang enthält Projektgrafiken, diese sind aber keine Chatbilder dieses Gesprächs und wurden deshalb nicht zusätzlich unter Docs/archive/ dupliziert. Der Auftrag „Bilder des Chats hochladen“ ist für diesen Chat damit ohne zusätzliche Binärdatei erfüllt: es gibt keine zuordenbaren Chatbilder.
+Bei der Bestandsaufnahme wurden keine Rust-Builds, Unit-/Integrationstests, RF-Messungen, WebUI-Interaktionen oder Live-Handover ausgeführt. Hinweise auf Tests und Hardwarevalidierung stammen aus Repository-Dokumentation oder vorhandenem Testcode; sie belegen keine vollständige Simulatorabnahme.
 
-Es wurden in diesem Archivierungsauftrag keine Rust-Builds, keine Unit-/Integrationstests, keine RF-Messungen, keine WebUI-Interaktion und kein Live-Handover ausgeführt. Aussagen über vorhandene Tests und Hardware-Validierung stammen aus eingecheckter Projektdokumentation beziehungsweise vorhandenem Testcode und werden entsprechend gekennzeichnet.
-
-Keine Passwörter, Tokens, Schlüssel oder anderen Zugangsdaten wurden übernommen.
+---
 
 ## 2. Statusmodell
 
@@ -58,16 +52,16 @@ Diese Dokumentation verwendet die folgenden Belegstufen strikt:
 
 | Status | Bedeutung |
 |---|---|
-| Idee | Im Chat erwogene Funktion oder Architektur ohne verbindliche Umsetzung. |
-| Beschlossen/geplant | Vom Nutzer als Ziel gewünscht oder in einem späteren Projektchat ausdrücklich als Zielarchitektur festgelegt; noch kein Implementierungsnachweis. |
+| Idee | Erwogene Funktion oder Architektur ohne verbindliche Umsetzung. |
+| Beschlossen/geplant | Als Ziel gewünscht oder in einer späteren Projektplanung ausdrücklich als Zielarchitektur festgelegt; noch kein Implementierungsnachweis. |
 | Implementiert | Quellcode oder eingecheckte Konfiguration im geprüften Repository vorhanden. |
-| Getestet | Ein konkreter Test ist im Repository vorhanden oder im Projekt dokumentiert. „Test vorhanden“ bedeutet nicht, dass er in diesem Archivierungsauftrag ausgeführt wurde. |
-| Im Betrieb bestätigt | Ein realer RF-/Hardware-/Livebetrieb ist explizit dokumentiert. Auch das wurde in diesem Auftrag nicht erneut nachgestellt. |
-| Überholt/präzisiert | Ein früherer Vorschlag wurde durch spätere Projektentscheidungen oder den heutigen Repository-Befund ersetzt beziehungsweise enger gefasst. |
+| Getestet | Ein konkreter Test ist im Repository vorhanden oder im Projekt dokumentiert. „Test vorhanden“ bedeutet nicht, dass er bei der Bestandsaufnahme ausgeführt wurde. |
+| Im Betrieb bestätigt | Ein realer RF-/Hardware-/Livebetrieb ist explizit dokumentiert. Auch das wurde bei der Bestandsaufnahme nicht erneut nachgestellt. |
+| Überholt/präzisiert | Ein früherer Vorschlag wurde durch spätere Projektentscheidungen oder den geprüften Repository-Befund ersetzt beziehungsweise enger gefasst. |
 
-## 3. Ziel und Ausgangslage des Chats
+## 3. Ziel und Ausgangslage des Arbeitsstands
 
-Der Nutzer wollte nicht lediglich Mock-Daten in einem Dashboard erzeugen, sondern virtuelle Basisstationen und virtuelle Funkgeräte so simulieren, dass NetCore-Tetra damit realistische End-to-End-Szenarien testen kann. Für virtuelle Funkgeräte war ausdrücklich eine Weboberfläche mit PTT, Display, D-Pad und möglichst vollständiger Bedienbarkeit gewünscht.
+Ziel sind virtuelle Basisstationen und Funkgeräte für realistische Ende-zu-Ende-Szenarien mit NetCore-Tetra. Eine reine Dashboard-Simulation genügt dafür nicht. Für virtuelle Funkgeräte war ausdrücklich eine Weboberfläche mit PTT, Display, D-Pad und möglichst vollständiger Bedienbarkeit gewünscht.
 
 Als Zieltests wurden insbesondere genannt:
 
@@ -77,9 +71,9 @@ Als Zieltests wurden insbesondere genannt:
 - Übergabe beziehungsweise Wiederherstellung laufender Gespräche zwischen TBS,
 - später möglichst umfassende Nutzung der virtuellen Funkgeräte wie eines realen Endgeräts.
 
-Die damalige Kernfrage war die Machbarkeit. Die Antwort fiel positiv aus, weil im mqtt-Stand bereits ein umfangreicher MS-Mode, getrennte Core-Dienste und Mehrzellen-/Restore-Bausteine vorhanden waren. Der Chat hat noch keine Implementierung beauftragt; die ausführliche Simulationsarchitektur war ein technischer Entwurf.
+Die Machbarkeitseinschätzung ist positiv: Im historischen `mqtt`-Stand bestanden bereits MS-Mode, getrennte Core-Dienste und Mehrzellen-/Restore-Bausteine. Der Simulator ist bisher ein technischer Entwurf; eine Implementierung war noch nicht beauftragt.
 
-## 4. Zentrale fachliche Entscheidung des Chats
+## 4. Zentrale fachliche Entscheidung des Arbeitsstands
 
 Die wichtigste Empfehlung war, keine „Fake-Funkgeräte“ zu bauen, die über spezielle Test-REST-Endpunkte direkt Zustände in NetCore schreiben. Stattdessen sollen virtuelle Teilnehmer und virtuelle Basisstationen dieselben Protokollzustände und möglichst dieselben Stack-Komponenten nutzen wie reale Geräte.
 
@@ -89,13 +83,13 @@ Historischer Architekturgrundsatz:
 
 Damit sollte ein virtueller Teilnehmer beispielsweise eine Registrierung als echte U-LOCATION-UPDATE-DEMAND-/Downlink-Antwort-Sequenz durchlaufen, statt direkt als „registered=true“ in einer Datenbank angelegt zu werden. Dasselbe gilt für Gruppenaffiliation, PTT/Floor, SDS, LIP und Call Restore.
 
-Dieser Grundsatz bleibt weiterhin sinnvoll und wird durch die heutige Codebasis gestützt.
+Dieser Grundsatz bleibt weiterhin sinnvoll und wird durch die geprüfte Codebasis gestützt.
 
 ## 5. Historischer Architekturvorschlag: VirtualRxTxDev und SimAir
 
 ### 5.1 Ursprünglicher Vorschlag
 
-Der Chat schlug einen zusätzlichen virtuellen PHY-Pfad vor, sinngemäß:
+Ansatz: ein zusätzlicher virtueller PHY-Pfad, sinngemäß:
 
 ~~~text
 PhyBackend::SoapySdr
@@ -154,9 +148,9 @@ Für reine CI-Tests kann ein VirtualRxTxDev als Adapter auf SimAir sinnvoll blei
 
 ## 6. Spätere Präzisierung: nicht nur exklusives Virtual-Backend
 
-Der historische Vorschlag „SoapySdr ODER Virtual“ wurde in einem späteren, heute bereits archivierten Projektchat präzisiert. Die dort festgehaltene Zielarchitektur verlangt einen virtuellen Airlink parallel zum RF-Pfad und trennt ihn vom netzweiten Realtime-Control-/Media-Pfad.
+Der historische Vorschlag „SoapySdr ODER Virtual“ wurde in einem späteren, am Prüfstand 05.10.2026 bereits archivierten Projektentwurf präzisiert. Die dort festgehaltene Zielarchitektur verlangt einen virtuellen Airlink parallel zum RF-Pfad und trennt ihn vom netzweiten Realtime-Control-/Media-Pfad.
 
-Daraus folgt für eine heutige Fortsetzung:
+Daraus folgt für eine geprüfte Fortsetzung:
 
 - Ein exklusives PhyBackend::Virtual ist weiterhin nützlich für vollständig offline laufende CI-/Laborsimulation.
 - Für die langfristige Produktarchitektur sollte der virtuelle Airlink zusätzlich parallel zu SoapySDR funktionieren können.
@@ -221,13 +215,13 @@ Browser-Mikrofon
   -> virtuelle oder reale Luftschnittstelle
 ~~~
 
-Der historische Chat behandelte eine neue Radio-WebUI als noch zu bauende Komponente. Der heutige ms-mode-Text verweist jedoch bereits auf das externe Companion-Projekt misadeks/tetra-tn-web-ui für portable-radio UI, Codeplug, Call Control und ACELP. Für eine Fortsetzung sollte daher zuerst geprüft werden, welche MMI-Funktionen dort bereits vorhanden sind, statt eine zweite UI von Null zu entwickeln.
+Im frühen Entwurf war die Radio-WebUI eine noch zu bauende Komponente. Der geprüfte ms-mode-Text verweist jedoch bereits auf das externe Companion-Projekt misadeks/tetra-tn-web-ui für portable-radio UI, Codeplug, Call Control und ACELP. Für eine Fortsetzung sollte daher zuerst geprüft werden, welche MMI-Funktionen dort bereits vorhanden sind, statt eine zweite UI von Null zu entwickeln.
 
 ## 8. Aktueller MS-Mode-Befund
 
-### 8.1 Historischer und heutiger Funktionsstand
+### 8.1 Historischer und geprüfter Funktionsstand
 
-Die Datei ms-mode/docs/MS_MODE.md liegt heute unverändert mit demselben Blob-SHA wie im geprüften historischen Stand vor. Sie dokumentiert unter anderem:
+Die Datei ms-mode/docs/MS_MODE.md liegt am Prüfstand 05.10.2026 unverändert mit demselben Blob-SHA wie im geprüften historischen Stand vor. Sie dokumentiert unter anderem:
 
 **Im Repository als hardware-validiert markiert:**
 
@@ -264,7 +258,7 @@ Die Datei ms-mode/docs/MS_MODE.md liegt heute unverändert mit demselben Blob-SH
 - Packet Data im damaligen MS-Mode,
 - in-stack ACELP.
 
-### 8.2 Wichtige Integrationsnuance des heutigen main
+### 8.2 Wichtige Integrationsnuance des geprüften main
 
 Der aktuelle Top-Level-Cargo-Workspace listet ms-mode/ **nicht** als Workspace-Member. Er baut die Root-Pakete unter crates/, bins/ und system-backend/. Der Unterbaum ms-mode/ ist ein eigener vollständiger Stand mit eigenen Cargo-Dateien.
 
@@ -274,7 +268,7 @@ Daraus folgt ein P0-Architekturpunkt: Vor der Simulatorimplementierung muss fest
 
 ## 9. Virtuelle Basisstation
 
-Der historische Chat empfahl ausdrücklich, keine eigenständige „Fake TBS“ mit eigener Logik zu schreiben. Eine virtuelle TBS soll möglichst dieselbe TBS-Implementierung verwenden wie eine physische TBS und lediglich den Luftschnittstellenadapter austauschen beziehungsweise um einen virtuellen Airlink ergänzen.
+Architekturprinzip: keine eigenständige „Fake TBS“ mit abweichender Logik. Eine virtuelle TBS soll möglichst dieselbe TBS-Implementierung verwenden wie eine physische TBS und lediglich den Luftschnittstellenadapter austauschen beziehungsweise um einen virtuellen Airlink ergänzen.
 
 Das ist weiterhin die bevorzugte Architektur:
 
@@ -332,7 +326,7 @@ Für reproduzierbare CI-Tests sollte Zufall nur mit festem Seed verwendet werden
 
 Der historische Entwurf empfahl, simulierte Positionen als echte TETRA-LIP-SDS zu senden und sie nicht direkt in eine Control-Room-Datenbank einzutragen.
 
-Der heutige Root-Code bestätigt, dass LIP-Payloads bereits dekodiert werden können. In crates/tetra-entities/src/cmce/subentities/sds_bs.rs wird PID 0x0A erkannt und eine plausible WGS84-Position dekodiert. Zusätzlich enthält misc/brew-server/src/position.rs Decoder für kurze und Motorola-artige lange LIP-Berichte.
+Der geprüfte Root-Code bestätigt, dass LIP-Payloads bereits dekodiert werden können. In crates/tetra-entities/src/cmce/subentities/sds_bs.rs wird PID 0x0A erkannt und eine plausible WGS84-Position dekodiert. Zusätzlich enthält misc/brew-server/src/position.rs Decoder für kurze und Motorola-artige lange LIP-Berichte.
 
 Eine repositoryweite Suche fand dagegen keinen eindeutig benannten encode_lip_position-Pfad. Damit gilt:
 
@@ -346,7 +340,7 @@ Roadmap-Folge: LIP-Encoding als MS-Funktion implementieren oder vorhandene SDS-B
 
 ### 11.1 Mobility Context Transfer
 
-Der heutige Mobility-Core dokumentiert einen dreistufigen Transfer:
+Der geprüfte Mobility-Core dokumentiert einen dreistufigen Transfer:
 
 1. MobilityExportContext auf der Quell-TBS,
 2. MobilityImportContext auf der Ziel-TBS,
@@ -356,7 +350,7 @@ Der heutige Mobility-Core dokumentiert einen dreistufigen Transfer:
 
 Die Quelle wird erst nach bestätigtem Import entfernt. Aktive CMCE-Calls werden nicht als MM-Kontext transportiert, sondern über die Call-Restore-Logik behandelt.
 
-Status: **implementiert/dokumentiert**, in diesem Archivierungsauftrag nicht live ausgeführt.
+Status: **implementiert/dokumentiert**, bei der Bestandsaufnahme nicht live ausgeführt.
 
 ### 11.2 Call Restore
 
@@ -392,7 +386,7 @@ Damit existiert bereits eine gute Protokollbasis für einen späteren echten Sim
 
 Die Call-Restore-Dokumentation sagt ausdrücklich, dass Media Frames in diesem Paket noch nicht zwischen Zellen transportiert werden; das soll der Media Switch übernehmen.
 
-Das ist für das Nutzerziel „laufendes Gespräch beim Zellwechsel“ der wichtigste verbleibende Integrationspunkt. Ein Restore kann signalisierungsseitig korrekt sein und trotzdem eine hörbare Lücke erzeugen.
+Das ist für das Ziel „laufendes Gespräch beim Zellwechsel“ der wichtigste verbleibende Integrationspunkt. Ein Restore kann signalisierungsseitig korrekt sein und trotzdem eine hörbare Lücke erzeugen.
 
 Deshalb sollte der Simulator messen:
 
@@ -492,7 +486,7 @@ Akzeptanzkriterium: definierte maximale Sprachunterbrechung und keine Doppelwied
 
 ## 14. Beispiel eines Szenariorunners
 
-Der folgende Entwurf stammt konzeptionell aus dem Chat und ist **nicht implementiert**:
+Der folgende Entwurf stammt konzeptionell aus den Entwicklungsnotizen und ist **nicht implementiert**:
 
 ~~~yaml
 scenario: moving_group_call
@@ -543,7 +537,7 @@ Für eine reale Implementierung müssen Schema, Zeitbasis, Fehlermodell und Asse
 | Call Restore | Restore Context + Ziel-Leg-Korrelation | Implementiert/dokumentiert |
 | Netzweite Medien | Media Switch | Für vollständige Handover-Kontinuität noch zu integrieren |
 
-Im Chat wurden keine festen neuen TCP-/UDP-Ports festgelegt. Solche Werte dürfen deshalb nicht aus anderen Projektteilen in diese Chatentscheidung hineininterpretiert werden.
+Neue TCP-/UDP-Ports wurden noch nicht festgelegt. Bestehende Ports anderer Komponenten sind keine automatische Vorgabe für den Simulator.
 
 ## 16. Relevante Dateien und Pfade
 
@@ -571,7 +565,7 @@ Der ZIP-Anhang enthält diese Pfade ebenfalls beziehungsweise den damaligen Stan
 
 ## 17. Befehle, Installation und Deployment
 
-In diesem Chat wurden keine Shellbefehle, Installationskommandos, Systemd-Änderungen oder Deploymentabläufe für den Simulator ausgeführt.
+Ein ausgeführter Installations-/Deploymentablauf für den Simulator ist noch nicht dokumentiert.
 
 Es gab ausschließlich Architektur- und Datenflussvorschläge. Deshalb existiert hier kein „funktionierender Installationsbefehl“, der später ungeprüft wiederverwendet werden sollte.
 
@@ -579,39 +573,39 @@ Für die künftige Implementierung sollte zunächst ein in-process Testtarget en
 
 ## 18. Fehler, Diagnose und verbleibende Probleme
 
-Im ursprünglichen Chat trat kein konkreter Runtimefehler auf. Die heutige Gegenprüfung zeigt jedoch mehrere Architektur- beziehungsweise Reifeprobleme:
+Im ursprünglichen Entwurf trat kein konkreter Runtimefehler auf. Die geprüfte Gegenprüfung zeigt jedoch mehrere Architektur- beziehungsweise Reifeprobleme:
 
-1. **Historischer mqtt-Branch nicht mehr vorhanden.**  
-   Der alte Link ist kein reproduzierbarer Branchstand mehr. Das ZIP ist deshalb für diesen Chat die wichtigste historische Momentaufnahme.
+1. **Historischer mqtt-Branch nicht mehr vorhanden.**\
+   Der alte Link ist kein reproduzierbarer Branchstand mehr. Das ZIP ist deshalb für diesen Arbeitsstand die wichtigste historische Momentaufnahme.
 
-2. **Kein VirtualRxTxDev/SimAir im aktuellen main gefunden.**  
+2. **Kein VirtualRxTxDev/SimAir im aktuellen main gefunden.**\
    Repositoryweite Suche nach VirtualRxTxDev, SimAir und PhyBackend::Virtual lieferte keine Implementierung.
 
-3. **MS-Mode-Konsolidierung offen.**  
+3. **MS-Mode-Konsolidierung offen.**\
    Der vollständige MS-Unterbaum liegt separat unter ms-mode/ und ist nicht Mitglied des Top-Level-Cargo-Workspace. Teile des Root-Baums kennen StackMode::Ms, der Root-Binary-Startpfad ist aber nicht als vollständiger MS-Runtimepfad nachgewiesen.
 
-4. **Automatische Neighbor-Relection fehlt.**  
+4. **Automatische Neighbor-Relection fehlt.**\
    Ohne sie ist ein positionsgetriebener Zellwechsel nicht realistisch.
 
-5. **Media-Handover ist noch nicht vollständig.**  
+5. **Media-Handover ist noch nicht vollständig.**\
    Call Restore koordiniert Signalisierung, aber das aktuelle Restore-Dokument weist die Übertragung der Media Frames zwischen Zellen noch dem Media Switch als späteren Schritt zu.
 
-6. **LIP-Sendepfad für Simulator nicht nachgewiesen.**  
+6. **LIP-Sendepfad für Simulator nicht nachgewiesen.**\
    Decoder sind vorhanden; ein klarer Encoderbaustein wurde nicht gefunden.
 
-7. **Historischer Either-or-PHY-Vorschlag wurde später präzisiert.**  
+7. **Historischer Either-or-PHY-Vorschlag wurde später präzisiert.**\
    Für ein hybrides Testlabor soll Virtual Air parallel zu RF möglich sein.
 
-8. **Skalierung und Determinismus sind noch ungetestet.**  
+8. **Skalierung und Determinismus sind noch ungetestet.**\
    Es gibt keine Belege für 50/100/500 virtuelle Teilnehmer, keine Simulator-Lasttests und keinen deterministischen Handover-Benchmark.
 
 ## 19. Durchgeführte Tests und ihre Grenzen
 
-### 19.1 In diesem Archivierungsauftrag tatsächlich durchgeführt
+### 19.1 Bei der Bestandsaufnahme tatsächlich durchgeführt
 
 - Repositorydateien statisch gelesen.
 - Branchstatus main/Archiving geprüft.
-- Nichtvorhandensein des mqtt-Branches heute geprüft.
+- Nichtvorhandensein des mqtt-Branches am Prüfstand 05.10.2026 geprüft.
 - Historisches ZIP programmgesteuert inventarisiert und relevante Dateien gelesen.
 - Repositoryweite Suchen nach VirtualRxTxDev/SimAir/Virtual Backend und LIP-Encoder durchgeführt.
 
@@ -623,7 +617,7 @@ Keine Builds und keine ausführbaren Tests wurden gestartet.
 - test_two_cell_call_restore.rs besitzt mehrere konkrete Mehrzellen-Restore-Tests.
 - Root-Tests enthalten MS-bezogene StackMode::Ms-Testfälle.
 
-Diese vorhandenen Tests bestätigen einzelne Protokollbausteine, aber **nicht** den in diesem Chat entworfenen vollständigen SimAir, die Browser-MMI, positionsgetriebene Reselection oder eine nahtlose Ende-zu-Ende-Mediaübergabe.
+Diese vorhandenen Tests bestätigen einzelne Protokollbausteine, aber **nicht** den entworfenen vollständigen SimAir, die Browser-MMI, positionsgetriebene Reselection oder eine nahtlose Ende-zu-Ende-Mediaübergabe.
 
 ## 20. Verworfene oder ersetzte Ansätze
 
@@ -649,9 +643,9 @@ Grund: Zwei Implementierungen würden auseinanderlaufen. Die virtuelle TBS soll 
 
 Besser: virtueller MS erzeugt reguläre Positionstelegramme; NetCore dekodiert und verarbeitet sie auf normalem Weg.
 
-## 21. Roadmap-Kandidaten aus diesem Chat
+## 21. Roadmap-Kandidaten aus diesem Arbeitsstand
 
-Diese Punkte sind **Roadmap-Kandidaten in dieser Archivdatei**. Der Auftrag erlaubt keine Änderung der zentralen Roadmap außerhalb Docs/archive/.
+Diese Punkte sind Vorschläge für die Umsetzung und noch keine beschlossene Termin- oder Implementierungsroadmap.
 
 | Priorität | Kandidat | Abhängigkeiten | Erfolgskriterium |
 |---|---|---|---|
@@ -671,7 +665,7 @@ Diese Punkte sind **Roadmap-Kandidaten in dieser Archivdatei**. Der Auftrag erla
 
 ## 22. Konkrete nächste Schritte
 
-Die sinnvollste Fortsetzung aus heutiger Sicht ist:
+Die sinnvollste Fortsetzung aus geprüfter Sicht ist:
 
 1. **Keinen UI-Code zuerst schreiben.** Zuerst den Airlink-/SimClock-Vertrag festlegen.
 2. **Entscheiden, welcher MS-Stack führend wird.** Nested ms-mode und Root-Main dürfen nicht parallel auseinanderentwickelt werden.
@@ -685,17 +679,17 @@ Die sinnvollste Fortsetzung aus heutiger Sicht ist:
 ## 23. Relevante verwandte Archivdokumente
 
 - [Android-TETRA-Modul, virtueller Airlink und Realtime-Core](2026-10-05_android-tetra-modul-virtueller-airlink-und-realtime-core.md) — spätere Präzisierung auf parallelen virtuellen Airlink und getrennte Realtime-Control-/Media-Pfade.
-- [Foundation/Mobility/Core-LXC-Abschlussdokumentation](2026-10-04_swmi-foundation-mobility-core-lxc-open-lab.md) — verwandter Mobility-/Restore-Kontext.
+- [Foundation/Mobility/Core-LXC-Projektnotizen](2026-10-04_swmi-foundation-mobility-core-lxc-open-lab.md) — verwandter Mobility-/Restore-Kontext.
 - [Gesprächssimulator und lokale PTT-Sprechstelle](2026-10-03_gespraechssimulator-issi-und-lokale-mikrofon-ptt-sprechstelle.md) — anderer Simulatorbegriff: netzseitige Gesprächsszenarien, nicht vollständige virtuelle MS.
 
-Diese Dokumente ergänzen den Chat, ersetzen aber nicht seine spezifische Zielsetzung eines vollständigen virtuellen Funkgeräts.
+Die verwandten Unterlagen ergänzen den Simulatorentwurf. Maßgeblich bleibt das Ziel eines vollständig bedienbaren virtuellen Funkgeräts.
 
 ## 24. Abschlussbewertung
 
-Die Machbarkeitseinschätzung des ursprünglichen Chats bleibt bestehen: Ein vollwertiges virtuelles TETRA-Testlabor ist mit NetCore-Tetra technisch sehr gut realisierbar, weil bereits MS-Protokollbausteine, eine abstrahierte RX/TX-Kante, Mobility Context Transfer, Call Restore, SDS/LIP-Dekodierung und Mehrzellentests existieren.
+Die Machbarkeitseinschätzung des ursprünglichen Entwurfs bleibt bestehen: Ein vollwertiges virtuelles TETRA-Testlabor ist mit NetCore-Tetra technisch sehr gut realisierbar, weil bereits MS-Protokollbausteine, eine abstrahierte RX/TX-Kante, Mobility Context Transfer, Call Restore, SDS/LIP-Dekodierung und Mehrzellentests existieren.
 
 Der entscheidende Unterschied zwischen „Demo“ und „brauchbarem Prüflabor“ ist die Integrationskante. Der Simulator sollte auf Slot-/Burstebene oder einer äquivalenten Airlink-Schnittstelle einspeisen und die echten Protokollzustände darüber laufen lassen.
 
-Seit dem ursprünglichen Chat hat sich die Zielarchitektur präzisiert: Virtual Air soll langfristig parallel zu RF möglich sein, und der Airlink ist von zentralem Call-/Media-Routing zu trennen. Gleichzeitig ist noch kein SimAir/VirtualRxTxDev im aktuellen main nachgewiesen. Automatische Reselection, ein sauberer LIP-Sendepfad und die vollständige Media-Kontinuität beim Zellwechsel bleiben die wichtigsten technischen Lücken.
+Seit dem ursprünglichen Entwurf hat sich die Zielarchitektur präzisiert: Virtual Air soll langfristig parallel zu RF möglich sein, und der Airlink ist von zentralem Call-/Media-Routing zu trennen. Gleichzeitig ist noch kein SimAir/VirtualRxTxDev im aktuellen main nachgewiesen. Automatische Reselection, ein sauberer LIP-Sendepfad und die vollständige Media-Kontinuität beim Zellwechsel bleiben die wichtigsten technischen Lücken.
 
-Damit ist dieser Chat fachlich abgeschlossen, ohne eine Umsetzung vorzutäuschen. Er liefert eine belastbare Architektur- und Roadmap-Grundlage für die spätere Implementierung.
+Für die Umsetzung stehen damit Architektur, Anschlussstellen und offene Integrationspunkte fest. Das vollständige SimAir-Testlabor bleibt zu bauen und abzunehmen.

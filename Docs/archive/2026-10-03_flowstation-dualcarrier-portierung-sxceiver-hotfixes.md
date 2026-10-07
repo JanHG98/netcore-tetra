@@ -1,28 +1,25 @@
-# Technische Abschlussdokumentation: FlowStation-DualCarrier-Portierung, SXceiver und Hotfixes 001–009
+# Brainstorming: FlowStation-DualCarrier-Portierung, SXceiver und Hotfixes 001–009
 
-> **Historisches Ergebnis, kein aktuelles Deployment-Handbuch.** Dieser Chat behandelt die erste Übernahme des zweiten Carriers in Jans FlowStation-Fork und die anschließende Fehlersuche am SXceiver. Der Benutzer bestätigte das Ende der Gesprächsschleife nach Hotfix 006. Eine vollständige Abnahme unabhängiger Gespräche auf dem zweiten Carrier wurde nicht dokumentiert. Der am 03.10.2026 überprüfte Repository-Code ist wesentlich weiterentwickelt und weicht insbesondere bei Ressourcenvergabe, Secondary-Control und TX-Timing vom damaligen Stand ab.
+> **Historisches Ergebnis, kein aktuelles Deployment-Handbuch.** Gegenstand ist die erste Übernahme des zweiten Carriers in den FlowStation-Fork und die anschließende Fehlersuche am SXceiver. Nach Hotfix 006 wurde das Ende der Gesprächsschleife im Betrieb bestätigt. Eine vollständige Abnahme unabhängiger Gespräche auf dem zweiten Carrier wurde nicht dokumentiert. Der am 03.10.2026 überprüfte Repository-Code ist wesentlich weiterentwickelt und weicht insbesondere bei Ressourcenvergabe, Secondary-Control und TX-Timing vom damaligen Stand ab.
 
-## 1. Metadaten, Umfang und Belegqualität
+## 1. Rahmen und Quellenstand
 
 | Merkmal | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
-| Thema dieses Chats | FlowStation-Upstreamvergleich; DualCarrier-Portierung ohne Verlust eigener Integrationen; Konfiguration 418/408 MHz; SXceiver; Hotfixes; Dashboard/Telemetrie; Git-Push und Versionierung |
-| Ursprünglicher Chattitel | Im zugänglichen Verlauf nicht eindeutig verfügbar; der Dokumenttitel ist eine redaktionelle Themenbeschreibung. |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link und keine Chat-ID erfunden. |
-| Historischer Zeitraum | 28.06.2026; die Betriebslogs tragen `Jun 28`. Das Jahr wird zusätzlich durch den heute aufgelösten Commit des Tags `v1.3.0` vom 28.06.2026 gestützt. |
+| Thema dieses Vorhabens | FlowStation-Upstreamvergleich; DualCarrier-Portierung ohne Verlust eigener Integrationen; Konfiguration 418/408 MHz; SXceiver; Hotfixes; Dashboard/Telemetrie; Git-Push und Versionierung |
+| Historischer Zeitraum | 28.06.2026; die Betriebslogs tragen `Jun 28`. Das Jahr wird zusätzlich durch den am 03.10.2026 aufgelösten Commit des Tags `v1.3.0` vom 28.06.2026 gestützt. |
 | Erstellungs- und Prüftag dieses Archivs | **03.10.2026** |
 | Historischer Fork | `JanHG98/flowstation`, überwiegend lokaler Arbeitsbranch `main` |
 | Aktuelles Archiv-Repository | `JanHG98/netcore-tetra` |
-| Auflösung des alten Repository-Namens heute | Die GitHub-Abfrage für `JanHG98/flowstation` liefert `JanHG98/netcore-tetra`, Repository-ID `1281497427`. Der alte Name wird nicht als zweites unabhängiges aktuelles Repository behandelt. |
-| Ausschließlicher Schreibbranch dieses Auftrags | **`Archiving`** |
+| Auflösung des alten Repository-Namens am 03.10.2026 | Die GitHub-Abfrage für `JanHG98/flowstation` liefert `JanHG98/netcore-tetra`, Repository-ID `1281497427`. Der alte Name wird nicht als zweites unabhängiges aktuelles Repository behandelt. |
+| Geprüfter Branch | **`Archiving`** |
 | Archiving bei Beginn der Prüfung | `15c3f9f8dc8313dc6efdc2039ab86ad8719015ff`, Tree `9dafb6acb37a8142791700bf1595d920962703b3` |
 | Zusätzlich geprüfter main-Stand | `6aa9be8f74ab731f72dc133a5f8e90c5018c626d` |
-| Heute aufgelöster historischer Tag | `v1.3.0` → `7834f46748f3205ce6d3e6e1480345c6bdf27bca` |
+| Am 03.10.2026 aufgelöster historischer Tag | `v1.3.0` → `7834f46748f3205ce6d3e6e1480345c6bdf27bca` |
 | Historischer Upstreambezug | `razvanzeces/flowstation`; damalige Suchergebnisse verwiesen unter anderem auf `ca8e901e49bdfee9f303406e534735d37093166d`. Das ist ein damaliger Quellenanker, keine nachgewiesene gemeinsame Merge-Basis. |
-| Upstream-HEAD bei heutiger Abfrage | `0f4faa98b1abe9ec295cf7a94a7a1fa4b3a869b8`, Branch `main`; nur ergänzend aufgelöste Metadaten, kein vollständiger erneuter Upstream-Audit. |
+| Upstream-HEAD bei Abfrage vom 03.10.2026 | `0f4faa98b1abe9ec295cf7a94a7a1fa4b3a869b8`, Branch `main`; nur ergänzend aufgelöste Metadaten, kein vollständiger erneuter Upstream-Audit. |
 | Ablage | `Docs/archive/2026-10-03_flowstation-dualcarrier-portierung-sxceiver-hotfixes.md` |
-| Änderungsumfang dieses Archivauftrags | Nur diese Dokumentation und der zugehörige Eintrag in `Docs/archive/README.md`; keine Quellcode-, Konfigurations-, Release- oder Wiki-Änderungen. |
 
 **Belegstufen in diesem Dokument:**
 
@@ -30,23 +27,23 @@
 - **Beschlossen/geplant:** ausdrücklicher Wunsch beziehungsweise vereinbarter nächster Schritt; noch keine Aussage über vorhandenen Code.
 - **Implementiert, statisch belegt:** in einem bezeichneten ZIP oder einem festgehaltenen Git-Commit im Quelltext vorhanden. Das bedeutet weder erfolgreich gebaut noch im Funkbetrieb geprüft.
 - **Getestet:** ein tatsächlich ausgeführter Test mit nachvollziehbarem Ergebnis. Nur vorgeschlagene `cargo`-Befehle zählen nicht.
-- **Im Betrieb bestätigt:** konkrete Benutzerbeobachtung oder Laufzeitlog für den bezeichneten Stand. Diese Bestätigung gilt nur für das beobachtete Verhalten, nicht pauschal für alle Funktionen.
+- **Im Betrieb bestätigt:** konkrete Betriebsbeobachtung oder Laufzeitlog für den bezeichneten Stand. Diese Bestätigung gilt nur für das beobachtete Verhalten, nicht pauschal für alle Funktionen.
 
-Die Auswertung umfasst den sichtbaren Dialog, die relevanten Konfigurations- und Loganhänge, die beiden Dashboard-Abbildungen sowie eine statische Prüfung der ausgelieferten Archive, insbesondere des vollständigen Hotfix-009-Standes. Einige ältere Werkzeugaufrufe sind im sichtbaren Verlauf nur als übersprungene Nachrichten vorhanden; deren damalige genaue Ergebnisse oder Arbeitsschritte werden nicht rekonstruiert. Titel und Chatlink bleiben offen. Die zusätzlich verfügbaren ETSI-Unterlagen wurden nicht vollständig neu ausgewertet; gezielte Fundstellen sind in Abschnitt 12 getrennt als heutige fachliche Einordnung aufgeführt.
+Grundlagen sind die Konfigurations- und Loganhänge, zwei Dashboard-Abbildungen sowie die ausgelieferten Archive, insbesondere der vollständige Hotfix-009-Stand. Frühere Diagnoseergebnisse sind teilweise nicht erhalten. Die ETSI-Unterlagen wurden nicht vollständig neu geprüft; gezielte Fundstellen stehen in Abschnitt 12 als fachliche Einordnung vom 03.10.2026.
 
 **Zugangsdaten:** Die ursprüngliche Konfiguration enthielt Zugangsdaten. Keine Passwörter, Tokens, privaten Schlüssel, Authentifizierungswerte oder vollständigen geheimnishaltigen Konfigurationsdateien werden in dieses Archiv übernommen. Interne Hostnamen, IP-Adressen, Ports und Funkparameter bleiben als technische Betriebskontextdaten erhalten.
 
 ## 2. Ziel, Ausgangslage und zentrale Schlussfolgerung
 
-Jan wollte DualCarrier aus `razvanzeces/flowstation` in seinen erweiterten Fork übernehmen, ohne eigene Funktionen durch einen pauschalen Dateiaustausch oder unkontrollierten Merge zu verlieren. Zunächst wurden vollständige Dateipfade und konkrete Änderungen angefordert, anschließend ein direkt anwendbarer Patch und nach dessen Scheitern komplette Ersatzdateien beziehungsweise ZIP-Pakete.
+Ziel war, DualCarrier aus `razvanzeces/flowstation` in den erweiterten Fork zu übernehmen, ohne eigene Funktionen durch einen pauschalen Dateiaustausch oder unkontrollierten Merge zu verlieren. Zunächst wurden vollständige Dateipfade und konkrete Änderungen angefordert, anschließend ein direkt anwendbarer Patch und nach dessen Scheitern komplette Ersatzdateien beziehungsweise ZIP-Pakete.
 
 Zu erhalten waren insbesondere NetCore-Directory-Anbindung, Brew/Brew2, EchoLink, MeshCom, SDS-/Status-Kommandos, Motorola-TPG2200-bezogene Funktionen, Asterisk/SIP und die vorhandenen Dashboard- und Gateway-Erweiterungen. Ein Teil dieser Integrationen war in der hochgeladenen Betriebskonfiguration ausgeschaltet. **Vorhandener Code, aktivierter Dienst und erfolgreich getestete Integration sind deshalb drei verschiedene Aussagen.**
 
-Die erste Antwort reduzierte den Umbau fälschlich auf `sec_cell.rs`, ein neues Dashboard-Modul und zwei HTTP-Routen. Tatsächlich müssen Konfiguration, Frequenzableitung, SDR-Tuning, Modulatoren/Demodulatoren, SAP-Primitiven, LMAC, UMAC, Ressourcenvergabe, Rufsteuerung und Telemetrie zusammenpassen. Die nachfolgenden Fehler machten diese Abhängigkeiten sichtbar.
+Der erste Ansatz reduzierte den Umbau fälschlich auf `sec_cell.rs`, ein neues Dashboard-Modul und zwei HTTP-Routen. Tatsächlich müssen Konfiguration, Frequenzableitung, SDR-Tuning, Modulatoren/Demodulatoren, SAP-Primitiven, LMAC, UMAC, Ressourcenvergabe, Rufsteuerung und Telemetrie zusammenpassen. Die nachfolgenden Fehler machten diese Abhängigkeiten sichtbar.
 
-**Belastbares historisches Ergebnis:** Zwei Carrier wurden konfiguriert und vom Stack abgeleitet; das SDR startete mit 600 kS/s und den expliziten Mittenfrequenzen. Auf dem Hauptträger wurde ein Gespräch auf TS2 zugewiesen. Nach dem Hamming-Dedupe meldete Jan, dass die Schleife verschwunden war. Für eine unabhängige, vollständig funktionierende Traffic-Zuweisung auf Carrier 721 fehlt im Chat der Nachweis. Die heutige Nachprüfung des alten ZIPs und des Tags `v1.3.0` zeigt zudem einen damals noch auf drei Traffic-Slots begrenzten Allocator.
+**Belastbares historisches Ergebnis:** Zwei Carrier wurden konfiguriert und vom Stack abgeleitet; das SDR startete mit 600 kS/s und den expliziten Mittenfrequenzen. Auf dem Hauptträger wurde ein Gespräch auf TS2 zugewiesen. Nach dem Hamming-Dedupe war das Ende der Schleife im Betrieb bestätigt. Für eine unabhängige, vollständig funktionierende Traffic-Zuweisung auf Carrier 721 fehlt in den Arbeitsnotizen der Nachweis. Die geprüfte Nachprüfung des alten ZIPs und des Tags `v1.3.0` zeigt zudem einen damals noch auf drei Traffic-Slots begrenzten Allocator.
 
-**Belastbares heutiges Ergebnis:** Der aktuelle Code besitzt inzwischen einen sechs Ressourcen umfassenden logischen Allocator und weitergehende Carrier-Zuordnungen. Er betreibt den Secondary im Modus `SecondaryBcchNoMcch` und lässt zugewiesene Kontrollsignalisierung auf dessen Traffic-Slots zu. Der damalige Traffic-only-Zwischenstand darf daher nicht als aktuelle Sollarchitektur zurückgespielt werden. Details und Grenzen stehen in Abschnitt 11. [R1–R8]
+**Belastbares geprüftes Ergebnis:** Der aktuelle Code besitzt inzwischen einen sechs Ressourcen umfassenden logischen Allocator und weitergehende Carrier-Zuordnungen. Er betreibt den Secondary im Modus `SecondaryBcchNoMcch` und lässt zugewiesene Kontrollsignalisierung auf dessen Traffic-Slots zu. Der damalige Traffic-only-Zwischenstand darf daher nicht als aktuelle Sollarchitektur zurückgespielt werden. Details und Grenzen stehen in Abschnitt 11. [R1–R8]
 
 ## 3. Chronologie und Entscheidungsentwicklung
 
@@ -68,9 +65,9 @@ Die erste Antwort reduzierte den Umbau fälschlich auf `sec_cell.rs`, ein neues 
 | Dritter Carrier | Idee eines dritten Trägers, etwa 719 zusätzlich zu 720/721; zuerst Hardening. | Idee, nicht implementiert. Fähigkeiten des einzelnen MS wurden in der damaligen Begründung zu pauschal interpretiert. |
 | Hotfix 007 | Verbesserte RX-Logs, hartes Secondary-Uplink-Gating, Carrier-Zuordnung in Telemetrie und Dashboard. | Umsetzungsauftrag und ZIP. Optional konfigurierbarer Filter beziehungsweise echte MS-fähigkeitsabhängige Entscheidung nicht belegt. |
 | Hotfix 008 | Secondary bewusst auf `TrafficOnly`; BCCH-Anzeige entfernen; Idle-Slots leer. | Quelltextpaket vorhanden; direkt danach zeigt Benutzerlog ständig fehlenden BBK auf Secondary. |
-| Hotfix 009 | All-empty-Slots nicht mehr als fehlerhafte Pakete behandeln, sondern überspringen. | ZIP und heute aufgelöster Release-Commit vorhanden. Kein anschließender erfolgreicher Last-/Funk-Test im Chat dokumentiert. |
-| Version | Intern zunächst v0.3.8/v0.4.0 vorgeschlagen. Jan korrigierte Produktstand auf **v1.2.1**; daraus Vorschlag **v1.3.0**. | v0.x-Vorschläge überholt. Codename „Ghostbuster“ nur Vorschlag. |
-| Git-Push | `GH007` wegen privater Commit-E-Mail; Noreply-/Amend-Anleitung; weiterer Push ohne sichtbare Ablehnung. | Letzter Push-Ausschnitt abgeschnitten, daher kein vollständiger damaliger Remote-HEAD-Abgleich. Tag `v1.3.0` heute tatsächlich nachgewiesen. |
+| Hotfix 009 | All-empty-Slots nicht mehr als fehlerhafte Pakete behandeln, sondern überspringen. | ZIP und am 03.10.2026 aufgelöster Release-Commit vorhanden. Kein anschließender erfolgreicher Last-/Funk-Test in den Arbeitsnotizen dokumentiert. |
+| Version | Intern zunächst v0.3.8/v0.4.0 vorgeschlagen. Verbindlicher Produktstand **v1.2.1**; daraus Vorschlag **v1.3.0**. | v0.x-Vorschläge überholt. Codename „Ghostbuster“ nur Vorschlag. |
+| Git-Push | `GH007` wegen privater Commit-E-Mail; Noreply-/Amend-Anleitung; weiterer Push ohne sichtbare Ablehnung. | Letzter Push-Ausschnitt abgeschnitten, daher kein vollständiger damaliger Remote-HEAD-Abgleich. Tag `v1.3.0` am 03.10.2026 tatsächlich nachgewiesen. |
 
 ## 4. Historische Anforderungen und zuletzt vereinbarter Stand
 
@@ -78,7 +75,7 @@ Die erste Antwort reduzierte den Umbau fälschlich auf `sec_cell.rs`, ein neues 
 
 Gezielter Port statt Ersetzen ganzer Upstream-Dateien war die zentrale Anforderung. Besonders `config.rs`, `parsing.rs`, Dashboard `mod.rs`/`server.rs` und die Integrationen enthielten Fork-Erweiterungen. Ein bloßes Kopieren der Upstream-Version konnte diese entfernen.
 
-Die Benutzerentscheidung, vollständige Dateien zu erhalten, war eine **Auslieferungsform**, keine Freigabe, eigene Funktionen ungeprüft zu überschreiben. Alle späteren ZIPs waren als auf dem gelieferten Stand aufbauende Ersatzdateien gedacht. Eine vollständige, automatisierte Regression aller Eigenfunktionen wurde nicht gezeigt.
+Die Projektentscheidung, vollständige Dateien zu erhalten, war eine **Auslieferungsform**, keine Freigabe, eigene Funktionen ungeprüft zu überschreiben. Alle späteren ZIPs waren als auf dem gelieferten Stand aufbauende Ersatzdateien gedacht. Eine vollständige, automatisierte Regression aller Eigenfunktionen wurde nicht gezeigt.
 
 ### 4.2 Konfiguration und Umschaltung
 
@@ -90,23 +87,23 @@ Die Benutzerentscheidung, vollständige Dateien zu erhalten, war eine **Ausliefe
 - Ein fehlerhafter vorgeschlagener TOML-Inhalt soll vor dem Schreiben beziehungsweise Neustart abgewiesen werden.
 - Explizite RX-/TX-Mittenfrequenzen sind unabhängig von der logischen Hauptträgerfrequenz; die Main-Felder bleiben 418/408 MHz.
 
-Diese Semantik ist im heutigen Dashboard-Modul weiterhin statisch nachvollziehbar. Sie bestätigt nicht, dass die damalige Benutzerdatei nach jedem Versuch unverändert geblieben ist. [R9]
+Diese Semantik ist im geprüften Dashboard-Modul weiterhin statisch nachvollziehbar. Sie bestätigt nicht, dass die damalige Benutzerdatei nach jedem Versuch unverändert geblieben ist. [R9]
 
 ### 4.3 Historisches Secondary-Hardening
 
-Zuletzt wurde im Chat beschlossen, den Primary für MCCH/Common-Control zu nutzen und den Secondary nicht als zweiten allgemeinen Random-Access-/Common-Control-Träger zu behandeln. Hotfix 007 sperrte Non-main-Uplink ohne zugewiesenen Traffic; Hotfix 008 setzte den Secondary-Scheduler auf `TrafficOnly` und erzeugte im Idle leere Slots.
+Zuletzt wurde in den Arbeitsnotizen beschlossen, den Primary für MCCH/Common-Control zu nutzen und den Secondary nicht als zweiten allgemeinen Random-Access-/Common-Control-Träger zu behandeln. Hotfix 007 sperrte Non-main-Uplink ohne zugewiesenen Traffic; Hotfix 008 setzte den Secondary-Scheduler auf `TrafficOnly` und erzeugte im Idle leere Slots.
 
-**Wichtige Abgrenzung:** Die Formulierung „solange die Endgeräte `concurrent_multicarrier: false` melden“ wurde nicht als pro Endgerät ausgewertete Bedingung umgesetzt. Der alte Filter war global. Auch eine absolute Aussage „auf Secondary darf kein BCCH laufen“ lässt sich aus dieser Capability nicht ableiten. Der heutige Stand hat diese Vereinfachung bereits wieder verlassen; siehe Abschnitte 11 und 12.
+**Wichtige Abgrenzung:** Die Formulierung „solange die Endgeräte `concurrent_multicarrier: false` melden“ wurde nicht als pro Endgerät ausgewertete Bedingung umgesetzt. Der alte Filter war global. Auch eine absolute Aussage „auf Secondary darf kein BCCH laufen“ lässt sich aus dieser Capability nicht ableiten. Der geprüfte Stand hat diese Vereinfachung bereits wieder verlassen; siehe Abschnitte 11 und 12.
 
 ### 4.4 Anzeige und Telemetrie
 
 Gewünscht waren zwei eindeutig getrennte Carrier-Reihen mit jeweils vier physischen Timeslots, Live-Call- und Voice-Anzeige auf dem tatsächlich zugehörigen Carrier sowie keine gegenseitige Überschreibung von beispielsweise C720/TS2 und C721/TS2. Eine statische Kachel oder ein `running_active`-Flag allein sollte nicht als Funkmessung oder Kapazitätsnachweis gelten.
 
-Die ersten Erweiterungen zeichneten lediglich zusätzliche Slots. Carrier-fähige Ereignisse und Zustandsverwaltung kamen erst später. Die heutigen logischen TS5–TS7 sind eine weitere Entwicklung und müssen von den vier physischen Slots pro Carrier unterschieden werden.
+Die ersten Erweiterungen zeichneten lediglich zusätzliche Slots. Carrier-fähige Ereignisse und Zustandsverwaltung kamen erst später. Die geprüften logischen TS5–TS7 sind eine weitere Entwicklung und müssen von den vier physischen Slots pro Carrier unterschieden werden.
 
 ## 5. Architektur, Schichten und Abhängigkeiten
 
-Der relevante Pfad lässt sich für diesen Chat so zusammenfassen:
+Relevanter Verarbeitungspfad:
 
 ```text
 config.toml
@@ -132,13 +129,13 @@ Telemetrieereignisse
   -> Carrier- und Timeslotanzeige
 ```
 
-Die Namen beschreiben den im Chat und den geprüften Quellen sichtbaren Ablauf. Sie behaupten keinen vollständig ETSI-konformen Gesamtstack.
+Die Namen beschreiben den in den Arbeitsnotizen und den geprüften Quellen sichtbaren Ablauf. Sie behaupten keinen vollständig ETSI-konformen Gesamtstack.
 
 ### 5.1 Warum Carrier-Zuordnung durchgängig sein muss
 
 Ein physischer Timeslot `2` ist bei zwei Trägern nicht mehr eindeutig. Entweder alle betroffenen Ebenen arbeiten konsequent mit `(carrier_num, air_ts)`, oder höhere Ebenen verwenden einen eindeutigen logischen Bearer-Schlüssel und übersetzen kontrolliert an der Funkgrenze. Halbe Umbauten führen zu falsch freigegebenen Ressourcen, überschriebenen Calls, falscher Audiozuordnung oder falsch angezeigter Aktivität.
 
-Das ursprüngliche Stage-2-Paket führte `carrier_num` in mehreren PHY-/SAP-Strukturen ein, hatte aber die komplette höhere Ressourcenvergabe noch nicht entsprechend umgebaut. Heute verwendet das Repository in wesentlichen höheren Pfaden logische Bearer-IDs 2–7; UMAC und Dashboard besitzen dafür explizite Übersetzungsfunktionen. [R3, R4]
+Das ursprüngliche Stage-2-Paket führte `carrier_num` in mehreren PHY-/SAP-Strukturen ein, hatte aber die komplette höhere Ressourcenvergabe noch nicht entsprechend umgebaut. Am 03.10.2026 verwendet das Repository in wesentlichen höheren Pfaden logische Bearer-IDs 2–7; UMAC und Dashboard besitzen dafür explizite Übersetzungsfunktionen. [R3, R4]
 
 ### 5.2 Schnittstellen und Datenstrukturen
 
@@ -155,15 +152,15 @@ Nicht jedes im damaligen Upstream gefundene `carrier_num`-Feld wurde tatsächlic
 
 ### 5.3 Abhängigkeiten
 
-Historisch sichtbar sind ein Rust/Cargo-Workspace mit `tetra-core`, `tetra-config`, `tetra-saps`, `tetra-pdus`, `tetra-entities` und `bluestation-bs`, SoapySDR, SoapySX, systemd und Linux auf dem Pi-/SXceiver-System. Für den verwendeten Asterisk-Build wurde `--features asterisk` genannt; die Konfigurationsdokumentation verweist auf die native TETRA-Codec-Bibliothek für diese Integration. Eine erfolgreiche Installation jeder nativen Abhängigkeit wurde in diesem Chat nicht einzeln protokolliert.
+Historisch sichtbar sind ein Rust/Cargo-Workspace mit `tetra-core`, `tetra-config`, `tetra-saps`, `tetra-pdus`, `tetra-entities` und `bluestation-bs`, SoapySDR, SoapySX, systemd und Linux auf dem Pi-/SXceiver-System. Für den verwendeten Asterisk-Build wurde `--features asterisk` genannt; die Konfigurationsdokumentation verweist auf die native TETRA-Codec-Bibliothek für diese Integration. Eine erfolgreiche Installation jeder nativen Abhängigkeit wurde in dieser Entwicklungsphase nicht einzeln protokolliert.
 
-Brew, Asterisk, Directory, Snom, Telegram und weitere NetCore-Dienste sind Integrationspartner; sie dürfen bei Carrier-Umbauten nicht stillschweigend aus Modullisten oder Konfigurationen verschwinden. Der heutige Workspace ist um zahlreiche zentrale Dienste erweitert. Eine Untersuchung aller dieser Dienste gehört nicht zu diesem Archiv-Audit.
+Brew, Asterisk, Directory, Snom, Telegram und weitere NetCore-Dienste sind Integrationspartner; sie dürfen bei Carrier-Umbauten nicht stillschweigend aus Modullisten oder Konfigurationen verschwinden. Der geprüfte Workspace ist um zahlreiche zentrale Dienste erweitert. Eine Untersuchung aller dieser Dienste gehört nicht zu diesem Archiv-Audit.
 
 ## 6. Funkparameter, Konfiguration und lokaler Betrieb
 
 ### 6.1 Korrigierte Frequenzberechnung
 
-Der im Chat gelesene `FreqInfo`-Code verwendet für den Downlink:
+Der in den Arbeitsnotizen gelesene `FreqInfo`-Code verwendet für den Downlink:
 
 ```text
 DL_Hz = freq_band * 100000000 + carrier * 25000 + freq_offset
@@ -235,7 +232,7 @@ Die Gainangaben werden nur als Treibereinstellungen dokumentiert, nicht als kali
 |---|---|---|
 | Basisstations-WebUI | `0.0.0.0:8080`, HTTP; Dashboard-Livefeed über WebSocket | Listener und Login im Log, Zugangswerte ausgelassen. |
 | DualCarrier-Verwaltung | `GET /api/dualcarrier`, `POST /api/dualcarrier`, JSON | Implementierter Dashboard-Pfad; POST plant Neustart. |
-| Betriebs-/Carrierinfo | `GET /api/btsinfo` | Als Einfügestelle und Anzeigequelle im Chat relevant. |
+| Betriebs-/Carrierinfo | `GET /api/btsinfo` | Als Einfügestelle und Anzeigequelle in den Arbeitsnotizen relevant. |
 | Brew-Backhaul | `10.0.1.22:8081`, `ws://`, TLS im Anhang aus | Verbindung bestätigt; Versionserkennung v0, kein vollständiger Medien-/SDS-Nachweis. |
 | NetCore Directory | `http://10.0.1.23:8095`, u. a. `/api/devices`; Timeout 2000 ms | Im Log Abruffehler und Rückfall auf lokale `devices.json`. |
 | Asterisk-Gegenstelle | `10.0.1.21:5060`, SIP | Integration aktiviert; Gesprächstests separat erforderlich. |
@@ -243,7 +240,7 @@ Die Gainangaben werden nur als Treibereinstellungen dokumentiert, nicht als kali
 | RTP-Bereich | 30000–30100; Codec-Konfiguration PCMU | Konfiguriert; keine Paketmitschnitte zur Abnahme. |
 | Rufpräfixe | ausgehend `91`, Strip aktiv; eingehend `T` | Bestehende Routingfunktion bewahren. `service_numbers = ["*"]` war breit konfiguriert, keine neue Empfehlung. |
 | SDS-Kommandos | historisches Steuerziel ISSI 4010001 | Status 33001–33006 für restart, shutdown, kick_all, ip, temp, info; Zugriffsberechtigungen lokal. |
-| Wetterdienst | historischer Service ebenfalls ISSI 4010001 | Bestandteil des damaligen Setups, keine heutige globale Nummernplanentscheidung. |
+| Wetterdienst | historischer Service ebenfalls ISSI 4010001 | Bestandteil des damaligen Setups, keine geprüfte globale Nummernplanentscheidung. |
 | Health | Samplerintervall 300 s; Watchdog-Neustart aus | Startlog und Konfiguration. |
 | Recovery | proaktiver und reaktiver Modus im Anhang ausgeschaltet | Nicht nachträglich als im Betrieb getestete Recovery interpretieren. |
 
@@ -253,7 +250,7 @@ Brew und Asterisk waren aktiviert; Snom- und Telegram-Worker wurden gestartet. E
 
 ### 7.1 Unvollständiger Erstport und nicht anwendbarer Patch
 
-Der handgeschriebene Patch wurde vom Benutzer als nicht funktionierend zurückgemeldet. In der sichtbaren Patchfassung standen künstliche Index-Platzhalter und unzuverlässige Hunk-Angaben. `git apply --3way` ist kein Ersatz für einen korrekten Diff und eine tatsächlich passende Basis. Eine jetzt ausgeführte rein lesende Strukturprüfung mit `git apply --numstat` meldete `corrupt patch at line 11`; es wurde kein Patch angewendet. Das Verfahren wurde historisch durch komplette Ersatzdateien und anschließend den vollständigen Repo-Upload ersetzt.
+Der handgeschriebene Patch wurde ausdrücklich als nicht funktionierend zurückgemeldet. In der sichtbaren Patchfassung standen künstliche Index-Platzhalter und unzuverlässige Hunk-Angaben. `git apply --3way` ist kein Ersatz für einen korrekten Diff und eine tatsächlich passende Basis. Eine jetzt ausgeführte rein lesende Strukturprüfung mit `git apply --numstat` meldete `corrupt patch at line 11`; es wurde kein Patch angewendet. Das Verfahren wurde historisch durch komplette Ersatzdateien und anschließend den vollständigen Repo-Upload ersetzt.
 
 Die später erkannte Notwendigkeit von UMAC-, LMAC-, PHY-, SAP- und Call-Control-Änderungen widerlegt die erste Aussage, es handele sich im Kern nur um einen kleinen Dashboard-/Config-Port. Diese erste Einschätzung ist ausdrücklich **überholt**.
 
@@ -270,7 +267,7 @@ error[E0596]: cannot borrow bbk_bits as mutable
 
 Der alte globale Bool-Reset in `lmac_bs.rs::tick_start` passte nicht mehr zum Carrier-/Timeslot-bezogenen HashMap-Zustand. Der zweite Fehler entstand, weil `BitBuffer::to_bitarr` den internen Lesezustand verändert und deshalb einen veränderlichen Buffer benötigt. Ausgeliefert wurden die Entfernung der falschen Zuweisung und `let Some(mut bbk_bits) = prim.bbk else { ... }`.
 
-Das war ein Compilerfix, kein Nachweis korrekter Lebensdauer aller Stealing-Flags. Der heutige LMAC behandelt den zweiten gestohlenen Halbslot gezielter burstbezogen; siehe Abschnitt 11.
+Das war ein Compilerfix, kein Nachweis korrekter Lebensdauer aller Stealing-Flags. Der geprüfte LMAC behandelt den zweiten gestohlenen Halbslot gezielter burstbezogen; siehe Abschnitt 11.
 
 ### 7.3 Hotfix 002: Center-Felder und tatsächlicher SDR-Pfad
 
@@ -280,7 +277,7 @@ Die primäre Konfiguration scheiterte zuerst mit:
 Unrecognized fields: phy_io.soapysdr::["rx_center_freq", "tx_center_freq"]
 ```
 
-Zusätzlich fehlte `/home/jan/flowstation/config.toml.fallback`. Damit war keine gültige Startkonfiguration vorhanden. Das vorübergehende Auskommentieren der Center-Felder war nur ein Workaround. Jan verlangte ausdrücklich einen Fix, der die Werte **akzeptiert und nutzt**.
+Zusätzlich fehlte `/home/jan/flowstation/config.toml.fallback`. Damit war keine gültige Startkonfiguration vorhanden. Das vorübergehende Auskommentieren der Center-Felder war nur ein Workaround. Verbindlich gefordert ist ein Fix, der die Werte **akzeptiert und nutzt**.
 
 Die spätere Auslieferung erweiterte DTO/Config-Zuordnung, Validierung und `soapyio.rs`. Der Benutzerlog zeigte anschließend:
 
@@ -305,7 +302,7 @@ Im damaligen zeilenorientierten Writer genügte eine mit `[` beginnende Zeile, u
 
 Die Korrektur unterscheidet Tabellenköpfe wie `[cell_info]` oder `[[cell_info.neighbor_cells_ca]]` von Arrayzeilen wie `[0, 90],`. Die API prüft den vorgeschlagenen Inhalt vor dem eigentlichen Schreiben. Deshalb beweist die UI-Fehlermeldung zunächst einen fehlerhaften **Entwurf**, nicht automatisch eine bereits auf Platte beschädigte Datei. Der damals vorsorglich vorgeschlagene Restore aus `.dualcarrier.bak` war nicht als tatsächlich ausgeführt bestätigt.
 
-Die heutige Lösung bleibt ein begrenzter Zeilenscanner und kein vollständiger formatbewahrender TOML-Parser. Mehrzeilige Strings, zitierte Tabellen und andere gültige TOML-Formen benötigen zusätzliche Tests beziehungsweise eine robuste Parser-/Writer-Lösung. [R9]
+Die geprüfte Lösung bleibt ein begrenzter Zeilenscanner und kein vollständiger formatbewahrender TOML-Parser. Mehrzeilige Strings, zitierte Tabellen und andere gültige TOML-Formen benötigen zusätzliche Tests beziehungsweise eine robuste Parser-/Writer-Lösung. [R9]
 
 ### 7.5 Fehlende und nicht unterstützte Sample-Rate
 
@@ -343,7 +340,7 @@ Das passt zu Jans Beobachtung: TS2 sendet, TS3 leuchtet sehr kurz auf, danach Sc
 
 Die damalige Diagnose lautete Nachbarkanal-Ghost beziehungsweise Doppeldecodierung desselben Uplinks durch zwei Demodulatoren. Die Logs stützen doppelte Weiterverarbeitung; **eine HF-/IQ-Messung, die die physikalische Ursache abschließend beweist, fehlt**. Die etwa 10 dB schwächere zweite RSSI-Kopie ist ein Hinweis, keine vollständige Ursachenbestimmung.
 
-Hotfix 005 verglich rohe Bursts exakt. Das reichte nicht. Hotfix 006 verglich Hamming-Distanzen; danach bestätigte Jan das Ende der Schleife. Die Erklärung, zwei unterschiedliche Rohbitfolgen könnten nach Fehlerkorrektur zum gleichen MAC-Inhalt führen, ist plausibel, aber im Chat nicht durch gespeicherte Rohbitpaare samt Decoder-Test nachgewiesen.
+Hotfix 005 verglich rohe Bursts exakt. Das reichte nicht. Hotfix 006 verglich Hamming-Distanzen; danach war das Ende der Schleife im Betrieb bestätigt. Die Erklärung, zwei unterschiedliche Rohbitfolgen könnten nach Fehlerkorrektur zum gleichen MAC-Inhalt führen, ist plausibel, aber in den Arbeitsnotizen nicht durch gespeicherte Rohbitpaare samt Decoder-Test nachgewiesen.
 
 ### 7.7 Residuale Carrier-721-Meldungen nach Hotfix 006
 
@@ -351,7 +348,7 @@ Der letzte kurze Anhang `(32)` zeigt im `ChanAllocElement` `carrier_num: 720` un
 
 Die damalige Antwort wertete diese pauschal als harmlose Rohkandidaten vor der Filterung. Das war nicht ausreichend abgesichert. Je nach Hotfixstand lag die betreffende Meldung bereits im Kandidaten-/Weiterleitungspfad nach der Dedupe-Entscheidung. Ein solcher Eintrag beweist weder einen echten Ruf auf 721 noch automatisch einen erfolgreich verworfenen Ghost.
 
-Richtig ist die engere Bewertung: Die Benutzerbeobachtung „Schleife weg“ bleibt ein positiver Betriebshinweis. Ob unerwünschte Kopien noch bis LMAC/UMAC gelangen, muss anhand expliziter Drop-/Forward-Logs, Kanalzuweisung und Folgereaktionen geprüft werden. Hotfix 007 adressierte diese Unklarheit durch getrennte Logstufen und zusätzliches LMAC-Gating.
+Richtig ist die engere Bewertung: Die Betriebsbeobachtung „Schleife weg“ bleibt ein positiver Betriebshinweis. Ob unerwünschte Kopien noch bis LMAC/UMAC gelangen, muss anhand expliziter Drop-/Forward-Logs, Kanalzuweisung und Folgereaktionen geprüft werden. Hotfix 007 adressierte diese Unklarheit durch getrennte Logstufen und zusätzliches LMAC-Gating.
 
 ### 7.8 Hotfixes 007–009: Hardening, Traffic-only und leere Slots
 
@@ -365,13 +362,13 @@ LMAC: batched slot missing bbk on carrier=721 ts=1/2/3/4
 
 Hotfix 009 unterschied daraufhin vollständig leere Slots von fehlerhaft unvollständigen Slots: All-empty wurde mit TRACE übersprungen, nichtleere Slots ohne BBK/Block 1 blieben WARN und wurden verworfen.
 
-**Heutige Auditkorrektur zur damaligen Erklärung:** Das war nicht nur ein Logproblem. Das Überspringen von Carrier-Einträgen war mit dem damaligen positionsabhängigen DSP-`zip` und der zeitlichen Fortschaltung mehrerer Modulatoren abzugleichen. Auch Signalisierung auf dem Secondary während Hangtime oder Frame-18-Sonderfällen darf nicht durch eine vereinfachte Traffic-only-Bedingung verloren gehen. Abschnitt 10 beschreibt diese offenen Punkte des alten Codes; Abschnitt 11 die inzwischen sichtbaren Weiterentwicklungen.
+**Am 03.10.2026 geprüfte Auditkorrektur zur damaligen Erklärung:** Das war nicht nur ein Logproblem. Das Überspringen von Carrier-Einträgen war mit dem damaligen positionsabhängigen DSP-`zip` und der zeitlichen Fortschaltung mehrerer Modulatoren abzugleichen. Auch Signalisierung auf dem Secondary während Hangtime oder Frame-18-Sonderfällen darf nicht durch eine vereinfachte Traffic-only-Bedingung verloren gehen. Abschnitt 10 beschreibt diese offenen Punkte des alten Codes; Abschnitt 11 die inzwischen sichtbaren Weiterentwicklungen.
 
 ### 7.9 Weitere beobachtete Meldungen
 
 ALSA-/Pulse-/HDMI-Probe-Fehler traten beim Start neben der SDR-Gerätesuche auf. Im gezeigten erfolgreichen Ablauf wurde danach SoapySX geöffnet; sie waren nicht der belegte Auslöser der Sample-Rate-Abweisung oder der doppelten Rufanlage. Ebenso sind einzelne Startmeldungen `Lost -1200 samples` und `Too late to produce TX block 0` kein ausreichender Beweis für eine dauerhaft gestörte Funkstrecke, dürfen bei wiederholtem Auftreten unter Last aber nicht ignoriert werden.
 
-Der Directory-Abruf scheiterte mindestens einmal und fiel auf `devices.json` zurück. Das ist ein eigener verbleibender Integrationspunkt, nicht die belegte Ursache der Carrier-Schleife. Eine erfolgreiche spätere Directory-Verbindung ist im Chat nicht nachgereicht.
+Der Directory-Abruf scheiterte mindestens einmal und fiel auf `devices.json` zurück. Das ist ein eigener verbleibender Integrationspunkt, nicht die belegte Ursache der Carrier-Schleife. Eine erfolgreiche spätere Directory-Verbindung ist in den Arbeitsnotizen nicht nachgereicht.
 
 ## 8. Dateien und tatsächlich ausgelieferte Änderungsflächen
 
@@ -392,7 +389,7 @@ crates/tetra-config/src/bluestation/sec_phy_soapy.rs
 crates/tetra-entities/tests/common/default_stack.rs
 ```
 
-`freqs.rs` wurde zur Berechnung geprüft; nicht jede oben genannte Datei wurde in diesem Chat geändert. `timeslot_alloc.rs` ist gerade wegen seiner damals fehlenden Erweiterung relevant. `config.toml` ist lokale Betriebsdatei; `example_config/config.toml` ist eine Vorlagen-/Dokumentationsfläche und nicht automatisch mit lokalen geheimen Einstellungen identisch.
+`freqs.rs` wurde zur Berechnung geprüft; nicht jede oben genannte Datei wurde in dieser Entwicklungsphase geändert. `timeslot_alloc.rs` ist gerade wegen seiner damals fehlenden Erweiterung relevant. `config.toml` ist lokale Betriebsdatei; `example_config/config.toml` ist eine Vorlagen-/Dokumentationsfläche und nicht automatisch mit lokalen geheimen Einstellungen identisch.
 
 ### 8.2 Dashboard und Telemetrie
 
@@ -405,7 +402,7 @@ crates/tetra-entities/src/net_dashboard/html.rs
 crates/tetra-entities/src/net_telemetry/events.rs
 ```
 
-Im heute geprüften `Archiving`-Stand liegt die eigentliche Oberfläche zusätzlich beziehungsweise statt des großen Rust-Strings unter:
+Im am 03.10.2026 geprüften `Archiving`-Stand liegt die eigentliche Oberfläche zusätzlich beziehungsweise statt des großen Rust-Strings unter:
 
 ```text
 crates/tetra-entities/src/net_dashboard/ui/dashboard.html
@@ -417,7 +414,7 @@ crates/tetra-entities/src/net_dashboard/ui/netcore-rf.js
 crates/tetra-entities/src/net_dashboard/ui/netcore-login.js
 ```
 
-Ein altes vollständiges `html.rs` aus Hotfix 004, 007 oder 008 würde diese spätere Struktur ersetzen und ist deshalb keine geeignete heutige Installationsanweisung. [R10]
+Ein altes vollständiges `html.rs` aus Hotfix 004, 007 oder 008 würde diese spätere Struktur ersetzen und ist deshalb keine geeignete geprüfte Installationsanweisung. [R10]
 
 ### 8.3 Tatsächliche Stage-2-Rust-Dateien
 
@@ -446,7 +443,7 @@ crates/tetra-saps/src/tp/mod.rs
 
 ### 8.4 Zusätzliche Analyse-/Portierungspfade
 
-Im Chat wurden außerdem die folgenden Dateien für einen vollständigen Port angefordert beziehungsweise als Abhängigkeiten genannt. **Das ist keine Behauptung, dass Stage 2 sie alle verändert hat:**
+In den Arbeitsnotizen wurden außerdem die folgenden Dateien für einen vollständigen Port angefordert beziehungsweise als Abhängigkeiten genannt. **Das ist keine Behauptung, dass Stage 2 sie alle verändert hat:**
 
 ```text
 crates/tetra-saps/src/tma/mod.rs
@@ -476,7 +473,7 @@ crates/tetra-entities/src/cmce/subentities/sds_bs.rs
 
 ### 9.1 Historisch vorgeschlagener ZIP-Ablauf
 
-Beispiel des im Chat wiederholt vorgeschlagenen Verfahrens:
+Beispiel des in den Arbeitsnotizen wiederholt vorgeschlagenen Verfahrens:
 
 ```bash
 cd /home/jan/flowstation
@@ -488,9 +485,9 @@ sudo systemctl restart tetra.service
 journalctl -u tetra.service -n 100 --no-pager
 ```
 
-**Status:** Die Befehle waren Empfehlungen. Jan lieferte anschließend mehrfach Compiler- beziehungsweise Laufzeitlogs; damit sind konkrete Fehlversuche und Starts belegt. Es liegt aber nicht für jede ZIP-Stufe eine vollständige Ausgabe mit erfolgreichem `cargo check`, Build-Abschluss und exakt installierter Binary vor. Die Hotfixnummern sind Paketbezeichnungen, keine automatisch erstellten Git-Tags.
+**Status:** Die Befehle waren Empfehlungen. Anschließend lagen mehrfach Compiler- beziehungsweise Laufzeitlogs vor; damit sind konkrete Fehlversuche und Starts belegt. Es liegt aber nicht für jede ZIP-Stufe eine vollständige Ausgabe mit erfolgreichem `cargo check`, Build-Abschluss und exakt installierter Binary vor. Die Hotfixnummern sind Paketbezeichnungen, keine automatisch erstellten Git-Tags.
 
-**Nicht als heutiger Blind-Rollout benutzen:** Die alten Dateien passen nicht mehr ungeprüft zum aktuellen Repository. Vor einem heutigen Update muss der aktuelle Source-Commit feststehen und der tatsächliche `ExecStart` der Unit geprüft werden. `cargo check` ersetzt kein Release-Binary; ein Service-Neustart lädt nur dann den neuen Build, wenn er tatsächlich den gebauten beziehungsweise installierten Pfad verwendet.
+**Nicht als geprüfter Blind-Rollout benutzen:** Die alten Dateien passen nicht mehr ungeprüft zum aktuellen Repository. Vor einem geprüften Update muss der aktuelle Source-Commit feststehen und der tatsächliche `ExecStart` der Unit geprüft werden. `cargo check` ersetzt kein Release-Binary; ein Service-Neustart lädt nur dann den neuen Build, wenn er tatsächlich den gebauten beziehungsweise installierten Pfad verwendet.
 
 ### 9.2 Sicherer Fortsetzungsablauf — neu empfohlene Prüfung, nicht ausgeführt
 
@@ -516,7 +513,7 @@ sudo systemctl restart tetra.service
 journalctl -u tetra.service --since '2 minutes ago' --no-pager
 ```
 
-Ein Neustart unterbricht laufende Gespräche. Diese Archivierung führt keine der obigen Betriebsaktionen auf Jans Basisstation aus.
+Ein Neustart unterbricht laufende Gespräche. Die Schritte sind historische Abläufe, kein neu ausgeführter Wartungslauf.
 
 ### 9.3 Fallback und Wiederherstellung
 
@@ -536,7 +533,7 @@ Die Dateien können Zugangsdaten oder Betriebsdaten enthalten. Sie sind nicht zu
 
 ### 9.4 Was „alles nach Git pushen“ tatsächlich bedeutete
 
-Der Chat enthielt die Befehle `git add -A`, `git diff --cached --name-only`, `git commit`, `git push origin main` sowie einen separaten Tag-Push. Der wesentliche Ablauf war:
+Historisch verwendet wurden die Befehle `git add -A`, `git diff --cached --name-only`, `git commit`, `git push origin main` sowie einen separaten Tag-Push. Der wesentliche Ablauf war:
 
 ```bash
 git status
@@ -548,7 +545,7 @@ git commit -m "netcore: add dual carrier traffic-only mode"
 git push origin main
 ```
 
-Diese historische Commitnachricht ist keine heutige Stabilitätszusage. Der damals ebenfalls vorgeschlagene Zusatz „stable“ war mangels Zweiträger-Abnahme nicht gerechtfertigt.
+Diese historische Commitnachricht ist keine geprüfte Stabilitätszusage. Der damals ebenfalls vorgeschlagene Zusatz „stable“ war mangels Zweiträger-Abnahme nicht gerechtfertigt.
 
 Ein Push überträgt Commits beziehungsweise angegebene Referenzen, nicht beliebige uncommittete oder ignorierte Dateien und nicht automatisch den laufenden Build. Ein sauberer Arbeitsbaum und identische Commit-IDs nach einem Fetch sind getrennt zu prüfen:
 
@@ -559,9 +556,9 @@ git rev-parse HEAD
 git rev-parse origin/main
 ```
 
-Das Entfernen einer bereits getrackten Konfiguration mit `git rm --cached` schützt nur zukünftige Stände; frühere veröffentlichte Inhalte bleiben in der Historie. Eine gesonderte Prüfung und gegebenenfalls Rotation bereits veröffentlichter Geheimnisse bleibt nötig. Dieser Archivauftrag verändert diese Historie nicht.
+Das Entfernen einer bereits getrackten Konfiguration mit `git rm --cached` schützt nur zukünftige Stände; frühere veröffentlichte Inhalte bleiben in der Historie. Eine gesonderte Prüfung und gegebenenfalls Rotation bereits veröffentlichter Geheimnisse bleibt nötig. Dieser Dokumentation verändert diese Historie nicht.
 
-Der letzte Benutzer-Push-Ausschnitt endete bei einer abgeschnittenen `To https://github.com/...`-Zeile. Die übliche erfolgreiche Ref-Aktualisierung und ein Hashvergleich waren dort nicht sichtbar. Der historische Erfolg kann deshalb nicht allein aus diesem Ausschnitt als vollständige Synchronität bestätigt werden. Heute ist immerhin der Releaseanker `v1.3.0` im Remote nachgewiesen. [R2, G2]
+Der letzte Benutzer-Push-Ausschnitt endete bei einer abgeschnittenen `To https://github.com/...`-Zeile. Die übliche erfolgreiche Ref-Aktualisierung und ein Hashvergleich waren dort nicht sichtbar. Der historische Erfolg kann deshalb nicht allein aus diesem Ausschnitt als vollständige Synchronität bestätigt werden. Am 03.10.2026 ist immerhin der Releaseanker `v1.3.0` im Remote nachgewiesen. [R2, G2]
 
 ### 9.5 GH007 und private Commit-E-Mail
 
@@ -574,23 +571,23 @@ git commit --amend --reset-author --no-edit
 git push origin main
 ```
 
-Für mehrere unveröffentlichte eigene Commits wurde ein interaktives Rebase vorgeschlagen. **Nicht pauschal fremde Autoren überschreiben und nicht veröffentlichte gemeinsame Historie zwangsläufig umschreiben.** Die genaue Zahl betroffener lokaler Commits und die wirklich ausgeführten Korrekturbefehle fehlen im Chat. Es wurde kein Force-Push angefordert. GitHubs E-Mail-Schutz sollte nicht allein zur Umgehung des Fehlers ausgeschaltet werden. [G1]
+Für mehrere unveröffentlichte eigene Commits wurde ein interaktives Rebase vorgeschlagen. **Nicht pauschal fremde Autoren überschreiben und nicht veröffentlichte gemeinsame Historie zwangsläufig umschreiben.** Die genaue Zahl betroffener lokaler Commits und die wirklich ausgeführten Korrekturbefehle fehlen in den Arbeitsnotizen. Es wurde kein Force-Push angefordert. GitHubs E-Mail-Schutz sollte nicht allein zur Umgehung des Fehlers ausgeschaltet werden. [G1]
 
 ### 9.6 Produktversion, interne Version und Tag
 
-Jan nannte **v1.2.1** als bestehenden Produktstand. Der daraus abgeleitete nächste Vorschlag war **v1.3.0**; v0.3.8/v0.4.0 waren vorherige, überholte Vorschläge anhand der internen v0.3.7-Anzeige. „Ghostbuster“ war lediglich ein Namensvorschlag.
+Verbindlicher bestehender Produktstand war **v1.2.1**. Der daraus abgeleitete nächste Vorschlag war **v1.3.0**; v0.3.8/v0.4.0 waren vorherige, überholte Vorschläge anhand der internen v0.3.7-Anzeige. „Ghostbuster“ war lediglich ein Namensvorschlag.
 
-Heute existiert `refs/tags/v1.3.0` und zeigt direkt auf Commit `7834f46748f3205ce6d3e6e1480345c6bdf27bca` vom 28.06.2026, 11:32:40 UTC. Committext: `Implement empty slot skipping logic in LMAC`. Der Parent ist `56f216764a0b3085b49c45b3305e4ccb5e92363f`, passend zum Buildpräfix aus dem Hotfix-008-Log.
+Am 03.10.2026 existiert `refs/tags/v1.3.0` und zeigt direkt auf Commit `7834f46748f3205ce6d3e6e1480345c6bdf27bca` vom 28.06.2026, 11:32:40 UTC. Committext: `Implement empty slot skipping logic in LMAC`. Der Parent ist `56f216764a0b3085b49c45b3305e4ccb5e92363f`, passend zum Buildpräfix aus dem Hotfix-008-Log.
 
-Der Ref verweist auf einen **Commit**, also auf einen Lightweight-Tag und nicht auf das im Chat vorgeschlagene annotierte Tagobjekt. Das ist kein Fehler, aber ein Unterschied zwischen vorgeschlagenem Befehl und überprüftem Ergebnis. Eine GitHub-Release-Seite, Release-Assets, ein Produktversions-Bump in allen Dateien oder das Deployment dieses exakten Tags wurden hier nicht nachgewiesen. [R2]
+Der Ref verweist auf einen **Commit**, also auf einen Lightweight-Tag und nicht auf das in den Arbeitsnotizen vorgeschlagene annotierte Tagobjekt. Das ist kein Fehler, aber ein Unterschied zwischen vorgeschlagenem Befehl und überprüftem Ergebnis. Eine GitHub-Release-Seite, Release-Assets, ein Produktversions-Bump in allen Dateien oder das Deployment dieses exakten Tags wurden hier nicht nachgewiesen. [R2]
 
-## 10. Heutige Nachprüfung des historischen Auslieferungsstandes
+## 10. Am 03.10.2026 geprüfte Nachprüfung des historischen Auslieferungsstandes
 
 Dieser Abschnitt enthält **neue statische Auditbefunde über den alten Stand**, keine damals bestätigten Testergebnisse.
 
 ### 10.1 Drei-Slot-Allocator trotz DualCarrier-Unterbau
 
-Im vollständigen `flowstation-main-dualcarrier-hotfix-009-nosensitive.zip` hatte `crates/tetra-core/src/timeslot_alloc.rs` weiterhin `owners: [Option<TimeslotOwner>; 3]` und akzeptierte nur TS2–TS4. Der gleiche Drei-Slot-Aufbau ist im heute gelesenen Git-Tag `v1.3.0` direkt sichtbar. [R2]
+Im vollständigen `flowstation-main-dualcarrier-hotfix-009-nosensitive.zip` hatte `crates/tetra-core/src/timeslot_alloc.rs` weiterhin `owners: [Option<TimeslotOwner>; 3]` und akzeptierte nur TS2–TS4. Der gleiche Drei-Slot-Aufbau ist im am 03.10.2026 gelesenen Git-Tag `v1.3.0` direkt sichtbar. [R2]
 
 Weitere alte ZIP-Befunde: `CmceCircuit` und `CallControl` hatten keinen durchgehend ergänzten Carrier-Schlüssel; wesentliche UMAC-Open-/Close-/Floor-Pfade arbeiteten weiterhin mit dem primären `channel_scheduler` und vier Einträgen pro Zustand. Die Stage-2-Auslieferung vergrößerte somit nicht schon automatisch die unabhängige höhere Rufkapazität.
 
@@ -606,9 +603,9 @@ for (modulator, tx_slot) in self.modulators.iter_mut().zip(tx_slot) {
 }
 ```
 
-Entfernte Einträge beeinflussen damit nicht nur das Log: Ein Modulator kann keinen passenden Slot mehr erhalten oder seine zeitliche Fortschaltung auslassen. Falls Einträge an anderer Stelle fehlen, ist auch eine falsche Zuordnung nach Reihenfolge möglich. Das ist ein statisch erkennbares Risiko; eine konkrete so verursachte Funkstörung nach Hotfix 009 ist im Chat nicht gemessen.
+Entfernte Einträge beeinflussen damit nicht nur das Log: Ein Modulator kann keinen passenden Slot mehr erhalten oder seine zeitliche Fortschaltung auslassen. Falls Einträge an anderer Stelle fehlen, ist auch eine falsche Zuordnung nach Reihenfolge möglich. Das ist ein statisch erkennbares Risiko; eine konkrete so verursachte Funkstörung nach Hotfix 009 ist in den Arbeitsnotizen nicht gemessen.
 
-Der heutige Code verwendet dagegen Carrier-Lookup und explizite Stille pro Modulator; diese Weiterentwicklung darf beim Wiederaufnehmen nicht durch alte ZIPs ersetzt werden. [R7]
+Der geprüfte Code verwendet dagegen Carrier-Lookup und explizite Stille pro Modulator; diese Weiterentwicklung darf beim Wiederaufnehmen nicht durch alte ZIPs ersetzt werden. [R7]
 
 ### 10.3 Grenzen des Dedupe
 
@@ -624,13 +621,13 @@ Verglichen werden gleiche Subslot-Kennung, gleicher Trainingstyp und gleiche Roh
 
 In der untersuchten Vergleichsfunktion fehlen eine explizite Prüfung auf verschiedene Carrier, eine Prüfung ihres tatsächlichen Frequenzabstands, ein Vergleich der einzelnen `rx_slot.time`-Werte und eine Prüfung nach dekodiertem CRC-/Adress-/Rufkontext. Dass zwei echte unabhängige Bursts nie verworfen würden, wurde daher zu stark behauptet. Auch die Annahme „unabhängige Bursts unterscheiden sich ungefähr zur Hälfte“ ersetzt keinen Test mit strukturähnlichen Kontrollpaketen oder ähnlichen Sprachdaten.
 
-Diese zentralen Heuristikgrenzen sind im heutigen gelesenen PHY-Code weiterhin erkennbar. Es wurde in den geprüften Pfaden kein konfigurierbarer Schwellwert oder abschaltbarer Betriebsmodus nachgewiesen. [R5]
+Diese zentralen Heuristikgrenzen sind im geprüften gelesenen PHY-Code weiterhin erkennbar. Es wurde in den geprüften Pfaden kein konfigurierbarer Schwellwert oder abschaltbarer Betriebsmodus nachgewiesen. [R5]
 
 ### 10.4 Hardes Traffic-Gating und Signalisierung
 
 Der alte Filter `secondary && pchan != Tp -> drop` berücksichtigt nicht, dass ein zugewiesener Bearer neben Sprachdaten Signalisierung während Hangtime, Retake, Release oder Stealing benötigt. Ebenso kann ein vereinfachtes „kein aktiver Traffic -> vollständig leer“ im Scheduler Kontrollphasen beeinflussen.
 
-Es wäre falsch, das allein mit `concurrent_multicarrier = false` zu begründen. Der aktuelle LMAC erlaubt zusätzlich `Cp` auf Secondary-TS2–TS4; Secondary-TS1 bleibt für Uplink-Zugriff geschlossen. Das ist eine heute überprüfte Codeänderung gegenüber dem historischen Hardening. [R6]
+Es wäre falsch, das allein mit `concurrent_multicarrier = false` zu begründen. Der aktuelle LMAC erlaubt zusätzlich `Cp` auf Secondary-TS2–TS4; Secondary-TS1 bleibt für Uplink-Zugriff geschlossen. Das ist eine am 03.10.2026 überprüfte Codeänderung gegenüber dem historischen Hardening. [R6]
 
 ## 11. Zusätzlich überprüfter Repository-Stand vom 03.10.2026
 
@@ -638,13 +635,13 @@ Es wäre falsch, das allein mit `concurrent_multicarrier = false` zu begründen.
 
 Die Codeprüfung wurde an festen Commit-IDs vorgenommen. `main` stand auf `6aa9be8f74ab731f72dc133a5f8e90c5018c626d`; der bei Beginn gelesene Archivbranch auf `15c3f9f8dc8313dc6efdc2039ab86ad8719015ff`. Der Vergleich zeigte `Archiving` neun Commits voraus, nicht zurück. Er enthielt bereits Änderungen aus anderen Arbeiten, unter anderem UI-Auslagerung und Dienst-WebUI-Änderungen — **also nicht nur Archivdateien**.
 
-Die hier geprüften RF-/Config-/Allocator-Dateien waren zwischen diesen beiden festgehaltenen Ständen nicht geändert. Dashboard `html.rs` und `server.rs` gehörten dagegen zu den abweichenden Dateien; die neue UI-Struktur und Timeslotlogik wurden deshalb explizit am Archivbranch-Commit gelesen. Die Archivierung bewahrt diese bereits vorhandenen Arbeiten.
+Die hier geprüften RF-/Config-/Allocator-Dateien waren zwischen diesen beiden festgehaltenen Ständen nicht geändert. Dashboard `html.rs` und `server.rs` gehörten dagegen zu den abweichenden Dateien; die neue UI-Struktur und Timeslotlogik wurden deshalb explizit am Archivbranch-Commit gelesen.
 
-Eine vollständige Quellcode- oder Sicherheitsprüfung aller Dienste, aller aktuellen Branches und aller Upstream-Änderungen wurde nicht durchgeführt. Ein versuchter direkter Git-Clone in die Arbeitsumgebung scheiterte an DNS; die erforderlichen aktuellen Lesungen erfolgten erfolgreich über den GitHub-Connector. Rust/Cargo stand in der Archivierungsumgebung nicht zur Verfügung; es wurden keine Builds oder Funkversuche ausgeführt.
+Eine vollständige Quellcode- oder Sicherheitsprüfung aller Dienste, aller aktuellen Branches und aller Upstream-Änderungen wurde nicht durchgeführt. Ein versuchter direkter Git-Clone in die Arbeitsumgebung scheiterte an DNS; die erforderlichen Repository-Dateien konnten über die API gelesen werden. Rust/Cargo stand in der damaligen Prüfumgebung nicht zur Verfügung; es wurden keine Builds oder Funkversuche ausgeführt.
 
 ### 11.2 Ergebnisübersicht
 
-| Teilbereich | Heute statisch belegt | Unterschied / verbleibende Grenze |
+| Teilbereich | Am 03.10.2026 statisch belegt | Unterschied / verbleibende Grenze |
 |---|---|---|
 | Konfiguration | Ein optionaler Secondary; Center-Felder im DTO und in `CfgSoapySdr`; PPM-korrigierte Center-Helper. | Weiterhin kein allgemeines N-Carrier-Konfigurationsschema. [R8] |
 | Frequenz-/Passbandprüfung | Main/Secondary müssen verschieden sein; Hauptfrequenzen müssen zu `FreqInfo` passen; DualCarrier verlangt explizites `sample_rate`. | Prüfung der Trägermitten innerhalb `sample_rate / 2`, kein vollständiger Nachweis von Kanalbreite, Filterreserve oder tatsächlich unterstützten Geräteraten. [R8] |
@@ -660,7 +657,7 @@ Eine vollständige Quellcode- oder Sicherheitsprüfung aller Dienste, aller aktu
 | WebUI-Writer | Arrayzeilen-Fix enthalten; Secondary-Nummer bleibt beim Abschalten erhalten. | Begrenzter TOML-Scanner; Backupfehler werden ignoriert; Schreiben nicht atomar. [R9] |
 | Historischer Releaseanker | `v1.3.0` existiert und enthält alten Drei-Slot-Allocator. | Tag ist kein Beleg für vollständige damalige DualCarrier-Kapazität. [R2] |
 
-### 11.3 Heutige Zuordnung der logischen und physischen Slots
+### 11.3 Am 03.10.2026 geprüfte Zuordnung der logischen und physischen Slots
 
 | Logischer Bearer / Anzeige | Physische Ressource bei historischem Carrierpaar 720/721 |
 |---:|---|
@@ -676,19 +673,19 @@ Eine vollständige Quellcode- oder Sicherheitsprüfung aller Dienste, aller aktu
 
 Die konkreten Carrierzahlen kommen aus der Konfiguration; das Mapping ist nicht fest auf 720/721 begrenzt. `air_ts_for_logical(5..=7)` zieht drei ab; die Gegenrichtung addiert drei für Secondary-Air-TS2–TS4. Die CMCE-Carrier-Hint-Auflösung kennt außerdem `Some(-2)` als interne Secondary-Anforderung, während nichtnegative Werte echte Carrier bezeichnen. Diese interne Kennung darf nicht ungeprüft als übertragene Carrier-Nummer verwendet werden. [R4]
 
-Die aktuelle UI zeigt Secondary-Slots als `[1,5,6,7]` mit Erläuterung der Air-TS im Tooltip. Sie normalisiert auch lower-layer-Ereignisse, die bereits als Secondary plus physischem TS2–TS4 ankommen. Die Schlüssel enthalten Carrier und logischen TS. Damit unterscheidet sich die heutige Anzeige bewusst von der früheren rein physischen `TS1..TS4`-Reihe. [R10]
+Die aktuelle UI zeigt Secondary-Slots als `[1,5,6,7]` mit Erläuterung der Air-TS im Tooltip. Sie normalisiert auch lower-layer-Ereignisse, die bereits als Secondary plus physischem TS2–TS4 ankommen. Die Schlüssel enthalten Carrier und logischen TS. Damit unterscheidet sich die geprüfte Anzeige bewusst von der früheren rein physischen `TS1..TS4`-Reihe. [R10]
 
-### 11.4 Heute korrigierte beziehungsweise noch offene Altannahmen
+### 11.4 Am 03.10.2026 korrigierte beziehungsweise noch offene Altannahmen
 
 **Inzwischen auf Codeebene weiterentwickelt:** größerer Allocator, logische Bearer-Zuordnung, Secondary-Control/Guard, Zulassen zugewiesener Cp-Signalisierung, Carrier-bezogene TX-Auswahl, explizite Stille und TX-Kontinuitätsdiagnose. Eine erneute Anwendung der alten Hotfixfolge wäre ein möglicher Rückschritt.
 
-**Noch zu prüfen:** Die Dedupe-Prüfung unterscheidet im gelesenen Kandidatenvergleich nicht explizit verschiedene Carrier und speichert keinen individuellen Empfangszeitstempel. Der UMAC-Helper für unbekannte Carrier fällt mit Fehlerlog auf den Primary zurück; ob an allen Eingängen stattdessen ein kontrolliertes Verwerfen erforderlich ist, bleibt eine Review-Aufgabe. Alte Kommentare wie „Defaults to the main carrier for current CMCE allocation logic“ in Telemetrie-Strukturen sind nicht alleiniger Beweis der tatsächlichen heutigen Aufrufwerte.
+**Noch zu prüfen:** Die Dedupe-Prüfung unterscheidet im gelesenen Kandidatenvergleich nicht explizit verschiedene Carrier und speichert keinen individuellen Empfangszeitstempel. Der UMAC-Helper für unbekannte Carrier fällt mit Fehlerlog auf den Primary zurück; ob an allen Eingängen stattdessen ein kontrolliertes Verwerfen erforderlich ist, bleibt eine Review-Aufgabe. Alte Kommentare wie „Defaults to the main carrier for current CMCE allocation logic“ in Telemetrie-Strukturen sind nicht alleiniger Beweis der tatsächlichen geprüften Aufrufwerte.
 
-**Wichtig für Konfigurationsmigration:** Die historische Config setzte `sndcp_service=true` bei `advanced_link=false`. Der heutige Validator verlangt bei aktivem SNDCP einen aktivierten WAP/IP- oder Packet-Data-Gateway-Pfad; aktive Packet-Profile verlangen `advanced_link=true`. Ein unverändertes Übernehmen der ganzen alten Konfiguration kann daher heute scheitern, auch wenn die RF-Werte korrekt sind. Das ist ein späterer Funktions-/Validierungsstand, kein neuer Fehler des historischen Center-Frequency-Fixes. [R8]
+**Wichtig für Konfigurationsmigration:** Die historische Config setzte `sndcp_service=true` bei `advanced_link=false`. Der geprüfte Validator verlangt bei aktivem SNDCP einen aktivierten WAP/IP- oder Packet-Data-Gateway-Pfad; aktive Packet-Profile verlangen `advanced_link=true`. Ein unverändertes Übernehmen der ganzen alten Konfiguration kann daher am 03.10.2026 scheitern, auch wenn die RF-Werte korrekt sind. Das ist ein späterer Funktions-/Validierungsstand, kein neuer Fehler des historischen Center-Frequency-Fixes. [R8]
 
 ## 12. Fachliche Klarstellungen zu früheren Aussagen
 
-Diese Klarstellungen beruhen auf heute gezielt gelesenen ETSI-Fundstellen und der aktuellen Codeprüfung. Sie werden **nicht rückwirkend als damals ausgeführte Normenprüfung ausgegeben**.
+Diese Klarstellungen beruhen auf am 03.10.2026 gezielt gelesenen ETSI-Fundstellen und der aktuellen Codeprüfung. Sie werden **nicht rückwirkend als damals ausgeführte Normenprüfung ausgegeben**.
 
 ### 12.1 Concurrent Multicarrier ist nicht normale Trägerumschaltung
 
@@ -700,13 +697,13 @@ Deshalb ist die damalige Schlussfolgerung „dritter Carrier bringt wegen concur
 
 Für den beschriebenen Conventional-Access-Betrieb liegt der MCCH in Normal Control Mode auf Slot 1 des Hauptträgers. Daraus folgt nicht, dass jede Broadcast-/Synchronisationsfunktion auf einem zweiten Träger verboten wäre. Ebenso bedeutet Broadcast-Unterstützung nicht automatisch, dass ein zweiter allgemein zugänglicher MCCH mit Random Access eröffnet wird.
 
-Die aktuelle Wahl `SecondaryBcchNoMcch` drückt genau diese notwendige Unterscheidung aus. Zugewiesener Verkehr benötigt außerdem Kontrollsignalisierung für seinen Lebenszyklus. Die historische Forderung „keine Common-Control-Ghosts auf Secondary“ bleibt als Ziel sinnvoll, ihre Umsetzung durch ein generelles Unterdrücken aller Secondary-Kontrollanteile war aber zu grob. Quellen: EN 300 392-2 V3.8.1, Klausel 4.11.1.1, Seite 71, plus heutige UMAC-/LMAC-Implementierung. [E1, R4, R6]
+Die aktuelle Wahl `SecondaryBcchNoMcch` drückt genau diese notwendige Unterscheidung aus. Zugewiesener Verkehr benötigt außerdem Kontrollsignalisierung für seinen Lebenszyklus. Die historische Forderung „keine Common-Control-Ghosts auf Secondary“ bleibt als Ziel sinnvoll, ihre Umsetzung durch ein generelles Unterdrücken aller Secondary-Kontrollanteile war aber zu grob. Quellen: EN 300 392-2 V3.8.1, Klausel 4.11.1.1, Seite 71, plus geprüfte UMAC-/LMAC-Implementierung. [E1, R4, R6]
 
 ### 12.3 Diskontinuierlicher Secondary und DSP-Zeitachse
 
 Die gelesene Normstelle zu D-CT erlaubt unter den dort beschriebenen Bedingungen diskontinuierliche Downlink-Übertragung auf anderen phase-modulierten Trägern. Eine fehlende HF-Aussendung ist jedoch nicht gleichbedeutend damit, einen Modulator softwareseitig ohne Zeitfortschritt auszulassen. Die gemeinsame DSP-Zeitachse und korrekte Burstrampen müssen erhalten bleiben. Das ist der Grund, leere Slots, explizite Stille und Carrier-Zuordnung zusammen zu prüfen. [E1, R7]
 
-Eine ETSI-Konformitätsbewertung des gesamten Forks, eine Freigabe des RF-Aufbaus oder eine Prüfung regulatorischer Nutzungsvoraussetzungen wurde in diesem Chat nicht durchgeführt.
+Eine ETSI-Konformitätsbewertung des gesamten Forks, eine Freigabe des RF-Aufbaus oder eine Prüfung regulatorischer Nutzungsvoraussetzungen wurde in dieser Entwicklungsphase nicht durchgeführt.
 
 ## 13. Tests, Beobachtungen und Abnahmegrenzen
 
@@ -723,14 +720,14 @@ Eine ETSI-Konformitätsbewertung des gesamten Forks, eine Freigabe des RF-Aufbau
 | Gesprächsversuch vor Dedupe | Doppelte Call-IDs, TS2/TS3-Zuweisungen, ACK-/Fragmentprobleme. |
 | Hotfix 005 | Benutzer meldete weiterhin Fehler. |
 | Hotfix 006 | Benutzer bestätigt Ende der Schleife; Log zeigt C720/TS2-Allocation. |
-| Unabhängiger Ruf auf C721 | Kein eindeutiger Betriebsnachweis im Chat. |
+| Unabhängiger Ruf auf C721 | Kein eindeutiger Betriebsnachweis in den Arbeitsnotizen. |
 | Gleichzeitige unterschiedliche Rufe C720/TS2 und C721/TS2 | Nicht dokumentiert. |
 | Volle Kapazität, Duplex, Retake, Hangtime, Release, Frame 18 | Keine systematische Abnahmematrix ausgeführt/nachgewiesen. |
 | Hotfix 008 | Neuer Missing-BBK-Spam tatsächlich beobachtet. |
 | Hotfix 009 | Datei-/Commitnachweis; kein nachgereichter erfolgreicher Funk-/Lasttest. |
-| `cargo test -p tetra-config` / `cargo test -p tetra-entities dual_carrier` | Im Chat vorgeschlagen, keine erfolgreichen Testausgaben. |
-| Heute vorhandene Tests in den Quellen | Teilweise gesichtet, unter anderem Writer-/Allocator-Tests; nicht ausgeführt. |
-| Heutiger Repository-Stand | Gepinnte Quelltext-/Branch-/Tagprüfung, kein Deployment- oder CI-Testbericht. |
+| `cargo test -p tetra-config` / `cargo test -p tetra-entities dual_carrier` | In den Arbeitsnotizen vorgeschlagen, keine erfolgreichen Testausgaben. |
+| Am 03.10.2026 vorhandene Tests in den Quellen | Teilweise gesichtet, unter anderem Writer-/Allocator-Tests; nicht ausgeführt. |
+| Am 03.10.2026 geprüfter Repository-Stand | Gepinnte Quelltext-/Branch-/Tagprüfung, kein Deployment- oder CI-Testbericht. |
 | Vollständiger Erhalt aller Integrationen | Ziel und teilweise Codevorhandensein, keine vollständige Regression. |
 
 Die wiederholten damaligen „fertig“, „stabil“ oder „Carrier hat bestanden“-Formulierungen sind keine zusätzliche Belegstufe. Insbesondere das Ende einer beobachteten Schleife darf nicht zur abgeschlossenen Zweiträger-Abnahme hochgestuft werden.
@@ -750,22 +747,22 @@ Die wiederholten damaligen „fertig“, „stabil“ oder „Carrier hat bestan
 | Carrier-721-Log automatisch als harmless vor Dedupe werten | Ohne genaue Logstelle nicht begründet; Roh-, Drop- und Forward-Ereignisse unterscheiden. |
 | `concurrent_multicarrier=false` als Verbot jeder Secondary-Nutzung | Fachlich zu pauschal; Zuweisung und Gleichzeitigkeit getrennt betrachten. |
 | Secondary global nur `Tp`, kein `Cp` | Zu grob für zugewiesene Signalisierung; aktueller Code erlaubt Tp/Cp auf TS2–TS4. |
-| Secondary vollständig Traffic-only ohne BCCH | Historischer Zwischenstand; heute `SecondaryBcchNoMcch`, TS1 Control/Guard. |
-| Leere Secondary-Slots nur aus TX-Liste streichen | Muss Zeitachse und Carrierbindung berücksichtigen; heutiger DSP ergänzt Stille und Lookup. |
-| Neue Produktversion aus internem v0.3.7 ableiten | Jan nannte v1.2.1; daraus v1.3.0-Vorschlag. |
+| Secondary vollständig Traffic-only ohne BCCH | Historischer Zwischenstand; am 03.10.2026 `SecondaryBcchNoMcch`, TS1 Control/Guard. |
+| Leere Secondary-Slots nur aus TX-Liste streichen | Muss Zeitachse und Carrierbindung berücksichtigen; geprüfter DSP ergänzt Stille und Lookup. |
+| Neue Produktversion aus internem v0.3.7 ableiten | Bestehender Produktstand v1.2.1; daraus v1.3.0-Vorschlag. |
 | E-Mail-Privacy für Push ausschalten | Nicht erforderlich; eigene unveröffentlichte Commit-Metadaten sauber korrigieren. |
 
 ## 15. Offene Aufgaben, Ideen und Roadmap-Kandidaten
 
-Die Prioritäten unten sind **redaktionelle Fortsetzungsempfehlungen** aus diesem Archiv. Bereits im Chat ausdrücklich vereinbart war: zunächst DualCarrier-Hardening und eindeutige Telemetrie, dann erst über einen dritten Carrier nachdenken. Kein Roadmap-Dokument außerhalb dieses Archivs wurde geändert.
+Die Prioritäten unten sind **redaktionelle Fortsetzungsempfehlungen** aus diesem Archiv. Bereits in den Arbeitsnotizen ausdrücklich vereinbart war: zunächst DualCarrier-Hardening und eindeutige Telemetrie, dann erst über einen dritten Carrier nachdenken. Kein Roadmap-Dokument außerhalb dieses Archivs wurde geändert.
 
 ### P0 — Reproduzierbarer Iststand und echte Zweiträger-Abnahme
 
 1. Source-Commit, Buildfeatures, installierte Binary, `ExecStart` und lokale Konfiguration des Zielsystems zusammen erfassen. Keine Gleichsetzung von GitHub-main und laufendem Gerät ohne Prüfung.
-2. Einen unabhängigen Ruf tatsächlich auf Secondary-Air-TS2–TS4 beziehungsweise heutige logische TS5–TS7 zwingen oder durch gezielte Belegung erreichen. Allocation, UL, DL, Empfang am zweiten MS und Release gemeinsam belegen.
+2. Einen unabhängigen Ruf tatsächlich auf Secondary-Air-TS2–TS4 beziehungsweise geprüfte logische TS5–TS7 zwingen oder durch gezielte Belegung erreichen. Allocation, UL, DL, Empfang am zweiten MS und Release gemeinsam belegen.
 3. Gleichzeitige verschiedene Rufe auf gleichem Air-TS verschiedener Carrier testen; Dedupe darf den zweiten echten Ruf nicht unterdrücken und Audio darf nicht zwischen Gesprächen wechseln.
 4. Hangtime, gleicher/anderer Sprecher beim Retake, STCH/FACCH, Frame 18, Rufabbau, Timeout, Wiederregistrierung und Rückkehr zum MCCH auf beiden Carriern prüfen.
-5. TX-Kontinuität, tatsächliches Spektrum und Signalqualität unter Last messen. Heutige `TX continuity`-Zähler zusammen mit Air-/Endgerätelogs sichern.
+5. TX-Kontinuität, tatsächliches Spektrum und Signalqualität unter Last messen. Am 03.10.2026 geprüfte `TX continuity`-Zähler zusammen mit Air-/Endgerätelogs sichern.
 
 **Abhängigkeit:** belastbarer aktueller Source-/Binary-Stand, passender Treiber, geeignete Funkmess-/Testumgebung und mindestens die für das Szenario erforderlichen Endgeräte. Erfolgskriterium sind nachvollziehbare Medien- und Steuerpfade, nicht allein zusätzliche Dashboardkacheln.
 
@@ -792,19 +789,19 @@ Die Prioritäten unten sind **redaktionelle Fortsetzungsempfehlungen** aus diese
 - UI-Reconnect/Snapshot, Rufende, Sprecherwechsel und gleichzeitig gleiche Air-TS testen. Statische „AKTIV“-Controlrollen klar von gemessener Funkaktivität unterscheiden.
 - Änderungen serialisierter Telemetrieereignisse auf Kompatibilität alter JSON-/Bitcode-Verbraucher prüfen; vorhandene Derives allein garantieren keine Protokollkompatibilität.
 - SDS, Directory, Snom, Telegram, DAPNET/TPG und deaktivierte, aber zu erhaltende Integrationen regressionsprüfen. Directory-Verbindungsfehler gesondert klären.
-- Historisch nicht ausreichende Allocator-/Call-Control-Portierung als erledigt auf **Codeebene** kennzeichnen, aber die heutige End-to-End-Abnahme offenlassen.
+- Historisch nicht ausreichende Allocator-/Call-Control-Portierung als erledigt auf **Codeebene** kennzeichnen, aber die geprüfte End-to-End-Abnahme offenlassen.
 
 ### P2 — Dritter Carrier / allgemeines Mehrträgermodell
 
 Die Idee bleibt erhalten: zusätzlich etwa Carrier 719 mit DL 417,975 MHz und UL 407,975 MHz. Für 719/720/721 läge eine geometrische Mitte bei 418/408 MHz. Alternativ wurde 720/721/722 als denkbare Anordnung erwähnt. Keine der Varianten wurde aufgebaut oder freigegeben.
 
-Dafür wären statt eines einzelnen `Option<u16>` beispielsweise `additional_carriers = [719, 721]` oder `secondary_carriers = [...]` denkbar. Beide Namen sind **Schemaideen**, keine heute akzeptierten TOML-Schlüssel. Zu erweitern wären mindestens Config/Validierung, Ressourcen-ID-Modell, Scheduler, CMCE-/Bridge-Zuordnung, PHY-/DSP-Zeitachse, Dedupe, Telemetrie und UI.
+Dafür wären statt eines einzelnen `Option<u16>` beispielsweise `additional_carriers = [719, 721]` oder `secondary_carriers = [...]` denkbar. Beide Namen sind **Schemaideen**, keine am 03.10.2026 akzeptierten TOML-Schlüssel. Zu erweitern wären mindestens Config/Validierung, Ressourcen-ID-Modell, Scheduler, CMCE-/Bridge-Zuordnung, PHY-/DSP-Zeitachse, Dedupe, Telemetrie und UI.
 
 Symmetrie um eine Center-Frequenz ist nur eine geometrische Eigenschaft, kein Beleg für die beste Hardwarekonfiguration; insbesondere liegen bei manchen Anordnungen Nutzträger auf der SDR-Mitte. Ein dritter Carrier bleibt von der erfolgreichen DualCarrier-Abnahme, Lastreserve und RF-Messung abhängig.
 
 ### P2 — Release- und Betriebsqualität
 
-Reproduzierbare Builds, zielhardwarebezogene Tests, eindeutig installierbare Artefakte, dokumentierte Migration und Rückfallstand sollten einen nächsten Release begleiten. Interne Cargo-/Banner-Version, Produktversion, Tag und Release-Asset sind getrennt zu führen. Der tatsächliche `v1.3.0`-Tag bleibt historischer Anker, keine heutige Stabilitätsempfehlung.
+Reproduzierbare Builds, zielhardwarebezogene Tests, eindeutig installierbare Artefakte, dokumentierte Migration und Rückfallstand sollten einen nächsten Release begleiten. Interne Cargo-/Banner-Version, Produktversion, Tag und Release-Asset sind getrennt zu führen. Der tatsächliche `v1.3.0`-Tag bleibt historischer Anker, keine geprüfte Stabilitätsempfehlung.
 
 ## 16. Quellen, Referenzen, Anhänge und Lücken
 
@@ -814,17 +811,17 @@ Die Links sind auf die gelesenen Commits festgelegt, damit zukünftige Änderung
 
 - **[R1] Aktuelle Prüfstände:** [main-Commit 6aa9be8](https://github.com/JanHG98/netcore-tetra/commit/6aa9be8f74ab731f72dc133a5f8e90c5018c626d), [Archiving-Ausgangscommit 15c3f9f](https://github.com/JanHG98/netcore-tetra/commit/15c3f9f8dc8313dc6efdc2039ab86ad8719015ff). Die Auflösung des alten Forknamens wurde über die GitHub-Repository-API geprüft.
 - **[R2] Historischer Releaseanker:** [Commit 7834f46](https://github.com/JanHG98/netcore-tetra/commit/7834f46748f3205ce6d3e6e1480345c6bdf27bca), [alter Allocator im Tagziel](https://github.com/JanHG98/netcore-tetra/blob/7834f46748f3205ce6d3e6e1480345c6bdf27bca/crates/tetra-core/src/timeslot_alloc.rs). Der Tag-Ref wurde gesondert über `git/ref/tags/v1.3.0` aufgelöst.
-- **[R3] Heutiger Allocator:** [timeslot_alloc.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-core/src/timeslot_alloc.rs), insbesondere logische Zuordnung und `allocate_any_with_capacity`/`allocate_preferred_with_capacity`.
-- **[R4] Heutiger UMAC:** [umac_bs.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-entities/src/umac/umac_bs.rs), gelesener Kernbereich Zeilen 40–270: Konstruktor, `SecondaryBcchNoMcch`, logische Übersetzungen und Carrier-Hints.
-- **[R5] Heutiger PHY/Dedupe:** [phy_bs.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-entities/src/phy/phy_bs.rs), `rx_tpsap_prim`, Kandidatenvergleich und Weiterleitung, Zeilen 285–555.
-- **[R6] Heutiger LMAC:** [lmac_bs.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-entities/src/lmac/lmac_bs.rs), `accepts_uplink`, `rx_tp_prim` und Batchbehandlung, gelesener Bereich 325–580.
-- **[R7] Heutiger TX-DSP:** [soapy_dev.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-entities/src/phy/components/soapy_dev.rs), `TxDsp`, `modulate_tx_block`, `TX continuity`, gelesener Bereich 420–655.
+- **[R3] Am 03.10.2026 geprüfter Allocator:** [timeslot_alloc.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-core/src/timeslot_alloc.rs), insbesondere logische Zuordnung und `allocate_any_with_capacity`/`allocate_preferred_with_capacity`.
+- **[R4] Am 03.10.2026 geprüfter UMAC:** [umac_bs.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-entities/src/umac/umac_bs.rs), gelesener Kernbereich Zeilen 40–270: Konstruktor, `SecondaryBcchNoMcch`, logische Übersetzungen und Carrier-Hints.
+- **[R5] Am 03.10.2026 geprüfter PHY/Dedupe:** [phy_bs.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-entities/src/phy/phy_bs.rs), `rx_tpsap_prim`, Kandidatenvergleich und Weiterleitung, Zeilen 285–555.
+- **[R6] Am 03.10.2026 geprüfter LMAC:** [lmac_bs.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-entities/src/lmac/lmac_bs.rs), `accepts_uplink`, `rx_tp_prim` und Batchbehandlung, gelesener Bereich 325–580.
+- **[R7] Am 03.10.2026 geprüfter TX-DSP:** [soapy_dev.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-entities/src/phy/components/soapy_dev.rs), `TxDsp`, `modulate_tx_block`, `TX continuity`, gelesener Bereich 420–655.
 - **[R8] Konfiguration:** [sec_phy_soapy.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-config/src/bluestation/sec_phy_soapy.rs) sowie [config.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-config/src/bluestation/config.rs), `bs_phase_mod_carriers`, `frequencies_fit_center`, `validate`, gelesener Kernbereich 175–345.
 - **[R9] WebUI-Writer:** [dual_carrier.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-entities/src/net_dashboard/dual_carrier.rs), `table_name`, `compute_toml`, `write_dual_carrier`, gelesener Bereich 1–265.
 - **[R10] UI im Archivbranch:** [html.rs als Asset-Loader](https://github.com/JanHG98/netcore-tetra/blob/15c3f9f8dc8313dc6efdc2039ab86ad8719015ff/crates/tetra-entities/src/net_dashboard/html.rs), [ui/dashboard.html](https://github.com/JanHG98/netcore-tetra/blob/15c3f9f8dc8313dc6efdc2039ab86ad8719015ff/crates/tetra-entities/src/net_dashboard/ui/dashboard.html), Ereignisse um 6200–6340 und TS-Visualizer um 6390–6590.
 - **[R11] Telemetrietypen:** [net_telemetry/events.rs](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/crates/tetra-entities/src/net_telemetry/events.rs), `GroupCallStarted`, `IndividualCallStarted`, `TsVoiceActivity`, gelesener Bereich 1–200.
-- **[R12] Ergänzende heutige Dokumentation:** [wiki/Dual-Carrier.md](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/wiki/Dual-Carrier.md). Der dortige Testplan ist kein Testergebnis; Wiki-Datei im Hauptrepository ist nicht automatisch Nachweis eines separaten GitHub-Wiki-Pushs.
-- **[R13] Upstream-Metadaten:** [Upstream-HEAD 0f4faa9](https://github.com/razvanzeces/flowstation/commit/0f4faa98b1abe9ec295cf7a94a7a1fa4b3a869b8). Die dort genannte PR #46 ist ein Metadatenbefund des heutigen Upstreams, nicht der in diesem Chat nachgewiesene Portierungs-PR. Ein eigener PR für die damalige Hotfixfolge ist nicht belegt.
+- **[R12] Ergänzende geprüfte Dokumentation:** [wiki/Dual-Carrier.md](https://github.com/JanHG98/netcore-tetra/blob/6aa9be8f74ab731f72dc133a5f8e90c5018c626d/wiki/Dual-Carrier.md). Der dortige Testplan ist kein Testergebnis; Wiki-Datei im Hauptrepository ist nicht automatisch Nachweis eines separaten GitHub-Wiki-Pushs.
+- **[R13] Upstream-Metadaten:** [Upstream-HEAD 0f4faa9](https://github.com/razvanzeces/flowstation/commit/0f4faa98b1abe9ec295cf7a94a7a1fa4b3a869b8). Die dort genannte PR #46 ist ein Metadatenbefund des geprüften Upstreams, nicht der in dieser Entwicklungsphase nachgewiesene Portierungs-PR. Ein eigener PR für die damalige Hotfixfolge ist nicht belegt.
 - **[G1] GitHub-E-Mail-Schutz:** [Blocking command-line pushes that expose your personal email address](https://docs.github.com/en/account-and-profile/how-tos/email-preferences/blocking-command-line-pushes-that-expose-your-personal-email-address), ergänzend am Prüftag konsultiert.
 - **[G2] Git-Push-Semantik:** [git-push](https://git-scm.com/docs/git-push), ergänzend am Prüftag konsultiert.
 
@@ -844,7 +841,7 @@ Die beiden Screenshots zeigen einmal die frühere Hauptträger-only-Timeslotanze
 
 ### 16.3 Quellpakete und Hotfixartefakte
 
-Die ZIPs wurden im Chat als komplette Ersatzdateien oder kumulative Source-Pakete bereitgestellt. Die Dateien sind für diese Nachprüfung zugänglich; sie werden hier **inventarisiert, nicht erneut als empfohlene Installation veröffentlicht**. Der Zusatz `nosensitive` ist ein damaliger Paketname, keine nachträgliche vollständige Geheimnis-/Sicherheitszertifizierung des gesamten Inhalts.
+Die ZIPs wurden in den Arbeitsnotizen als komplette Ersatzdateien oder kumulative Source-Pakete bereitgestellt. Die Dateien sind für diese Nachprüfung zugänglich; sie werden hier **inventarisiert, nicht erneut als empfohlene Installation veröffentlicht**. Der Zusatz `nosensitive` ist ein damaliger Paketname, keine nachträgliche vollständige Geheimnis-/Sicherheitszertifizierung des gesamten Inhalts.
 
 | Artefakt | Dateien im ZIP | SHA-256 |
 |---|---:|---|
@@ -876,15 +873,15 @@ flowstation-main-dualcarrier-hotfix-009-nosensitive.zip
 flowstation-main-dualcarrier.zip
 ```
 
-Prüfanker des hier genauer untersuchten historischen Gesamtstands: `flowstation-main-dualcarrier-hotfix-009-nosensitive.zip`, 431 Dateien, SHA-256 `988fdff9b91ce67bc8a5573009e62a0d855d598b38f14fc9c741fa16ebf4f552`. Die Hashes identifizieren die heute zugänglichen Artefaktbytes; sie beweisen keine damalige Installation.
+Prüfanker des hier genauer untersuchten historischen Gesamtstands: `flowstation-main-dualcarrier-hotfix-009-nosensitive.zip`, 431 Dateien, SHA-256 `988fdff9b91ce67bc8a5573009e62a0d855d598b38f14fc9c741fa16ebf4f552`. Die Hashes identifizieren die am 03.10.2026 zugänglichen Artefaktbytes; sie beweisen keine damalige Installation.
 
 Zusätzlich waren die ursprünglichen Einzeldateien `config.rs`, `default_stack.rs`, `html(3).rs`, `mod(1).rs`, `sec_cell.rs`, `server(3).rs`, `soapy_dev.rs` und `umac_bs.rs` sowie der nicht erfolgreich angewendete `flowstation-dualcarrier-netcore.patch` verfügbar. Die ursprünglich vorgeschlagenen Namen `flowstation-dualcarrier-input.tgz` und `flowstation-dualcarrier-stage2-input.tgz` sind Verpackungs-/Anforderungsnamen aus dem Dialog; sie werden nicht als nachgewiesene zusätzliche Archivbytes ausgegeben.
 
 ### 16.4 ETSI-Unterlagen
 
-**[E1] Für die heutige begrenzte Klarstellung gezielt benutzt:** `en_30039202v030801p.pdf`, ETSI EN 300 392-2 V3.8.1 (2016-08), 1445 PDF-Seiten; insbesondere gedruckte Seite 71 sowie 928–929 zu MCCH/Übertragungsmodi und Kanalzuweisung/Capabilities. Diese Fassung ist ein bereitgestellter Quellenstand; ihr Status als neueste Norm wurde nicht behauptet.
+**[E1] Für die geprüfte begrenzte Klarstellung gezielt benutzt:** `en_30039202v030801p.pdf`, ETSI EN 300 392-2 V3.8.1 (2016-08), 1445 PDF-Seiten; insbesondere gedruckte Seite 71 sowie 928–929 zu MCCH/Übertragungsmodi und Kanalzuweisung/Capabilities. Diese Fassung ist ein bereitgestellter Quellenstand; ihr Status als neueste Norm wurde nicht behauptet.
 
-Als weiterer Projekt-Referenzbestand verfügbar, aber für diesen Archivauftrag **nicht vollständig inhaltlich neu geprüft**:
+Als weiterer Projekt-Referenzbestand verfügbar, aber für diesen Dokumentation **nicht vollständig inhaltlich neu geprüft**:
 
 ```text
 en_30039201v010601p.pdf
@@ -915,20 +912,18 @@ ETSI.pdf
 
 Der Bestand enthält unter anderem Air-Interface-, Codec-, RF-Test-, ISI-, Supplementary-Service- und SIM/UICC-Dokumente sowie Entwurfsfassungen. `ETSI.pdf` ist ein umfangreicher Sammelbestand mit 4100 Seiten, keine einzelne zusätzliche einheitliche Normfassung. Das Vorhandensein dieser PDFs bedeutet nicht, dass die historischen Hotfixes gegen sämtliche Dokumente geprüft wurden.
 
-### 16.5 Verbleibende Auswertungslücken
+### 16.5 Verbleibende Offene Nachweise
 
-1. Ursprünglicher Chattitel und Chatlink fehlen. Einzelne alte Werkzeugnachrichten sind nur als übersprungen sichtbar.
+1. Einzelne frühe Diagnoseausgaben und Arbeitsschritte sind nicht erhalten.
 2. Keine vollständigen erfolgreichen Cargo-/CI-Protokolle für jeden Hotfix und keine durchgängige Zuordnung von lokalem Git-HEAD, gebauter und installierter Binary.
 3. Keine dokumentierte unabhängige C721-Sprachverbindung, keine echte gleichzeitige Zweiträger-Lastabnahme, keine IQ-/Spektrums-/RF-Konformitätsmessung.
-4. Kein vom Benutzer nachgereichter erfolgreicher Betriebslog nach Hotfix 009. Die Tag-Existenz wurde erst in diesem Archivauftrag unabhängig geprüft.
-5. Der historische letzte Push-Ausschnitt ist unvollständig; heutige Remote-Belege ersetzen keinen damaligen vollständigen lokalen Dateiabgleich.
-6. Der heutige Audit ist auf die beschriebenen Codepfade und Referenzstellen begrenzt. Er bestätigt keine vollständige Regression, keinen aktuellen Gerätebetrieb und keine vollständige Auswertung aller ETSI-PDFs.
+4. Kein ausdrücklich nachgereichter erfolgreicher Betriebslog nach Hotfix 009. Die Tag-Existenz wurde erst in der Quellenprüfung unabhängig geprüft.
+5. Der historische letzte Push-Ausschnitt ist unvollständig; geprüfte Remote-Belege ersetzen keinen damaligen vollständigen lokalen Dateiabgleich.
+6. Der geprüfte Audit ist auf die beschriebenen Codepfade und Referenzstellen begrenzt. Er bestätigt keine vollständige Regression, keinen aktuellen Gerätebetrieb und keine vollständige Auswertung aller ETSI-PDFs.
 7. Historische ZIPs sind in dieser Sitzung lesbar, aber nicht Bestandteil der beiden hier neu abgelegten Git-Dateien. Für eine langfristige Aufbewahrung der Originalartefakte wäre ein gesonderter, auf Geheimnisse geprüfter Auftrag nötig.
 
 ## 17. Abschluss und Wiederaufnahme
 
-Dieser Chat dokumentiert einen frühen, iterativen DualCarrier-Port mit nachvollziehbaren Fehlversuchen und einer bestätigten Verbesserung gegen die beobachtete Gesprächsschleife. Er darf nicht als Nachweis gelesen werden, dass der alte Stand bereits jede Zweiträgerfunktion vollständig implementierte oder abgenommen war.
+Die Notizen dokumentieren einen frühen, iterativen DualCarrier-Port mit nachvollziehbaren Fehlversuchen und einer bestätigten Verbesserung gegen die beobachtete Gesprächsschleife. Er darf nicht als Nachweis gelesen werden, dass der alte Stand bereits jede Zweiträgerfunktion vollständig implementierte oder abgenommen war.
 
-Für eine Fortsetzung ist **der heute überprüfte beziehungsweise dann erneut zu prüfende Repository-Code** die Ausgangsbasis, nicht das letzte historische ZIP. Zuerst Source/Binary/Config eindeutig zuordnen, anschließend Secondary-Gespräch und gleichzeitige Nutzung nachweisen, dann Dedupe-, Signalisierungs-, Writer- und RF-Grenzen gezielt härten. Ein dritter Carrier bleibt ein nachgelagerter Ausbaukandidat.
-
-Das Chatarchiv selbst ändert weder die RF-Konfiguration noch den laufenden Dienst, erzeugt keinen neuen Produktrelease und archiviert den Chat nicht automatisch.
+Für eine Fortsetzung ist **der am 03.10.2026 überprüfte beziehungsweise dann erneut zu prüfende Repository-Code** die Ausgangsbasis, nicht das letzte historische ZIP. Zuerst Source/Binary/Config eindeutig zuordnen, anschließend Secondary-Gespräch und gleichzeitige Nutzung nachweisen, dann Dedupe-, Signalisierungs-, Writer- und RF-Grenzen gezielt härten. Ein dritter Carrier bleibt ein nachgelagerter Ausbaukandidat.

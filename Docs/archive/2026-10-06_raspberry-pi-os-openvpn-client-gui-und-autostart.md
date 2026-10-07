@@ -1,49 +1,46 @@
-# Raspberry Pi OS: OpenVPN-Client mit GUI, Profilimport und Autostart
+# Brainstorming: Raspberry Pi OS – OpenVPN-Client mit GUI, Profilimport und Autostart
 
-Der Fachchat enthält eine Schritt-für-Schritt-Anleitung für einen OpenVPN-Client auf Raspberry Pi OS mit Desktop. Vorgeschlagen wurde die Verwaltung über NetworkManager: Pakete installieren, ein vorhandenes Clientprofil importieren, den Tunnel manuell starten, die Erreichbarkeit prüfen und das VPN bei Bedarf an den Aufbau eines WLAN- oder Ethernet-Profils koppeln. Ein Start vor der Desktop-Anmeldung wurde ebenfalls behandelt.
+Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
 
-**Erreicht ist ein dokumentierter Einrichtungsvorschlag.** Es wurden keine Ausgaben des Raspberry Pi, kein importiertes Profil, kein erfolgreicher Verbindungsaufbau und keine Betriebsbestätigung zurückgemeldet. Die unten beschriebenen Linux-Befehle wurden in diesem Chat nicht auf dem Zielgerät ausgeführt. Die Archivprüfung ergänzt einen gesondert belegten Repository-Stand; sie ist keine VPN-Abnahme.
+Einrichtungsvorschlag für einen OpenVPN-Client auf Raspberry Pi OS mit Desktop: Pakete über NetworkManager bereitstellen, ein vorhandenes Clientprofil importieren, den Tunnel manuell starten, Erreichbarkeit prüfen und bei Bedarf an ein WLAN- oder Ethernet-Profil koppeln. Ein Start vor der Desktop-Anmeldung ist als Ausbauoption beschrieben.
 
-## 1. Metadaten und Quellenumfang
+**Erreicht ist ein dokumentierter Einrichtungsvorschlag.** Es wurden keine Ausgaben des Raspberry Pi, kein importiertes Profil, kein erfolgreicher Verbindungsaufbau und keine Betriebsbestätigung zurückgemeldet. Die unten beschriebenen Linux-Befehle wurden für diesen Entwicklungsstand nicht auf dem Zielgerät ausgeführt. Die Archivprüfung ergänzt einen gesondert belegten Repository-Stand; sie ist keine VPN-Abnahme.
+
+## 1. Projektstand und Quellenumfang
 
 | Feld | Wert |
 |---|---|
 | Thema | OpenVPN-Client auf Raspberry Pi OS mit grafischer Einrichtung, manueller Verbindung und profilgebundenem Autostart |
-| Ursprünglicher Chattitel | Nicht zuverlässig verfügbar; die Themenüberschrift dieses Archivs ist eine beschreibende Bezeichnung |
-| Chatlink / Chat-ID | Nicht verfügbar; kein Link und keine ID wurden geraten |
-| Fachlicher Nutzerauftrag | „so, schritt für schritt anleitung um auf RaspiOS ein openvpn client zu installieren, damit der pi sich mit dem vpn verbindet, am besten auch mit GUI“ |
-| Gesprächs- und Erstellungsdatum | 2026-10-06, Europe/Berlin |
+| Fachlicher Arbeitsumfang | „so, schritt für schritt anleitung um auf RaspiOS ein openvpn client zu installieren, damit der pi sich mit dem vpn verbindet, am besten auch mit GUI“ |
+| Arbeits- und Erstellungsdatum | 2026-10-06, Europe/Berlin |
 | Repository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
-| Schreibziel | Ausschließlich Branch `Archiving`, Verzeichnis `Docs/archive/` |
+| Archivablage | Ausschließlich Branch `Archiving`, Verzeichnis `Docs/archive/` |
 | Geprüfter Ausgangsstand von `Archiving` | [`083a2a3fa2b175463450ece09aec0ed06ad4792e`](https://github.com/JanHG98/netcore-tetra/commit/083a2a3fa2b175463450ece09aec0ed06ad4792e) |
 | Zusätzlich nur lesend geprüfter `main` | [`9116c15d645458f99e236712b67a1ad970432791`](https://github.com/JanHG98/netcore-tetra/commit/9116c15d645458f99e236712b67a1ad970432791) |
 | Archivdatei | `Docs/archive/2026-10-06_raspberry-pi-os-openvpn-client-gui-und-autostart.md` |
 | Archivindex | [README.md](README.md) |
-| Änderungsumfang | Diese neue Dokumentation und ihr Indexeintrag; keine Laufzeit-, Installations- oder Roadmapänderungen außerhalb des Archivs |
 
-Die genannten SHAs sind die gelesenen Quellenstände vor dieser Archivierung. Der Veröffentlichungscommit entsteht erst durch das Speichern; sein tatsächlicher SHA steht in der Dateihistorie und der Abschlussmeldung. Er wird nicht mit dem geprüften Basiscommit verwechselt.
+Die genannten SHAs bezeichnen die geprüften Quellenstände. Die Veröffentlichung der Notizen ist über die Git-Dateihistorie nachvollziehbar.
 
 ### 1.1 Zugänglicher Verlauf und Grenzen
 
-Ausgewertet wurden die im aktuellen Gespräch sichtbare fachliche Nutzeranfrage, die vollständige Antwort mit acht Einrichtungsschritten, die dazu in diesem Gespräch abgerufenen offiziellen Quellen und der anschließende Archivauftrag. Eine spätere fachliche Korrektur oder Erfolgsmeldung liegt hier nicht vor.
+Die Ausarbeitung umfasst acht Einrichtungsschritte und die dazu am 06.10.2026 recherchierten offiziellen Quellen. Eine spätere technische Korrektur oder Erfolgsbestätigung liegt nicht vor.
 
-Ein zusätzlicher Versuch, die Chatliste für verlässlichen Originaltitel und Chatlink abzurufen, scheiterte mit einem App-Werkzeugfehler. Deshalb wird keine vollständige Auswertung eines zusätzlich gespeicherten Chat-Exports behauptet. Nicht bereitgestellte frühere oder alternative Gesprächszweige sind nicht prüfbar. Projekt-Erinnerungen sind Kontext und kein Ersatz für Originalprotokolle.
-
-Ein bereits vorhandenes, **anderes** Archiv behandelt die detaillierte Umschalt-Policy nach vertrauenswürdigen Netzen: [OpenVPN-Autoverbindung nach WLAN und Heim-LAN](2026-10-06_raspberry-pi-openvpn-autoverbindung-vertrauenswuerdige-netze.md). Dessen Metadaten nennen „A: VPN Toggle je nach Netzwerk“ und einen eigenen Chatlink. Dieser Link wird nicht dem vorliegenden GUI-Chat zugeordnet. Die vorhandene Datei bleibt unverändert.
+Die detaillierte Standortpolicy ist separat beschrieben: [OpenVPN-Autoverbindung nach WLAN und Heim-LAN](2026-10-06_raspberry-pi-openvpn-autoverbindung-vertrauenswuerdige-netze.md). Profilgebundener Autostart und eigene Standortpolicy sind unterschiedliche Steuerungsansätze.
 
 ## 2. Ziel, Ausgangslage und Anforderungen
 
 Der Pi soll sich als Client mit einem bestehenden OpenVPN-VPN verbinden. Gewünscht ist eine nachvollziehbare Schrittfolge, bevorzugt mit grafischer Bedienung. Ein VPN-Server soll in diesem Auftrag nicht neu eingerichtet werden.
 
-Die Antwort setzte Raspberry Pi OS **mit Desktop ab Bookworm beziehungsweise Trixie** voraus. Das ist eine Voraussetzung des vorgeschlagenen Wegs, keine bestätigte Version des konkreten Geräts. Die Raspberry-Pi-Dokumentation beschreibt NetworkManager seit Bookworm als Standard; der reale Dienstzustand muss dennoch geprüft werden.
+Der Einrichtungsweg setzt Raspberry Pi OS **mit Desktop ab Bookworm beziehungsweise Trixie** voraus. Das ist eine Voraussetzung des vorgeschlagenen Wegs, keine bestätigte Version des konkreten Geräts. Die Raspberry-Pi-Dokumentation beschreibt NetworkManager seit Bookworm als Standard; der reale Dienstzustand muss dennoch geprüft werden.
 
-Für die Einrichtung werden ein vom VPN-Server exportiertes Clientprofil (`.ovpn`), gegebenenfalls separate Zertifikats-/Schlüsseldateien und die tatsächlich erforderlichen Authentisierungsdaten benötigt. Nichts davon wurde im Fachchat bereitgestellt.
+Für die Einrichtung werden ein vom VPN-Server exportiertes Clientprofil (`.ovpn`), gegebenenfalls separate Zertifikats-/Schlüsseldateien und die tatsächlich erforderlichen Authentisierungsdaten benötigt. Nichts davon wurde im Fachentwurf bereitgestellt.
 
 | Anforderung oder Vorschlag | Herkunft und Status | Begründung / Grenze |
 |---|---|---|
-| OpenVPN-Client auf Raspberry Pi OS | Ausdrücklicher Nutzerwunsch; geplant | Pi soll einen bestehenden VPN-Zugang verwenden |
-| Möglichst grafische Einrichtung und Bedienung | Ausdrücklicher Nutzerwunsch; geplant | Profilimport und Bedienung sollen am Desktop möglich sein |
-| NetworkManager mit OpenVPN-Plugin verwenden | Konkreter Assistentenvorschlag, keine spätere ausdrückliche Auswahlbestätigung | Integration in vorhandene Netzwerkverwaltung und grafischen Verbindungseditor |
+| OpenVPN-Client auf Raspberry Pi OS | Ausdrücklicher Anforderung; geplant | Pi soll einen bestehenden VPN-Zugang verwenden |
+| Möglichst grafische Einrichtung und Bedienung | Ausdrücklicher Anforderung; geplant | Profilimport und Bedienung sollen am Desktop möglich sein |
+| NetworkManager mit OpenVPN-Plugin verwenden | Konkreter technischer Vorschlag, keine spätere ausdrückliche Auswahlbestätigung | Integration in vorhandene Netzwerkverwaltung und grafischen Verbindungseditor |
 | Verbindung `NetCore-VPN` nennen | Beispielname der Anleitung | Kein nachgewiesener vorhandener Profilname und keine bekannte UUID |
 | Zuerst manuell verbinden und prüfen | Vorgeschlagener Ablauf | Authentisierung und Routing vor automatischem Betrieb klären |
 | Autostart mit ausgewählten WLAN-/LAN-Profilen | Optional vorgeschlagener Ausbau | VPN kann zusammen mit einer Basisverbindung aktiviert werden |
@@ -58,12 +55,12 @@ Unbekannt bleiben Pi-Modell, installierte OS-/Paketversionen, tatsächliche SSID
 | Status | Bedeutung in dieser Dokumentation | Konkreter Stand |
 |---|---|---|
 | **Idee** | Erwähnter möglicher Ausbau ohne Umsetzungsbeleg | Dynamische LAN-Erkennung als Ergänzung zur GUI-Einrichtung |
-| **Beschlossen/geplant** | Ausdrückliches Ziel oder als solcher gekennzeichneter Einrichtungsvorschlag | Nutzerziel OpenVPN-Client mit GUI; acht Schritte als vorgeschlagener Weg |
-| **Implementiert** | Im geprüften Repository oder anhand konkreter Zielgeräteartefakte vorhanden | Bestehende allgemeine WLAN-Verwaltung im Repository; kein durch diesen Fachchat implementierter OpenVPN-Client oder Autotoggle |
-| **Getestet** | Konkrete Prüfung mit belegtem Umfang | Quellen- und statische Repository-Prüfung im Archivauftrag; keine funktionalen Pi-/VPN-Tests |
-| **Im Betrieb bestätigt** | Erfolg am realen Zielsystem durch überprüfbaren Nachweis oder eindeutig eingeordnete Betreiberbestätigung | Für die Einrichtung dieses Chats nicht vorhanden |
+| **Beschlossen/geplant** | Ausdrückliches Ziel oder als solcher gekennzeichneter Einrichtungsvorschlag | Ziel OpenVPN-Client mit GUI; acht Schritte als vorgeschlagener Weg |
+| **Implementiert** | Im geprüften Repository oder anhand konkreter Zielgeräteartefakte vorhanden | Bestehende allgemeine WLAN-Verwaltung im Repository; kein durch diesen Fachentwurf implementierter OpenVPN-Client oder Autotoggle |
+| **Getestet** | Konkrete Prüfung mit belegtem Umfang | Quellen- und statische Repository-Prüfung im Prüfdurchlauf vom 06.10.2026; keine funktionalen Pi-/VPN-Tests |
+| **Im Betrieb bestätigt** | Erfolg am realen Zielsystem durch überprüfbaren Nachweis oder eindeutig eingeordnete Betreiberbestätigung | Für die Einrichtung dieser Arbeitsphase nicht vorhanden |
 
-Die Bereitstellung einer Anleitung ist kein Installationsnachweis. Ebenso beweisen vorhandene `nmcli`-Aufrufe für WLAN nicht, dass ein VPN-Profil eingerichtet ist. Allgemeine Befunde aus anderen NetCore-Chats werden nicht zu einem Betriebserfolg dieses Pis umgedeutet.
+Die Bereitstellung einer Anleitung ist kein Installationsnachweis. Ebenso beweisen vorhandene `nmcli`-Aufrufe für WLAN nicht, dass ein VPN-Profil eingerichtet ist. Allgemeine Befunde aus anderen NetCore-Arbeitsphasen werden nicht zu einem Betriebserfolg dieses Pis umgedeutet.
 
 ## 4. Architektur, Komponenten und Schnittstellen
 
@@ -84,7 +81,7 @@ Der vorgeschlagene Weg verwendet den grafischen `nm-connection-editor` zur Konfi
 
 Beim profilgebundenen Autostart verwendet NetworkManager das Konzept `connection.secondaries`: Eine Liste von VPN-UUIDs wird beim Aktivieren der Basisverbindung mit aktiviert. Allgemeines `connection.autoconnect` allein wird für VPN-Profile nicht unterstützt. Dieses Verhalten wurde in der NetworkManager-Referenz geprüft.
 
-Die Desktop-GUI ist keine eigene NetCore-Weboberfläche. Der im Repository vorhandene WLAN-Reiter und seine API sind getrennte Komponenten; ein OpenVPN-Import oder eine VPN-Schaltfläche im NetCore-Dashboard wurde in diesem Chat weder beauftragt noch nachgewiesen.
+Die Desktop-GUI ist keine eigene NetCore-Weboberfläche. Der im Repository vorhandene WLAN-Reiter und seine API sind getrennte Komponenten; ein OpenVPN-Import oder eine VPN-Schaltfläche im NetCore-Dashboard wurde für diesen Entwicklungsstand weder beauftragt noch nachgewiesen.
 
 ## 5. Relevante Dateien, Dienste, Pfade und Parameter
 
@@ -102,14 +99,14 @@ Die Desktop-GUI ist keine eigene NetCore-Weboberfläche. Der im Repository vorha
 | WLAN-SSIDs / Ethernet-Profil | Unbekannt | Vor Automatisierung erfassen |
 | OpenVPN-Server und Port | Unbekannt | Aus realem `.ovpn`-Profil bestimmen; kein Port pauschal festgeschrieben |
 | Transport | OpenVPN gemäß Clientprofil, UDP/TCP nicht festgelegt | Nicht aus Produktdefaults als Standortwert ableiten |
-| Interner Prüfdienst | Ein bekannter erreichbarer NetCore-Dienst im Zielnetz | Kein konkreter Server oder Port im Fachchat benannt |
+| Interner Prüfdienst | Ein bekannter erreichbarer NetCore-Dienst im Zielnetz | Kein konkreter Server oder Port im Fachentwurf benannt |
 | DNS / Routen / IPv6 | Nicht festgelegt | Müssen zur tatsächlichen Server-/Clientkonfiguration passen |
 
 Die Schlüsseldateinamen dienen allein der Orientierung. Passwörter, Tokens, private Schlüssel, Zertifikatsinhalte und sonstige Zugangsdaten sind in dieser Dokumentation nicht enthalten.
 
 ## 6. Historischer Einrichtungsablauf und Befehle
 
-**Ausführungsstatus aller folgenden Linux-Befehle: nur vorgeschlagen, nicht auf dem Raspberry Pi ausgeführt oder durch Nutzer-Ausgaben bestätigt.** Es wird kein Remotezugriff auf das Zielgerät behauptet. Paketversionsnummern und GUI-Bezeichnungen können vom konkreten System abhängen.
+**Ausführungsstatus aller folgenden Linux-Befehle: nur vorgeschlagen, nicht auf dem Raspberry Pi ausgeführt oder durch Betriebsausgaben bestätigt.** Es wird kein Remotezugriff auf das Zielgerät behauptet. Paketversionsnummern und GUI-Bezeichnungen können vom konkreten System abhängen.
 
 ### 6.1 OS und Dienstzustand prüfen
 
@@ -127,7 +124,7 @@ sudo apt update
 sudo apt install openvpn network-manager-openvpn network-manager-openvpn-gnome network-manager-gnome
 ```
 
-Die Paketgruppe deckt Client, NetworkManager-Plugin und grafischen Editor ab. Die Recherche bestätigte die Paketaufteilung beziehungsweise das Übergangspaket unter Trixie. Es gibt keine Ausgabe eines erfolgreichen `apt`-Laufs auf Jans Pi.
+Die Paketgruppe deckt Client, NetworkManager-Plugin und grafischen Editor ab. Die Recherche bestätigte die Paketaufteilung beziehungsweise das Übergangspaket unter Trixie. Es gibt keine Ausgabe eines erfolgreichen `apt`-Laufs auf dem Ziel-Pi.
 
 ### 6.3 Clientdateien lokal ablegen
 
@@ -158,11 +155,11 @@ Vorgeschlagene Klickfolge:
 6. Benutzername und Passwort nur ergänzen, wenn der tatsächliche Server diese verlangt.
 7. Speichern.
 
-Die Antwort unterschied Zertifikatsauthentisierung von zusätzlicher Benutzer-/Passwortauthentisierung. Bei einem ausschließlich zertifikatsbasierten Zugang muss nicht zwingend ein Benutzerpasswort existieren. Eine eventuell verschlüsselte Schlüsseldatei kann dennoch eine Passphrase benötigen. Die konkrete Authentisierungsart blieb unbekannt.
+Zertifikatsauthentisierung und zusätzliche Benutzer-/Passwortauthentisierung sind getrennte Verfahren. Bei einem ausschließlich zertifikatsbasierten Zugang muss nicht zwingend ein Benutzerpasswort existieren. Eine eventuell verschlüsselte Schlüsseldatei kann dennoch eine Passphrase benötigen. Die konkrete Authentisierungsart blieb unbekannt.
 
 ### 6.5 Verbindung starten und trennen
 
-Die Antwort empfahl zunächst das Netzwerksymbol in der Taskleiste und einen Eintrag wie „VPN-Verbindungen → NetCore-VPN“, eventuell unter erweiterten Optionen. **Die genaue Menüstruktur wurde nicht auf dem Pi angesehen oder getestet.** Desktop-/Panelversionen können sich unterscheiden.
+Als Einstieg vorgesehen sind das Netzwerksymbol in der Taskleiste und ein Eintrag wie „VPN-Verbindungen → NetCore-VPN“, eventuell unter erweiterten Optionen. **Die genaue Menüstruktur wurde nicht auf dem Pi angesehen oder getestet.** Desktop-/Panelversionen können sich unterscheiden.
 
 Wenn kein VPN-Schalter angeboten wird, lautet die Terminalalternative:
 
@@ -189,7 +186,7 @@ ip -br address
 
 Erwartung: Das VPN-Profil erscheint aktiv; eine passende Tunnelschnittstelle ist vorhanden. Ein Name wie `tun0` ist ein Beispiel und kein zwingendes Erfolgskriterium.
 
-Zusätzlich sollte ein bekannter interner Dienst im Zielnetz geöffnet werden. Ein aktiver Tunnel allein bestätigt weder richtige Routen noch DNS, Serverfreigaben oder Anwendungserreichbarkeit. Der Fachchat enthält kein Ergebnis dieses Tests und keine öffentliche IP-Prüfung als angeblichen Betriebsnachweis.
+Zusätzlich sollte ein bekannter interner Dienst im Zielnetz geöffnet werden. Ein aktiver Tunnel allein bestätigt weder richtige Routen noch DNS, Serverfreigaben oder Anwendungserreichbarkeit. Der Fachentwurf enthält kein Ergebnis dieses Tests und keine öffentliche IP-Prüfung als angeblichen Betriebsnachweis.
 
 Vorgeschlagene Fehlerdiagnose:
 
@@ -203,7 +200,7 @@ Das Journal wurde nicht nachgereicht. Es gibt deshalb keine konkret diagnostizie
 
 Erneut `nm-connection-editor` öffnen, diesmal das gewünschte **WLAN- oder Ethernet-Profil** bearbeiten. Unter Allgemein sollte die Option sinngemäß „Automatisch mit VPN verbinden, wenn diese Verbindung verwendet wird“ aktiviert und `NetCore-VPN` ausgewählt werden.
 
-Die Einstellung ist pro gewünschtem Basisprofil zu wiederholen. Sie wirkt beim nächsten Aufbau dieser Basisverbindung; daraus folgt nicht, dass allein das Speichern sofort einen bestehenden Tunnel aktiviert. Die Antwort verwies ausdrücklich darauf, dass `connection.autoconnect` am VPN-Profil allein nicht genügt.
+Die Einstellung ist pro gewünschtem Basisprofil zu wiederholen. Sie wirkt beim nächsten Aufbau dieser Basisverbindung; daraus folgt nicht, dass allein das Speichern sofort einen bestehenden Tunnel aktiviert. Zu beachten ist, dass `connection.autoconnect` am VPN-Profil allein nicht genügt.
 
 **Grenze:** Diese Verknüpfung ist keine umfassende Always-on-/Recovery-Policy. Wiederanlauf nach Tunnelverlust, Verhalten bei gleichzeitigen Uplinks und allgemeine Behandlung neuer WLANs wurden damit nicht implementiert oder getestet.
 
@@ -213,7 +210,7 @@ Für einen unbeaufsichtigten Start sollten die beteiligten Basis- und VPN-Profil
 
 Ein nur in der angemeldeten Sitzung nutzbares Profil oder ein erst dann entsperrter persönlicher Schlüsselbund erfüllt diese Anforderung nicht. Eine manuell erforderliche MFA-Abfrage verhindert den vollständig unbeaufsichtigten Start. Daraus wurde keine Anweisung zur Abschaltung bestehender MFA abgeleitet.
 
-Die Antwort schlug anschließend einen Neustart mit erneuter Statusprüfung vor. Es ist kein solcher Neustart oder erfolgreicher Boot-VPN-Aufbau bestätigt.
+Als abschließender Test ist ein Neustart mit erneuter Statusprüfung vorgesehen. Es ist kein solcher Neustart oder erfolgreicher Boot-VPN-Aufbau bestätigt.
 
 ## 7. Standortabhängige Automatik und Abgrenzung anderer Ansätze
 
@@ -223,14 +220,14 @@ Wird dasselbe Ethernet-Profil im Heim-LAN und unterwegs verwendet, unterscheidet
 
 | Weg | Einordnung | Konsequenz für die Fortsetzung |
 |---|---|---|
-| NetworkManager-VPN-Profil und grafischer Editor | Einrichtungsvorschlag dieses Chats | Zuerst manuell importieren und real testen |
-| VPN als `secondaries` ausgewählter WLAN-/LAN-Profile | Optionaler Ausbau dieses Chats | Einfacher profilgebundener Start; begrenzte Standort-/Recovery-Semantik |
-| NetworkManager-Dispatcher mit eigener Policy | In einem anderen Chat ausgearbeitet; nur Querverweis hier | [Separates Policy-Archiv](2026-10-06_raspberry-pi-openvpn-autoverbindung-vertrauenswuerdige-netze.md) vor Ausbau lesen |
+| NetworkManager-VPN-Profil und grafischer Editor | Einrichtungsvorschlag dieser Arbeitsphase | Zuerst manuell importieren und real testen |
+| VPN als `secondaries` ausgewählter WLAN-/LAN-Profile | Optionaler Ausbau dieser Arbeitsphase | Einfacher profilgebundener Start; begrenzte Standort-/Recovery-Semantik |
+| NetworkManager-Dispatcher mit eigener Policy | In einer eigenen Ausarbeitung ausgearbeitet; nur Querverweis hier | [Separates Policy-Archiv](2026-10-06_raspberry-pi-openvpn-autoverbindung-vertrauenswuerdige-netze.md) vor Ausbau lesen |
 | Timer und `openvpn-client@netcore.service` | Historische Imagebuilder-Vorschau im Repository | Eigener Lebenszyklus; keine Umsetzung des GUI-Imports nachgewiesen |
 | Ausschließlich `connection.autoconnect` am VPN | Als ausreichender Autostartmechanismus ausdrücklich verneint | Stattdessen Basisprofil-Verknüpfung oder definierte Policy |
-| Andere VPN-Produkte oder ein neuer Server | Nicht Gegenstand des Fachchats | Kein Auswahlvergleich und keine Verwerfungsentscheidung erfinden |
+| Andere VPN-Produkte oder ein neuer Server | Nicht Gegenstand des Fachentwurfs | Kein Auswahlvergleich und keine Verwerfungsentscheidung erfinden |
 
-Keine spätere Nutzerkorrektur ersetzt die Anleitung. Der heutige Repository-Abgleich ergänzt ihren Kontext. Vor einem Ausbau ist ein eindeutiger Verantwortlicher für Start/Stop festzulegen; die GUI-Verknüpfung und eine separate Policy dürfen nicht unbeabsichtigt gegeneinander arbeiten.
+Keine spätere Korrektur anhand der Anlage ersetzt die Anleitung. Der geprüfte Repository-Abgleich ergänzt ihren Kontext. Vor einem Ausbau ist ein eindeutiger Verantwortlicher für Start/Stop festzulegen; die GUI-Verknüpfung und eine separate Policy dürfen nicht unbeabsichtigt gegeneinander arbeiten.
 
 ## 8. Zusätzlich geprüfter Repository-Stand vom 06.10.2026
 
@@ -246,34 +243,34 @@ Gesucht wurde in getrackten Textdateien außerhalb des Archivs nach `openvpn`, `
 
 | Quelle | Befund | Aussagegrenze |
 |---|---|---|
-| [`wifi.rs`](https://github.com/JanHG98/netcore-tetra/blob/083a2a3fa2b175463450ece09aec0ed06ad4792e/crates/tetra-entities/src/wifi.rs) | WLAN-Verwaltung über `nmcli`, einschließlich Scan, gespeicherter WLAN-Profile, Verbindung/Trennung und Radio-Steuerung; Aufruf-Timeout 15 Sekunden | Bestehende WLAN-Funktion, kein OpenVPN-Import oder Heimnetz-VPN-Autotoggle dieses Chats |
+| [`wifi.rs`](https://github.com/JanHG98/netcore-tetra/blob/083a2a3fa2b175463450ece09aec0ed06ad4792e/crates/tetra-entities/src/wifi.rs) | WLAN-Verwaltung über `nmcli`, einschließlich Scan, gespeicherter WLAN-Profile, Verbindung/Trennung und Radio-Steuerung; Aufruf-Timeout 15 Sekunden | Bestehende WLAN-Funktion, kein OpenVPN-Import oder Heimnetz-VPN-Autotoggle dieser Arbeitsphase |
 | [`net_dashboard/server.rs`](https://github.com/JanHG98/netcore-tetra/blob/083a2a3fa2b175463450ece09aec0ed06ad4792e/crates/tetra-entities/src/net_dashboard/server.rs) | Vorhandene `/api/wifi/`-Routen binden die WLAN-Funktionen an | Kein Nachweis einer NetCore-VPN-GUI |
-| [`Komplettguide vom 28.09.2026`](https://github.com/JanHG98/netcore-tetra/blob/083a2a3fa2b175463450ece09aec0ed06ad4792e/Docs/NetCore-Tetra-Komplettguide-2026-09-28.md) | Explizite Entwicklungsvorschau zu Pi-Images und VPN-Automatik | Historischer anderer Quellstand, keine heutige Installation |
+| [`Komplettguide vom 28.09.2026`](https://github.com/JanHG98/netcore-tetra/blob/083a2a3fa2b175463450ece09aec0ed06ad4792e/Docs/NetCore-Tetra-Komplettguide-2026-09-28.md) | Explizite Entwicklungsvorschau zu Pi-Images und VPN-Automatik | Historischer anderer Quellstand, keine geprüfte Installation |
 | [`Systemhandbuch vom 28.09.2026`](https://github.com/JanHG98/netcore-tetra/blob/083a2a3fa2b175463450ece09aec0ed06ad4792e/Docs/NetCore-Tetra-Systemhandbuch-2026-09-28.md) | Entsprechende VPN-Vorschau und identische wesentliche Aussagen in den Suchtreffern | Dokumentation ersetzt keine Integration des beschriebenen Dienstes |
 | `system-backend/deployment-core/` | In beiden geprüften Remote-Bäumen nicht vorhanden | Fehlende Komponente am geprüften Stand; keine Behauptung über sämtliche Historie oder Zielgeräte |
 | Suche nach der konkreten GUI-/Policy-Integration | Die genannten Suchmuster lieferten außerhalb des Archivs nur die Handbuch-/Guide-Passagen zu OpenVPN; keine passende Implementierung des hier beschriebenen Ablaufs | Begrenzter statischer Suchnachweis, kein Beweis vollständiger Abwesenheit jeder denkbaren VPN-Funktion |
-| [`ROADMAP.md` auf `main`](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md) | Z01.1 nennt den Abgleich fehlender Deployment-/Syslog-Arbeit einschließlich Pi-VPN-Policy als aktuellen ersten Gesamtschritt; Z01.2 Integration, Z01.4 reale Installations-/Recovery-/Pi-Abnahme bleiben offen | Projektpriorität aus heutiger Roadmap, nicht nachträglich im Fachchat beschlossen |
-| Vorhandenes [VPN-Policy-Archiv](2026-10-06_raspberry-pi-openvpn-autoverbindung-vertrauenswuerdige-netze.md) | Getrennte Ausarbeitung zu vertrauenswürdigen WLANs und Heim-LAN vorhanden | Eigenständiger Chat; nicht überschrieben und nicht als Live-Nachweis verwendet |
+| [`ROADMAP.md` auf `main`](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md) | Z01.1 nennt den Abgleich fehlender Deployment-/Syslog-Arbeit einschließlich Pi-VPN-Policy als aktuellen ersten Gesamtschritt; Z01.2 Integration, Z01.4 reale Installations-/Recovery-/Pi-Abnahme bleiben offen | Projektpriorität aus geprüfter Roadmap, nicht nachträglich im Fachentwurf beschlossen |
+| Vorhandenes [VPN-Policy-Archiv](2026-10-06_raspberry-pi-openvpn-autoverbindung-vertrauenswuerdige-netze.md) | Getrennte Ausarbeitung zu vertrauenswürdigen WLANs und Heim-LAN vorhanden | Eigenständige Ausarbeitung; nicht überschrieben und nicht als Live-Nachweis verwendet |
 
 `wifi.rs`, `net_dashboard/server.rs`, `net_dashboard/ui/dashboard.html` und die beiden Handbücher haben zwischen den geprüften `Archiving`- und `main`-Snapshots jeweils identische Blob-SHAs. Diese Inhaltsgleichheit bestätigt den gemeinsamen Quellstand der genannten Dateien, nicht ihre erfolgreiche Ausführung.
 
-Die vorhandenen WLAN-Endpunkte sind `GET /api/wifi/status`, `GET /api/wifi/scan`, `GET /api/wifi/saved`, `GET /api/wifi/available` sowie `POST /api/wifi/connect`, `POST /api/wifi/disconnect`, `POST /api/wifi/forget` und `POST /api/wifi/radio`. Sie werden als heutiger Repository-Kontext dokumentiert; im Fachchat waren sie keine Integrationsanforderung.
+Die vorhandenen WLAN-Endpunkte sind `GET /api/wifi/status`, `GET /api/wifi/scan`, `GET /api/wifi/saved`, `GET /api/wifi/available` sowie `POST /api/wifi/connect`, `POST /api/wifi/disconnect`, `POST /api/wifi/forget` und `POST /api/wifi/radio`. Sie werden als geprüfter Repository-Kontext dokumentiert; im Fachentwurf waren sie keine Integrationsanforderung.
 
 ### 8.3 Historische Imagebuilder-Vorschau und Integrationslücke
 
-Der gelesene Guide kennzeichnet den einschlägigen Anhang ausdrücklich als Entwicklungsvorschau für `feature/openlab-discovery-deployment` bei `bbf039729b9b05f8d623b11195ca24a124f68d16`. Diese SHA-/Branchangabe wurde aus der Dokumentation übernommen; der historische Commit wurde in diesem Archivauftrag nicht erneut auf Codeumfang oder Laufzeit getestet.
+Der gelesene Guide kennzeichnet den einschlägigen Anhang ausdrücklich als Entwicklungsvorschau für `feature/openlab-discovery-deployment` bei `bbf039729b9b05f8d623b11195ca24a124f68d16`. Diese SHA-/Branchangabe wurde aus der Dokumentation übernommen; der historische Commit wurde bei der Quellenprüfung vom 06.10.2026 nicht erneut auf Codeumfang oder Laufzeit getestet.
 
 Laut Vorschau prüft eine Richtlinie etwa alle **15 Sekunden** aktive NetworkManager-Verbindungen. Eine konfigurierte vertrauenswürdige SSID oder eine kabelgebundene Adresse im konfigurierten LAN-Präfix schaltet den VPN-Dienst aus; andernfalls wird `openvpn-client@netcore.service` eingeschaltet. Die Tunneladresse zählt nicht als Heimnetz. Richtliniendaten sollen in `/etc/netcore/image-network.json` liegen; ohne eingebettetes OpenVPN-Profil soll der Timer nicht aktiviert werden. Funkdienste sollen dadurch nicht neu starten.
 
 Diese Variante verwendet NetworkManager für Netzerkennung, aber einen eigenen OpenVPN-systemd-Dienst für den Tunnel. Sie ist deshalb nicht identisch mit dem hier vorgeschlagenen importierten NetworkManager-VPN-Profil. Die Vorschau beschreibt außerdem Raspberry Pi OS Lite und streng begrenzte eingebettete Profile; daraus folgt keine Pflicht, die Desktop-Anleitung nachträglich auf dieses Imageverfahren umzuschreiben.
 
-Die heutige zentrale Roadmap nennt diese Übernahmelücke ausdrücklich. `PR #57` und der Feature-Commit werden dort als historische Herkunft referenziert; der PR wurde in diesem Auftrag nicht separat neu geprüft. Es wurde kein neuer Implementierungs-PR erzeugt und keine historische Entwicklung nach `main` oder `Archiving` gemergt.
+Die geprüfte zentrale Roadmap nennt diese Übernahmelücke ausdrücklich. `PR #57` und der Feature-Commit werden dort als historische Herkunft referenziert; der PR wurde in diesem Auftrag nicht separat neu geprüft. Es wurde kein neuer Implementierungs-PR erzeugt und keine historische Entwicklung nach `main` oder `Archiving` gemergt.
 
 ## 9. Fehler, Diagnose, Korrekturen und Tests
 
 ### 9.1 Keine belegte Störung auf dem Pi
 
-Im Fachchat wurden keine Fehlermeldungen gemeldet. Folgende Fälle waren vorsorgliche Diagnose- oder Konfigurationshinweise:
+Im Fachentwurf wurden keine Fehlermeldungen gemeldet. Folgende Fälle waren vorsorgliche Diagnose- oder Konfigurationshinweise:
 
 | Möglicher Fall | In der Anleitung vorgesehener Umgang | Tatsächliches Ergebnis |
 |---|---|---|
@@ -285,20 +282,18 @@ Im Fachchat wurden keine Fehlermeldungen gemeldet. Folgende Fälle waren vorsorg
 | Automatik startet erst nach Login | Profilberechtigung und Secret-Verfügbarkeit prüfen | Kein Bootproblem nachgewiesen |
 | Gleiches Ethernet-Profil zu Hause und unterwegs | Ergänzende Standortpolicy vorsehen | Offene Anforderung, kein reparierter Defekt |
 
-Es gibt deshalb keine „funktionierende Reparatur“, die als ausgeführt dokumentiert werden könnte. Die wichtigste technische Präzisierung der ursprünglichen Antwort war die korrekte Zuordnung des VPN-Autostarts zum Basisprofil.
+Es gibt deshalb keine „funktionierende Reparatur“, die als ausgeführt dokumentiert werden könnte. Die wichtigste technische Festlegung war die korrekte Zuordnung des VPN-Autostarts zum Basisprofil.
 
-### 9.2 Im Archivauftrag tatsächlich geprüfte Punkte
+### 9.2 Im Prüfdurchlauf vom 06.10.2026 tatsächlich geprüfte Punkte
 
-- Sichtbaren Fachverlauf und Quellen der vollständigen Antwort ausgewertet.
+- Vollständigen Einrichtungsvorschlag und seine Quellen geprüft.
 - Aktuelle Remote-Branchköpfe und ungekürzte Git-Bäume gelesen.
-- Vorhandenen Archivindex und thematisch ähnliches Policy-Archiv geprüft; keine eindeutig diesem GUI-Chat zugehörige Datei gefunden.
+- Vorhandenen Archivindex und thematisch ähnliches Policy-Archiv geprüft; keine bereits vorhandene gleichartige GUI-Ausarbeitung gefunden.
 - Lokalen Textbestand außerhalb des Archivs per Pfad/Blob-SHA mit dem Remote-Ausgangsstand abgeglichen.
 - Relevante WLAN-Implementierung, Dokumentationsvorschau, fehlenden Deployment-Core-Pfad und aktuelle Gesamtroadmap statisch geprüft.
 - Vorhandene offizielle Quellen zur Paketaufteilung, NetworkManager-Integration, `secondaries`, `--ask` und Profil-/Secret-Verfügbarkeit herangezogen.
 
 Diese Nachweise betreffen Dokumentation und Quellen. Es wurde weder Linux-Software auf dem Pi installiert noch ein VPN, eine Firewall oder ein Funkdienst gestartet, verändert oder getestet. Build-/CI-Läufe wären für diese ausschließlich dokumentarische Änderung kein Nachweis des Pi-Betriebs und wurden nicht als solche ausgegeben.
-
-Die Veröffentlichung wird separat auf Änderungspfad, erhaltene Indexeinträge, Links und Remote-Dateiinhalte geprüft. Der tatsächliche Veröffentlichungscommit wird in der Abschlussmeldung genannt.
 
 ### 9.3 Noch ausstehende Abnahme
 
@@ -321,7 +316,7 @@ Alle folgenden Tests sind Empfehlungen für die Fortsetzung, nicht bereits durch
 
 ## 10. Offene Aufgaben, Roadmap-Kandidaten und nächste Schritte
 
-Die folgende Reihenfolge konkretisiert die Fortsetzung dieses Einrichtungsthemas. Im Fachchat wurden keine Kalendertermine oder projekweiten Prioritätsänderungen vereinbart. Für die Gesamtentwicklung bleibt die am Archivdatum gelesene `main`-Roadmap maßgeblich: **Z01.1 Quellvergleich/Integrationsplan**, danach kontrollierte Integration und echte Abnahme.
+Die folgende Reihenfolge konkretisiert die Fortsetzung dieses Einrichtungsthemas. Im Fachentwurf wurden keine Kalendertermine oder projekweiten Prioritätsänderungen vereinbart. Für die Gesamtentwicklung bleibt die am Archivdatum gelesene `main`-Roadmap maßgeblich: **Z01.1 Quellvergleich/Integrationsplan**, danach kontrollierte Integration und echte Abnahme.
 
 | Kandidat | Nächster Schritt | Abhängigkeit / Abschlusskriterium |
 |---|---|---|
@@ -334,11 +329,11 @@ Die folgende Reihenfolge konkretisiert die Fortsetzung dieses Einrichtungsthemas
 
 Weitere offene Detailpunkte: GUI-Schalter auf dem tatsächlichen Panel, dauerhafte Zertifikatspfade, tatsächlicher Profilname/UUID, Passwort- beziehungsweise Schlüsselpassphrasenbedarf, MFA-Bedingungen, DNS/IPv6, Split-/Full-Tunnel und Recovery nach Tunnelverlust. Ein neues GUI-Frontend, VPN-Serveraufbau oder Kill-Switch wurde hier nicht beschlossen.
 
-Diese Kandidaten werden ausschließlich in dieser Archivdatei erfasst. `ROADMAP.md`, Quellcode, Profile, Dienste und Zielgeräte werden durch den Archivauftrag nicht geändert.
+Die Kandidaten sind noch nicht in die Root-Roadmap übernommen. Profile, Dienste und Zielgeräte wurden nicht verändert.
 
 ## 11. Quellen, Querverweise und Anhänge
 
-### 11.1 Offizielle Quellen der fachlichen Antwort
+### 11.1 Offizielle Quellen des Einrichtungsvorschlags
 
 Die folgenden URLs wurden im Gespräch am 06.10.2026 recherchiert beziehungsweise geöffnet. Sie stützen die technischen Aussagen, sind aber kein Zielgeräte-Test. Der Debian-Wiki-OpenVPN-Inhalt war über das Suchergebnis verfügbar; ein zusätzlicher direkter Abruf lieferte HTTP 403. Diese Grenze wurde nicht als erfolgreiche Volltextabfrage ausgegeben.
 
@@ -356,7 +351,7 @@ Die folgenden URLs wurden im Gespräch am 06.10.2026 recherchiert beziehungsweis
 
 ### 11.2 Relevante Repository-Verweise
 
-- [Eigenständiger Chat zur VPN-Standortpolicy](2026-10-06_raspberry-pi-openvpn-autoverbindung-vertrauenswuerdige-netze.md).
+- [Eigenständige Ausarbeitung zur VPN-Standortpolicy](2026-10-06_raspberry-pi-openvpn-autoverbindung-vertrauenswuerdige-netze.md).
 - [Deployment-VM, Imagebuilder und Auto-Discovery](2026-10-05_deployment-vm-tbs-imagebuilder-und-auto-discovery.md) als benachbarte Archivdokumentation; deren historische Prüfungen werden hier nicht als neu ausgeführte Tests übernommen.
 - [Aktuelle Gesamtroadmap am geprüften main-SHA](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md).
 - [Backend-Roadmap am geprüften main-SHA](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/system-backend/roadmap.md), zusätzlich gelesen; die zentrale Gesamtroadmap liefert die übergeordnete Reihenfolge.
@@ -365,7 +360,7 @@ Die folgenden URLs wurden im Gespräch am 06.10.2026 recherchiert beziehungsweis
 
 ### 11.3 Bereitgestellte PDFs und Bilder
 
-Der Gesprächskontext nennt 25 projektweite ETSI-PDFs. Sie enthalten hier keine gelieferte `.ovpn`-Konfiguration oder VPN-Diagnose und waren für diese Betriebssystem-/Clientanleitung nicht erforderlich. Ihre Inhalte wurden deshalb für dieses Archiv nicht ausgewertet oder als OpenVPN-Quelle behauptet; die PDFs werden nicht unnötig dupliziert.
+Der Projektkontext nennt 25 projektweite ETSI-PDFs. Sie enthalten hier keine gelieferte `.ovpn`-Konfiguration oder VPN-Diagnose und waren für diese Betriebssystem-/Clientanleitung nicht erforderlich. Ihre Inhalte wurden deshalb für dieses Archiv nicht ausgewertet oder als OpenVPN-Quelle behauptet; die PDFs werden nicht unnötig dupliziert.
 
 Das bereitgestellte Dateiinventar lautet:
 
@@ -397,14 +392,13 @@ en_30039202v030801p.pdf
 ETSI.pdf
 ```
 
-**Im sichtbaren GUI-Fachchat sind keine Bilder oder Screenshots vorhanden.** Daher gibt es in diesem Auftrag keine Chatbild-Dateien zum Hochladen. Bilder anderer Chats und Abbildungen aus den projektweiten PDFs werden nicht als Bilder dieses Dialogs ausgegeben. Sollten außerhalb des zugänglichen Verlaufs weitere Originalbilder existieren, können sie erst nach eindeutiger Zuordnung ergänzt werden.
+Bilder und Screenshots der Einrichtung sind nicht erhalten. Bei späterer Verfügbarkeit können eindeutig zugehörige Originale ergänzt werden.
 
 ## 12. Fortsetzungsgrenzen
 
-1. Originaltitel und Chatlink konnten nicht zuverlässig ermittelt werden; ein zusätzlicher Chatabruf war technisch nicht verfügbar.
-2. Die sichtbare Fachanfrage und vollständige Antwort wurden ausgewertet; die Vollständigkeit unbekannter früherer Gesprächszweige wird nicht behauptet.
+1. Die fachlichen Anforderungen und der vollständige Einrichtungsvorschlag sind geprüft; weitere frühere Festlegungen sind nicht belegt.
 3. Es fehlt jede reale Pi-Ausgabe, Clientdatei, Verbindungsprüfung und Betriebsbestätigung für diese Einrichtung.
 4. NetworkManager-GUI, einfache Profilverknüpfung, separate Dispatcher-Policy und historische Imagebuilder-Timer-Variante sind unterschiedliche Nachweis- und Implementierungsstände.
 5. Die Repository-Prüfung betrifft die genannten aktuellen Snapshots und gezielt gelesenen Inhalte. Andere historische Refs und Zielgeräte wurden nicht vollständig geprüft.
-6. Es waren keine zugehörigen Chatbilder verfügbar. Die 25 ETSI-PDFs wurden nur inventarisiert und nicht als VPN-Fachbelege verwendet.
+5. Es waren keine zugehörigen Originalbilder verfügbar. Die 25 ETSI-PDFs wurden nur inventarisiert und nicht als VPN-Fachbelege verwendet.
 7. Die Archivierung umfasst genau Dokumentation und Index auf `Archiving`; Installation, Policy-Implementierung, Roadmapänderungen außerhalb des Archivs und Live-Abnahme bleiben Folgearbeit.

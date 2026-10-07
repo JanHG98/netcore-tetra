@@ -1,56 +1,58 @@
-# Abschlussdokumentation: NetCore-Tetra-Gruppen und Zebra-Test
+# Brainstorming: NetCore-Tetra-Gruppen und Zebra-Test
 
-## 1. Metadaten und Auswertungsgrenzen
+**Stand der Notizen und ergänzenden Prüfungen: 2026-10-04.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
+
+**Arbeitsrichtung:** Frühere Gruppenkandidaten einschließlich Zebra-Test konsolidieren. Namen und einige Zwecke sind erhalten; GSSIs, Mitgliedschaften, Berechtigungen und die vollständige Liste bleiben offen.
+
+## 1. Kontext und Quellenlage
 
 - Thema: Wiederherstellung der früheren Gruppenübersicht und Bedeutung von „Zebra test“.
-- Ursprünglicher Chattitel und Chatlink: nicht verfügbar.
 - Erstellung: 2026-10-04, Zeitzone Europe/Berlin.
 - Repository: https://github.com/JanHG98/netcore-tetra
 - Geprüfter und ausschließlich beschriebener Zielbranch: `Archiving`.
 - Geprüfter Ausgangscommit: `d0e9781c44f9c3e7418c67d67c30249d7444d8f6`.
 - Ausgangsbaum: `e2f3455539a071ae81a85cdb606b73e6eb010e06`.
-- Archivauftrag: Abschlussdokumentation und Archivindex ergänzen, committen und veröffentlichen; keine Implementierungsänderungen.
 
-**Dies ist keine vollständige Transkriptauswertung.** Direkt verfügbar waren die zwei Nutzerfragen „Wir hatten für netcore ja mal Gruppen erstellt. Was war Zebra test?“ und „Hau mir nochmal alle Gruppen raus mit kurzer Erklärung“, der Archivauftrag sowie allgemeiner Projektkontext. Zwei ergänzende Kontextabfragen lieferten Auszüge/Zusammenfassungen früherer Assistentenantworten, jedoch nicht die vollständige damalige Tabelle. Der Suchdienst ordnete diese Nachrichten dem 07.10.2025, 22:21–22:24 UTC zu. Diese Zeitangabe stammt allein aus dem Suchergebnis; ein Originalexport zur unabhängigen Bestätigung fehlt.
+**Quellenlage:** Die frühere Gruppenplanung ist nur teilweise erhalten: Kategorien, ausgewählte Namen und drei Zweckbeschreibungen. Die Auszüge sind ergänzend dem 07.10.2025, 22:21–22:24 UTC zugeordnet; ein Originalexport zur unabhängigen Bestätigung fehlt.
 
-Die Suche bezeichnete eine Antwort als „vollständig“, gab tatsächlich aber nur Kategorien, ausgewählte Namen und drei Zweckbeschreibungen zurück. Deshalb wird hier ausdrücklich **keine vollständige Gruppenliste behauptet**. Fehlende Zwecke und Adressen werden nicht aus Namen abgeleitet.
+Eine vollständige Gruppenliste liegt nicht vor. Fehlende Zwecke und Adressen werden nicht aus Namen abgeleitet.
 
-Allgemeine Erinnerungen an andere NetCore-Chats sind kein Nachweis für Entscheidungen dieses Chats. Insbesondere werden Discovery, VPN-Automatik, HF-Aufbau und weitere Projektideen hier nicht als neue Ergebnisse dieses Gruppenchats ausgegeben.
+Discovery, VPN-Automatik und HF-Aufbau gehören zu anderen Projektbereichen und werden hier nicht als Gruppenfestlegungen behandelt.
 
 ## 2. Ziel, Ausgangslage und behandelte Themen
 
-Jan wollte eine zuvor erstellte Gruppenplanung wieder abrufen. Zuerst sollte der Begriff „Zebra test“ erklärt werden, anschließend sollten alle Gruppen mit kurzen Erklärungen erneut ausgegeben werden.
+Ziel ist die Wiederherstellung einer verständlichen Gruppenübersicht mit kurzen Zweckbeschreibungen. Besonderer Klärungspunkt ist die Bedeutung von „Zebra-Test“.
 
-Das fachliche Ziel war damit die Wiederherstellung einer verständlichen Gruppenübersicht für NetCore-Tetra. Sichtbar ist keine Anweisung, Gruppen in Funkgeräten zu programmieren, GSSIs neu zu vergeben, Dienste zu installieren oder Frequenzwechsel tatsächlich auszulösen.
+Geräteprogrammierung, Neuvergabe von GSSIs, Dienstinstallation und ausgelöste Frequenzwechsel sind hier nicht als umgesetzt belegt.
 
-Der aktuelle Archivauftrag autorisiert ausschließlich Änderungen unter `Docs/archive/`. Die Dokumentation bewahrt den wiedergefundenen historischen Inhalt und stellt ihm einen heutigen Repository-Befund gegenüber.
+Die historischen Kandidaten werden mit dem Repository-Stand vom 2026-10-04 abgeglichen.
 
 ## 3. Statusbegriffe und endgültig belegte Anforderungen
 
 | Status | Bedeutung in diesem Archiv |
 |---|---|
-| Idee | In früheren Antworten genannter Zweck oder möglicher Einsatz; noch keine technische Umsetzung |
-| beschlossen/geplant | Ausdrücklich vereinbarter Arbeitsschritt oder Nutzerauftrag |
+| Idee | Historisch vorgeschlagener Zweck oder Einsatz; technische Umsetzung fehlt |
+| beschlossen/geplant | Ausdrücklich vereinbarter Arbeitsschritt oder Arbeitsauftrag |
 | implementiert | Zugehöriger Quellcode im geprüften Repository vorhanden; kein Betriebsnachweis |
 | getestet | Test tatsächlich ausgeführt und Ergebnis dokumentiert |
 | im Betrieb bestätigt | Nachweis aus realem Zielsystem oder Funkbetrieb; hier nicht vorhanden |
 
-Beschlossen/geplant ist die Archivierung einschließlich Index und Veröffentlichung im vorhandenen Branch. Für die früheren Gruppen fehlen eine vollständige Vergabeliste und ein nachweisbarer Beschluss über GSSIs, Mitglieder, Berechtigungen oder Endgeräteprofile.
+Eine vollständige Vergabeliste sowie verbindliche GSSIs, Mitglieder, Berechtigungen und Endgeräteprofile fehlen für die historischen Gruppen.
 
-Spätere ausdrückliche Korrekturen zur Gruppenliste wurden nicht gefunden. Daraus folgt nicht, dass es keine gab; der vollständige Verlauf fehlt.
+Spätere Korrekturen zur Gruppenliste sind in den verfügbaren Unterlagen nicht enthalten.
 
 ## 4. Historischer Inhalt: Zebra-Test und Gruppenübersicht
 
 ### 4.1 Zebra-Test
 
-Die frühere Assistentenantwort beschrieb „Zebra-Test“ als **Hybrid-Testgruppe mit Frequenzwechsel** beziehungsweise „Handover-Playground“ in der Kategorie Sandbox/Debug/Spezial. Genannte Testideen waren:
+„Zebra-Test“ ist als **Hybrid-Testgruppe mit Frequenzwechsel** beziehungsweise „Handover-Playground“ in der Kategorie Sandbox/Debug/Spezial beschrieben. Die Testideen umfassen:
 
 - wechselnde Frequenz- und Kanalparameter;
 - TMO-/DMO-Übergänge;
 - Frequenz-Handover;
 - Messung von Umschaltzeiten.
 
-Status: **Idee, durch wiedergefundenen Assistentenauszug belegt**. Eine funktionierende Frequenzsteuerung, ein implementierter TMO-/DMO-Übergang oder seamless Handover ist damit nicht nachgewiesen.
+Status: **Historische Idee, in Auszügen belegt.** Funktionierende Frequenzsteuerung, TMO-/DMO-Übergänge oder seamless Handover sind nicht nachgewiesen.
 
 Technische Präzisierung für die Fortsetzung: Ein Gruppenname erzeugt keine Handover-Funktion. Zu unterscheiden sind Gruppenadressierung, Zell-/Trägerwechsel und ein Betriebsartwechsel zwischen TMO und DMO. Der historische Sammelbegriff ist für eine Testplanung zu ungenau und muss vor einer Umsetzung in getrennte Szenarien aufgelöst werden. „Zebra-Test“ allein belegt auch keinen Bezug zu einem Zebra-Handheld.
 
@@ -58,9 +60,9 @@ Technische Präzisierung für die Fortsetzung: Ein Gruppenname erzeugt keine Han
 
 | Historischer Name | Belastbar wiedergefundene Erklärung | Status |
 |---|---|---|
-| Core-Group01 | Zentrale Steuer-/Admin-Gruppe | Idee; frühere Assistentenaussage |
-| Zebra-Test | Frequenzwechsel-/Hybridtests und Handover-Playground | Idee; frühere Assistentenaussage |
-| Echo-Loop | Voll-Loopback-Test | Idee; frühere Assistentenaussage |
+| Core-Group01 | Zentrale Steuer-/Admin-Gruppe | Historische Idee |
+| Zebra-Test | Frequenzwechsel-/Hybridtests und Handover-Playground | Historische Idee |
+| Echo-Loop | Voll-Loopback-Test | Historische Idee |
 | Node-Maint01 | Zweck im verfügbaren Auszug nicht enthalten | Name wiedergefunden |
 | Net-Control | Zweck im verfügbaren Auszug nicht enthalten | Name wiedergefunden |
 | OTA-Update | Zweck im verfügbaren Auszug nicht enthalten | Name wiedergefunden |
@@ -118,7 +120,7 @@ Im Quellcode sind Gruppenanlage, Änderung und Löschung sowie Mitgliedschafts- 
 
 Die HTTP-Implementierung enthält unter anderem `/api/v1/groups`, `/api/v1/groups/{gssi}`, `/api/v1/memberships`, `/api/v1/affiliations`, `/api/v1/dgna`, `/api/v1/sync`, `/api/v1/export.json`, `/health/live`, `/health/ready` und `/metrics`.
 
-Die Dokumentation verlangt für den beschriebenen Open-Lab-Ausbau ein isoliertes Testnetz und nennt fehlende Anmeldung/Tokens/TLS. Dies ist eine Eigenschaft des geprüften Repository-Stands, keine neue Sicherheitsentscheidung dieses Chats. Kompatible TBS benötigen laut README `group_policy`- und `dgna`-Capabilities; Subscriber Core, Call Control und SDS Router werden als spätere Abhängigkeiten genannt.
+Die Dokumentation verlangt für den beschriebenen Open-Lab-Ausbau ein isoliertes Testnetz und nennt fehlende Anmeldung/Tokens/TLS. Dies ist eine Eigenschaft des geprüften Repository-Stands, keine neue Sicherheitsentscheidung dieser Planung. Kompatible TBS benötigen laut README `group_policy`- und `dgna`-Capabilities; Subscriber Core, Call Control und SDS Router werden als spätere Abhängigkeiten genannt.
 
 ### 5.4 Tatsächlich vorhandener Beispielgruppeneintrag
 
@@ -134,9 +136,9 @@ In den gezielt gelesenen Group-Core-Dateien und dieser Seed-Datei wurde keine hi
 
 ## 6. Befehle, Installation und Reparatur
 
-Im historischen Gruppenchatauszug sind keine ausgeführten Installations- oder Reparaturbefehle vorhanden.
+Ausgeführte Installations- oder Reparaturbefehle für die historische Gruppenplanung sind nicht dokumentiert.
 
-Das heutige `system-backend/group-core/install/install.sh` sieht einen Root-Aufruf vor, stoppt den bestehenden Dienst, entfernt das installierte Binary sowie ausgewählte Buildartefakte, baut mit `cargo build --release -p netcore-group-core`, installiert Binary/Konfiguration/Dienstkonto/Unit, ruft den gemeinsamen LXC-Netzwerkhelfer auf und aktiviert den Dienst mit `systemctl enable --now netcore-group-core.service`. Eine vorhandene Laufzeitkonfiguration wird nicht durch die Beispielkonfiguration ersetzt.
+Das ergänzende `system-backend/group-core/install/install.sh` sieht einen Root-Aufruf vor, stoppt den bestehenden Dienst, entfernt das installierte Binary sowie ausgewählte Buildartefakte, baut mit `cargo build --release -p netcore-group-core`, installiert Binary/Konfiguration/Dienstkonto/Unit, ruft den gemeinsamen LXC-Netzwerkhelfer auf und aktiviert den Dienst mit `systemctl enable --now netcore-group-core.service`. Eine vorhandene Laufzeitkonfiguration wird nicht durch die Beispielkonfiguration ersetzt.
 
 **Status: Skript gelesen, nicht ausgeführt.** Kein Build- oder Installationserfolg wird behauptet. Die Unit startet:
 
@@ -157,7 +159,7 @@ Sie gehören zu einer zukünftigen Abnahme auf dem Zielsystem, nicht zu einer Wi
 
 ## 7. Fehler, Diagnose und Tests
 
-Das Hauptproblem ist eine **Quellenlücke**: Die ursprüngliche Gruppenliste wurde angefragt, ihre vollständige Antwort ist nicht direkt zugänglich. Zwei Kontextabfragen haben nur Teilinformationen wiederhergestellt. Funktionsfehler im Funkbetrieb sind in diesem Chat nicht belegt.
+Das Hauptproblem ist die **unvollständige Quellenlage**: Die ursprüngliche Gruppenliste konnte nur teilweise wiederhergestellt werden. Funktionsfehler im Funkbetrieb sind nicht belegt.
 
 Eine mögliche Fehlinterpretation wäre, aus dem Namen Zebra-Test eine bereits funktionierende Handover-Automatik oder aus OTA-Update einen implementierten Updatekanal abzuleiten. Das ist nicht zulässig; die Namen beschreiben höchstens frühere Ideen.
 
@@ -167,20 +169,20 @@ Durchgeführt: Branch-/Commit-/Baumprüfung, gezielte Repository-Dateilesung und
 
 Keine ausdrückliche historische Verwerfung ist zugänglich. Für diese Archivierung wurde die freie Rekonstruktion unbekannter Gruppenzwecke verworfen, weil sie die ursprüngliche Planung verfälschen würde.
 
-Es wurde auch keine GSSI aus einem Gruppennamen abgeleitet. Die heutige Wiki-Empfehlung fordert ein eigenständiges GSSI-Primärfeld. Die historische Testidee wird nicht als Ersatz für heute vorhandene Group-Core-/Directory-Strukturen behandelt.
+Es wurde auch keine GSSI aus einem Gruppennamen abgeleitet. Die ergänzende Wiki-Empfehlung fordert ein eigenständiges GSSI-Primärfeld. Die historische Testidee wird nicht als Ersatz für am 2026-10-04 vorhandene Group-Core-/Directory-Strukturen behandelt.
 
 ## 9. Offene Aufgaben und Roadmap-Kandidaten
 
 Die folgende Reihenfolge ist eine **Empfehlung dieses Archivs**, keine wiedergefundene frühere Prioritätsvereinbarung.
 
-1. **Quellen wiederherstellen:** Originalantwort/Export mit vollständiger Gruppenliste, Zwecken und eventuellen Korrekturen beschaffen; Chattitel und Link ergänzen.
+1. **Gruppenbestand wiederherstellen:** Vollständige Liste mit Zwecken und eventuellen Korrekturen beschaffen.
 2. **Gruppenregister konsolidieren:** Pro Gruppe Name, Kurzname, GSSI und Netzkontext, Zweck, Eigentümer, Mitglieder, zulässige Dienste, Priorität und Lebenszyklus festlegen. Historische Namen zunächst als Kandidaten führen.
 3. **Begriffe trennen:** TETRA-Sprachgruppen, organisatorische Gerätegruppen und reine Diagnose-/Automationsfunktionen unterscheiden.
 4. **Bestehende Dienste nutzen:** Directory-Darstellung und Group-Core-Policy abgleichen; keine zweite unabhängige Gruppendatenbank ohne geklärte Zuständigkeit einführen.
 5. **Zebra-Test präzisieren:** Zellwechsel, Trägerwechsel und TMO-/DMO-Betriebsartwechsel getrennt planen. Für jedes Szenario Ausgangszustand, Trigger, erwartetes Verhalten, Messpunkte und Erfolgskriterien definieren.
 6. **Abnahme dokumentieren:** Konfigurationsabgleich, tatsächliche Affiliation, Gruppenruf, DGNA und Mitgliedschaftspolicy zuerst belegen; erst danach behauptete Umschalt-/Handover-Funktionen bewerten.
 7. **Echo-Loop abgrenzen:** Loopback-Pfad und Audio-/PTT-Abbruchbedingungen spezifizieren; die historische Bezeichnung enthält noch keinen ausführbaren Test.
-8. **Archiv ergänzen:** Fehlende Bilder nur nach eindeutigem Nachweis ihrer Zugehörigkeit zu diesem Chat nacharchivieren.
+8. **Bildbestand ergänzen:** Zugehörige Originalbilder nur mit eindeutiger Zuordnung aufnehmen.
 
 Für Node-Maint01, Net-Control, OTA-Update, GSSI-Master, Cluster-TMO1/DMO1, Fallback-TX, Echo-Test, VPN-Check, Sys-Monitor, Audio-Demo1, Safe-Mode, Lighthouse und Dev-Test01 sind Zwecke ausdrücklich noch zu rekonstruieren.
 
@@ -202,12 +204,11 @@ Alle nachfolgend genannten Dateien wurden am Ausgangscommit gelesen:
 - `system-backend/group-core/systemd/netcore-group-core.service`
 - `Docs/archive/README.md`
 
-Es wurden keine zu diesem Chat gehörenden Implementierungscommits oder PRs zuverlässig identifiziert.
+Es wurden keine zu diesem Planungsstand gehörenden Implementierungscommits oder PRs zuverlässig identifiziert.
 
 ### 10.2 Bereitgestellte PDF-Anhänge
 
 Alle 25 Dateien sind lokal zugänglich; ihre Deckblätter wurden gelesen. Sie sind allgemeine TETRA-Normenquellen und belegen keine projektspezifische Gruppe namens Zebra-Test. Eine vollständige Normenanalyse war für die Wiederherstellung dieser Gruppenliste nicht erforderlich und wurde nicht behauptet.
-
 
 | Dateiname | Deckblattkennung | SHA-256 |
 |---|---|---|
@@ -237,15 +238,14 @@ Alle 25 Dateien sind lokal zugänglich; ihre Deckblätter wurden gelesen. Sie si
 | en_30039202v030801p.pdf | ETSI EN 300 392-2 V3.8.1 (2016-08) | 3f07b1e4ad73fabc16277a900006fc19844b3a882bbc2bc1d74d78f6156daf28 |
 | ETSI.pdf | ETSI EN 300 812 V2.1.1 (2001-12) | 9434dad1e7bc80ca39b0edadd8e3b9995fda5ae5f5c3dd565af05708d5059e38 |
 
-
 Die Titelblätter kennzeichnen insbesondere EN 300 392-12-16 V1.4.0 und EN 300 392-3-15 V1.5.0 als Entwürfe. Auch weitere ältere Dokumente tragen Draft-/Final-Draft-Kennzeichnungen. Die beigefügten Ausgaben wurden nicht auf neuere Veröffentlichungen geprüft. `ETSI.pdf` und `en_300812v020101p.pdf` nennen beide EN 300 812 V2.1.1; daraus wird ohne Binärvergleich keine Dateigleichheit behauptet.
 
 ### 10.3 Bildarchiv und übrige Lücken
 
-Es sind keine eigenständigen Bilder eindeutig diesem Gruppenchatausschnitt zugeordnet oder als Bilddateien bereitgestellt. Die 25 verfügbaren Dateien sind PDFs; Normgrafiken darin sind keine historischen Chatbilder. Deshalb wurden keine fremden Screenshots aus anderen Projektchats übernommen und keine Bilder erfunden. Falls der Originalchat Bilder enthielt, fehlt deren zugängliche Quelle.
+Für die Gruppenplanung sind keine eigenständigen Bilddateien verfügbar. Die 25 Norm-PDFs ersetzen keine historischen Aufbau- oder Konfigurationsbilder.
 
 Die bereitgestellten Norm-PDFs bleiben als Quellen inventarisiert; sie werden nicht pauschal als Bilder hochgeladen. Die Archivänderung enthält Dokumentation und Index, keine neu erzeugten technischen Implementierungen.
 
 ## 11. Archivierungsnachweis
 
-Die Dokumentation basiert auf dem in Abschnitt 1 genannten Ausgangscommit. Ihr eigener Veröffentlichungscommit ist über die Git-Historie dieser Datei und die Abschlussmeldung abrufbar; eine selbstreferenzielle Commitnummer wird nicht erfunden. Indexeinträge anderer Chats bleiben erhalten. Ein abschließender Readback im Zielbranch prüft Dokument und Index nach Veröffentlichung.
+Der technische Abgleich basiert auf dem Ausgangscommit aus Abschnitt 1. Dokumentänderungen sind über die Git-Historie dieser Datei nachvollziehbar.

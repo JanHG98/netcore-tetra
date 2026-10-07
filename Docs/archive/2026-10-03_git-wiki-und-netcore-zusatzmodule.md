@@ -1,47 +1,45 @@
-# Abschlussdokumentation: Git-Wiki, externe TETRA-Tools und NetCore-Zusatzmodule
+# Brainstorming: Git-Wiki, externe TETRA-Tools und NetCore-Zusatzmodule
 
-## Metadaten
+## Rahmen und Quellenstand
 
 | Feld | Wert |
 |---|---|
 | Thema | Git-Wiki-Zusammenführung, deutsche Start-/Wiki-Dokumentation, externe TETRA-Tools und NetCore-eigene Zusatzmodule |
-| Ursprünglicher Chattitel | `Git Wiki zusammenführen` / laufender Wiki-Aufbau für NetCore-Tetra |
-| Chatlink | Nicht verfügbar im zugänglichen Kontext |
 | Erstellungsdatum | 2026-10-03 |
 | Zielrepository | `JanHG98/netcore-tetra` |
-| Zielbranch für Archivierung | `Archiving` |
-| Branch-Stand vor Archivierung | `be8009663c79b11ca7dc057aff1d385427444e42` |
+| Geprüfter Branch | `Archiving` |
+| Branch-Stand am 03.10.2026 | `be8009663c79b11ca7dc057aff1d385427444e42` |
 | Aktuell geprüfter `main`-Stand | `6aa9be8f74ab731f72dc133a5f8e90c5018c626d` (`docs: add central identity and RBAC roadmap`) |
 | Ablage | ausschließlich `Docs/archive/` |
-| Status dieser Datei | Archiv-/Abschlussdokumentation; keine Implementierung der beschriebenen Wiki-Seiten oder Module im Produktivcode |
+| Status dieser Datei | Entwicklungsnotizen; keine Implementierung der beschriebenen Wiki-Seiten oder Module im Produktivcode |
 
-## Auswertungslücken und Belastbarkeit
+## Offene Nachweise und Belastbarkeit
 
-Diese Dokumentation basiert auf dem im Chat sichtbaren Verlauf. Mehrere frühere Chatabschnitte waren im sichtbaren Kontext als übersprungen markiert; ihre Inhalte wurden nur berücksichtigt, soweit sie anschließend im Chat wieder auftauchten oder durch spätere Nachrichten zusammengefasst wurden. Die im Chat erzeugten Markdown-Seiten wurden als Canvas-/Textdoc-Inhalte erstellt und waren zum Zeitpunkt dieser Archivierung nicht als Repository-Dateien bestätigt.
+Grundlage sind die erhaltenen Wiki- und Modulkonzepte. Frühere Entwurfsabschnitte sind teilweise nicht erhalten. Markdown-Seiten wurden zunächst als kopierfähige Dokumententwürfe ausgearbeitet; ihre Übernahme ins Repository war zum 03.10.2026 nicht bestätigt.
 
-Wichtig: Aussagen wie „Canvas erstellt“ bedeuten in diesem Chat **nicht**, dass die entsprechende Seite bereits im GitHub-Wiki oder im Repository gespeichert wurde. Sie bedeuten nur, dass im Chat kopierfähiges Markdown ausgearbeitet wurde.
+**Stand der Wiki-Seiten:** Ausgearbeitetes Markdown ist von einer veröffentlichten GitHub-Wiki- oder Repository-Datei zu unterscheiden.
 
 Es wurden keine Passwörter, Tokens, privaten Schlüssel oder Zugangsdaten übernommen.
 
 ## Ziel und Ausgangslage
 
-Ziel des Chats war, aus vorhandenen beziehungsweise als Vorbild genannten Dokumentationen eine eigene, deutschsprachige Wiki-/Dokumentationsstruktur für NetCore-Tetra aufzubauen.
+Ziel war, aus vorhandenen beziehungsweise als Vorbild genannten Dokumentationen eine eigene, deutschsprachige Wiki-/Dokumentationsstruktur für NetCore-Tetra aufzubauen.
 
 Ausgangspunkt waren insbesondere:
 
 - Flowstation-README als grober Ursprung für die Start-README.
 - Tetra-BlueStation-Wiki als strukturelles Vorbild für Wiki-Seiten.
 - Wunsch, die Namen Flowstation und BlueStation aus der eigenen Dokumentation herauszulösen und auf NetCore-Tetra anzupassen.
-- Wunsch, zunächst kopierfähige Markdown-Seiten im Chat/Canvas zu erzeugen, nicht sofort produktiv ins Repository zu schreiben.
+- Zunächst kopierfähige Markdown-Entwürfe erstellen; die Übernahme ins Repository folgt gesondert.
 - späterer Wunsch nach Zusatzmodulen, erst vorhandene externe Tools, dann eigene NetCore-Module.
 
-Die finale Linie des Chats war: **README kurz halten, eigentliche Inhalte ins Wiki auslagern, externe Tools sauber von NetCore-eigenen Modulen trennen.**
+Festgelegte Linie: **README kurz halten, eigentliche Inhalte ins Wiki auslagern, externe Tools sauber von NetCore-eigenen Modulen trennen.**
 
 ## Behandelte Themen im Überblick
 
 ### Erstellt oder ausgearbeitet als Wiki-/Markdown-Seiten
 
-Im Chat wurden folgende Seiten als kopierfähiges Markdown ausgearbeitet:
+Folgende Seiten wurden als kopierfähiges Markdown ausgearbeitet:
 
 - Start-`README.md` für das eigene Repo, kurz und deutsch.
 - Wiki-`Home`.
@@ -164,7 +162,7 @@ Begründung: Vertrauenswürdigkeit, saubere Attribution und kein Vermischen von 
 
 **Beschlossen/geplant:** Die Dokumentation soll ausdrücklich zwischen Idee, beschlossen/geplant, implementiert, getestet und im Betrieb bestätigt unterscheiden.
 
-Im Chat wurde für nahezu alle neuen NetCore-Module nur Konzept-/Wiki-Status erreicht. Eine Implementierung wurde nicht nachgewiesen.
+In den Arbeitsnotizen wurde für nahezu alle neuen NetCore-Module nur Konzept-/Wiki-Status erreicht. Eine Implementierung wurde nicht nachgewiesen.
 
 ### Labor- und Rechtsrahmen
 
@@ -210,7 +208,7 @@ Die Wiki-Struktur wurde als mehrschichtiges Dokumentationsmodell aufgebaut:
 5. **Externe Tools**
    - TetraEar, SDR#-Plugin, SDR++-Plugin, Tetra Receiver, tetra-kit, tetra-toolkit.
 
-### NetCore-Zielarchitektur aus dem Chat
+### NetCore-Zielarchitektur
 
 Konzeptionell entstand folgende Struktur:
 
@@ -267,7 +265,7 @@ Vorgeschlagene Servicebereiche:
 | `40040–40049` | Labor-, Test- und Debugdienste |
 | `40050–40099` | Reserve |
 
-Konkrete Service-Nummern aus dem Chat:
+Konkrete Service-Nummern aus den Arbeitsnotizen:
 
 | Nummer | Modul/Dienst | Status |
 |---:|---|---|
@@ -287,9 +285,9 @@ Konkrete Service-Nummern aus dem Chat:
 
 ## Erreichter Entwicklungs- und Betriebsstand
 
-### Im Chat erreicht
+### Historisch erarbeitet
 
-**Implementiert im Chat/Canvas:**
+**Als Markdown-Entwurf ausgearbeitet:**
 
 - Ausführliche Markdown-Entwürfe für die oben genannten Wiki-Seiten.
 - Einheitlicher Dokumentationsstil.
@@ -306,7 +304,7 @@ Konkrete Service-Nummern aus dem Chat:
 
 - Das Repository `JanHG98/netcore-tetra` ist erreichbar und der Connector hat Schreibrechte.
 - Der Archivbranch `Archiving` existiert.
-- Vor dieser Archivierung stand `Archiving` auf Commit `be8009663c79b11ca7dc057aff1d385427444e42`.
+- Zum Beginn der Quellenprüfung vom 03.10.2026 stand `Archiving` auf Commit `be8009663c79b11ca7dc057aff1d385427444e42`.
 - `Docs/archive/README.md` existiert bereits und enthält mehrere Archivindex-Einträge.
 - `main` stand bei Prüfung auf Commit `6aa9be8f74ab731f72dc133a5f8e90c5018c626d` mit Commit-Message `docs: add central identity and RBAC roadmap`.
 - Die Haupt-README auf `main` nennt Stand `v1.9.0` und beschreibt NINA/KATWARN, eigene Warnmeldungen, zentrale SIP-Anbindung und lokalen Fallback.
@@ -388,7 +386,7 @@ Nur Konzeptstatus:
 
 ### Wiederkehrende technische Parameter
 
-Aus dem Chat:
+Historischer Konzeptstand:
 
 ```text
 node_id = "srv-m-rpi-tbs01"
@@ -640,11 +638,11 @@ Aufgaben:
 - SDS-Service `40036`.
 - TetraGuard-gesicherte Schreibaktionen.
 
-## Wichtige Befehle und Abläufe aus dem Chat
+## Befehle und Abläufe
 
 ### TetraEar-Installation
 
-**Status:** vorgeschlagen/dokumentiert; im Chat nicht live ausgeführt.
+**Status:** vorgeschlagen/dokumentiert; in den Arbeitsnotizen nicht live ausgeführt.
 
 Kompaktfassung:
 
@@ -685,7 +683,7 @@ PYTHONNOUSERSITE=1 ./venv/bin/python -m tetraear
 
 ### NetCore-Tetra Build-Seite
 
-**Status:** vorgeschlagen/dokumentiert; nicht in diesem Chat ausgeführt.
+**Status:** vorgeschlagen/dokumentiert; nicht in dieser Entwicklungsphase ausgeführt.
 
 Enthielt Debian-basierte Build-Abhängigkeiten, Rustup, Kannel/WAP-Konfiguration, SoapySX-Installation und Build über `cargo build --release`.
 
@@ -694,8 +692,8 @@ Enthielt Debian-basierte Build-Abhängigkeiten, Rustup, Kannel/WAP-Konfiguration
 **Status:** nur geplant.
 
 - Wiki-Seiten sollten nach und nach kopiert und angepasst werden.
-- Credits für Flowstation/BlueStation wollte der Nutzer später selbst ergänzen.
-- Der Chat erzeugte die Inhalte nicht direkt im Wiki.
+- Credits für Flowstation/BlueStation waren als spätere Ergänzung vorgesehen.
+- Die Inhalte lagen als Markdown-Entwürfe vor und wurden nicht direkt ins Wiki geschrieben.
 
 ## Fehler, Diagnosen und Lösungen
 
@@ -741,7 +739,7 @@ sudo ldconfig
 
 **Fehler:** Zunächst wurden viele Modulnamen als „Plugins“ vorgeschlagen, ohne klar zu trennen, ob sie real existieren.
 
-**Korrektur:** Der Nutzer fragte nach, ob die Namen wirklich existieren. Danach wurde sauber getrennt:
+**Korrektur:** Die tatsächliche Existenz der Namen wurde geprüft. Verbindliche Trennung:
 
 - real existierende externe Tools.
 - eigene NetCore-Modulnamen.
@@ -750,11 +748,11 @@ Diese Korrektur ist eine wichtige spätere Festlegung und ersetzt die frühere u
 
 ## Tests und Ergebnisse
 
-### Im Chat dokumentierte Tests
+### Historisch dokumentierte Tests
 
-Keine Repository-Builds, keine Tetra-Funkversuche und keine Tool-Installationen wurden in diesem Chat tatsächlich ausgeführt.
+Keine Repository-Builds, keine Tetra-Funkversuche und keine Tool-Installationen wurden in dieser Entwicklungsphase tatsächlich ausgeführt.
 
-### Repository-Prüfungen bei Archivierung
+### Repository-Prüfungen vom 03.10.2026
 
 **Durchgeführt:**
 
@@ -770,7 +768,7 @@ Keine Repository-Builds, keine Tetra-Funkversuche und keine Tool-Installationen 
 
 - GitHub-Code-Suche bezieht sich auf den Suchindex und wurde nicht als vollständiger Checkout mit Grep über alle Branches durchgeführt.
 - GitHub-Wiki wurde nicht als separates Wiki-Repository geprüft.
-- Canvas-Inhalte wurden aus dem Chatverlauf ausgewertet, nicht aus einer persistierten Wiki-Datei.
+- Canvas-Inhalte wurden aus den erhaltenen Entwürfen ausgewertet, nicht aus einer persistierten Wiki-Datei.
 
 ## Verworfene oder ersetzte Ansätze
 
@@ -784,7 +782,7 @@ Keine Repository-Builds, keine Tetra-Funkversuche und keine Tool-Installationen 
 
 **Verworfen:** `01-Home`, `02-Einführung` usw.
 
-**Grund:** Nutzer wollte direkte Seitennamen ohne künstliche Nummerierung.
+**Grund:** Direkte Seitennamen ohne künstliche Nummerierung sind verbindlich.
 
 ### Externe Tools als eigene Plugins darstellen
 
@@ -800,11 +798,11 @@ Keine Repository-Builds, keine Tetra-Funkversuche und keine Tool-Installationen 
 python -m tetraear.tools.install_tetra_codec
 ```
 
-**Grund:** Im dokumentierten Nutzerstand verursachte dieser Weg Ärger. Stattdessen wurde der Linux-Installer aus `scripts/` empfohlen.
+**Grund:** Im dokumentierten Ausgangsstand verursachte dieser Weg Ärger. Stattdessen wurde der Linux-Installer aus `scripts/` empfohlen.
 
 ## Offene Aufgaben und Roadmap-Kandidaten
 
-### Höchste Priorität aus diesem Chat
+### Höchste Priorität
 
 1. **SDS-Nummernplan erstellen.**
    - Verbindet TetraSDS-Router, TetraWeather, TetraStatus, TetraDiag, TetraAlert, TetraPrint, TetraGuard, TetraLogger und TetraBridge.
@@ -866,13 +864,13 @@ python -m tetraear.tools.install_tetra_codec
 ### Repository
 
 - `JanHG98/netcore-tetra`.
-- Branch `Archiving` vor Archivierung: `be8009663c79b11ca7dc057aff1d385427444e42`.
+- Branch `Archiving` am 03.10.2026: `be8009663c79b11ca7dc057aff1d385427444e42`.
 - Branch `main` bei Prüfung: `6aa9be8f74ab731f72dc133a5f8e90c5018c626d`.
 - `Docs/archive/README.md` war bereits vorhanden.
 - `main/README.md` nennt `v1.9.0 · NINA/KATWARN, eigene Warnmeldungen und Funk-/SDS-Korrekturen`.
 - `Docs/CENTRAL_IDENTITY_RBAC_ROADMAP.md` existiert laut Docs-Verzeichnis auf `main`.
 
-### Externe Tool-Repositories aus dem Chat
+### Externe Tool-Repositories
 
 - `https://github.com/syrex1013/TetraEar.git`
 - `https://github.com/vgpastor/SDR-Tetra-Plugin`
@@ -883,7 +881,7 @@ python -m tetraear.tools.install_tetra_codec
 
 ### Anhänge / Projektdateien
 
-Im Projektkontext waren zahlreiche ETSI-PDFs verfügbar. Diese wurden in diesem Chat nicht inhaltlich als primäre Quelle für die Wiki-Seiten ausgewertet. Sie bleiben als mögliche spätere Norm-/Referenzbasis relevant, insbesondere für:
+Im Projektkontext waren zahlreiche ETSI-PDFs verfügbar. Diese wurden in dieser Entwicklungsphase nicht inhaltlich als primäre Quelle für die Wiki-Seiten ausgewertet. Sie bleiben als mögliche spätere Norm-/Referenzbasis relevant, insbesondere für:
 
 - Air Interface.
 - Security.
@@ -895,7 +893,7 @@ Im Projektkontext waren zahlreiche ETSI-PDFs verfügbar. Diese wurden in diesem 
 
 ## Schlussbewertung
 
-Dieser Chat hat vor allem die **Dokumentations- und Modulkonzeption** für NetCore-Tetra massiv erweitert. Der größte Wert liegt nicht in einer Codeänderung, sondern in einer strukturierten Wiki-Roadmap:
+Ergebnis ist eine erweiterte **Dokumentations- und Modulkonzeption** für NetCore-Tetra mit strukturierter Wiki-Roadmap:
 
 - klare Navigation,
 - externe Toolseiten,

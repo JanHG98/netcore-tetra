@@ -1,42 +1,46 @@
-# Abschlussdokumentation – NetCore-Tetra-/ZKN-Webseitenstruktur, Subdomain und geschützte Portale
+# Brainstorming: NetCore-Tetra-/ZKN-Webseitenstruktur, Subdomain und Portale
 
-## 1. Metadaten
+## Zielbild und Festlegungen
+
+- Website X5 Pro, Hauptauftritt **netcore-tetra.de**, zusätzliche Domain **netcore-tetra.com**.
+- ZKN erhält den eigenen Host **zkn.netcore-tetra.de**; die Pfadvariante `/zkn/` ist verworfen.
+- Öffentliche Inhalte und geschützte Mitglieder-/Partner-/Adminbereiche sind als Informationsarchitektur geplant.
+- Offen: Rolle der .com-Domain, X5-Projektaufteilung, Hostrouting/TLS, serverseitige Berechtigungen und Deployment.
+
+## 1. Arbeitsstand
 
 | Feld | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
-| Thema dieses Chats | Öffentliche Website für NetCore-Tetra und ZKN, Informationsarchitektur, ZKN-Subdomain, geschützte Bereiche |
-| Ursprünglicher Chattitel | Im zugänglichen Chat-Metadatenkontext nicht verfügbar |
-| Chatlink | Im zugänglichen Chat-Metadatenkontext nicht verfügbar |
-| Erstellungsdatum der Abschlussdokumentation | 2026-10-04 |
+| Thema | Öffentliche Website für NetCore-Tetra und ZKN, Informationsarchitektur, ZKN-Subdomain, geschützte Bereiche |
+| Erstellungsdatum der Projektnotizen | 2026-10-04 |
 | Repository | JanHG98/netcore-tetra |
-| Zielbranch der Archivierung | Archiving |
+| Zielbranch der Dokumentation | Archiving |
 | Geprüfter Archiving-Stand unmittelbar vor dem Schreiben | ed84e9bf3922781e130f5adf3417afadec828175 |
 | Geprüfter main-Stand | 7137e0dd69877e1b604bf89148fd8b6b590c1a97 |
 | main-Commit zum Prüfzeitpunkt | Merge pull request #59 – „NetCore-Design mit Dark Mode für Basisstation und alle Dienst-WebUIs“ |
 | Geplanter Archivpfad | Docs/archive/2026-10-04_netcore-tetra-zkn-webseitenstruktur-subdomain-und-portale.md |
-| Chatbilder | Keine eigenständigen Bilder in diesem Chat vorhanden; daher keine Bilddateien für diesen Chat nach Docs/archive/ hochzuladen |
-| Relevante Anhänge | Keine chat-spezifischen Anhänge wurden in diesem Verlauf verwendet. Die im Projektkontext verfügbaren ETSI-PDFs waren für die Webseiten-Informationsarchitektur nicht erforderlich und wurden für diese Dokumentation nicht ausgewertet. |
+| Relevante Anhänge | Keine themenspezifischen Anhänge wurden in diesem Verlauf verwendet. Die im Projektkontext verfügbaren ETSI-PDFs waren für die Webseiten-Informationsarchitektur nicht erforderlich und wurden für diese Dokumentation nicht geprüft. |
 
 ### Statuslegende
 
-Diese Abschlussdokumentation unterscheidet strikt zwischen den folgenden Zuständen:
+Diese Notizen unterscheiden strikt zwischen den folgenden Zuständen:
 
 - **Idee** – diskutierter Vorschlag ohne verbindliche Festlegung.
-- **Beschlossen/geplant** – im Chat als Ziel oder Struktur festgelegt, aber nicht als technische Umsetzung nachgewiesen.
+- **Beschlossen/geplant** – in der Planung als Ziel oder Struktur festgelegt, aber nicht als technische Umsetzung nachgewiesen.
 - **Implementiert** – im Repository oder in einem realen System nachweisbar umgesetzt.
 - **Getestet** – durch einen dokumentierten Test überprüft.
 - **Im Betrieb bestätigt** – in einer realen Betriebsumgebung nachweislich aktiv und erfolgreich genutzt.
 
-Für die in diesem Chat behandelte öffentliche Website gilt: **Die Informationsarchitektur wurde geplant; eine Implementierung, ein Deployment oder ein Live-Test wurde im Chat nicht nachgewiesen.**
+Für die in dieser Entwicklungsphase behandelte öffentliche Website gilt: **Die Informationsarchitektur wurde geplant; eine Implementierung, ein Deployment oder ein Live-Test wurde in der Planung nicht nachgewiesen.**
 
 ---
 
 ## 2. Ziel und Ausgangslage
 
-Ziel des Chats war die Planung eines öffentlichen Webauftritts für NetCore-Tetra und ZKN.
+Ziel war die Planung eines öffentlichen Webauftritts für NetCore-Tetra und ZKN.
 
-Vom Nutzer fest vorgegeben wurden:
+Ausdrücklich fest vorgegeben wurden:
 
 - Verwendung von **Website X5 Pro** zur Erstellung der Website.
 - Domains **netcore-tetra.de** und **netcore-tetra.com**.
@@ -45,11 +49,11 @@ Vom Nutzer fest vorgegeben wurden:
 - Ein öffentlicher und ein geschützter Bereich.
 - Eine Seitenstruktur, die sich in Website X5 Pro direkt als „Seite / Ordner / Seite im Ordner“ abbilden lässt.
 
-Im Verlauf wurde zunächst diskutiert, ob ZKN als Unterverzeichnis der Hauptdomain oder als Subdomain betrieben werden soll. Der Nutzer entschied ausdrücklich:
+Im Verlauf wurde zunächst diskutiert, ob ZKN als Unterverzeichnis der Hauptdomain oder als Subdomain betrieben werden soll. Festgelegt wurde:
 
 > ZKN soll als **Subdomain** betrieben werden.
 
-Der im Chat festgelegte Zielhost lautet:
+Der in der Planung festgelegte Zielhost lautet:
 
 **zkn.netcore-tetra.de**
 
@@ -59,7 +63,7 @@ Damit wurde die frühere Variante **netcore-tetra.de/zkn/** als bevorzugter Ansa
 
 ## 3. Behandelte Themen
 
-Der Chat behandelte im Wesentlichen folgende Themen:
+Arbeitsfelder der Website-Planung:
 
 1. Grundstruktur der öffentlichen NetCore-Tetra-Website.
 2. Trennung zwischen öffentlichem und geschütztem Inhalt.
@@ -86,7 +90,7 @@ Der Chat behandelte im Wesentlichen folgende Themen:
 - Zusätzlich vorhandene beziehungsweise vorgesehene Domain: **netcore-tetra.com**
 - ZKN-Zielhost: **zkn.netcore-tetra.de**
 
-Für die .com-Domain wurde im Chat **noch keine endgültige Rolle festgelegt**.
+Für die .com-Domain wurde in der Planung **noch keine endgültige Rolle festgelegt**.
 
 Offene Varianten für netcore-tetra.com:
 
@@ -105,7 +109,7 @@ ZKN wird nicht als normaler Pfad unter NetCore-Tetra geplant, sondern als eigene
 
 **zkn.netcore-tetra.de**
 
-Begründung aus dem Chat:
+Begründung aus den Arbeitsnotizen:
 
 - stärkere organisatorische und optische Trennung,
 - Möglichkeit eines eigenen Designs,
@@ -117,7 +121,7 @@ Begründung aus dem Chat:
 
 **Beschlossen/geplant, nicht umgesetzt bestätigt**
 
-Im Chat wurde ein CNAME vorgeschlagen:
+In der Planung wurde ein CNAME vorgeschlagen:
 
 - Name/Host: zkn
 - Typ: CNAME
@@ -150,13 +154,13 @@ Zu beachten:
 
 **Idee/Empfehlung:** NetCore-Tetra und ZKN als zwei getrennte Website-X5-Projekte führen.
 
-Dies wurde als sinnvoll bezeichnet, weil ZKN als Subdomain ein eigenes Layout und einen eigenen Uploadpfad erhalten kann. Der Nutzer hat die Subdomain entschieden, aber **nicht ausdrücklich festgelegt**, dass zwingend zwei getrennte X5-Projektdateien verwendet werden müssen.
+Dies wurde als sinnvoll bezeichnet, weil ZKN als Subdomain ein eigenes Layout und einen eigenen Uploadpfad erhalten kann. Die Subdomain ist festgelegt; **nicht ausdrücklich festgelegt**, dass zwingend zwei getrennte X5-Projektdateien verwendet werden müssen.
 
 ---
 
 ## 5. Endgültige Informationsarchitektur – NetCore-Tetra
 
-Die folgende Struktur wurde im Chat als direkte „Seite / Ordner / Seite im Ordner“-Struktur ausgearbeitet.
+Die folgende Struktur wurde in der Planung als direkte „Seite / Ordner / Seite im Ordner“-Struktur ausgearbeitet.
 
 ### 5.1 Öffentlicher Bereich
 
@@ -164,66 +168,66 @@ Die folgende Struktur wurde im Chat als direkte „Seite / Ordner / Seite im Ord
 
 Startseite
 
-Plattform  
-&nbsp;&nbsp;&nbsp;&nbsp;Überblick  
-&nbsp;&nbsp;&nbsp;&nbsp;Funktionen  
-&nbsp;&nbsp;&nbsp;&nbsp;Hardware  
-&nbsp;&nbsp;&nbsp;&nbsp;Sicherheit & Betrieb  
-&nbsp;&nbsp;&nbsp;&nbsp;Roadmap  
+Plattform\
+&nbsp;&nbsp;&nbsp;&nbsp;Überblick\
+&nbsp;&nbsp;&nbsp;&nbsp;Funktionen\
+&nbsp;&nbsp;&nbsp;&nbsp;Hardware\
+&nbsp;&nbsp;&nbsp;&nbsp;Sicherheit & Betrieb\
+&nbsp;&nbsp;&nbsp;&nbsp;Roadmap\
 
-Lösungen  
-&nbsp;&nbsp;&nbsp;&nbsp;Einsatzszenarien  
-&nbsp;&nbsp;&nbsp;&nbsp;Use-Cases  
-&nbsp;&nbsp;&nbsp;&nbsp;Branchenlösungen  
-&nbsp;&nbsp;&nbsp;&nbsp;Partner-Integrationen  
+Lösungen\
+&nbsp;&nbsp;&nbsp;&nbsp;Einsatzszenarien\
+&nbsp;&nbsp;&nbsp;&nbsp;Use-Cases\
+&nbsp;&nbsp;&nbsp;&nbsp;Branchenlösungen\
+&nbsp;&nbsp;&nbsp;&nbsp;Partner-Integrationen\
 
-Ressourcen  
-&nbsp;&nbsp;&nbsp;&nbsp;Dokumentation (öffentlich)  
-&nbsp;&nbsp;&nbsp;&nbsp;Presse & Brandmaterial  
-&nbsp;&nbsp;&nbsp;&nbsp;Changelog & News  
-&nbsp;&nbsp;&nbsp;&nbsp;FAQ  
+Ressourcen\
+&nbsp;&nbsp;&nbsp;&nbsp;Dokumentation (öffentlich)\
+&nbsp;&nbsp;&nbsp;&nbsp;Presse & Brandmaterial\
+&nbsp;&nbsp;&nbsp;&nbsp;Changelog & News\
+&nbsp;&nbsp;&nbsp;&nbsp;FAQ\
 
-Über uns  
-&nbsp;&nbsp;&nbsp;&nbsp;Team / Vision / Mission  
-&nbsp;&nbsp;&nbsp;&nbsp;Kontakt  
-&nbsp;&nbsp;&nbsp;&nbsp;Karriere & Community  
+Über uns\
+&nbsp;&nbsp;&nbsp;&nbsp;Team / Vision / Mission\
+&nbsp;&nbsp;&nbsp;&nbsp;Kontakt\
+&nbsp;&nbsp;&nbsp;&nbsp;Karriere & Community\
 
 Kontakt / Demo
 
-Rechtliches  
-&nbsp;&nbsp;&nbsp;&nbsp;Impressum  
-&nbsp;&nbsp;&nbsp;&nbsp;Datenschutz  
-&nbsp;&nbsp;&nbsp;&nbsp;AGB (optional)  
-&nbsp;&nbsp;&nbsp;&nbsp;Cookie-Hinweis  
+Rechtliches\
+&nbsp;&nbsp;&nbsp;&nbsp;Impressum\
+&nbsp;&nbsp;&nbsp;&nbsp;Datenschutz\
+&nbsp;&nbsp;&nbsp;&nbsp;AGB (optional)\
+&nbsp;&nbsp;&nbsp;&nbsp;Cookie-Hinweis\
 
 ### 5.2 Geschützter Bereich NetCore-Tetra
 
 **Beschlossen/geplant als Informationsarchitektur; Authentisierung und Berechtigungsmodell nicht implementiert oder getestet**
 
-Mitgliederportal  
-&nbsp;&nbsp;&nbsp;&nbsp;Downloads  
-&nbsp;&nbsp;&nbsp;&nbsp;Detail-Dokumentation  
-&nbsp;&nbsp;&nbsp;&nbsp;How-To Videos  
-&nbsp;&nbsp;&nbsp;&nbsp;Technischer Changelog & Release-Notes  
-&nbsp;&nbsp;&nbsp;&nbsp;Bug-Meldung  
+Mitgliederportal\
+&nbsp;&nbsp;&nbsp;&nbsp;Downloads\
+&nbsp;&nbsp;&nbsp;&nbsp;Detail-Dokumentation\
+&nbsp;&nbsp;&nbsp;&nbsp;How-To Videos\
+&nbsp;&nbsp;&nbsp;&nbsp;Technischer Changelog & Release-Notes\
+&nbsp;&nbsp;&nbsp;&nbsp;Bug-Meldung\
 
-Partnerportal  
-&nbsp;&nbsp;&nbsp;&nbsp;Erweiterte Dokus  
-&nbsp;&nbsp;&nbsp;&nbsp;Projektvorlagen & SOPs  
-&nbsp;&nbsp;&nbsp;&nbsp;Lizenz-/Key-Bereich  
-&nbsp;&nbsp;&nbsp;&nbsp;Marketing-Vorlagen  
-&nbsp;&nbsp;&nbsp;&nbsp;Beta-Releases & Roadmap-Details  
+Partnerportal\
+&nbsp;&nbsp;&nbsp;&nbsp;Erweiterte Dokus\
+&nbsp;&nbsp;&nbsp;&nbsp;Projektvorlagen & SOPs\
+&nbsp;&nbsp;&nbsp;&nbsp;Lizenz-/Key-Bereich\
+&nbsp;&nbsp;&nbsp;&nbsp;Marketing-Vorlagen\
+&nbsp;&nbsp;&nbsp;&nbsp;Beta-Releases & Roadmap-Details\
 
-Adminportal  
-&nbsp;&nbsp;&nbsp;&nbsp;API-Detail & interne Protokolle  
-&nbsp;&nbsp;&nbsp;&nbsp;RolloutCenter  
-&nbsp;&nbsp;&nbsp;&nbsp;Watchtower-Dashboards & Playbooks  
-&nbsp;&nbsp;&nbsp;&nbsp;Partner-Accountverwaltung  
-&nbsp;&nbsp;&nbsp;&nbsp;Pitch/Docs Masterfiles  
+Adminportal\
+&nbsp;&nbsp;&nbsp;&nbsp;API-Detail & interne Protokolle\
+&nbsp;&nbsp;&nbsp;&nbsp;RolloutCenter\
+&nbsp;&nbsp;&nbsp;&nbsp;Watchtower-Dashboards & Playbooks\
+&nbsp;&nbsp;&nbsp;&nbsp;Partner-Accountverwaltung\
+&nbsp;&nbsp;&nbsp;&nbsp;Pitch/Docs Masterfiles\
 
 ### 5.3 Rollenmodell NetCore-Tetra
 
-Im Chat vorgeschlagen:
+In der Planung vorgeschlagen:
 
 - **Member** – registrierte Nutzer.
 - **Partner** – erweiterte Partnerrechte.
@@ -256,60 +260,60 @@ ZKN wird als eigener Auftritt auf **zkn.netcore-tetra.de** geplant.
 
 Startseite
 
-Aufgaben & Mission  
-&nbsp;&nbsp;&nbsp;&nbsp;Wer wir sind  
-&nbsp;&nbsp;&nbsp;&nbsp;Was wir tun  
-&nbsp;&nbsp;&nbsp;&nbsp;Werte & Arbeitsweise  
+Aufgaben & Mission\
+&nbsp;&nbsp;&nbsp;&nbsp;Wer wir sind\
+&nbsp;&nbsp;&nbsp;&nbsp;Was wir tun\
+&nbsp;&nbsp;&nbsp;&nbsp;Werte & Arbeitsweise\
 
-Lösungen & Module  
-&nbsp;&nbsp;&nbsp;&nbsp;Leitstellenstruktur  
-&nbsp;&nbsp;&nbsp;&nbsp;BOS-/KRITIS-Bridge  
-&nbsp;&nbsp;&nbsp;&nbsp;Watchtower-Integration  
-&nbsp;&nbsp;&nbsp;&nbsp;Spezialeinsätze  
+Lösungen & Module\
+&nbsp;&nbsp;&nbsp;&nbsp;Leitstellenstruktur\
+&nbsp;&nbsp;&nbsp;&nbsp;BOS-/KRITIS-Bridge\
+&nbsp;&nbsp;&nbsp;&nbsp;Watchtower-Integration\
+&nbsp;&nbsp;&nbsp;&nbsp;Spezialeinsätze\
 
 Referenzen & Projekte
 
 Kooperation & Partner
 
-Ressourcen (öffentlich)  
-&nbsp;&nbsp;&nbsp;&nbsp;Pressebereich  
-&nbsp;&nbsp;&nbsp;&nbsp;Whitepaper „ZKN Operations“  
-&nbsp;&nbsp;&nbsp;&nbsp;Changelog & News  
+Ressourcen (öffentlich)\
+&nbsp;&nbsp;&nbsp;&nbsp;Pressebereich\
+&nbsp;&nbsp;&nbsp;&nbsp;Whitepaper „ZKN Operations“\
+&nbsp;&nbsp;&nbsp;&nbsp;Changelog & News\
 
 Kontakt & Support
 
-Rechtliches  
-&nbsp;&nbsp;&nbsp;&nbsp;Impressum  
-&nbsp;&nbsp;&nbsp;&nbsp;Datenschutz  
-&nbsp;&nbsp;&nbsp;&nbsp;Cookie-Hinweis  
+Rechtliches\
+&nbsp;&nbsp;&nbsp;&nbsp;Impressum\
+&nbsp;&nbsp;&nbsp;&nbsp;Datenschutz\
+&nbsp;&nbsp;&nbsp;&nbsp;Cookie-Hinweis\
 
 ### 6.2 Geschützter Bereich ZKN
 
-Partner-Portal  
-&nbsp;&nbsp;&nbsp;&nbsp;Einsatzhandbücher  
-&nbsp;&nbsp;&nbsp;&nbsp;Schnittstellenbeschreibung BOS-/KRITIS-Bridge  
-&nbsp;&nbsp;&nbsp;&nbsp;Notfallprotokolle (generisch)  
-&nbsp;&nbsp;&nbsp;&nbsp;ZKN-Marketingmaterial  
-&nbsp;&nbsp;&nbsp;&nbsp;Monitoring-Dashboards  
+Partner-Portal\
+&nbsp;&nbsp;&nbsp;&nbsp;Einsatzhandbücher\
+&nbsp;&nbsp;&nbsp;&nbsp;Schnittstellenbeschreibung BOS-/KRITIS-Bridge\
+&nbsp;&nbsp;&nbsp;&nbsp;Notfallprotokolle (generisch)\
+&nbsp;&nbsp;&nbsp;&nbsp;ZKN-Marketingmaterial\
+&nbsp;&nbsp;&nbsp;&nbsp;Monitoring-Dashboards\
 
-Intern-Portal  
-&nbsp;&nbsp;&nbsp;&nbsp;Einsatz- & Notfallprotokolle (vollständig)  
-&nbsp;&nbsp;&nbsp;&nbsp;Watchtower-Profile & Alarmmatrizen  
-&nbsp;&nbsp;&nbsp;&nbsp;OTA-Management-Tools & Deployment-Pakete  
-&nbsp;&nbsp;&nbsp;&nbsp;Checklisten & SOPs  
-&nbsp;&nbsp;&nbsp;&nbsp;Incident-Datenbank  
-&nbsp;&nbsp;&nbsp;&nbsp;Bereitschafts- & Wartungskalender  
+Intern-Portal\
+&nbsp;&nbsp;&nbsp;&nbsp;Einsatz- & Notfallprotokolle (vollständig)\
+&nbsp;&nbsp;&nbsp;&nbsp;Watchtower-Profile & Alarmmatrizen\
+&nbsp;&nbsp;&nbsp;&nbsp;OTA-Management-Tools & Deployment-Pakete\
+&nbsp;&nbsp;&nbsp;&nbsp;Checklisten & SOPs\
+&nbsp;&nbsp;&nbsp;&nbsp;Incident-Datenbank\
+&nbsp;&nbsp;&nbsp;&nbsp;Bereitschafts- & Wartungskalender\
 
 ### 6.3 Status der ZKN-Inhalte
 
-Die Seitenstruktur wurde als Webkonzept akzeptiert. Die konkreten Produkt-/Betriebsbegriffe wurden jedoch überwiegend vom Assistenten in die Struktur eingebracht.
+Die Seitenstruktur wurde als Webkonzept akzeptiert. Die Produkt-/Betriebsbegriffe sind überwiegend Entwurfsvorschläge, keine geprüften Module.
 
 Daher ist zu unterscheiden:
 
 - **Beschlossen/geplant:** ZKN bekommt einen eigenständigen Subdomain-Auftritt und die oben genannte Menüstruktur als Arbeitsgrundlage.
 - **Nicht als Implementierung bestätigt:** BOS-/KRITIS-Bridge, Watchtower-Integration, OTA-Management, Incident-Datenbank, Bereitschaftskalender und ähnliche Module.
-- **Nicht als Repository-Nachweis bestätigt:** Die Bezeichnungen „Watchtower“, „RolloutCenter“ und „Lighthouse“ ergaben beim heutigen Repository-Abgleich keine exakten Treffer auf main.
-- **Nicht bestätigt:** der im Entwurf verwendete Slogan „netzweit. sicher. bereit.“. Er wurde vorgeschlagen, aber vom Nutzer nicht ausdrücklich als endgültiger Claim freigegeben.
+- **Nicht als Repository-Nachweis bestätigt:** Die Bezeichnungen „Watchtower“, „RolloutCenter“ und „Lighthouse“ ergaben beim geprüften Repository-Abgleich keine exakten Treffer auf main.
+- **Nicht bestätigt:** der im Entwurf verwendete Slogan „netzweit. sicher. bereit.“. Er wurde vorgeschlagen, aber noch nicht ausdrücklich als endgültiger Claim freigegeben.
 
 ---
 
@@ -342,7 +346,7 @@ Relevantes Protokoll:
 - DNS
 - CNAME für zkn wurde als bevorzugter Mechanismus genannt.
 
-Konkrete DNS-Werte wurden im Chat nicht real im DNS-Provider angelegt und nicht getestet.
+Konkrete DNS-Werte wurden in der Planung nicht real im DNS-Provider angelegt und nicht getestet.
 
 ### 7.3 HTTP/HTTPS
 
@@ -351,7 +355,7 @@ Erwartete Standardports:
 - TCP 80 für HTTP, vorzugsweise nur Redirect auf HTTPS.
 - TCP 443 für HTTPS.
 
-Diese Ports ergeben sich aus dem Webhosting-Modell; eine konkrete Firewall- oder Reverse-Proxy-Konfiguration wurde im Chat nicht eingerichtet.
+Diese Ports ergeben sich aus dem Webhosting-Modell; eine konkrete Firewall- oder Reverse-Proxy-Konfiguration wurde in der Planung nicht eingerichtet.
 
 ### 7.4 TLS-Zertifikate
 
@@ -391,7 +395,7 @@ Ein einzelnes Projekt mit externem Link zur ZKN-Subdomain bleibt technisch mögl
 
 **Nicht nachgewiesen**
 
-Im Chat wurden keine der folgenden Tätigkeiten nachweislich durchgeführt:
+In der Planung wurden keine der folgenden Tätigkeiten nachweislich durchgeführt:
 
 - DNS-Eintrag erstellt,
 - Webspace/Subdomain im Hosting angelegt,
@@ -415,11 +419,11 @@ Es wurden keine DNS-, TLS-, HTTP-, Login-, Rollen-, SEO-, Redirect- oder Cross-B
 
 **Nein.**
 
-Für die neue öffentliche Website beziehungsweise die ZKN-Subdomain liegt in diesem Chat keine Betriebsbestätigung vor.
+Für die neue öffentliche Website beziehungsweise die ZKN-Subdomain liegt in dieser Entwicklungsphase keine Betriebsbestätigung vor.
 
 ---
 
-## 9. Heutiger Repository-Abgleich
+## 9. Geprüfter Repository-Abgleich
 
 ### 9.1 main
 
@@ -457,15 +461,15 @@ Unmittelbar vor dem Schreiben dieser Datei lag der Branch Archiving auf:
 
 **ed84e9bf3922781e130f5adf3417afadec828175**
 
-Der Zielpfad dieser Abschlussdokumentation existierte zu diesem Zeitpunkt noch nicht.
+Der Zielpfad dieser Notizen existierte zu diesem Zeitpunkt noch nicht.
 
 ### 9.4 Ergebnis des Abgleichs
 
-Die Website-Planung aus diesem Chat ist als **Konzept und Roadmap-Kandidat** zu behandeln.
+Die Website-Planung aus dieser Entwicklungsphase ist als **Konzept und Roadmap-Kandidat** zu behandeln.
 
 Es gibt im geprüften Repository-Stand keinen belastbaren Nachweis, dass:
 
-- die öffentliche NetCore-Tetra-Website aus diesem Chat bereits implementiert ist,
+- die öffentliche NetCore-Tetra-Website aus dieser Entwicklungsphase bereits implementiert ist,
 - die ZKN-Subdomain bereits eingerichtet ist,
 - die hier entworfenen Portalrollen technisch existieren,
 - die konkreten Seitenstrukturen bereits als Website-X5-Projekt vorliegen.
@@ -497,7 +501,7 @@ Es gibt im geprüften Repository-Stand keinen belastbaren Nachweis, dass:
 
 ### 11.1 ZKN-Subdomain einrichten
 
-**Nur vorgeschlagener Ablauf – nicht im Chat ausgeführt**
+**Nur vorgeschlagener Ablauf – nicht in der Planung ausgeführt**
 
 1. Subdomain zkn beim DNS-/Hostinganbieter anlegen.
 2. Passenden CNAME setzen.
@@ -543,13 +547,13 @@ Vor produktiver Nutzung muss festgelegt werden:
 - wie Downloadberechtigungen serverseitig geprüft werden,
 - wie Zugriffe protokolliert werden.
 
-Der Chat hat diese Punkte nicht technisch umgesetzt.
+Die Planung hat diese Punkte nicht technisch umgesetzt.
 
 ---
 
 ## 12. Fehler, Diagnose und Lösungen
 
-### 12.1 Technische Fehler während des Chats
+### 12.1 Technischer Umsetzungsstatus
 
 Es traten keine konkreten Laufzeit-, Build-, DNS- oder Hostingfehler auf, weil keine technische Implementierung durchgeführt wurde.
 
@@ -565,7 +569,7 @@ Später ausdrücklich ersetzt durch:
 
 - zkn.netcore-tetra.de
 
-**Aktueller Stand: Subdomain ist die verbindliche Planungsrichtung.**
+**Planungsstand: Subdomain ist die verbindliche Planungsrichtung.**
 
 #### SEO-Begründung
 
@@ -602,7 +606,7 @@ netcore-tetra.de/zkn/
 
 Grund:
 
-Der Nutzer entschied sich für eine eigenständigere Darstellung als Subdomain.
+Festgelegt ist die eigenständigere Darstellung als Subdomain.
 
 ### 13.2 ZKN vollständig auf derselben Site ohne getrennten Host
 
@@ -618,7 +622,7 @@ Die Subdomain macht zwei getrennte Projekte organisatorisch sinnvoll. Eine endg�
 
 ---
 
-## 14. Frühere Assistentenvorschläge ohne belastbare Bestätigung
+## 14. Frühere Entwurfsvorschläge ohne belastbare Bestätigung
 
 Im Verlauf wurden mehrere Begriffe beziehungsweise Funktionsnamen in Seitenentwürfen verwendet. Sie dürfen nicht ohne weiteren Abgleich als vorhandene NetCore-Tetra-Produkte oder produktive Dienste dargestellt werden.
 
@@ -637,7 +641,7 @@ Dazu gehören insbesondere:
 
 Diese Begriffe sind für die Website **Ideen beziehungsweise redaktionelle Platzhalter**, sofern sie nicht in anderen Projektteilen separat bestätigt und implementiert sind.
 
-Der heutige Code-Suchabgleich auf main ergab für Watchtower, RolloutCenter und Lighthouse keine exakten Treffer.
+Der zusätzliche Code-Suchabgleich auf main ergab für Watchtower, RolloutCenter und Lighthouse keine exakten Treffer.
 
 ---
 
@@ -779,9 +783,9 @@ Noch nicht durchgeführt.
 - main-Commit geprüft: https://github.com/JanHG98/netcore-tetra/commit/7137e0dd69877e1b604bf89148fd8b6b590c1a97
 - PR aus dem geprüften main-Head: https://github.com/JanHG98/netcore-tetra/pull/59
 
-### Chatquellen
+### Arbeitsgrundlagen
 
-Die inhaltliche Grundlage dieser Datei ist der vollständige in diesem Chat verfügbare Dialog:
+Die inhaltliche Grundlage dieser Datei ist der verfügbare Planungsstand:
 
 - Wunsch nach Website für NetCore-Tetra und ZKN,
 - Website X5 Pro,
@@ -796,22 +800,22 @@ Die inhaltliche Grundlage dieser Datei ist der vollständige in diesem Chat verf
 
 ### Bilder und Anhänge
 
-- In diesem Chat wurden keine eigenständigen Bilder hochgeladen.
-- Daher wurde kein Bildasset speziell für diesen Chat in Docs/archive/ ergänzt.
+- In dieser Entwicklungsphase wurden keine eigenständigen Bilder hochgeladen.
+- Daher wurde kein Bildasset speziell für diese Planung in Docs/archive/ ergänzt.
 - Projektweit verfügbare ETSI-PDFs sind nicht Teil dieser Webseitenplanung und wurden nicht dupliziert.
 
 ---
 
-## 18. Zusammenfassung des aktuellen Stands
+## 18. Zusammenfassung des am Prüfdatum vorliegenden Stands
 
-Die wesentliche Festlegung dieses Chats ist die Trennung des öffentlichen Webauftritts in zwei Hosts:
+Die wesentliche Festlegung dieser Planung ist die Trennung des öffentlichen Webauftritts in zwei Hosts:
 
 - **netcore-tetra.de** für NetCore-Tetra,
 - **zkn.netcore-tetra.de** für ZKN.
 
 Für beide wurden öffentliche und geschützte Seitenstrukturen entworfen. Die Strukturen können in Website X5 Pro direkt als Seiten und Ordner angelegt werden.
 
-Der Chat hat dagegen **keine tatsächliche Webimplementierung** erzeugt. DNS, Hosting, TLS, Login, Rollen, X5-Projektdateien und Livebetrieb bleiben umzusetzen und zu testen.
+Die Planung hat dagegen **keine tatsächliche Webimplementierung** erzeugt. DNS, Hosting, TLS, Login, Rollen, X5-Projektdateien und Livebetrieb bleiben umzusetzen und zu testen.
 
 Die wichtigsten nächsten Entscheidungen sind:
 
@@ -822,4 +826,4 @@ Die wichtigsten nächsten Entscheidungen sind:
 5. echte Produktnamen und ZKN-Funktionen gegen Repository und Betrieb verifizieren,
 6. danach erst Inhalte erstellen und veröffentlichen.
 
-Damit ist dieser Chat als **Webseiten-Informationsarchitektur und Domain-/Portalplanung** abgeschlossen und für eine spätere Umsetzung reproduzierbar dokumentiert.
+**Arbeitsstand:** Informationsarchitektur, Subdomain und Portalbereiche sind geplant. Die technische Umsetzung und Abnahme stehen noch aus.

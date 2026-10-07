@@ -1,77 +1,65 @@
-# Brew Server Integration: Protokolladapter, Core-Zuständigkeiten und Repository-Abgleich
+# Brainstorming: Brew-Integration, Protokolladapter und Core-Zuständigkeiten
 
-## 1. Metadaten und Lesart
+**Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
+
+## 1. Arbeitsstand und Einordnung
 
 | Feld | Wert |
 |---|---|
 | Projekt | NetCore-TETRA, `JanHG98/netcore-tetra` |
-| Ursprünglicher Chattitel | **Brew Server Integration** |
-| Ursprungsdialog | [ChatGPT-Chat](https://chatgpt.com/c/6aae887e-08b0-83eb-8a9d-1b3bfb0401ed), ID `6aae887e-08b0-83eb-8a9d-1b3bfb0401ed` |
-| App-Verweis | `chatgpt-conversation://6aae887e-08b0-83eb-8a9d-1b3bfb0401ed` |
-| Zugängliche Gesprächszeitpunkte | 19.09.2026, 15:05 und 15:07 Uhr; 05.10.2026, 23:25 und 23:26 Uhr, jeweils Europe/Berlin |
-| Erstellung dieser Abschlussdokumentation | **2026-10-05**, Europe/Berlin |
+| Zugängliche Arbeitstermine | 19.09.2026, 15:05 und 15:07 Uhr; 05.10.2026, 23:25 und 23:26 Uhr, jeweils Europe/Berlin |
+| Erstellung dieser Projektnotiz | **2026-10-05**, Europe/Berlin |
 | Zielbranch | Bestehender Branch **`Archiving`** |
 | Geprüfter Repository-Stand | [`7eb95f9aff36c25d26da4978da9c1fe77ee0a72d`](https://github.com/JanHG98/netcore-tetra/tree/7eb95f9aff36c25d26da4978da9c1fe77ee0a72d), vor dem Archivcommit |
 | Historisch diskutierter Stand | Branchname `mqtt`, fest referenzierter Commit [`c128a83cd3eef463de1e7e0c909af1fff4b84b36`](https://github.com/JanHG98/netcore-tetra/commit/c128a83cd3eef463de1e7e0c909af1fff4b84b36) |
 | Historischer Vergleichspunkt | `v1.8.0` → `f0a4ae39ba8d7d54597732de09bf2025ba45b403` |
 | Zusätzlich abgefragter Upstream | [`ysamouhos/brew-server` bei `b9ada00097d608e5ebd3f92c89857b9efff7f9ae`](https://github.com/ysamouhos/brew-server/tree/b9ada00097d608e5ebd3f92c89857b9efff7f9ae) |
-| Umfang des aktuellen Auftrags | Dokumentation und Index ausschließlich unter `Docs/archive/`; Veröffentlichung auf `Archiving` ohne Force-Push oder Merge |
-
-Der **geprüfte Repository-Stand** ist die fachliche Quellenbasis und nicht der Commit, der dieses Dokument anschließend veröffentlicht. Der tatsächliche Archivcommit ist über die Dateihistorie und die Abschlussmeldung der Fortsetzung nachzuvollziehen. Eine eigene Commit-ID wird nicht vor ihrer Erstellung erfunden.
 
 Dieses Dokument unterscheidet ausdrücklich:
 
 - **Idee:** diskutierte Möglichkeit ohne Umsetzungsentscheidung.
-- **Beschlossen/geplant:** verbindlicher Archivauftrag beziehungsweise als solche gekennzeichnete abschließende Architektur-Empfehlung; eine Empfehlung des Assistenten ist noch kein Implementierungsauftrag des Nutzers.
+- **Beschlossen/geplant:** festgehaltene Arbeitsrichtung. Architekturvorschlag und freigegebene Umsetzung werden getrennt.
 - **Implementiert:** im angegebenen Commit durch Quelltext oder Konfiguration belegt.
 - **Getestet:** ein tatsächlich berichteter oder in dieser Fortsetzung ausgeführter Test, mit seiner jeweiligen Grenze.
-- **Im Betrieb bestätigt:** konkrete Beobachtung im Testnetz; hier nur die ausdrücklich dem Nutzerbericht zugeordneten Telefonieversuche, keine heutige unabhängige Betriebsabnahme.
+- **Im Betrieb bestätigt:** konkrete Beobachtung im Testnetz; hier nur die ausdrücklich dem Betriebsbericht zugeordneten Telefonieversuche, keine erneute unabhängige Betriebsabnahme.
 
 ## 2. Ergebnis und wichtigste Korrekturen
 
-Das abschließende fachliche Ergebnis des Chats lautet: **NetCore soll seine eigenen Core-Zuständigkeiten behalten. `brew-server` ist als Upstream-Referenz für Protokoll, Interoperabilität und ausgewählte Medienbausteine interessant. Ein zusätzlicher, gleichzeitig für dieselben Rufe, Teilnehmer und Gruppen zuständiger Brew-Core wurde zuletzt ausdrücklich nicht empfohlen.**
+Die festgehaltene Richtung lautet: **NetCore soll seine eigenen Core-Zuständigkeiten behalten. `brew-server` ist als Upstream-Referenz für Protokoll, Interoperabilität und ausgewählte Medienbausteine interessant. Ein zusätzlicher, gleichzeitig für dieselben Rufe, Teilnehmer und Gruppen zuständiger Brew-Core wurde zuletzt ausdrücklich nicht empfohlen.**
 
 Ein späterer Brew-Adapter kann fremde oder virtuelle Basisstationen anbinden. Er soll Nachrichten in vorhandene NetCore-Schnittstellen übersetzen und keine konkurrierende Rufsteuerung, Teilnehmerverwaltung, Gruppenverwaltung, SDS-Routinginstanz oder SIP-Vermittlung etablieren. Ob dafür ein neuer Dienst erforderlich ist, blieb offen.
 
-Der Repository-Abgleich liefert eine wesentliche Ergänzung zum Gespräch: **Ein separater Rust-Brew-Server war bereits im diskutierten Commit `c128a83...` vorhanden**, dort mit Paketversion `0.5.0`. Im geprüften heutigen `Archiving`-Stand liegt er weiterhin unter `misc/brew-server/`, inzwischen mit Paketversion `1.9.0`. Er besitzt tatsächlich eigene Teilnehmer-, Gruppen-, Ruf-, Floor-, SDS- und SIP-Zustände. Seine bloße Ablage im Repository beweist weder seine aktive Verwendung noch eine Integration als reiner NetCore-Adapter.
+Der Repository-Abgleich liefert eine wesentliche Ergänzung zur Planung: **Ein separater Rust-Brew-Server war bereits im diskutierten Commit `c128a83...` vorhanden**, dort mit Paketversion `0.5.0`. Im geprüften `Archiving`-Stand liegt er weiterhin unter `misc/brew-server/`, inzwischen mit Paketversion `1.9.0`. Er besitzt tatsächlich eigene Teilnehmer-, Gruppen-, Ruf-, Floor-, SDS- und SIP-Zustände. Seine bloße Ablage im Repository beweist weder seine aktive Verwendung noch eine Integration als reiner NetCore-Adapter.
 
-Deshalb sind drei Dinge auseinanderzuhalten: die letzte Empfehlung dieses Chats, der vorhandene eigenständige Server und eine noch zu prüfende gemeinsame Betriebsarchitektur. Aus diesem Archiv folgt weder ein Auftrag, den vorhandenen Server zu entfernen, noch die Bestätigung, dass eine konfliktfreie Integration bereits umgesetzt wäre.
+Deshalb sind drei Dinge auseinanderzuhalten: die letzte Empfehlung dieser Planung, der vorhandene eigenständige Server und eine noch zu prüfende gemeinsame Betriebsarchitektur. Aus diesem Archiv folgt weder ein Auftrag, den vorhandenen Server zu entfernen, noch die Bestätigung, dass eine konfliktfreie Integration bereits umgesetzt wäre.
 
-## 3. Quellenumfang und Auswertungslücken
+## 3. Quellenbasis und offene Nachweise
 
-Der Ursprungsdialog wurde mit `read_thread`, `turnLimit=10` und `maxOutputCharsPerItem=20000` gelesen. Zurückgegeben wurden **vier Gesprächsrunden mit vier Nutzernachrichten und drei Assistentenantworten**. `hasMore=false` und `nextCursor=null` boten keine weitere Seite an. Alle zurückgegebenen technischen Nachrichten lagen unter dem Zeichenlimit und wurden ausgewertet. Der verkürzte Vorschautext war nicht die alleinige Grundlage.
+Die Architekturplanung vom 19. September und die Präzisierung vom 5. Oktober 2026 werden mit dem historischen `mqtt`-Commit und den genannten Repository-/Upstream-Ständen verglichen. Releasebeschreibung und Betriebsrückmeldungen sind historische Angaben; Rohprotokolle der Telefonieversuche liegen nicht vor.
 
-Die vier Runden umfassen die ursprüngliche Integrationsfrage, den Einwand gegen doppelte Dienstzuständigkeiten, die vom Nutzer eingebrachte `mqtt`-Releasebeschreibung mit anschließender korrigierter Empfehlung und den Archivauftrag. Hinzu kommt der aktuelle Auftrag zur vollständigen Speicherung und Verifikation auf `Archiving`.
-
-Folgende Grenzen bleiben bestehen:
-
-- Der Zugriff belegt den vollständig **zurückgegebenen** Verlauf. Nicht zurückgegebene Alternativantworten, gelöschte Nachrichten oder interne historische Werkzeugausgaben lassen sich daraus nicht rekonstruieren.
-- Historische Antworten enthalten `chatgpt-content-reference`-Marker. Deren vollständige damalige Quellenzuordnung wurde nicht mitgeliefert. Aussagen über BlueStation, FlowStation, Nexus-BS und ETSI-Dokumente werden deshalb als Gesprächsinhalt erhalten und nicht als hier vollständig nachgeprüfte Fremdimplementierungen oder Normnachweise ausgegeben.
-- `attachments=[]`; in den zurückgegebenen Nachrichten waren keine technisch zugänglichen Bilddateien oder Bildverweise enthalten. **Es wurden keine Chatbilder hochgeladen.** Eventuell außerhalb dieses Abrufs vorhandene Originalbilder bleiben eine ausdrücklich benannte Lücke. Die im Chat enthaltenen Textdiagramme sind keine Bildanhänge.
-- Keine Betriebslogs, Paketmitschnitte, Audioaufzeichnungen oder Geräteabbilder begleiten die berichteten Telefonietests. Keine reale TBS, PBX oder LXC wurde für diesen Archivauftrag kontaktiert oder verändert.
-- Die schreibgeschützten synchronisierten Projektquellen wurden nicht verändert. Fremde Bilder oder andere Chats wurden nicht als Ersatzmaterial für diesen Chat übernommen.
+Frühere Aussagen über BlueStation, FlowStation, Nexus-BS und ETSI sind nur dort als geprüft zu behandeln, wo konkrete Quellen genannt sind. Originalbilder stehen nicht zur Verfügung. Textdiagramme sind als Architekturentwürfe erhalten; weitere damalige Werkzeugausgaben und alternative Entwicklungsstände sind nicht rekonstruierbar.
 
 ## 4. Ziel, Ausgangslage und Verlauf der Architekturentscheidung
 
 ### 4.1 Ursprüngliche Frage und erste Empfehlung
 
-Der Nutzer fragte, ob sich [ysamouhos/brew-server](https://github.com/ysamouhos/brew-server) in NetCore-Tetra einpflegen lasse und ob das sinnvoll sei. Die erste Antwort bewertete das Projekt sehr positiv als möglichen zusätzlichen Core-/Gateway-Baustein. Genannt wurden Brew v1, Multi-BS, Registrierung, Gruppen- und Individualrufe, SDS, LIP/Positionsdaten, Telemetrie, BS-Control und SIP einschließlich ACELP↔G.711.
+Ausgangspunkt war eine mögliche Übernahme von [ysamouhos/brew-server](https://github.com/ysamouhos/brew-server) in NetCore-Tetra. Der erste Ansatz betrachtete das Projekt als zusätzlichen Core-/Gateway-Baustein. Genannt wurden Brew v1, Multi-BS, Registrierung, Gruppen- und Individualrufe, SDS, LIP/Positionsdaten, Telemetrie, BS-Control und SIP einschließlich ACELP↔G.711.
 
-Schon diese Antwort wollte NetCore-Dienste nicht durch den fremden Core ersetzen. Sie schlug einen eigenen `brew-gateway` vor, der Subscriber-, Mobility-, Group-, Call-, Media-, SDS- und Observability-Dienste nutzt. Die Formulierung, den Server als eigenen Dienst zu integrieren, war jedoch weitergehend als die später festgehaltene Richtung und ist **durch die folgenden Korrekturen überholt**.
+Der erste Entwurf sah einen eigenen `brew-gateway` vor, der Subscriber-, Mobility-, Group-, Call-, Media-, SDS- und Observability-Dienste nutzt. Die Formulierung, den Server als eigenen Dienst zu integrieren, war jedoch weitergehend als die später festgehaltene Richtung und ist **durch die folgenden Korrekturen überholt**.
 
 Als langfristiger Nutzen wurden eine gemeinsame Southbound-Schnittstelle für NetCore-TBS, BlueStation, FlowStation, Nexus-BS und virtuelle TBS sowie dieselben Core-Tests gegen reale und simulierte Basisstationen genannt. Die erwähnten Ortsnamen für ein mögliches Multi-Site-Netz waren illustrative Beispiele, keine bestätigte Standortinventur.
 
-### 4.2 Einwand des Nutzers: doppelte Zuständigkeiten
+### 4.2 Korrektur: doppelte Zuständigkeiten vermeiden
 
-Der Nutzer wies ausdrücklich darauf hin, dass bereits viele Dienste auf Call Control und die bestehende Verteilung ausgerichtet seien. Daraufhin wurde die Empfehlung eingeengt: **keinen weiteren Core mit eigener fachlicher Wahrheit danebenstellen**, sondern gezielt Komponenten und Erkenntnisse übernehmen.
+Da viele Dienste bereits auf Call Control und die bestehende Verteilung ausgerichtet sind, wurde die Richtung eingeengt: **keinen weiteren Core mit eigener fachlicher Wahrheit danebenstellen**, sondern gezielt Komponenten und Erkenntnisse übernehmen.
 
-Als Konfliktbeispiel diente ein Gruppenruf: Zwei Instanzen könnten gleichzeitig Rufzustand, Floor, Release, Late Entry, Ziel-TBS und Ressourcenfreigabe entscheiden. Das Gespräch beschrieb als mögliche Folge, dass die Leitstelle einen Ruf als beendet anzeigt, während Media Switch weiterleitet und eine zweite TBS noch einen Slot belegt. **Das war ein hypothetisches Fehlerszenario, kein belegter Fehlerbericht aus Jans Netz.**
+Als Konfliktbeispiel diente ein Gruppenruf: Zwei Instanzen könnten gleichzeitig Rufzustand, Floor, Release, Late Entry, Ziel-TBS und Ressourcenfreigabe entscheiden. Als Risiko wurde beschrieben als mögliche Folge, dass die Leitstelle einen Ruf als beendet anzeigt, während Media Switch weiterleitet und eine zweite TBS noch einen Slot belegt. **Das war ein hypothetisches Fehlerszenario, kein belegter Fehlerbericht aus Jans Netz.**
 
-Die zweite Antwort stellte außerdem infrage, ob ein neuer Container überhaupt nötig sei. Zuerst sollten vorhandener TBS-Brew-Pfad und NetCore-Backhaul gegen Upstream verglichen werden.
+Auch die Notwendigkeit eines zusätzlichen Containers blieb offen. Zuerst sollten vorhandener TBS-Brew-Pfad und NetCore-Backhaul gegen Upstream verglichen werden.
 
-### 4.3 Letzte fachliche Antwort nach der `mqtt`-Releasebeschreibung
+### 4.3 Festgehaltene Richtung am `mqtt`-Releasestand
 
-Nach dem vom Nutzer gelieferten Stand `c128a83...` wurde die Empfehlung nochmals ausdrücklich festgelegt:
+Am historischen Stand `c128a83...` wurde die Empfehlung nochmals ausdrücklich festgelegt:
 
 1. `brew-server` nicht als zusätzliche laufende Core-Autorität in NetCore integrieren.
 2. Upstream als Referenz verfolgen und geeignete Implementierungen gezielt portieren.
@@ -79,13 +67,13 @@ Nach dem vom Nutzer gelieferten Stand `c128a83...` wurde die Empfehlung nochmals
 4. Eine Kompatibilitätsmatrix erstellen, statt pauschal Serverfunktionen zu übernehmen.
 5. `brew-server` als sechstes Vergleichsrepository neben `flowstation`, `tetra-bluestation`, `nexus-bs`, `nexus-bs2` und `bost-flowstation` aufnehmen.
 
-**Status:** letzte Architektur-Empfehlung des Assistenten, vom späteren Archivauftrag nicht durch einen Implementierungsauftrag ergänzt. Es gibt in diesem Chat keinen nachgewiesenen neuen Adapter, keine eingerichtete Vergleichsautomation und keinen dadurch entstandenen Feature-PR.
+**Status:** Architekturvorschlag. Ein neuer Adapter, eine Vergleichsautomation oder ein zugehöriger Feature-PR sind nicht nachgewiesen.
 
-## 5. Vom Nutzer eingebrachtes `mqtt`-Releasebild
+## 5. Historisches `mqtt`-Releasebild
 
-Die folgende Übersicht erhält die Releasebeschreibung als **historische Nutzeraussage über den damaligen Beta-/Vorabstand**. Sie beschreibt keine in diesem Archivauftrag neu entwickelten Funktionen.
+Die folgende Übersicht erhält die Releasebeschreibung als **historische Angabe über den damaligen Beta-/Vorabstand**. Sie beschreibt den damaligen Beta-/Vorabstand.
 
-| Thema | Im Chat angegebener Stand |
+| Thema | In der Planung angegebener Stand |
 |---|---|
 | MQTT/IoT | IoT-Gateway mit gemeinsamem Ereignismodell, Befehlen, Quittierungen und konfigurierbaren Freigaberegeln |
 | Home Assistant/Homematic | MQTT Discovery, Übernahme ausgewählter Zustände, optionale CCU3-/RaspberryMatic-Anbindung über XML-RPC, Beispiele und Installationshilfen |
@@ -99,17 +87,17 @@ Die folgende Übersicht erhält die Releasebeschreibung als **historische Nutzer
 | Verwaltung | Hardware-/RF-Monitoring, Alarm- und Aufgabenabläufe, Asset-Verwaltung, Weboberflächen und WAP-Formulare |
 | Installation/Tests | Erweiterte Installations-, Update- und Reparaturwerkzeuge; Schutz vor kollidierenden SIP-Rollen; Trixie-Asterisk-Hilfe; zusätzliche Regressionstests und CI-Prüfungen |
 
-**Im damaligen Testbetrieb laut Nutzer bestätigt:** Funkgerät↔Telefon in beiden Richtungen; Anzeige der Funkgeräte-ISSI am Telefon; eingehende Anruferanzeige am **Sepura SC20 mit V10.24** bei passend gesetzter **FreePBX-Outbound-CID**. Der Chat liefert dafür keine Rohprotokolle oder erneute unabhängige Reproduktion. Diese Beobachtungen belegen insbesondere keine Brew-Fremd-BS-Interoperabilität.
+**Im damaligen Testbetrieb laut Betriebsrückmeldung bestätigt:** Funkgerät↔Telefon in beiden Richtungen; Anzeige der Funkgeräte-ISSI am Telefon; eingehende Anruferanzeige am **Sepura SC20 mit V10.24** bei passend gesetzter **FreePBX-Outbound-CID**. Die Dokumentation liefert dafür keine Rohprotokolle oder erneute unabhängige Reproduktion. Diese Beobachtungen belegen insbesondere keine Brew-Fremd-BS-Interoperabilität.
 
 Ausdrücklich genannte Grenzen: Beta, kein vollständiges Handover laufender Gespräche zwischen Zellen, SIP weiter über den lokalen Medien-/Codec-Pfad, keine Migration laufender SIP-Dialoge bei Fallback, OPEN LAB für isolierte Testnetze. Zentraler SIP-Switch und TBS-Fallback gehören auf getrennte Hostrollen. Konfiguration und Dienstzustand sind vor Umstellungen zu sichern; TBS und Backend benötigen zusammenpassende Versionen für den zentralen Medienpfad.
 
-Die Aussage **141 zusätzliche Commits gegenüber `v1.8.0`** wurde jetzt durch Git bestätigt. Der Endcommit trägt die Nachricht `Merge pull request #48 from JanHG98/mqtt-fix/sip-cli-full-tsi`; dies ist die Identifikation eines historischen Commits, kein in diesem Archivauftrag ausgeführter Merge und kein hier ausgewerteter vollständiger PR-/CI-Verlauf.
+Die Angabe **141 zusätzliche Commits gegenüber `v1.8.0`** wurde am Prüfdatum durch Git bestätigt. Der Endcommit trägt die Nachricht `Merge pull request #48 from JanHG98/mqtt-fix/sip-cli-full-tsi`; damit ist der historische Commit identifiziert. Eine vollständige PR-/CI-Auswertung liegt nicht vor.
 
 ## 6. Zuständigkeitsmodell und Schnittstellengrenzen
 
 ### 6.1 Fachliche Eigentümer
 
-| Bereich | Im Gespräch vorgesehene NetCore-Zuständigkeit | Grenze eines künftigen Brew-Adapters |
+| Bereich | In der Diskussion vorgesehene NetCore-Zuständigkeit | Grenze eines künftigen Brew-Adapters |
 |---|---|---|
 | Teilnehmerstammdaten und Zulassung | Subscriber Core | Keine zweite authoritative Teilnehmerverwaltung |
 | Registrierung, Aufenthaltsort, Serving-TBS | Mobility Core, mit Teilnehmer-/Gruppenlage | Registrierung übersetzen und melden, keine widersprüchliche Mobility-Wahrheit erzeugen |
@@ -121,7 +109,7 @@ Die Aussage **141 zusätzliche Commits gegenüber `v1.8.0`** wurde jetzt durch G
 | SIP/PBX | SIP-Switch, lokaler TBS-Asterisk und vorhandene PBX | Keinen weiteren SIP-Master für dieselben Rufe einsetzen |
 | Telemetrie/Bedienung | Observability/Control Room und vorhandener Kommandopfad | Status und unterstützte Befehle abbilden |
 
-Die Chatformel „Call Control ist die einzige Call-Wahrheit“ ist zu präzisieren: Im heutigen Repository besitzt Call Control die **netzweiten logischen Calls und deren Koordination**. Lokale CMCE-, Funkkanal- und Floor-Prozeduren verbleiben ausdrücklich auf der TBS. Ein lokaler Rufzustand ist damit nicht automatisch eine unzulässige zweite netzweite Autorität.
+Die vereinfachte Aussage „Call Control ist die einzige Call-Wahrheit“ ist zu präzisieren: Im geprüften Repository besitzt Call Control die **netzweiten logischen Calls und deren Koordination**. Lokale CMCE-, Funkkanal- und Floor-Prozeduren verbleiben ausdrücklich auf der TBS. Ein lokaler Rufzustand ist damit nicht automatisch eine unzulässige zweite netzweite Autorität.
 
 ### 6.2 Zielbild aus der Diskussion
 
@@ -149,13 +137,13 @@ Funkgerät -> TBS-Codec-Bridge -> lokaler Asterisk
 
 **Status des Adapterzweigs: Idee/geplante Option.** Das Diagramm ist kein Nachweis eines vorhandenen Adapters oder einer bereits festgelegten Deployment-Topologie.
 
-„Keine eigene Business-Logik“ bedeutet in der Diskussion keine konkurrierende fachliche Autorität. Für eine spätere Umsetzung wären transportbezogene Session-, UUID-, Sequenz- und Pufferzuordnungen trotzdem zu definieren. Diese technische Präzisierung ist eine aus dem Zielbild abgeleitete Aufgabe, kein im Chat bereits implementierter Vertrag.
+„Keine eigene Business-Logik“ bedeutet in der Diskussion keine konkurrierende fachliche Autorität. Für eine spätere Umsetzung wären transportbezogene Session-, UUID-, Sequenz- und Pufferzuordnungen trotzdem zu definieren. Diese technische Präzisierung ist eine aus dem Zielbild abgeleitete Aufgabe, kein in der Planung bereits implementierter Vertrag.
 
-### 6.3 Illustrative Chat-API gegenüber echter API
+### 6.3 Illustrative API-Skizze gegenüber echter API
 
-Das Gespräch verwendete ein absichtlich sinngemäßes Beispiel `GROUP_CALL_REQUEST`, GSSI `1001`, ISSI `4010001`, `source_bs=TBS-01`, gefolgt von `POST /calls` mit Feldern `type`, `group`, `originator` und `source_bs`. Auch `CALL_GRANT` war dort eine illustrative Rückmeldung. **Diese Schreibweisen sind keine hier verifizierte Brew-Wire-Spezifikation und kein kopierfähiger NetCore-API-Vertrag.**
+Der Entwurf verwendete ein absichtlich sinngemäßes Beispiel `GROUP_CALL_REQUEST`, GSSI `1001`, ISSI `4010001`, `source_bs=TBS-01`, gefolgt von `POST /calls` mit Feldern `type`, `group`, `originator` und `source_bs`. Auch `CALL_GRANT` war dort eine illustrative Rückmeldung. **Diese Schreibweisen sind keine hier verifizierte Brew-Wire-Spezifikation und kein kopierfähiger NetCore-API-Vertrag.**
 
-Der heutige Quelltext definiert stattdessen unter anderem:
+Der geprüfte Quelltext definiert stattdessen unter anderem:
 
 - `POST /api/v1/calls/group`, Eingabetyp `GroupCallInput`: `gssi`, `source_issi`, `priority`, `target_nodes`.
 - `POST /api/v1/calls/individual`, `IndividualCallInput`: `calling_issi`, `called_issi`, `simplex`, `priority`, optional `target_node`.
@@ -167,19 +155,19 @@ Das Vorhandensein dieser Endpunkte ersetzt keine definierte Übersetzung eines f
 
 ## 7. Historischer Codeabgleich am exakt genannten Commit
 
-Die historischen Objekte wurden unabhängig vom heutigen Branch geladen und direkt geprüft:
+Die historischen Objekte wurden unabhängig vom geprüften Branch geladen und direkt geprüft:
 
 | Prüfung | Ergebnis |
 |---|---|
 | `v1.8.0` auflösen | `f0a4ae39ba8d7d54597732de09bf2025ba45b403` |
 | `git rev-list --count v1.8.0..c128a83...` | **141** |
-| Diff von `central_control.rs` gegen `v1.8.0` | **483 hinzugefügte, 0 entfernte Zeilen**; die Chatangabe „rund 480“ ist bestätigt |
+| Diff von `central_control.rs` gegen `v1.8.0` | **483 hinzugefügte, 0 entfernte Zeilen**; die historische Angabe „rund 480“ ist bestätigt |
 | `system-backend/call-control/` | Bereits vorhanden |
 | `crates/tetra-entities/src/net_brew/` | Bereits vorhanden |
 | `misc/brew-server.py` | Bereits vorhanden |
 | `misc/brew-server/` | Bereits vorhanden, `Cargo.toml` nennt **0.5.0** |
 
-Die damalige Rust-Server-README beschrieb bereits eigene Registrierung/Affiliation, Gruppenrouting mit Prioritätsübernahme, SDS-Routing, experimentelle Private-/Simplex-Routen, Telemetrie, Control und getrenntes Dashboard. Die erste Antwort sprach dagegen über einen weitergehenden Upstream-Stand einschließlich Version-1.0-Codec/SIP-Funktionen. **Diese Upstream-Aussage darf nicht rückwirkend als Funktionsumfang der damals eingebetteten Version 0.5.0 gelesen werden.**
+Die damalige Rust-Server-README beschrieb bereits eigene Registrierung/Affiliation, Gruppenrouting mit Prioritätsübernahme, SDS-Routing, experimentelle Private-/Simplex-Routen, Telemetrie, Control und getrenntes Dashboard. Der erste Entwurf sprach dagegen über einen weitergehenden Upstream-Stand einschließlich Version-1.0-Codec/SIP-Funktionen. **Diese Upstream-Aussage darf nicht rückwirkend als Funktionsumfang der damals eingebetteten Version 0.5.0 gelesen werden.**
 
 Die historische [CENTRAL_NETWORK_ROLLOUT.md](https://github.com/JanHG98/netcore-tetra/blob/c128a83cd3eef463de1e7e0c909af1fff4b84b36/Docs/CENTRAL_NETWORK_ROLLOUT.md) beschreibt präziser:
 
@@ -192,7 +180,7 @@ Die historische [CENTRAL_NETWORK_ROLLOUT.md](https://github.com/JanHG98/netcore-
 
 Diese Parameter wurden aus dem historischen Dokument gelesen, nicht unter Last oder an Funkhardware nachgemessen.
 
-## 8. Zusätzlich geprüfter heutiger Repository-Stand
+## 8. Zusätzlich geprüfter Repository-Stand
 
 ### 8.1 NetCore-Backhaul, Call Control und Medien
 
@@ -200,7 +188,7 @@ Die Root-Workspace-Liste enthält Node Gateway, Mobility Core, Subscriber Core, 
 
 `central_control.rs` passt zentrale Kommandos an die lokale MAIN-COMPAT-CMCE an. Operation-UUIDs werden geprüft und vorhandenen Rufzweigen zugeordnet; Gruppen-/Individualrufe, Release und Floor-Operationen greifen auf lokale Rufverfahren zurück. Das ist eine konkrete Implementierungsgrundlage, jedoch kein Beleg für vollständigen Handover oder fremde Brew-TBS.
 
-Call Control und Media Switch dokumentieren heute einen ereignisgetriebenen Abgleich über `ws://<call-control>:8120/ws/media`, Subprotokoll `netcore-call-control-media-v1`. Die Ereignisse `call_created`, `leg_ready`, `floor_changed`, `call_updated`, `call_released` enthalten revisionsbehaftete Snapshots. Ein Operator-Floor setzt aktive lokale Call-IDs/Slots und ein passendes RouteReady-ACK voraus. HTTP bleibt ein Fallback.
+Call Control und Media Switch dokumentieren am Prüfdatum einen ereignisgetriebenen Abgleich über `ws://<call-control>:8120/ws/media`, Subprotokoll `netcore-call-control-media-v1`. Die Ereignisse `call_created`, `leg_ready`, `floor_changed`, `call_updated`, `call_released` enthalten revisionsbehaftete Snapshots. Ein Operator-Floor setzt aktive lokale Call-IDs/Slots und ein passendes RouteReady-ACK voraus. HTTP bleibt ein Fallback.
 
 Media Switch transportiert gepackte **35-Byte-TETRA-ACELP-Frames**, dokumentiert einen adaptiven Jitterpuffer mit **1–12 Frames**, Startwert **2**, sowie **5 Frames** Kaltstart-Vorpuffer. Der Recorder liest einen begrenzten Replay-Tap asynchron; das bestätigt keinen zentralen ACELP↔G.711-SIP-Transcoder in diesem Dienst.
 
@@ -219,19 +207,19 @@ Konkrete Codebefunde:
 
 Damit ist die Sorge vor überlappenden Zuständigkeiten durch Code plausibel. **Nicht belegt** sind ein tatsächlich aufgetretener Konflikt, der aktuelle Deploymentmodus oder eine bereits vorgenommene Trennung der jeweiligen Rufdomänen.
 
-### 8.3 Weitere Präzisierungen gegenüber dem Gespräch
+### 8.3 Weitere Präzisierungen gegenüber der Diskussion
 
-| Gesprächsaussage/Skizze | Heutiger Befund und Konsequenz |
+| Annahme/Skizze | Geprüfter Befund und Konsequenz |
 |---|---|
 | „transit / vorhandener Gateway“ als möglicher TBS-Einstieg | Node Gateway ist der dokumentierte TBS-/Backend-Einstieg. Transit vermittelt zwischen Core-Regionen über `netcore-transit-v1`; seine Existenz belegt keinen Brew-Adapter. |
 | LIP als zukünftiger Location-Baustein | `sds_bs.rs` enthält bereits PID-`0x0A`-/LIP-Positionsdekodierung; im separaten Server liegen weitere Position-/APRS-Bausteine. Ein kompletter gemeinsam genutzter Location-Service ist daraus nicht abzuleiten. |
 | `net_brew` sei vorhanden | Bestätigt; Parser-/Builder-Tests für v0/v1, Mnemonic, Sprachframe, SHORT_TRANSFER, SDS, GROUP_IDLE und SDS_REPORT liegen vor. Nicht gleichbedeutend mit geprüfter Interoperabilität aller genannten Fremdsysteme. |
 | SIP dürfe keinen zweiten Master erhalten | Der reguläre Weg ist weiterhin zentraler SIP-Switch plus lokale Edge-Rolle. Der separate Brew-Server bringt zusätzlich eigene SIP-Funktionen mit; Aktivierung und Konfliktfreiheit wurden nicht live geprüft. |
-| Sechstes Vergleichsrepo/Kompatibilitätsmatrix dauerhaft aufnehmen | Im untersuchten `.github`-, `tools`- und relevanten Dokumentationsumfang wurde keine diesem Chat eindeutig zuordenbare Brew-Vergleichsmatrix oder eingerichtete Upstream-Automation gefunden. Das ist ein begrenzter Suchbefund, keine Aussage über alle privaten/externalen Arbeitsabläufe. |
+| Sechstes Vergleichsrepo/Kompatibilitätsmatrix dauerhaft aufnehmen | Im untersuchten `.github`-, `tools`- und relevanten Dokumentationsumfang wurde keine dieser Planung eindeutig zuordenbare Brew-Vergleichsmatrix oder eingerichtete Upstream-Automation gefunden. Das ist ein begrenzter Suchbefund, keine Aussage über alle privaten/externalen Arbeitsabläufe. |
 
 ### 8.4 Upstream-Schnappschuss
 
-Der anonym gelesene Upstream-HEAD war `b9ada00097d608e5ebd3f92c89857b9efff7f9ae`. Dessen [Cargo.toml](https://github.com/ysamouhos/brew-server/blob/b9ada00097d608e5ebd3f92c89857b9efff7f9ae/Cargo.toml) nennt **1.14.0**, während NetCores eingebettetes Paket **1.9.0** nennt. Die [README an diesem Commit](https://github.com/ysamouhos/brew-server/blob/b9ada00097d608e5ebd3f92c89857b9efff7f9ae/README.md) verweist inzwischen auch auf einen Active-/Standby-HA-Modus. Das ist ein zusätzlicher heutiger Quellenbefund; HA wurde im ursprünglichen Gespräch nicht als NetCore-Anforderung beschlossen und hier nicht erprobt.
+Der anonym gelesene Upstream-HEAD war `b9ada00097d608e5ebd3f92c89857b9efff7f9ae`. Dessen [Cargo.toml](https://github.com/ysamouhos/brew-server/blob/b9ada00097d608e5ebd3f92c89857b9efff7f9ae/Cargo.toml) nennt **1.14.0**, während NetCores eingebettetes Paket **1.9.0** nennt. Die [README an diesem Commit](https://github.com/ysamouhos/brew-server/blob/b9ada00097d608e5ebd3f92c89857b9efff7f9ae/README.md) verweist inzwischen auch auf einen Active-/Standby-HA-Modus. Das ist ein zusätzlicher geprüfter Quellenbefund; HA wurde in der ursprünglichen Planung nicht als NetCore-Anforderung beschlossen und hier nicht erprobt.
 
 Dieser Abgleich prüft Metadaten und ausgewählte Dokumentation. Er ist **kein vollständiger Source-Diff**, kein automatisches Upgrade und keine Empfehlung, den neueren Server als weiteren Core zu starten. Die Versionsdifferenz begründet lediglich einen offenen, auf feste Commits zu stützenden Vergleich.
 
@@ -262,7 +250,7 @@ Die Ports sind geprüfte **Beispiel-/Defaultwerte im Repository**, keine Festste
 | Brew-eigenes SIP | `misc/brew-server/src/sip/`, `src/config.rs` | Eigenständige optionale SIP-Rolle; Default ebenfalls UDP 5060 |
 | Älterer Python-Brew-Server | `misc/brew-server.py` | Weiterhin als separate Alternative vorhanden; aktive Installation nicht untersucht |
 
-Weitere relevante Pfade: `/etc/netcore/call-control.toml`, `/etc/netcore/sip-switch.toml`, `/var/lib/netcore-call-control/calls.json` und `.bak`; Unit `netcore-call-control.service`, `netcore-sip-switch.service` und TBS-seitig `netcore-tbs-sip-failover.service`. Die tatsächliche Brew-Unit und Installationsablage wurden in diesem Chat nicht belegt und werden nicht erfunden.
+Weitere relevante Pfade: `/etc/netcore/call-control.toml`, `/etc/netcore/sip-switch.toml`, `/var/lib/netcore-call-control/calls.json` und `.bak`; Unit `netcore-call-control.service`, `netcore-sip-switch.service` und TBS-seitig `netcore-tbs-sip-failover.service`. Die tatsächliche Brew-Unit und Installationsablage wurden für diesen Arbeitsstand nicht belegt und werden nicht erfunden.
 
 Das offene NetCore-Labormodell darf nicht pauschal auf den separaten Server übertragen werden: Brew hat eigene Auth-/TLS-Konfigurationsstrukturen. Es wurden keine Zugangswerte, Tokens, privaten Schlüssel oder vollständigen Betriebs-Konfigurationsdateien in dieses Archiv übernommen.
 
@@ -272,13 +260,13 @@ Das offene NetCore-Labormodell darf nicht pauschal auf den separaten Server übe
 |---|---|---|
 | Doppelte Call Owner | Architektur-Risiko, kein beobachteter Incident | Rufdomäne und Autorität eindeutig festlegen; Adapter darf keine parallele netzweite Entscheidung treffen |
 | Ruf beendet, Medien/Slot bleiben aktiv | Illustratives Fehlerszenario | Release-/Timeout-/Reconnect-/Slot-Reuse-Verhalten später integriert testen |
-| Zwei SIP-Master, doppelte Registrierung | Im Gespräch befürchteter Konflikt | Vorhandenen zentralen Weg und exklusiven Fallback beibehalten; optionalen Brew-SIP-Modus separat bewerten |
-| Im Gespräch angeführte SIP-Folge bis `481 Call/Transaction Does Not Exist` | Beispiel, kein bereitgestellter Mitschnitt | Keine tatsächliche Ursache oder erfolgreiche Reparatur dieses Fehlers im Chat nachgewiesen |
+| Zwei SIP-Master, doppelte Registrierung | In der Diskussion befürchteter Konflikt | Vorhandenen zentralen Weg und exklusiven Fallback beibehalten; optionalen Brew-SIP-Modus separat bewerten |
+| In der Diskussion angeführte SIP-Folge bis `481 Call/Transaction Does Not Exist` | Beispiel, kein bereitgestellter Mitschnitt | Keine tatsächliche Ursache oder erfolgreiche Reparatur dieses Fehlers in der Planung nachgewiesen |
 | Monolithischer Server zusätzlich zum entkoppelten RF-/Backend-Pfad | Verworfene Integrationsrichtung für dieselben Verantwortlichkeiten | Protokoll-/Codec-Bausteine gezielt beurteilen; Blockierung und Rückstau im Funkpfad verhindern |
 | Neuer Gateway-Container ohne nachgewiesene Lücke | Hinterfragte Idee | Bestehenden Backhaul zuerst untersuchen; Dienstgrenze erst danach entscheiden |
-| Upstream-Funktionen und eingebettete Serverversion verwechselt | Bei Archivprüfung erkannte Quellenunschärfe | Historisch 0.5.0, heutiger NetCore-Snapshot 1.9.0, abgefragter Upstream 1.14.0 getrennt dokumentiert |
+| Upstream-Funktionen und eingebettete Serverversion verwechselt | Bei Archivprüfung erkannte Quellenunschärfe | Historisch 0.5.0, geprüfter NetCore-Snapshot 1.9.0, abgefragter Upstream 1.14.0 getrennt dokumentiert |
 
-Der Chat enthält keine ausgeführte Installation, Reparatur, Deinstallation oder Migration des Brew-Servers. Auch die Formulierung „nicht integrieren“ ist kein nachträglicher Nachweis, dass bestehender Code oder ein bestehender Betrieb entfernt worden wären.
+Die Dokumentation enthält keine ausgeführte Installation, Reparatur, Deinstallation oder Migration des Brew-Servers. Auch die Formulierung „nicht integrieren“ ist kein nachträglicher Nachweis, dass bestehender Code oder ein bestehender Betrieb entfernt worden wären.
 
 ## 11. Befehle und Abläufe mit Ausführungsstatus
 
@@ -304,40 +292,39 @@ Die Server-README nennt `cargo run --release -- brew-server.toml`, `docker compo
 
 Vorhandene Testeinstiege sind `cargo test --locked --manifest-path misc/brew-server/Cargo.toml dashboard::`, die `net_brew`-Tests im TBS-Crate und statische Prüfer wie `tools/check_call_control.py` und `tools/check_cmce_call_restore.py`. Ihre Existenz ist festgestellt; es wurde hier kein neuer grüner Cargo-/CI-/Hardware-Lauf erzeugt oder behauptet.
 
-Die historischen Rollout-Befehle mit `git switch mqtt` und `git pull --ff-only origin mqtt` gehören zum damaligen Dokument. Sie werden **nicht als heutige Updateanweisung übernommen**. Für eine spätere Installation sind ein aktuell bestätigter Zielref, der bestehende Hostzustand und Sicherungen erforderlich. `Archiving` ist hier Dokumentationsziel, kein aus diesem Chat abgeleiteter Installationsref.
+Die historischen Rollout-Befehle mit `git switch mqtt` und `git pull --ff-only origin mqtt` gehören zum damaligen Dokument. Sie werden **nicht als geprüfte Updateanweisung übernommen**. Für eine spätere Installation sind ein aktuell bestätigter Zielref, der bestehende Hostzustand und Sicherungen erforderlich. `Archiving` ist hier Dokumentationsziel, kein aus dieser Planung abgeleiteter Installationsref.
 
 ## 12. Entwicklungs-, Test- und Betriebsstand
 
 | Gegenstand | Status und Nachweisgrenze |
 |---|---|
-| Architekturberatung | Im Chat durchgeführt; spätere Einschränkungen ersetzen die erste weitergehende Empfehlung |
-| NetCore-Core-Dienste/zentraler TBS-Steuerpfad | Im historischen und heutigen Repository vorhanden; keine Implementierung allein aufgrund der Chatantwort behauptet |
-| Separater Rust-Brew-Server | Im Repository implementiert, historisch und heute; aktiver Betrieb und Integrationsmodus dieses Chats offen |
-| Konfliktfreier Brew-Adapter zu NetCore | Idee/Option; kein diesem Chat zuordenbarer Implementierungs- oder Abnahmenachweis |
+| Architekturberatung | In der Planung durchgeführt; spätere Einschränkungen ersetzen die erste weitergehende Empfehlung |
+| NetCore-Core-Dienste/zentraler TBS-Steuerpfad | Im historischen und geprüften Repository vorhanden; keine Implementierung allein aufgrund der historische Ausarbeitung behauptet |
+| Separater Rust-Brew-Server | Im Repository implementiert, historisch und am Prüfdatum; aktiver Betrieb und Integrationsmodus dieser Planung offen |
+| Konfliktfreier Brew-Adapter zu NetCore | Idee/Option; kefür diesen Arbeitsstand zuordenbarer Implementierungs- oder Abnahmenachweis |
 | Upstream-Kompatibilitätsmatrix | Vorgeschlagen; nicht als ausgeführtes Arbeitsergebnis nachgewiesen |
 | Parser-/Builder-Regressionen | Zehn `#[test]`-Fälle in `net_brew/protocol.rs` gefunden, unter anderem v0/v1, Mnemonic und SDS; in dieser Fortsetzung nicht ausgeführt |
 | CI-Konfiguration | `service-ui-tests.yml` enthält Rust-Service-Tests und einen getrennten Brew-Dashboard-Test; vorhandene Workflowdatei ist kein erfolgreicher Lauf |
-| Funk↔Telefon, ISSI und SC20-CLI | Im damaligen Testnetz laut Nutzer erfolgreich; keine erneute heutige Verifikation |
+| Funk↔Telefon, ISSI und SC20-CLI | Im damaligen Testnetz laut Betriebsrückmeldung erfolgreich; keine erneute geprüfte Verifikation |
 | Multi-BS mit fremden Brew-TBS | Nicht durch gemeinsame Testprotokolle bestätigt |
-| Mid-Call-Handover/Restore | Historisch ausdrücklich unvollständig; heutige Restore-/Capability-Dateien sind keine Live-Abnahme |
+| Mid-Call-Handover/Restore | Historisch ausdrücklich unvollständig; geprüfte Restore-/Capability-Dateien sind keine Live-Abnahme |
 | SIP-Fallback | Im Repository mit drei Fehlprüfungen und 30 Sekunden stabiler Rückkehr dokumentiert; aktive Dialoge werden nicht migriert; hier kein Ausfalltest |
 | Vollständiger Upstream-Diff/Codec-Übernahme | Offen; Versions-/Metadatenvergleich ersetzt keine Portierung oder Testreihe |
-| Dieser Archivauftrag | Dokumentation/Index und deren Git-Verifikation; keine Änderung von Laufzeitcode oder Dienstkonfiguration |
 
 ## 13. Offene Aufgaben, Ideen und nächste Schritte
 
-Die Reihenfolge unten ist eine **aus dem letzten Gesprächsstand abgeleitete Fortsetzungsempfehlung**. Im Chat wurden keine Verantwortlichen, Termine oder nummerierten Prioritäten verbindlich vereinbart.
+Die Reihenfolge unten ist eine **aus dem letzten Planungsstand abgeleitete Fortsetzungsempfehlung**. In der Planung wurden keine Verantwortlichen, Termine oder nummerierten Prioritäten verbindlich vereinbart.
 
 1. **Vorhandenen Brew-Betrieb klären.** Verwendete Python-/Rust-Variante, Build-Commit, angeschlossene TBS, eigener oder geteilter Teilnehmer-/Rufbereich, Aktivierung von SIP und tatsächlich verwendete Ports feststellen. Aus dem Repository keine Laufzeitkonfiguration ableiten.
 2. **Zuständigkeitsvertrag dokumentieren.** Netzweiter logischer Call, lokale CMCE-Verantwortung, Gruppen-/Teilnehmerrouten, Floor, Release, Timeout und Ressourcenfreigabe müssen eindeutig bleiben. Bestehender separater Betrieb darf nicht ungeprüft umgebaut werden.
 3. **Kompatibilitätsmatrix anlegen.** Pro Brew-Nachricht beziehungsweise Funktion erfassen: gepinnter Upstream-Stand, NetCore-Stand, vorhandene Unterstützung, fehlende Funktion, robustere Upstream-Lösung, portierbarer Teil, Konflikt mit vorhandener Zuständigkeit und zugehöriger Testfall.
-4. **Vergleichsquellen konkretisieren.** Die im Chat genannten fünf Vergleichsrepos und `ysamouhos/brew-server` mit überprüften URLs/Refs erfassen. Eine regelmäßige Prüfung blieb eine Idee; es wurde keine Automation für spätere Läufe angelegt.
+4. **Vergleichsquellen konkretisieren.** Die in der Planung genannten fünf Vergleichsrepos und `ysamouhos/brew-server` mit überprüften URLs/Refs erfassen. Eine regelmäßige Prüfung blieb eine Idee; es wurde keine Automation für spätere Läufe angelegt.
 5. **Protokoll und Robustheit zuerst vergleichen.** Framing, Versionserkennung, Parsergrenzen, Call-/UUID-Zuordnung, Registration/Affiliation, SDS-Reports, Wiederverbindung und Fehlerbehandlung. Bestehende `net_brew`-Tests erweitern, wenn eine konkrete Portierung feststeht.
 6. **Interoperabilitätslabor aufbauen.** Eigene, fremde und virtuelle TBS mit gleichen Core-Testfällen prüfen. Gruppen-/Individualrufe, Priorität/Floor, Late Entry, Release, Medienfluss, SDS, Mobility und Telemetrie separat abnehmen. Erfolgreiches Parsing ist noch kein erfolgreicher Funkruf.
 7. **Medien-/Codec-Bausteine getrennt bewerten.** ACELP↔PCM/G.711, Latenz, Frameformat, Jitter, Last und Trennung vom Funkthread vergleichen; Quellprovenienz und mitgelieferte Lizenzhinweise je tatsächlich übernommenem Bestandteil dokumentieren. Keine automatische Übernahme des fremden SIP-/Call-State-Modells.
 8. **LIP und Telemetrie weiterverwenden.** Bestehende Decoder und Observability-Verträge einbeziehen, fehlendes Mapping bestimmen. Nicht eine zweite Positions-/Statuswahrheit ungeplant parallel aufbauen.
 9. **Adapter-Dienstgrenze erst bei belegter Lücke festlegen.** Bestehenden Node-Gateway-/Backhaul-Pfad prüfen; ein neues `brew-gateway` bleibt eine Option. Transit nicht ohne Vertragsprüfung als TBS-Adapter umdeuten.
-10. **Gezielte Änderungen separat liefern.** Erst aus belegten Lücken kleine Feature-/Fix-PRs mit passenden Regressionen ableiten. Solche Codeänderungen, Installationen oder Roadmapdateien außerhalb `Docs/archive/` sind nicht Teil dieses Archivauftrags.
+10. **Gezielte Änderungen separat liefern.** Erst aus belegten Lücken kleine Feature-/Fix-PRs mit passenden Regressionen ableiten. Umsetzung und Abnahme benötigen eigene, nachvollziehbare Änderungen.
 
 Als längerfristiges Ziel bleibt erhalten: Eine NetCore-SwMI soll eigene und fremde Brew-fähige TBS bedienen können, ohne die fachlichen Core-Dienste von der konkreten Basisstationsimplementierung abhängig zu machen. Das virtuelle TETRA-Labor und reale Multi-Site-Tests sind dafür komplementäre Ideen, keine bereits erreichte Betriebsfreigabe.
 
@@ -347,7 +334,6 @@ Alle relativen Repository-Links beziehen sich fachlich auf den in Abschnitt 1 ge
 
 | Quelle | Relevanz |
 |---|---|
-| [Ursprungsdialog](https://chatgpt.com/c/6aae887e-08b0-83eb-8a9d-1b3bfb0401ed) | Anforderungen, Korrekturen, Nutzerrückmeldung und offene Ideen |
 | [Historischer Vergleich v1.8.0 bis c128a83](https://github.com/JanHG98/netcore-tetra/compare/v1.8.0...c128a83cd3eef463de1e7e0c909af1fff4b84b36) | 141 Commits; lokal mit Git nachgeprüft, unabhängig von der Web-Diff-Darstellung |
 | [Historischer Server-Paketstand](https://github.com/JanHG98/netcore-tetra/blob/c128a83cd3eef463de1e7e0c909af1fff4b84b36/misc/brew-server/Cargo.toml) | Bereits eingebetteter Server 0.5.0 |
 | [Historischer Rollout](https://github.com/JanHG98/netcore-tetra/blob/c128a83cd3eef463de1e7e0c909af1fff4b84b36/Docs/CENTRAL_NETWORK_ROLLOUT.md) | MAIN-COMPAT, Mediengrenzen, SIP-/Fallback-Rollen |
@@ -360,12 +346,4 @@ Alle relativen Repository-Links beziehen sich fachlich auf den in Abschnitt 1 ge
 | [SIP-Switch](../../system-backend/sip-switch/README.md), [Fallback-Anleitung](../../system-backend/sip-switch/tbs-fallback/docs/installation-openlab.md) | Zentraler Weg, lokale Edge-Rolle, Ausfall-/Rückkehrgrenzen |
 | [TBS-SDS/LIP](../../crates/tetra-entities/src/cmce/subentities/sds_bs.rs), [Brew-Position](../../misc/brew-server/src/position.rs), [Brew-Transcoding](../../misc/brew-server/src/transcode/mod.rs) | Vorhandene Decoder-/Codec-Bausteine |
 | [CI-Testdefinition](../../.github/workflows/service-ui-tests.yml), [Call-Control-Prüfer](../../tools/check_call_control.py), [Restore-Prüfer](../../tools/check_cmce_call_restore.py) | Vorhandene Prüfmittel, keine hier behaupteten Laufresultate |
-| [Gepinnter Upstream](https://github.com/ysamouhos/brew-server/tree/b9ada00097d608e5ebd3f92c89857b9efff7f9ae) | Begrenzter heutiger Metadaten-/README-Abgleich |
-
-## 15. Archivumfang und Veröffentlichungskontrolle
-
-Die Suche nach dem exakten Chattitel und der Gesprächs-ID ergab vor dem Schreiben keine eindeutig zugehörige Archivdatei. Daher wird dieses neue, datierte Dokument angelegt. Andere Chatarchive bleiben erhalten. Der bestehende `Docs/archive/README.md` erhält genau einen zusätzlichen Eintrag mit relativem Dateilink und offenen Aufgaben.
-
-Die Veröffentlichung umfasst ausschließlich dieses Dokument und den Archivindex. Sie erfolgt über die vorhandene GitHub-Anbindung als ein Commit auf dem zuvor gelesenen Branch-Stand und eine Fast-Forward-Aktualisierung von `Archiving` mit `force=false`. Bei zwischenzeitlicher Änderung ist der neue Branch-Stand erneut zu lesen und der Index zu erhalten; ein fremder Commit darf nicht verdrängt werden.
-
-Für die Abschlussmeldung sind der tatsächliche Archivcommit, dessen geänderte Pfade, der Remote-Branch und beide zurückgelesenen Dateien zu prüfen. Das Ergebnis dieser Veröffentlichungskontrolle wird in der Abschlussmeldung festgehalten. Die fachlich offenen Aufgaben und die fehlenden Bild-/Betriebsnachweise bleiben auch nach erfolgreicher Archivierung offen.
+| [Gepinnter Upstream](https://github.com/ysamouhos/brew-server/tree/b9ada00097d608e5ebd3f92c89857b9efff7f9ae) | Begrenzter geprüfter Metadaten-/README-Abgleich |

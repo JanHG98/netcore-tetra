@@ -1,61 +1,62 @@
-# Technische Abschlussdokumentation: WAP, SNDCP, IPv4-Gateway, Multi-PDCH und Control Room
+# Brainstorming: WAP, SNDCP, IPv4-Gateway, Multi-PDCH und Control Room
 
-## 1. Metadaten und Leseschlüssel
+**Stand der Notizen und ergänzenden Prüfungen: 2026-10-03.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
+
+**Arbeitsrichtung:** WAP/SNDCP zu einem allgemeinen IPv4-Paketdatenpfad ausbauen. Letzter ausgewählter Umfang sind Multi-PDCH, Paketdaten-Dashboard/Control Room und Legacy-WAP über SDS. R1-Compilerreparatur ist bestätigt; Endgeräte- und Parallelbetriebsabnahme stehen aus.
+
+## 1. Kontext und Nachweisstufen
 
 | Feld | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Repository | `JanHG98/netcore-tetra` |
-| Thema dieses Chats | Vergleich mit Nexus-BS/BlueStation/FlowStation; Ausbau von WAP über SNDCP zu allgemeinem IPv4-Paketdatenbetrieb; R1-Compilerkorrektur; dynamischer Multi-PDCH-Pool, Paketdaten-Dashboard, Control-Room-Anbindung und Legacy-WAP über SDS Type 4 |
-| Ursprünglicher Chattitel | Im zugänglichen Verlauf nicht zuverlässig überliefert. Der Titel dieser Datei ist ein beschreibender Archivtitel, kein rekonstruierter Originaltitel. |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link erfunden. |
+| Thema dieser Planung | Vergleich mit Nexus-BS/BlueStation/FlowStation; Ausbau von WAP über SNDCP zu allgemeinem IPv4-Paketdatenbetrieb; R1-Compilerkorrektur; dynamischer Multi-PDCH-Pool, Paketdaten-Dashboard, Control-Room-Anbindung und Legacy-WAP über SDS Type 4 |
 | Erstellungsdatum dieser Zusammenfassung | **2026-10-03** |
-| Zielbranch der Archivierung | **`Archiving`**; ausschließlich `Docs/archive/` |
 | Zu Beginn gelesener Archivbranch | `fd6c77b1eb4e1c656daf40ac1d4b406a2ca41249` |
 | Zugehöriger Archiv-Tree | `f87070a3d4db3345d846324d11455ee7b5ae81f2` |
-| Zusätzlich geprüfter heutiger `main` | **`7137e0dd69877e1b604bf89148fd8b6b590c1a97`** |
+| Zusätzlich geprüfter `main` | **`7137e0dd69877e1b604bf89148fd8b6b590c1a97`** |
 | Zugehöriger `main`-Tree | `e68558c4df13d3d8b56df8c3611ac682b02889c1` |
-| Letzter konkret bestätigter Betreiber-Erfolg im Chat | Nach dem R1-Compile-Fix: „okay er lief jetzt fehlerfrei durch.“ Das bestätigt einen erfolgreichen Compiler-/Buildlauf, nicht sämtliche Tests oder On-Air-Funktion. |
-| Letztes im Chat ausgeliefertes Featurepaket | `netcore-tetra-multi-pdch-dashboard-legacy-wap-2026-07-21.zip` |
-| Betriebsfreigabe | **Keine allgemeine Betriebs-, Interoperabilitäts- oder ETSI-Konformitätsfreigabe aus diesem Chat ableitbar.** |
+| Letzter konkret bestätigter Betreiber-Erfolg im Entwurf | Nach dem R1-Compile-Fix: „okay er lief jetzt fehlerfrei durch.“ Das bestätigt einen erfolgreichen Compiler-/Buildlauf, nicht sämtliche Tests oder On-Air-Funktion. |
+| Letztes im Entwurf ausgeliefertes Featurepaket | `netcore-tetra-multi-pdch-dashboard-legacy-wap-2026-07-21.zip` |
+| Betriebsfreigabe | **Keine allgemeine Betriebs-, Interoperabilitäts- oder ETSI-Konformitätsfreigabe aus diesem Planungsstand ableitbar.** |
 
 **Datierung:** Die historischen Pakete und Begleitdateien tragen durchgehend `2026-07-21`. Einzelne Nachrichten haben im hier verfügbaren Verlauf keinen belastbaren Zeitstempel. Die Dateinamen werden unverändert als Artefaktbezeichnungen übernommen; sie beweisen nicht den Versandzeitpunkt aller Nachrichten. Die Archivdatei verwendet ausdrücklich das tatsächliche Erstellungsdatum 2026-10-03.
 
 ### 1.1 Statusbegriffe
 
 - **Idee:** diskutierte Möglichkeit, ohne konkrete Freigabe zur Umsetzung.
-- **Beschlossen/geplant:** vom Nutzer gewünschter oder ausdrücklich ausgewählter Umfang. Das ist noch kein Code- oder Betriebsnachweis.
+- **Beschlossen/geplant:** gewünschter oder ausdrücklich ausgewählter Umfang. Das ist noch kein Code- oder Betriebsnachweis.
 - **Implementiert:** die betreffende Logik ist in einem bezeichneten ZIP oder einem konkret geprüften Repository-Commit vorhanden. Das Wort wird hier nicht mit erfolgreicher Endgerätefunktion gleichgesetzt.
-- **Getestet:** nur für die jeweils benannte Prüfung mit benanntem Ergebnis. Historische Angaben des Assistenten werden als solche gekennzeichnet; neu ausgeführte Archivprüfungen stehen separat.
+- **Getestet:** Für jede Prüfung sind Gegenstand und Ergebnis benannt. Historische Angaben aus Entwicklungsberichten und zusätzlich ausgeführte Prüfungen bleiben getrennt.
 - **Im Betrieb bestätigt:** tatsächliche, vom Betreiber bestätigte Funktion des betreffenden Dienstes oder Funkpfads. Für den neuen WAP-/IP-/Multi-PDCH-Funkpfad fehlt eine solche Bestätigung im zugänglichen Verlauf.
 
 Ein erfolgreicher Build, ein Unit-Test, eine plausible PDU und ein auf einem realen Terminal bestätigter Datentransfer sind vier unterschiedliche Nachweisstufen.
 
 ### 1.2 Quellen- und Auswertungsgrenzen
 
-Ausgewertet wurden der zugängliche Gesprächsverlauf, die konkret benannten und im Arbeitsbereich vorhandenen ZIP-/Patch-/Markdown-/Prüfsummen-Anhänge sowie gezielte aktuelle Repository-Lesezugriffe. Die letzte Featureauslieferung wurde zusätzlich lokal entpackt und in zentralen Dateien gelesen. Alle acht vorhandenen ZIP-Pakete wurden erneut auf CRC-/Archivintegrität geprüft; die letzte Patch-Anwendung wurde erneut ausgeführt.
+Ausgewertet wurden der zugängliche Planungsverlauf, die konkret benannten und im Arbeitsbereich vorhandenen ZIP-/Patch-/Markdown-/Prüfsummen-Anhänge sowie gezielte aktuelle Repository-Lesezugriffe. Die letzte Featureauslieferung wurde zusätzlich lokal entpackt und in zentralen Dateien gelesen. Alle acht vorhandenen ZIP-Pakete wurden erneut auf CRC-/Archivintegrität geprüft; die letzte Patch-Anwendung wurde erneut ausgeführt.
 
 Die umfangreichen ETSI-Anhänge wurden **nicht vollständig Seite für Seite auditiert**. Für die Einordnung wurden insbesondere die überlieferten SNDCP-/SDS-Referenzen und die WAP-Abgrenzung in EN 300 392-2, Abschnitt 29.5.8, herangezogen. Die 4.100-seitige Datei `ETSI.pdf` ist eine Zusammenstellung, kein zusätzliches unabhängiges Konformitätszeugnis.
 
-Nicht verfügbar beziehungsweise nicht nachgewiesen sind: Originaltitel und Chat-URL, exakte Zeitstempel jeder Nachricht, vollständige historische Build-/Test-Rohlogs, die tatsächlich auf der TBS installierte Binärdatei samt Hash, deren aktive Konfiguration, RF-Mitschnitte sowie ein Endgerätetest der letzten Erweiterungsstufe. Mehrfach im Verlauf unter demselben Dateinamen bereitgestellte Dateien sind heute jeweils nur in der aktuell verfügbaren Fassung lesbar; frühere überschriebenen Fassungen können daraus nicht rekonstruiert werden.
+**Fehlende Nachweise:** Vollständige historische Build-/Test-Rohlogs, installierte TBS-Binärdatei samt Hash, aktive Konfiguration, RF-Mitschnitte und Endgerätetest der letzten Erweiterungsstufe. Gleichnamig ersetzte Dateien waren am 2026-10-03 nur in der letzten verfügbaren Fassung lesbar; ältere Versionen sind daraus nicht rekonstruierbar.
 
-Die alten Assistentenantworten bezeichneten mehrere Stufen als „komplett“, „vollständig“ oder „fertig“. Diese Formulierungen werden **nicht ungeprüft als technische Eigenschaft übernommen**. Sichtbare Codezweige, abgelehnte Profile und fehlende Testbelege bestimmen den nachweisbaren Umfang.
+Frühere Bezeichnungen wie „komplett“, „vollständig“ und „fertig“ sind keine Abnahmekriterien. Maßgeblich sind konkrete Codezweige, begrenzte Profile und vorhandene Testnachweise.
 
 ## 2. Ergebnis in komprimierter Form
 
-Der Chat führte in mehreren ZIP-basierten Ausbauschritten vom lokalen WAP-Statusdienst zu einem wesentlich umfangreicheren Paketdatenpfad. Zunächst wurden SNDCP-/PDP-Kontexte und IPv4/UDP-WAP ergänzt, anschließend weitere SNDCP-PDUs, Zustände und Timer, danach ein lokales Linux-TUN-Gateway mit Routing-/NAT-Anbindung und Fragmentbehandlung. Ein vom Nutzer gemeldeter Compilerabbruch erforderte einen R1-Fix. **Nur für diesen R1-Ausgangsstand wurde anschließend ein fehlerfreier Lauf vom Nutzer bestätigt.**
+Die ZIP-basierten Ausbaustufen führen vom lokalen WAP-Statusdienst zu einem umfangreicheren Paketdatenpfad: SNDCP-/PDP-Kontexte und IPv4/UDP-WAP, zusätzliche SNDCP-PDUs, Zustände und Timer, schließlich Linux-TUN-Gateway mit Routing/NAT und Fragmentbehandlung. Ein Compilerabbruch erforderte den R1-Fix. **Nur für diesen R1-Ausgangsstand wurde anschließend ein fehlerfreier Buildlauf bestätigt.**
 
-Danach wurden drei weitere Komponenten ausdrücklich beauftragt und als gemeinsames ZIP ausgeliefert: ein dynamischer Pool mehrerer Ein-Slot-PDCHs, Paketdatenanzeige in Basisstations-Dashboard und Control Room sowie ein Legacy-WAP-SDS-Generator. Der abschließende Featurecode ist auch im heute geprüften Repository vorhanden. Eine zusätzliche Betreiberbestätigung nach dieser letzten ZIP-Auslieferung ist im zugänglichen Chat nicht enthalten.
+Danach wurden drei Komponenten ausgewählt und gemeinsam ausgeliefert: dynamischer Pool mehrerer Ein-Slot-PDCHs, Paketdatenanzeige im Basisstations-Dashboard und Control Room sowie Legacy-WAP-SDS-Generator. Ihr Code ist auch im Repository-Prüfstand vom 2026-10-03 vorhanden. Ein anschließender Build- oder Betriebsnachweis dieser letzten Erweiterung fehlt.
 
-Der heutige Repository-Stand ist nicht mehr identisch mit den historischen Paketen: Unter anderem existieren inzwischen eine Packet-Core-Control-Anbindung und ausgelagerte Dashboard-Assets. Deshalb darf ein historisches Komplett-ZIP nicht als pauschales Update über den heutigen Baum kopiert werden.
+Der ergänzende Repository-Stand ist nicht mehr identisch mit den historischen Paketen: Unter anderem existieren inzwischen eine Packet-Core-Control-Anbindung und ausgelagerte Dashboard-Assets. Deshalb darf ein historisches Komplett-ZIP nicht als pauschales Update über den geprüften Baum kopiert werden.
 
 **Wichtigster neuer Archivbefund:** Die damalige Aussage, der letzte Patch und das letzte Komplett-ZIP ergäben exakt denselben Baum, ist in dieser Allgemeinheit nicht reproduzierbar. Alle 660 Dateien des Ergebnis-ZIPs stimmen byteweise mit dem erneut gepatchten Baum überein; dort bleiben aber vier zusätzliche Wiki-Dateien mit Unicode-Bindestrich erhalten. Details stehen in Abschnitt 14.
 
 ## 3. Ausgangslage und ursprünglicher Auftrag
 
-Der Nutzer wollte sein Repository mit folgenden Quellen vergleichen:
+Vergleichsquellen für das eigene Repository:
 
-| Quelle | Rolle im Chat |
+| Quelle | Rolle im Entwurf |
 |---|---|
 | `JanHG98/netcore-tetra` | Eigenes Zielprojekt; zunächst hochgeladener Arbeitsstand als Änderungsbasis |
 | `invictus737/nexus-bs` | Hauptvergleich, besonders WAP/SNDCP, Betriebsstabilität und weitere mögliche Portierungen |
@@ -63,19 +64,19 @@ Der Nutzer wollte sein Repository mit folgenden Quellen vergleichen:
 | `misadeks/flowstation` | Vergleich von Ruf-, SDS-, Dashboard- und Integrationsfunktionen |
 | `ea5gvk/flowstation` | Zusätzlich betrachteter FlowStation-Zweig |
 
-WAP sollte unmittelbar ergänzt werden. **Andere neue Funktionen sollten zunächst rückgefragt werden.** Der Nutzer erweiterte die Freigabe später nacheinander auf SNDCP, allgemeine Paketdaten und zuletzt die drei konkret ausgewählten Komponenten.
+WAP war unmittelbar als Ergänzung vorgesehen; weitere Funktionen sollten einzeln entschieden werden. Der freigegebene Umfang wurde anschließend auf SNDCP, allgemeine Paketdaten und die drei zuletzt ausgewählten Komponenten erweitert.
 
-Der erste angehängte Arbeitsstand hieß `netcore-tetra-wap.zip`. Später lieferte der Nutzer `netcore-tetra-wap(1).zip` ausdrücklich als aktuellen, bereits weitergeführten Ausgangsstand für Multi-PDCH, Dashboard und Legacy-WAP. Für einen reproduzierbaren historischen Vergleich ist jeweils dieses konkrete Eingangsartefakt maßgeblich, nicht ein nachträglich angenommener `main`-Stand.
+Der erste Arbeitsstand ist `netcore-tetra-wap.zip`. Der weitergeführte Stand `netcore-tetra-wap(1).zip` bildet die konkrete Grundlage für Multi-PDCH, Dashboard und Legacy-WAP. Historische Vergleiche müssen diese Eingangsartefakte verwenden statt einen nachträglich angenommenen `main`-Stand.
 
 ### 3.1 Aussagekraft des historischen Repository-Vergleichs
 
 Die damaligen Quellen zeigten bei Nexus einen opt-in terminalseitigen WAP/IP-Pfad über SNDCP sowie einen davon getrennten Legacy-SDS-Pfad. BlueStation wurde als Alpha-Basis mit Registrierung, Gruppenaufschaltung, partieller Sprache und optionalem Brew beschrieben. Die beiden betrachteten FlowStation-READMEs hatten beim Abruf denselben Blobinhalt und listeten unter anderem Gruppen-/Einzelrufe, SDS, HMD, DGNA, Dashboard, Notruf-Präemption und Integrationen auf.
 
-Das ist **kein vollständiger Funktions- oder Qualitätsvergleich sämtlicher Zweige**. Identische READMEs beweisen keine identischen Codebäume. Aussagen wie „alles bereits vorhanden“ oder „NetCore weiter ausgebaut“ waren breite Einordnungen des Assistenten und keine systematisch dokumentierte Abnahme jeder Funktion. Diese Archivierung wiederholt nicht den gesamten Upstreamvergleich zum heutigen Datum.
+Der Vergleich ist keine vollständige Funktions- oder Qualitätsabnahme aller Zweige. Identische READMEs belegen keine identischen Codebäume; breite Einordnungen wie „alles bereits vorhanden“ sind nicht für jede Funktion nachgewiesen. Ein erneuter vollständiger Upstreamvergleich wurde am Prüfdatum nicht durchgeführt.
 
 ### 3.2 Lizenz- und Provenienzentscheidung
 
-Nexus-BS war in den eingesehenen Dateien gemischt lizenziert: historische Apache-2.0-Anteile und eigene Änderungen/Ergänzungen unter PolyForm Noncommercial. Der Assistent erklärte deshalb, die NetCore-Erweiterung eigenständig anhand des Port-Vertrags, der Protokollfelder und Testvektoren implementiert zu haben, statt Nexus-Quelltext zu übernehmen.
+Die eingesehenen Nexus-BS-Dateien waren gemischt lizenziert: historische Apache-2.0-Anteile und eigene Änderungen/Ergänzungen unter PolyForm Noncommercial. Laut Entwicklungsbeschreibung wurde die NetCore-Erweiterung deshalb eigenständig anhand von Port-Vertrag, Protokollfeldern und Testvektoren erstellt; eine unabhängige Provenienzprüfung ist damit nicht ersetzt.
 
 **Status:** dokumentierte Vorgehensabsicht beziehungsweise historische Herkunftsbehauptung. Eine unabhängige Clean-room- oder Lizenzprüfung ist damit nicht erbracht; im Verlauf wurden auch Nexus-Quelldateien gelesen. Vor einer entsprechenden verbindlichen Aussage oder Weiterverteilung ist eine gesonderte Provenienzprüfung erforderlich. Lizenzhinweise und Credits vorhandener Dateien dürfen nicht entfernt werden. Diese Archivierung ändert keine Lizenz und kopiert keinen Upstreamcode in den Produktivbaum.
 
@@ -83,13 +84,13 @@ Nexus-BS war in den eingesehenen Dateien gemischt lizenziert: historische Apache
 
 | Stufe | Auslöser und Entscheidung | Auslieferung beziehungsweise Ergebnis | Nachweisgrenze |
 |---|---|---|---|
-| A: WAP | WAP als fehlende Funktion übernehmen; andere Erweiterungen rückfragen | WAP-Cleanroom-ZIP und Patch; lokaler Browserpfad über SNDCP/IPv4/UDP/WTP/WSP; fester Hauptcarrier-TS2 | Assistent meldete Syntax-/Vektorprüfungen, aber keinen Rust-Build und keinen RF-Test |
-| B: SNDCP | Nutzer wählte „C vollständigerer SNDCP-Ausbau“, ausdrücklich möglichst vollständig | Weitere PDU-Familien, primäre/sekundäre Kontexte, SNEI, QoS-/IE-Codecs, Timer, Paging/Reconnect, Cache und Lebenszyklusbereinigung | Funktionsumfang blieb ein begrenztes IPv4-/Ein-Slot-Profil, nicht jede optionale SNDCP-/Funkfunktion |
-| C: allgemeine IP-Paketdaten | Nutzer verlangte zusätzlich Router/TUN, Routing, Fragmentierung und NAT | Allgemeines IPv4-Gateway, Kernel-Routing/NAT, PCO-/DNS-Behandlung, Downlinkpufferung und Betriebshelfer | Kein belegter kompletter Build; danach reale Compilerfehler |
-| D: R1 | Nutzer meldete fünf Rust-Diagnosen | Konstanten, Fehlerenum, SNEI-Helper und Result-Typ korrigiert; R1-ZIP/Patch | Anschließend Nutzerbestätigung „fehlerfrei durch“; genauer Befehl und vollständiges Log fehlen |
-| E: weitere Planung | Nutzer fragte nach fehlenden Funktionen | Breite Kandidatenliste; Priorisierung von Tests, Multi-PDCH und Paketdatenanzeige | Vorschläge waren keine automatische Freigabe aller Themen |
-| F: abschließende drei Features | Nutzer beauftragte Multi-PDCH, Dashboard/Control Room und Legacy-WAP mit aktuellem ZIP | Gemeinsames finales ZIP und Patch gegen `netcore-tetra-wap(1).zip` | Kein anschließender Nutzer-Build-/Betriebsnachweis in diesem Chat |
-| G: diese Archivierung | Technischen Verlauf sichern, heutigen Stand getrennt prüfen | Archivdokument und Index ausschließlich im Branch `Archiving` | Kein neues Featuredeployment, kein Merge, keine Änderungen an Betriebssystem/Firewall/RF |
+| A: WAP | WAP ergänzen; weitere Funktionen einzeln entscheiden | WAP-Cleanroom-ZIP und Patch; lokaler Browserpfad über SNDCP/IPv4/UDP/WTP/WSP; fester Hauptcarrier-TS2 | Syntax-/Vektorprüfungen laut Entwicklungsbericht, Rust-Build und RF-Test nicht belegt |
+| B: SNDCP | Möglichst vollständiger SNDCP-Ausbau ausgewählt | Weitere PDU-Familien, primäre/sekundäre Kontexte, SNEI, QoS-/IE-Codecs, Timer, Paging/Reconnect, Cache und Lebenszyklusbereinigung | Begrenzt auf IPv4-/Ein-Slot-Profil; nicht sämtliche optionalen SNDCP-/Funkfunktionen |
+| C: allgemeine IP-Paketdaten | Router/TUN, Routing, Fragmentierung und NAT ergänzen | IPv4-Gateway, Kernel-Routing/NAT, PCO-/DNS-Behandlung, Downlinkpufferung und Betriebshelfer | Vollständiger Build nicht belegt; anschließend reale Compilerfehler |
+| D: R1 | Fünf Rust-Diagnosen aus dem Zielbuild | Konstanten, Fehlerenum, SNEI-Helper und Result-Typ korrigiert; R1-ZIP/Patch | Fehlerfreier Lauf bestätigt; genauer Befehl und vollständiges Log fehlen |
+| E: weitere Planung | Fehlende Funktionen ermitteln | Kandidatenliste; Tests, Multi-PDCH und Paketdatenanzeige priorisieren | Keine pauschale Freigabe sämtlicher Themen |
+| F: letzte drei Features | Multi-PDCH, Dashboard/Control Room und Legacy-WAP auf weitergeführtem ZIP-Stand | Gemeinsames ZIP und Patch gegen `netcore-tetra-wap(1).zip` | Anschließender Build-/Betriebsnachweis fehlt |
+| G: diese Archivierung | Technischen Verlauf sichern, geprüften Stand getrennt prüfen | Archivdokument und Index ausschließlich im Branch `Archiving` | Kein neues Featuredeployment, kein Merge, keine Änderungen an Betriebssystem/Firewall/RF |
 
 ### 4.1 Endgültiger Umfang des letzten Featurepakets
 
@@ -97,7 +98,7 @@ Nexus-BS war in den eingesehenen Dateien gemischt lizenziert: historische Apache
 
 **Nicht Teil des abschließend nachgewiesenen Umfangs:** gebündelte Multislot-Datenübertragung für ein einzelnes Funkgerät, TEDS/QAM, ein vollständiger fairer Airtime-Scheduler, harte Verdrängung laufender Datenbearer durch Notrufe, allgemeiner WAP-Push-Server mit nachgewiesener Endgeräteinteroperabilität, vollständige kryptographische Netzauthentifizierung oder kommerziell belastbare Konformität.
 
-Die zuvor vorgeschlagene aggressive Präemption wurde in der gelieferten Stufe durch **Admission Control mit reserviertem Sprach-Headroom** ersetzt. Der Nutzer erhielt diese Grenze ausdrücklich erläutert. „Ein PDCH pro ISSI“ ist die implementierte Mehrteilnehmerlösung; „mehrere Slots pro ISSI“ blieb eine Erweiterungsidee.
+Die vorgeschlagene aggressive Präemption wurde in der gelieferten Stufe durch **Admission Control mit reserviertem Sprach-Headroom** ersetzt. Implementiert ist „ein PDCH pro ISSI“ als Mehrteilnehmerlösung; mehrere Slots pro ISSI bleiben eine Erweiterungsidee.
 
 ## 5. Architektur und Datenwege
 
@@ -170,7 +171,7 @@ Der konkrete Authentifizierungsmodus muss jeweils aus dem tatsächlich eingesetz
 
 Die SNDCP-Ausbaustufe ergänzte einen Katalog der Haupt-PDU-Typen 0–13 einschließlich der im Code behandelten Untertypen:
 
-| Familie | Im Chat beschriebene Formen |
+| Familie | Im historischen Entwurf beschriebene Formen |
 |---|---|
 | ACTIVATE PDP CONTEXT | Demand, Accept und Reject; statische/dynamische IPv4-Adresse und sekundärer Kontext |
 | DEACTIVATE PDP CONTEXT | Demand und Accept; einzelner NSAPI oder gesamte Teilnehmerkontextfamilie |
@@ -210,11 +211,11 @@ Die historischen Stufen beschrieben READY/STANDBY, CONTEXT_READY pro NSAPI sowie
 | MM-Deregistrierung / Kick / T351-Drop | PDP/SNEI/Routen/Cache und PDCH-Ressource bereinigen |
 | Daten für STANDBY-Teilnehmer | Downlink begrenzt speichern, Paging auslösen, nicht grenzenlos puffern |
 
-Der Standardbezug für READY/STANDBY wurde im Chat insbesondere mit EN 300 392-2, Kapitel 28, hergestellt. Er ersetzt keine Prüfung aller realen Nachrichtenfolgen. Für die letzte Erweiterung fehlt hier ein On-Air-Nachweis für jeden genannten Abbruch- und Übergangspfad.
+Der Standardbezug für READY/STANDBY wurde im Entwurf insbesondere mit EN 300 392-2, Kapitel 28, hergestellt. Er ersetzt keine Prüfung aller realen Nachrichtenfolgen. Für die letzte Erweiterung fehlt hier ein On-Air-Nachweis für jeden genannten Abbruch- und Übergangspfad.
 
 ### 6.4 Wiederholungsbehandlung
 
-Der Response-Cache wurde mit **30 Sekunden Lebensdauer und höchstens 256 Einträgen** beschrieben und ist im heutigen SNDCP-Code mit entsprechenden Konstanten sichtbar. Er soll identische wiederholte Kontrollanforderungen nicht mehrfach zustandsverändernd ausführen, etwa bei ACTIVATE oder TRANSMIT.
+Der Response-Cache wurde mit **30 Sekunden Lebensdauer und höchstens 256 Einträgen** beschrieben und ist im geprüften SNDCP-Code mit entsprechenden Konstanten sichtbar. Er soll identische wiederholte Kontrollanforderungen nicht mehrfach zustandsverändernd ausführen, etwa bei ACTIVATE oder TRANSMIT.
 
 Dieser Cache ist **nicht automatisch** ein vollständiger WTP-Session-/Retransmission-Cache, ein LLC-ARQ-Nachweis oder eine garantierte Ende-zu-Ende-Deduplizierung. Diese Ebenen müssen getrennt getestet werden.
 
@@ -284,7 +285,7 @@ Im Paket beschrieben und als Implementierung vorhanden: IPv4-Version/IHL/Gesamtl
 | Downlink-Pufferlebensdauer | 30 Sekunden |
 | Paging-Wiederholungsintervall | 5 Sekunden |
 
-Ein zu großes DF-Paket wird nicht einfach unerlaubt fragmentiert. **Ob jede Fehlerstelle ein korrektes ICMP-„Fragmentation needed“/PMTU-Verhalten bis zum Sender erzeugt, ist in diesem Chat nicht Ende-zu-Ende nachgewiesen.** Das muss geprüft werden, statt aus TUN-MTU und lokalem Fehlerenum automatisch funktionierende PMTUD abzuleiten.
+Ein zu großes DF-Paket wird nicht einfach unerlaubt fragmentiert. **Ob jede Fehlerstelle ein korrektes ICMP-„Fragmentation needed“/PMTU-Verhalten bis zum Sender erzeugt, ist in diesem Planungsstand nicht Ende-zu-Ende nachgewiesen.** Das muss geprüft werden, statt aus TUN-MTU und lokalem Fehlerenum automatisch funktionierende PMTUD abzuleiten.
 
 ### 7.4 Auswahl sekundärer NSAPIs
 
@@ -309,7 +310,7 @@ Der vorgeschlagene Drop-in setzt beziehungsweise ergänzt `AmbientCapabilities=C
 
 Gespeichert/wiederhergestellt werden nach dem beschriebenen Konzept unter anderem `net.ipv4.ip_forward`, TUN-bezogenes `rp_filter` und `send_redirects`. Wiederherstellung ist vom tatsächlichen Cleanup-Ablauf und zwischenzeitlichen Hoständerungen abhängig. „Crash-sicher“ aus der historischen Beschreibung ist **keine Garantie für Stromausfall, Hostabsturz oder beliebige parallele Firewallverwaltung**.
 
-Diese Hilfen und Fähigkeiten betreffen die Host-Sicherheit. Ihr Installations- und Laufzeiterfolg wurde im zugänglichen Chat nicht mit realen Hostlogs bestätigt.
+Die Hilfen und Fähigkeiten betreffen die Host-Sicherheit. Erfolgreiche Installation und Laufzeitfunktion sind nicht mit realen Hostlogs bestätigt.
 
 ## 8. Dynamischer Multi-PDCH-Pool
 
@@ -351,7 +352,7 @@ Bei `R=1`, `M=0` ergeben sich **höchstens zwei PDCHs bei Single Carrier und fü
 
 Zu jedem Bearer werden ISSI, logischer Slot sowie Zeitinformationen geführt. Die Freigabe adressiert den konkret zugewiesenen Slot mit Besitzer `Sndcp`; Timer, END, Deaktivierung und Deregistrierung dürfen nicht pauschal TS2 oder einen anderen Teilnehmer freigeben.
 
-Aktuell nachgewiesene Funktionsnamen sind unter anderem `traffic_slot_capacity`, `pdch_capacity`, `air_ts`, `carrier_hint`, `carrier_num`, `pdch_allocation`, `quit_allocation`, `reserve_pdch`, `touch_pdch`, `pdch_for_issi` und `release_pdch`. Der Allocator bietet `allocate_preferred_with_capacity` und `free_count_with_capacity`.
+Am Prüfstand nachgewiesene Funktionsnamen sind `traffic_slot_capacity`, `pdch_capacity`, `air_ts`, `carrier_hint`, `carrier_num`, `pdch_allocation`, `quit_allocation`, `reserve_pdch`, `touch_pdch`, `pdch_for_issi` und `release_pdch`. Der Allocator bietet `allocate_preferred_with_capacity` und `free_count_with_capacity`.
 
 ### 8.4 Was dieser Pool nicht leistet
 
@@ -363,7 +364,7 @@ Ebenso wenig folgt aus „dynamisch“ bereits gewichtete Fairness, zeitliche Ro
 
 ### 9.1 Datenmodell und Anzeige
 
-Die letzte Erweiterung stellte Gateway-, PDP- und Bearer-Snapshots bereit. Im heutigen Repository sind unter anderem `PacketDataGatewayTelemetry`, `PacketDataContextTelemetry`, `PdchBearerTelemetry` und der lokale `PacketDataDashboardSnapshot` mit `last_packet_data` vorhanden.
+Die letzte Erweiterung stellte Gateway-, PDP- und Bearer-Snapshots bereit. Im geprüften Repository sind unter anderem `PacketDataGatewayTelemetry`, `PacketDataContextTelemetry`, `PdchBearerTelemetry` und der lokale `PacketDataDashboardSnapshot` mit `last_packet_data` vorhanden.
 
 | Ansicht | Vorgesehene Inhalte |
 |---|---|
@@ -377,18 +378,18 @@ Das sind Laufzeitdaten beziehungsweise letzte Snapshots. Es ist daraus weder dau
 
 ### 9.2 Schnittstellen
 
-| Ebene | Schnittstelle | Historischer beziehungsweise heute belegter Umfang |
+| Ebene | Schnittstelle | Historischer beziehungsweise am 2026-10-03 belegter Umfang |
 |---|---|---|
 | Basisstations-Dashboard | `GET /api/packet-data` | Lokaler Paketdaten-Snapshot; im finalen ZIP implementiert |
 | Basisstations-WebSocket | Event `type=packet_data` | Gateway-, Kontext- und Bearerwerte |
-| Control-Room-Core | `GET /api/packet-data` | Aggregation über Nodes; Route heute im Code vorhanden |
+| Control-Room-Core | `GET /api/packet-data` | Aggregation über Nodes; Route am 2026-10-03 im Code vorhanden |
 | Control-Room-Core | `GET /api/nodes/{node_id}/packet-data` | Node-bezogene Sicht |
 | Control-Room-Core | `POST /api/nodes/{node_id}/commands/legacy-wap` | WML/SDS-Type-4-Sendekommando |
 | Operator-CLI | `packet-data [--node …]` | Abfrage der allgemeinen oder Node-bezogenen API |
 | Operator-CLI | `legacy-wap …` | Sendekommando für den Legacy-Pfad |
 | Native UI | Seite „Paketdaten“ | Gateway-/Kontext-/Beareransicht und Legacy-WAP-Formular |
 
-Das im Chat skizzierte WebSocket-Beispiel
+Das im Entwurf skizzierte WebSocket-Beispiel
 
 ```json
 {"type":"packet_data","gateway":{},"contexts":[],"bearers":[]}
@@ -423,7 +424,7 @@ Der erzeugte Payload soll den vorhandenen Raw-SDS-Type-4-Pfad nutzen, ohne den P
 
 **PID + rohe WML-Karte ist nicht automatisch ein interoperabler WAP-Push-Stack.** EN 300 392-2, Abschnitt 29.5.8, definiert als minimale standardisierte WAP-Information den Protocol Identifier und verweist für weitere WAP-Aspekte auf WAP 2.0. Damit ist die PID-Zuordnung allein kein Beleg für vollständige WDP-/WSP-/Push-/WBXML-Codierung.
 
-Im gelieferten Modul wird die Anwendungsnutzlast mit einer PID- beziehungsweise minimalen SDS-TL-Hülle versehen. Ob das Zielterminal rohe WML annimmt, einen Port-/WDP-Header, WSP Push/Service Indication, WBXML oder einen anderen herstellerspezifischen Envelope erwartet, muss separat belegt werden. Es gibt im Chat keinen erfolgreichen Terminalmitschnitt, der automatisches Öffnen oder Anzeigen dieser WML-Karten bestätigt.
+Im gelieferten Modul wird die Anwendungsnutzlast mit einer PID- beziehungsweise minimalen SDS-TL-Hülle versehen. Ob das Zielterminal rohe WML annimmt, einen Port-/WDP-Header, WSP Push/Service Indication, WBXML oder einen anderen herstellerspezifischen Envelope erwartet, muss separat belegt werden. Es gibt im Entwurf keinen erfolgreichen Terminalmitschnitt, der automatisches Öffnen oder Anzeigen dieser WML-Karten bestätigt.
 
 Daher lautet der belastbare Status: **Generator und Sendeschnittstelle implementiert; reale Legacy-WAP-Browserkompatibilität offen.** Der unabhängig vorhandene SNDCP/WTP/WSP-Statuspfad bleibt davon getrennt.
 
@@ -480,7 +481,7 @@ strict_source_address = true
 
 Die Timer-/MTU-Werte wurden im damaligen Paket als READY 10 s, STANDBY 300 s, RESPONSE WAIT 5 s und MTU 576 Byte erläutert. Bei künftigen Änderungen immer die Codetabelle und ausgehandelte Antwort gemeinsam prüfen, nicht nur die Kommentarwerte. `assume_pdch_ready_after_data_transmit=false` ist eine explizite Policy, kein fehlender Timer.
 
-Frühere Begleitbeispiele setzten außerdem `sndcp_service=true` und `advanced_link=true` unter `[cell_info]`. Im heutigen `config.rs` ist die Profilaktivierung ausdrücklich an `wap_ip.enabled || packet_data_gateway.enabled` gekoppelt. Die Annahme, SNDCP beziehungsweise das allgemeine Gateway könne nur zusammen mit dem lokalen WAP-Server aktiviert werden, ist damit nicht als heutige Vorgabe zu übernehmen.
+Frühere Begleitbeispiele setzten außerdem `sndcp_service=true` und `advanced_link=true` unter `[cell_info]`. Im geprüften `config.rs` ist die Profilaktivierung ausdrücklich an `wap_ip.enabled || packet_data_gateway.enabled` gekoppelt. Die Annahme, SNDCP beziehungsweise das allgemeine Gateway könne nur zusammen mit dem lokalen WAP-Server aktiviert werden, ist damit nicht als ergänzende Vorgabe zu übernehmen.
 
 ### 11.2 Historisches Packet-Gateway-Profil und letzte Ergänzungen
 
@@ -511,13 +512,13 @@ reserved_voice_slots = 1
 prefer_secondary_carrier = true
 ```
 
-Im aktuell gelesenen Konfigurationscode werden `max_pdch_bearers` auf 0–6 und `reserved_voice_slots` auf 0–5 begrenzt. Bei einem lokalen oder gerouteten Betrieb müssen NAT-/Firewall-/Forwarding-Werte gezielt zu diesem Betriebsmodell passen. Es ist nicht erforderlich oder durch diesen Chat freigegeben, einen bestehenden Host pauschal zum Internetrouter zu machen.
+Im gelesenen Konfigurationscode werden `max_pdch_bearers` auf 0–6 und `reserved_voice_slots` auf 0–5 begrenzt. NAT, Firewall und Forwarding müssen zum lokalen oder gerouteten Betriebsmodell passen. Ein pauschaler Umbau des Hosts zum Internetrouter ist kein Bestandteil der festgelegten Erweiterung.
 
 ### 11.3 Dienste, Adressen, Protokolle und Abhängigkeiten
 
 | Element | Bedeutung / Stand |
 |---|---|
-| `tetra.service` | Im Chat verwendeter systemd-Dienstname; reale Unit/ExecStart vor Installation prüfen |
+| `tetra.service` | Historisch verwendeter systemd-Dienstname; reale Unit und ExecStart vor Installation prüfen |
 | `bluestation-bs` | Basisstations-Binary |
 | `netcore-control-room` | Control-Room-Core-Binary |
 | `netcore-control-room-operator` | Operator-CLI-Binary |
@@ -530,17 +531,17 @@ Im aktuell gelesenen Konfigurationscode werden `max_pdch_bearers` auf 0–6 und 
 | SDS Type 4 / PID 0x04 und 0x84 | Legacy-WAP-Hüllen |
 | Bitcode / Serde | Serialisierung und JSON-Strukturen in den gelesenen Telemetrie-/Control-Datentypen |
 | Linux, `/dev/net/tun`, `CAP_NET_ADMIN` | Voraussetzungen der lokalen TUN-/Hostkonfiguration |
-| `iproute2`, `nftables`/`iptables`, `tcpdump` | Im Chat vorgeschlagene Host- und Diagnosewerkzeuge |
-| Rust/Cargo, SDR-/SoapySDR-Umgebung | Projektbuild und Hardwareintegration; genaue Zieltoolchain dieses Chats nicht aufgezeichnet |
+| `iproute2`, `nftables`/`iptables`, `tcpdump` | Vorgeschlagene Host- und Diagnosewerkzeuge |
+| Rust/Cargo, SDR-/SoapySDR-Umgebung | Projektbuild und Hardwareintegration; genaue Zieltoolchain dieser Planung nicht aufgezeichnet |
 | Feature `bluestation-bs/asterisk` | In den vollständigen Buildbeispielen aktiviert; native Codec-/Telefonieabhängigkeiten bleiben zusätzlich erforderlich |
 
-Die Beispielhostadresse `10.0.1.25:9010` und der Node-String `SRV-M_TBS-01` waren im Verlauf Befehlsbeispiele, keine unabhängig bestätigten Live-Endpunkte dieses Chats. Den Node-String nicht stillschweigend mit anders geschriebenen Hostnamen gleichsetzen.
+Die Beispielhostadresse `10.0.1.25:9010` und der Node-String `SRV-M_TBS-01` waren im Verlauf Befehlsbeispiele, keine unabhängig bestätigten Live-Endpunkte dieser Planung. Den Node-String nicht stillschweigend mit anders geschriebenen Hostnamen gleichsetzen.
 
 ## 12. Compilerfehler und R1-Reparatur
 
 ### 12.1 Tatsächlich gemeldete Fehler
 
-Der Nutzer lieferte folgenden Fehlerkomplex für `tetra-entities`:
+Gemeldeter Fehlerkomplex im Zielbuild von `tetra-entities`:
 
 | Diagnose | Historische Fundstelle | Ursache |
 |---|---|---|
@@ -550,7 +551,7 @@ Der Nutzer lieferte folgenden Fehlerkomplex für `tetra-entities`:
 | `E0282` | `sndcp/packet_gateway.rs:469` | Closure-Result aus `Ok(())` nicht eindeutig typisierbar |
 | `E0283` | `packet_gateway.rs:488` | Folgeambiguität bei `result?`, unter anderem durch `From<io::Error>` und Identitätskonvertierung |
 
-Die Zeilennummern bezeichnen den damaligen Baum. Durch spätere Kommentare und Erweiterungen sind sie keine stabilen heutigen Sprungmarken.
+Die Zeilennummern bezeichnen den damaligen Baum. Durch spätere Kommentare und Erweiterungen sind sie keine stabilen geprüften Sprungmarken.
 
 ### 12.2 Korrekturen
 
@@ -579,7 +580,7 @@ Die nftables-Setup-Closure wurde explizit auf `Result<(), GatewayError>` festgel
 
 ### 12.3 Ergebnis und verbleibende Reichweite
 
-Der Nutzer bestätigte nach dem R1-Paket einen fehlerfreien Lauf. Das ist die konkrete funktionierende Lösung für den gemeldeten Compilerblock. Die Konstanten/Enumvariante, der Helper und die explizite Closure-Typisierung sind inzwischen auch im heutigen Repository nachweisbar.
+Nach dem R1-Paket wurde ein fehlerfreier Lauf bestätigt. Dies ist der konkrete Erfolg für den gemeldeten Compilerblock. Konstanten, Enumvariante, Helper und explizite Closure-Typisierung sind auch im geprüften Repository nachweisbar.
 
 Nicht belegt sind dadurch sämtliche Unit-Tests, der gesamte Windows-/UI-Build, TUN-Firewallbetrieb oder irgendeine WAP-Seite auf einem realen MS. Ebenso wenig überträgt sich diese Bestätigung automatisch auf das danach geänderte Multi-PDCH-Paket.
 
@@ -589,7 +590,7 @@ Die ursprünglichen Syntaxprüfungen hatten diese Fehler nicht entdeckt. Daraus 
 
 ### 13.1 Status der Befehle
 
-Die nachstehenden Befehle wurden im Chat als Vorgehen vorgeschlagen. Für sie liegt keine lückenlose Ausführungshistorie vor. Ein einzelner R1-Erfolg wurde bestätigt, ohne genaues Kommando, Rust-Version, Featureauflösung und Binärhash. Dieses Archiv führt keine der Dienst-, Firewall- oder Sendebefehle aus.
+Die nachstehenden Befehle wurden im Entwurf als Vorgehen vorgeschlagen. Für sie liegt keine lückenlose Ausführungshistorie vor. Ein einzelner R1-Erfolg wurde bestätigt, ohne genaues Kommando, Rust-Version, Featureauflösung und Binärhash. Dieses Archiv führt keine der Dienst-, Firewall- oder Sendebefehle aus.
 
 ### 13.2 Vor jedem erneuten Einspielen
 
@@ -600,9 +601,9 @@ git rev-parse HEAD
 systemctl cat tetra.service
 ```
 
-Damit zuerst tatsächlichen Quellstand, lokale Änderungen und die von systemd verwendete Binärdatei ermitteln. Konfigurationen, etwa `config.toml` und `config.toml.fallback`, sowie lokale Assets separat sichern. Archivbranch und heutiger Produktivbranch sind nicht automatisch der installierte Stand.
+Damit zuerst tatsächlichen Quellstand, lokale Änderungen und die von systemd verwendete Binärdatei ermitteln. Konfigurationen, etwa `config.toml` und `config.toml.fallback`, sowie lokale Assets separat sichern. Archivbranch und geprüfter Produktivbranch sind nicht automatisch der installierte Stand.
 
-Historisch vorgeschlagen waren `git apply --check <passender-patch>` und erst danach `git apply <passender-patch>`. Jeder Patch ist an seine konkrete Vorstufe gebunden. Ein Patch gegen den alten WAP- oder SNDCP-Baum ist kein beliebiges Update für den heutigen `main`.
+Historisch vorgeschlagen waren `git apply --check <passender-patch>` und erst danach `git apply <passender-patch>`. Jeder Patch ist an seine konkrete Vorstufe gebunden. Ein Patch gegen den alten WAP- oder SNDCP-Baum ist kein beliebiges Update für den geprüften `main`.
 
 ### 13.3 Typcheck und Tests
 
@@ -671,13 +672,13 @@ Der CLI-Platzhalter muss vor Ausführung ersetzt werden; spitze Klammern sind ke
 
 ### 13.7 Nicht als Standardablauf weiterverwenden
 
-Mehrere alte Antworten forderten `rm -rf target` plus `cargo clean`; die letzte auch nach Sicherung das Löschen des ganzen `~/netcore-tetra`-Verzeichnisses und Entpacken eines Ersatz-ZIPs. **Das ist hier nur als unbestätigter historischer Vorschlag dokumentiert.** Es ist kein notwendiger Reparaturschritt für jede Rust-Änderung und birgt insbesondere beim ganzen Repository das Risiko verlorener Git-Historie, lokaler Änderungen und neuerer Funktionen.
+Frühere Reparaturvorschläge enthielten `rm -rf target` und `cargo clean`, zuletzt auch Löschen von `~/netcore-tetra` nach Sicherung und Ersatz durch ZIP. **Dies sind unbestätigte historische Ansätze, keine notwendige Standardreparatur.** Das Löschen des gesamten Repositorys kann Git-Historie, lokale Änderungen und neuere Funktionen verlieren.
 
-Für die Fortsetzung Änderungen gezielt gegen einen bekannten Commit integrieren, Git-Metadaten und Konfiguration bewahren, vor einem Dienststopp möglichst separat bauen und die tatsächlich verwendete Binärdatei kontrolliert ersetzen. Alte `html.rs`-Komplettdateien dürfen die inzwischen ausgelagerten UI-Assets nicht zurücksetzen. Dieser Archivauftrag nimmt keine operative Neuinstallation vor.
+Änderungen gegen bekannten Commit integrieren, Git-Metadaten und Konfiguration bewahren, vor einem Dienststopp separat bauen und tatsächliche Binärdatei kontrolliert ersetzen. Alte Komplettfassungen von `html.rs` dürfen ausgelagerte UI-Assets nicht zurücksetzen. Eine operative Neuinstallation wurde bei der Prüfung nicht vorgenommen.
 
 ## 14. Tests, Artefaktprüfung und Evidenz
 
-### 14.1 Historisch vom Assistenten gemeldete Prüfungen
+### 14.1 Historische Angaben aus Entwicklungsberichten
 
 | Paketstufe | Damals genannte Prüfungen | Was daraus ausdrücklich nicht folgt |
 |---|---|---|
@@ -685,7 +686,7 @@ Für die Fortsetzung Änderungen gezielt gegen einen bekannten Commit integriere
 | SNDCP | 451 Rust-Dateien; TOML; PDU-/ACTIVATE-/UNITDATA-Vektoren; Tests ergänzt; Patchprüfung | Testcode vorhanden heißt nicht erfolgreich `cargo test` ausgeführt |
 | Packet Data | 453 Rust-Dateien; 19 TOMLs; vier Shellhelfer mit `sh -n`; systemd-Analyse; IPv4/PCO/Fragment-/Subnetzvektoren | Danach traten reale Compilerfehler auf; diese Stufe war nicht vollständig gebaut |
 | R1 | Wieder Syntax-/Artefaktprüfung; anschließend Betreiber-Erfolg | Keine nachträgliche pauschale Bestätigung aller Protokoll-/Hostfunktionen |
-| Multi-PDCH/UI/Legacy | 454 Rust-Dateien; 19 TOMLs; zwei JavaScript-Blöcke mit Node.js; Diff-/ZIP-/Prüfsummen-/Roundtripprüfung | Kein vom Assistenten ausgeführter Cargo-Build und kein nachfolgender Nutzer-Buildbeleg im Chat |
+| Multi-PDCH/UI/Legacy | 454 Rust-Dateien; 19 TOMLs; zwei JavaScript-Blöcke mit Node.js; Diff-/ZIP-/Prüfsummen-/Roundtripprüfung laut Entwicklungsbericht | Cargo-Build und anschließender Betreiber-Build nicht belegt |
 
 Die damalige Einschränkung lautete wiederholt: Rust-Toolchain im Arbeitscontainer nicht verfügbar, Download-/DNS-Probleme. Die Formulierung „getestet“ in den alten Abschlussantworten muss deshalb auf die jeweils tatsächlich behauptete statische Prüfung begrenzt bleiben.
 
@@ -699,7 +700,7 @@ Tatsächlich in dieser Archivierung ausgeführt, ausschließlich in lokalen Prü
 - Alle 22 Dateireferenzen aus den fünf verfügbaren SHA-256-Manifesten erfolgreich gegen die vorhandenen Bytes geprüft.
 - Letzten Feature-Patch gegen eine frische Extraktion von `netcore-tetra-wap(1).zip` mit `git apply --check` erfolgreich geprüft und mit `git apply` erfolgreich angewendet.
 - Ergebnisbaum mit dem finalen ZIP dateiweiser per SHA-256 verglichen; alle gemeinsamen 660 Dateien identisch, keine Datei des Ergebnis-ZIPs fehlt im gepatchten Baum.
-- Zentrale historische Quellmodule gelesen sowie wichtige Aussagen gezielt gegen den heutigen GitHub-Commit geprüft.
+- Zentrale historische Quellmodule gelesen sowie wichtige Aussagen gezielt gegen den geprüften GitHub-Commit geprüft.
 
 **Nicht neu ausgeführt:** Cargo-Check, Cargo-Tests, Release-Build, Rust-Syntaxanalyse sämtlicher Dateien, Node-JavaScriptprüfung, Shell-/systemd-Funktionstests, Start der TBS, Firewalländerung, TUN-Livetest oder Funkübertragung. Ein read-only Clone-Versuch scheiterte an DNS; der Live-Quellzugriff war über den GitHub-Connector möglich. Das verhindert die hier dokumentierten Remote-Lese-/Schreibzugriffe nicht.
 
@@ -730,7 +731,7 @@ Folgerung: Der Featurecode und sämtliche Dateien des gelieferten Ergebnis-ZIPs 
 
 ### 14.4 Historische Referenzvektoren
 
-Zur Wiederaufnahme der Tests sind folgende im Verlauf beziehungsweise den Begleitdateien angeführten Werte wichtig. Sie werden als historische Testanker erhalten, nicht als heute erneut vollständig unabhängig zertifizierte Vektoren:
+Zur Wiederaufnahme der Tests sind folgende im Verlauf beziehungsweise den Begleitdateien angeführten Werte wichtig. Sie werden als historische Testanker erhalten, nicht als am 2026-10-03 erneut vollständig unabhängig zertifizierte Vektoren:
 
 ```text
 ACTIVATE ACCEPT, 70 signifikante Bits, byteweise aufgefüllt:
@@ -755,11 +756,11 @@ IPCP-DNS-Configure-NAK:
 
 Ein genannter Fragmenttest teilte ein 1.220-Byte-Datagramm bei MTU 300 in Paketlängen 300/300/300/300/100. Byteanzahl, Headerlängen, Kopieroptionen und Out-of-order-Zusammensetzung müssen in reproduzierbaren ausführbaren Tests zusammen geprüft werden.
 
-## 15. Heutiger Repository-Stand – getrennt vom Chatresultat
+## 15. Geprüfter Repository-Stand – getrennt vom historischen Ergebnis
 
 ### 15.1 Geprüfte Revisionen und Branchbeziehung
 
-Der aktuelle `main` wurde auf **`7137e0dd69877e1b604bf89148fd8b6b590c1a97`** festgehalten. Dieser Commit ist der Merge von **PR #59**, `feat/netcore-dashboard-design`, mit dem Thema NetCore-Design/Dark Mode für Basisstation und Dienst-WebUIs. Das ist Kontext für spätere UI-Änderungen und **kein nachgewiesener ursprünglicher Feature-PR dieses Chats**.
+Der aktuelle `main` wurde auf **`7137e0dd69877e1b604bf89148fd8b6b590c1a97`** festgehalten. Dieser Commit ist der Merge von **PR #59**, `feat/netcore-dashboard-design`, mit dem Thema NetCore-Design/Dark Mode für Basisstation und Dienst-WebUIs. Das ist Kontext für spätere UI-Änderungen und **kein nachgewiesener ursprünglicher Feature-PR dieser Planung**.
 
 Der zu Beginn gelesene `Archiving`-Head war **`fd6c77b1eb4e1c656daf40ac1d4b406a2ca41249`**. GitHub meldete gegenüber `main` eine divergierte Historie mit 15 vorausliegenden und einem fehlenden Commit; der gemeinsame Ausgangspunkt war `2fe2a1939a8795db3816d45973282781dae856f0`. Dessen Tree entspricht dem gelesenen `main`-Tree. Die Vergleichsdateiliste enthielt nur zusätzliche Dokumentation: `Docs/Control_Room/Readme.md` sowie Archivdateien und Index. **Die in diesem Audit betrachteten Produktivquellen unterscheiden sich dadurch nicht zwischen diesen beiden gepinnten Zuständen.**
 
@@ -767,22 +768,22 @@ Die vorhandene Datei außerhalb des Archivverzeichnisses stammt aus vorherigen �
 
 ### 15.2 Befundmatrix
 
-| Thema | Heutiger Code-/Dateibefund | Verhältnis zum historischen Chat |
+| Thema | Geprüfter Code-/Dateibefund | Verhältnis zum historischen Entwurf |
 |---|---|---|
 | Dynamische SNDCP-Slots | `TimeslotOwner::Sndcp`, bevorzugte Vergabe, Headroom, ISSI-Bearermap und konkrete Freigabe vorhanden | Letzte Featureidee nicht mehr nur ZIP-Behauptung; Quellimplementation nachweisbar |
 | Slotabbildung | Hauptträger 2–4, Sekundär 5–7 -> Air-TS 2–4, interner Secondary-Hint vorhanden | Bestätigt den begrenzten Ein-Slot-Pool, nicht Multislot/TEDS |
 | R1-Konstanten und Fehlerenum | Headergrößen 20/8/28 und `UnsupportedProtocol(u8)` in `sndcp/ip.rs` vorhanden | Gemeldete konkrete Import-/Enumfehler inzwischen im Repository adressiert |
-| R1-SNEI/Result | `snei_optional_section` vorhanden; nftables-Closure ausdrücklich `Result<(), GatewayError>` | Konkrete Reparaturen sichtbar; keine Aussage über vollständigen Build dieses heutigen Commits |
+| R1-SNEI/Result | `snei_optional_section` vorhanden; nftables-Closure ausdrücklich `Result<(), GatewayError>` | Konkrete Reparaturen sichtbar; keine Aussage über vollständigen Build dieses geprüften Commits |
 | WAP/Gateway-Aktivierung | `config.rs` berücksichtigt WAP oder Packet Gateway | Starre Kopplung an ausschließlich WAP nicht als aktuelle Anforderung behandeln |
 | Packet Data in Control Room | HTTP-Routen, Operator-Abfrage und native UI-Polling von `/api/packet-data` vorhanden | UI-/API-Code ist vorhanden; kein aktueller E2E-Betriebsnachweis |
 | Legacy-WAP | Generator, PID-/TL-Hüllen und Control-Room-Submit-Funktion vorhanden | Standard-/Terminalkompatibilität bleibt eine separate offene Prüfung |
 | Lokales Dashboard | Snapshot-Datentyp vorhanden; `html.rs` bindet `ui/`-Assets ein | Alte Komplettdatei mit eingebettetem HTML ist als Updatebasis überholt |
 | Paketdaten-Control | SNDCP verarbeitet nun Deactivate/Modify/Wake/EndOfData aus der Control Plane | Spätere Erweiterung gegenüber dem historischen letzten Featurepaket |
-| Eigenständiger Packet Core | `system-backend/packet-core/`, Dokumentation Paket G, zugehörige Control-Zuordnung vorhanden | Heutige Netzarchitektur ist weiterentwickelt; nicht als in diesem Chat damals erledigt darstellen |
+| Eigenständiger Packet Core | `system-backend/packet-core/`, Dokumentation Paket G, zugehörige Control-Zuordnung vorhanden | Ergänzende Netzarchitektur ist weiterentwickelt; nicht als in diesem Planungsstand damals erledigt darstellen |
 
 ### 15.3 Später hinzugekommene Packet-Core-Control-Anbindung
 
-Aktuell gelesener SNDCP-Code besitzt `process_control_commands`. Nachweisbare Kommandofamilien sind:
+Der am 2026-10-03 gelesene SNDCP-Code besitzt `process_control_commands`. Nachweisbare Kommandofamilien sind:
 
 ```text
 PacketDataContextDeactivate
@@ -796,15 +797,15 @@ Sie werden in der Control-Verarbeitung zur SNDCP-Entity geroutet. Deactivate pr�
 
 **Besonders wichtige aktuelle Grenze:** Beim gelesenen Modify-Pfad werden Availability/Pause-Änderungen über entsprechende Nachrichten signalisiert, während Priorität, MTU und Resume nach dem ausdrücklichen Ergebnistext als lokale Policyänderungen verbleiben. Ein erfolgreicher API-Response ist daher nicht automatisch eine vollständig über Funk ausgehandelte neue MTU oder Priorität.
 
-Die heutige Datei `Docs/SWMI_CORE_1_PACKAGE_G_PACKET_CORE.md` beschreibt einen eigenständigen Dienst unter `system-backend/packet-core/` mit Management-WebUI auf Port **8160**, langlebiger Netzsicht und dem Edge-Protokoll **`netcore-packet-edge-v1`**. Die Dokumentation nennt außerdem Shadow-/Authoritative-Modus, Persistenz, API/OpenAPI/Metrics, Pool-/Mobility-Anchor- und Outbox-Funktionen. Diese weitergehenden Aussagen wurden hier nicht sämtlich in ihren Laufzeitpfaden abgenommen; konkret geprüft wurde insbesondere die Control-Zuordnung und der lokale SNDCP-Empfang.
+Die ergänzende Datei `Docs/SWMI_CORE_1_PACKAGE_G_PACKET_CORE.md` beschreibt einen eigenständigen Dienst unter `system-backend/packet-core/` mit Management-WebUI auf Port **8160**, langlebiger Netzsicht und dem Edge-Protokoll **`netcore-packet-edge-v1`**. Die Dokumentation nennt außerdem Shadow-/Authoritative-Modus, Persistenz, API/OpenAPI/Metrics, Pool-/Mobility-Anchor- und Outbox-Funktionen. Diese weitergehenden Aussagen wurden hier nicht sämtlich in ihren Laufzeitpfaden abgenommen; konkret geprüft wurde insbesondere die Control-Zuordnung und der lokale SNDCP-Empfang.
 
-Paket G grenzt den zentralen Kontextdienst von einem späteren **`ip-gateway` / LXC 09** ab. Das bedeutet nicht, dass das in diesem Chat gebaute lokale TUN-Gateway verschwunden wäre. Bei der Fortsetzung sind lokaler Funk-/Gatewaypfad und zentrale Kontext-/Adressautorität ausdrücklich auseinanderzuhalten.
+Paket G grenzt den zentralen Kontextdienst von einem späteren **`ip-gateway` / LXC 09** ab. Das bedeutet nicht, dass das in diesem Planungsstand gebaute lokale TUN-Gateway verschwunden wäre. Bei der Fortsetzung sind lokaler Funk-/Gatewaypfad und zentrale Kontext-/Adressautorität ausdrücklich auseinanderzuhalten.
 
-Die Paket-G-Dokumentation kennzeichnet den Dienst als **`open_lab` ohne Login, Token und TLS**. Das ist ein wichtiges heutiges Sicherheitsrisiko und kein im Chat erteilter Auftrag, ihn ungeschützt außerhalb eines abgegrenzten Labors erreichbar zu machen. Kontextänderungen und sensible Netzwerkzustände dürfen nicht allein aufgrund eines bestehenden HTTP-Ports als geschützt gelten.
+Die Paket-G-Dokumentation kennzeichnet den Dienst als **`open_lab` ohne Login, Token und TLS**. Das ist ein wichtiges geprüftes Sicherheitsrisiko und kein im Entwurf erteilter Auftrag, ihn ungeschützt außerhalb eines abgegrenzten Labors erreichbar zu machen. Kontextänderungen und sensible Netzwerkzustände dürfen nicht allein aufgrund eines bestehenden HTTP-Ports als geschützt gelten.
 
 ### 15.4 Spätere Dashboard-Umstrukturierung
 
-Im heutigen `crates/tetra-entities/src/net_dashboard/html.rs` werden eingebunden:
+Im geprüften `crates/tetra-entities/src/net_dashboard/html.rs` werden eingebunden:
 
 ```text
 ui/dashboard.html
@@ -819,7 +820,7 @@ ui/netcore-logo.png
 
 Das ist eine konkrete Abweichung zur alten ZIP-Datei mit eingebetteten Dashboard-Blöcken. Änderungen an Paketdatenformularen und Ereignisbehandlung sind jetzt gegen diese Struktur zu planen. Der vorhandene UI-Testfixtureeintrag für `/api/packet-data` zeigt eine Prüfgrundlage, aber noch keinen bestandenen Lauf oder echte Daten vom Funkgerät.
 
-### 15.5 Was die heutige Prüfung nicht behauptet
+### 15.5 Was die ergänzende Prüfung nicht behauptet
 
 Kein vollständiger Audit sämtlicher Runtime-Zweige, kein aktueller Workspace-Build, kein neuer Upstreamvergleich und keine Hardwareprüfung wurden durchgeführt. Die Codepräsenz beseitigt nicht die offene Frage nach tatsächlicher Mehrteilnehmerübertragung auf beiden Carriern, korrekt rückgeführten Zuständen, sicherer IP-Freigabe und terminalgerechtem Legacy-WAP-Envelope.
 
@@ -839,48 +840,48 @@ Kein vollständiger Audit sämtlicher Runtime-Zweige, kein aktueller Workspace-B
 | R1-Build bestätigt spätere Multi-PDCH-Stufe | Zeitlich nicht zulässig; die Bestätigung ging der letzten Änderung voraus |
 | SHA/CRC beweisen korrekte Funkfunktion | Belegen Artefaktidentität beziehungsweise Lesbarkeit, keine Protokollfunktion |
 | Letzter Patch und ZIP vollständig bytegleich | Neuer Audit: 660 gemeinsame Dateien gleich, vier zusätzliche Unicode-Wiki-Pfade nur im gepatchten Baum |
-| `main` steht aktuell bei `41d9254` | Historische Aussage; heute geprüfter `main` ist `7137e0dd…` |
-| `rm -rf`/Komplett-ZIP ist bevorzugter Updateweg | Historischer unbestätigter Vorschlag; gegenüber heutigem Quellbaum nicht blind wiederholen |
+| `main` steht aktuell bei `41d9254` | Historische Aussage; am 2026-10-03 geprüfter `main` ist `7137e0dd…` |
+| `rm -rf`/Komplett-ZIP ist bevorzugter Updateweg | Historischer unbestätigter Vorschlag; gegenüber geprüftem Quellbaum nicht blind wiederholen |
 | Clean-room-Label beweist Lizenzfreiheit | Unabhängige Provenienz-/Lizenzprüfung nicht durchgeführt |
 | Allgemeines DHCP-/IPv6-/Multicast-Verhalten aus kurzen Roadmapbemerkungen | Nicht als technisch universelle Regel übernehmen; Profil, Bearer und Endgerät bestimmen den konkreten Aufwand |
 
 ## 17. Vollständiges offenes Ideen- und Aufgabenregister
 
-Die ursprüngliche Rückfragepflicht bleibt wichtig: Der Nutzer hat nicht mit der Auswahl der letzten drei Features sämtliche später genannten Funktionen beauftragt. Die folgenden Statusangaben betreffen diese Unterhaltung; heutige weitere Repositories können einzelne Punkte teilweise bereits enthalten.
+Die Auswahl der letzten drei Features umfasst nicht sämtliche späteren Ausbauideen. Die Statusangaben beschreiben den historischen Lieferstand; andere Revisionsstände können einzelne Punkte zusätzlich enthalten.
 
-| ID | Thema | Status aus diesem Chat / heutige Einordnung | Nutzen, offene Abhängigkeit oder Grenze |
+| ID | Thema | Status aus diesem Planungsstand / ergänzende Einordnung | Nutzen, offene Abhängigkeit oder Grenze |
 |---|---|---|---|
-| R01 | R1-Stand identifizieren, committen, taggen und sichern | Empfohlen; konkreter damaliger Push/Tag nicht nachgewiesen | Build mit Commit, Features, Toolchain und Binärhash verbinden; heutige Quellen nicht auf alten Stand zurücksetzen |
+| R01 | R1-Stand identifizieren, committen, taggen und sichern | Empfohlen; konkreter damaliger Push/Tag nicht nachgewiesen | Build mit Commit, Features, Toolchain und Binärhash verbinden; ergänzende Quellen nicht auf alten Stand zurücksetzen |
 | R02 | On-Air-Testmatrix und automatisierte Regression | Beschlossen als notwendige Qualitätsaufgabe, Ausführung nicht belegt | Reale PDP-/WAP-/IP-/Multi-PDCH-Funktion, Fehlerpfade und Wiederanlauf absichern |
-| R03 | Dynamischer Multi-PDCH-Pool | Vom Nutzer beauftragt; ZIP- und heutiger Quellcode vorhanden | Mehrere ISSIs, Carrierzuordnung, Freigabe und Parallelbetrieb abnehmen |
-| R04 | Paketdaten-Dashboard und Control-Room-Integration | Vom Nutzer beauftragt; Quellcode vorhanden | Live-Polling/WebSocket, Node-Zuordnung, veraltete Snapshots und UI-Binaries prüfen |
-| R05 | Legacy-WAP über SDS Type 4 | Vom Nutzer beauftragt; Generator/Sendepfad vorhanden | Tatsächlichen Envelope, PID-/TL-Grenzen, UTF-8 und Endgeräteanzeige prüfen |
+| R03 | Dynamischer Multi-PDCH-Pool | Ausgewählt; ZIP und geprüfter Quellcode vorhanden | Mehrere ISSIs, Carrierzuordnung, Freigabe und Parallelbetrieb abnehmen |
+| R04 | Paketdaten-Dashboard und Control-Room-Integration | Ausgewählt; Quellcode vorhanden | Live-Polling/WebSocket, Node-Zuordnung, veraltete Snapshots und UI-Binaries prüfen |
+| R05 | Legacy-WAP über SDS Type 4 | Ausgewählt; Generator/Sendepfad vorhanden | Tatsächlichen Envelope, PID-/TL-Grenzen, UTF-8 und Endgeräteanzeige prüfen |
 | R06 | Fairer dynamischer Scheduler / Backpressure | Weitergehende Idee; durch bevorzugte Erstvergabe nicht vollständig erfüllt | Wartende MS, begrenzte Queues, Airtime-Anteile und Verhungern unter Dauerlast untersuchen |
 | R07 | Harte Sprach-/Notruf-Präemption von PDCH | Idee; im letzten Paket ausdrücklich nicht umgesetzt | Sichere Suspend-/END-/Reallocation-Verfahren und Rückkehr nach Sprachruf definieren |
 | R08 | Multislot für ein MS / Enhanced PDCH | Idee; nicht aus mehreren Ein-Slot-Bearern ableitbar | MAC, Kanalallokation, Endgerätecapabilities und Durchsatzabnahme |
 | R09 | Teilnehmerprofile/APN-ähnliche Policies | Idee, nicht durch die drei letzten Featureaufträge pauschal freigegeben | ISSI-Profil, lokale/Internet-Freigabe, erlaubte Netze/Protokolle/Ports, statische IP, DNS, NAT vs Routing |
 | R10 | Rate Limits, Quoten und Accounting | Idee | Bandbreite, Volumen, maximale Sitzungsdauer, parallele Flows, dauerhaftes Accounting; Telemetriezähler allein reichen nicht |
-| R11 | Erweiterte Paketdatenbedienung | Idee; heute einzelne Control-Befehle hinzugekommen | Kontext deaktivieren/modifizieren, Paging, END, Queue leeren, IP neu vergeben, sperren, Capture; je Aktion lokale Policy vs Air-Signalisierung trennen |
+| R11 | Erweiterte Paketdatenbedienung | Idee; am 2026-10-03 einzelne Control-Befehle hinzugekommen | Kontext deaktivieren/modifizieren, Paging, END, Queue leeren, IP neu vergeben, sperren, Capture; je Aktion lokale Policy vs Air-Signalisierung trennen |
 | R12 | Erweiterte Diagnoseanzeige | Idee, teilweise Snapshotbasis vorhanden | Dropursachen, Pagingversuche, Fragmentzähler, DNS-/NAT-/Routing-/Conntrack-Zustand; Datenschutz und Messkosten berücksichtigen |
 | R13 | SNDCP-/WTP-Zustände und Wiederholungen vervollständigen | Teilweise implementierte Kernlogik; zusätzliche Prüfung offen | Request-/Response-Timer, Session-/Retransmission-Cache, ACK-/Abort-Semantik und Duplikate getrennt validieren |
-| R14 | SDS-TL komplettieren | Weiterer Kandidat, keine komplette Abnahme in diesem Chat | Segmentierung/Reassembly, persistentes Store-and-forward, Zustellberichte über Neustart, Retry/Expiry, Ende-zu-Ende-IDs und Duplicate Detection |
+| R14 | SDS-TL komplettieren | Weiterer Kandidat, keine komplette Abnahme in diesem Planungsstand | Segmentierung/Reassembly, persistentes Store-and-forward, Zustellberichte über Neustart, Retry/Expiry, Ende-zu-Ende-IDs und Duplicate Detection |
 | R15 | SDS-Adressierungs-/Binärdienste | Idee | Externe Nummern/TSI-/DM-MS-Adressierung, Priorität, große Binärdaten/Dateiübertragung, API/Webhooks und Message History |
 | R16 | Standardgerechter WAP Push / Service Indication | Idee beziehungsweise noch offener Teil von Legacy-Interoperabilität | Nicht mit roher WML-SDS-Ausgabe gleichsetzen; WDP/WSP/WBXML und Zielbrowser abstimmen |
 | R17 | Parrot-/Echo-Einzelrufdienst | Im Vergleich vorgeschlagen, nicht als letzter Auftrag ausgewählt | Service-ISSI für Aufnahme/Wiedergabe, Audio-/Codec-/Latenztest; von EchoLink und anderen Echo-/Parrotdiensten unterscheiden |
-| R18 | Native systemd-Readiness/Watchdog | Vorschlag, nicht in diesem Chat vollständig nachgewiesen | `READY=1` erst nach realem RF-/MCCH-/Scheduler-/Dienststatus; `WATCHDOG=1` nicht bloß Prozesslebt-Signal |
+| R18 | Native systemd-Readiness/Watchdog | Vorschlag, nicht in diesem Planungsstand vollständig nachgewiesen | `READY=1` erst nach realem RF-/MCCH-/Scheduler-/Dienststatus; `WATCHDOG=1` nicht bloß Prozesslebt-Signal |
 | R19 | Debian-Paket, Migration, Rollback | Idee | `.deb`, Konfigurationsschema-Versionen, Capabilities-/Serviceinstallation, Upgrade und Rückfall ohne manuelles Löschen |
 | R20 | TETRA-Authentifizierung/AIE | Großer Kandidat; nicht durch CHAP-Success oder ISSI-Whitelist abgedeckt | MS-/Infrastruktur-/gegenseitige Authentifizierung, Zustände, sichere Provisionierung, passende Algorithmen und Schlüsselablage |
 | R21 | Schlüsselmanagement/OTAR/TSIM | Idee im Sicherheitsausbau | DCK/CCK/SCK/GCK, Security Classes, Rotation, Sperrverhalten und Audit; reale Endgeräte-/Lizenz-/Provenienzanforderungen prüfen |
 | R22 | Mehrzellenbetrieb, Handover und Roaming | Weiterer großer Kandidat; nicht hier komplett umgesetzt | Nachbarzellen, Reselection, C1/C2, Cell Change, Call Restore und laufender Gruppenruf beim Zellwechsel |
-| R23 | Paketdatenmobilität / gemeinsamer Core / ISI | Idee; heute Packet-Core-Bausteine sichtbar | PDP-Kontext-/IP-/Bearerübergabe, gemeinsame Teilnehmer-/Gruppen-/Rufzustände, Mobility Anchor; lokal vs zentral eindeutig zuordnen |
-| R24 | Supplementary Services | Breites Kandidatenfeld, keine pauschale Fehlendbehauptung für heute | CLIP/CLIR/COLP/COLR, Forwarding/Waiting/Hold/Completion, Short Number, Area Selection, Access Priority und externe Nummern |
+| R23 | Paketdatenmobilität / gemeinsamer Core / ISI | Idee; am 2026-10-03 Packet-Core-Bausteine sichtbar | PDP-Kontext-/IP-/Bearerübergabe, gemeinsame Teilnehmer-/Gruppen-/Rufzustände, Mobility Anchor; lokal vs zentral eindeutig zuordnen |
+| R24 | Supplementary Services | Breites Kandidatenfeld, keine pauschale Fehlendbehauptung für am 2026-10-03 | CLIP/CLIR/COLP/COLR, Forwarding/Waiting/Hold/Completion, Short Number, Area Selection, Access Priority und externe Nummern |
 | R25 | Leitstellennahe Rufdienste | Besonders interessant im damaligen Vorschlag, nicht ausgewählt | CAD, Include Call, Late Entry, Call Retention, Priority/PPC, Barring, Ambience/Discreet Listening; Berechtigungen und Protokollumfang vor Umsetzung klären |
 | R26 | TEDS/QAM/Link Adaptation | Nachgelagerte Idee | Augmented/Extended Channel Allocation, Bandbreiten/Modulation, PHY/LMAC/UMAC, SDR und kompatible MS gemeinsam entwickeln |
 | R27 | IPv6-PDP und Mobile IPv4 | Niedriger priorisierte optionale Profile | Endgeräteunterstützung, Header-/MTU- und Mobilitätsmodell konkret prüfen; im bisherigen Profil abgelehnt |
 | R28 | RFC-1144/RFC-2507 und DCOMP | Niedriger priorisiert | Kompressionskontexte, Aushandlung, Fehlerbehandlung und reale Gegenseite; nicht nur Negotiation-Bits setzen |
 | R29 | Multicast-/Broadcast-Fan-out | Idee | Abbildungsmodell auf Funkbearer und Lastgrenzen definieren; keine pauschale Aussage, jede mögliche TETRA-Gruppendatenlösung müsse identisch funktionieren |
-| R30 | Aktuellen Packet Core sicher integrieren | Neuer heutiger Auditpunkt, nicht damalige Chatimplementierung | `open_lab` isolieren; lokale/zentral autoritative Kontext- und Adressvergabe, Edge-Korrelation und künftiges IP-Gateway abstimmen |
-| R31 | Artefakt-/Wiki-Dateinamensbereinigung | Neuer heutiger Auditpunkt | Vier Unicode-/`#U2010`-Aliaspaare und Links bewusst prüfen; Paketmanifest/Dateimengen reproduzierbar machen |
+| R30 | Packet Core sicher integrieren | Zusätzlicher Prüfbefund vom 2026-10-03; keine historische Implementierung | `open_lab` isolieren; Kontext-/Adressvergabe, Edge-Korrelation und IP-Gateway abstimmen |
+| R31 | Artefakt-/Wiki-Dateinamensbereinigung | Neuer geprüfter Auditpunkt | Vier Unicode-/`#U2010`-Aliaspaare und Links bewusst prüfen; Paketmanifest/Dateimengen reproduzierbar machen |
 | R32 | Lizenz-/Provenienzprüfung und Vergleich erneut pinnen | Offen | Nexus-Lizenzgrenzen, eigene Implementierung/Attribution und tatsächliche Upstreamdifferenzen revisionsbezogen prüfen |
 
 Die früheren Beispiel-TOMLs zu „internet“, „local-only“ oder „telemetry“-Teilnehmerprofilen waren Entwurfsbeispiele. Schlüssel wie `rate_limit_kbit` sind dadurch **nicht automatisch gültige Felder der aktuellen NetCore-Konfiguration**. Vor Übernahme Schema und vorhandene spätere Policy-Dienste prüfen.
@@ -889,7 +890,7 @@ Die früheren Beispiel-TOMLs zu „internet“, „local-only“ oder „telemet
 
 ### P0 – belastbaren Ausgangspunkt und Schutzgrenzen herstellen
 
-Den tatsächlich eingesetzten Source-/Binary-Stand mit Commit, Rust/Cargo-Version, Features, Zielplattform, Unit-ExecStart und Konfigurationshash festhalten. Die ZIP-Kette dieses Chats nicht mit einem heutigen Deployment verwechseln. Den aktuellen Build gegen den aktuellen Code durchführen, nicht nur das historische R1-Ergebnis wiederverwenden. Alle Managementpfade, insbesondere `open_lab` des späteren Packet Core, nur im vorgesehenen abgeschotteten Umfeld betreiben.
+Den tatsächlich eingesetzten Source-/Binary-Stand mit Commit, Rust/Cargo-Version, Features, Zielplattform, Unit-ExecStart und Konfigurationshash festhalten. Die ZIP-Kette dieser Planung nicht mit einem geprüften Deployment verwechseln. Den aktuellen Build gegen den aktuellen Code durchführen, nicht nur das historische R1-Ergebnis wiederverwenden. Alle Managementpfade, insbesondere `open_lab` des späteren Packet Core, nur im vorgesehenen abgeschotteten Umfeld betreiben.
 
 ### P1 – die drei zuletzt beauftragten Komponenten abnehmen
 
@@ -909,17 +910,17 @@ Zu jedem Test Ergebnis, erwartete/erhaltene PDUs, Geräte-/Firmwareversion und Q
 
 ### P2 – aus den Befunden gezielt erweitern
 
-Erst nach der Abnahme die weitergehenden Scheduler-/Policy-/Zustell- und Sicherheitsideen auswählen. Der Multi-PDCH-Pool braucht bei Fairness/Präemption eine eigene Zustands- und Prioritätsspezifikation. Legacy-WAP braucht vor weiteren UI-Effekten den Nachweis des richtigen Envelopes. Die heutige Packet-Core-Anbindung verlangt eine klar definierte Kontext-/IP-Autorität und kein zweites unkoordiniertes Adressmanagement.
+Erst nach der Abnahme die weitergehenden Scheduler-/Policy-/Zustell- und Sicherheitsideen auswählen. Der Multi-PDCH-Pool braucht bei Fairness/Präemption eine eigene Zustands- und Prioritätsspezifikation. Legacy-WAP braucht vor weiteren UI-Effekten den Nachweis des richtigen Envelopes. Die ergänzende Packet-Core-Anbindung verlangt eine klar definierte Kontext-/IP-Autorität und kein zweites unkoordiniertes Adressmanagement.
 
 ### P3 – große optionale Protokollprogramme
 
-Authentifizierung/AIE/OTAR, Mehrzellenübergaben, vollständige Supplementary Services und TEDS bleiben eigenständige, getrennt zu planende Arbeitspakete. Eine neue ZIP-Auslieferung allein macht diese Bereiche nicht vollständig. Die vom Nutzer beauftragten drei letzten Komponenten sind der unmittelbare Abnahmeschwerpunkt.
+Authentifizierung/AIE/OTAR, Mehrzellenübergaben, vollständige Supplementary Services und TEDS bleiben eigenständige Arbeitspakete. Eine ZIP-Auslieferung allein belegt deren Vollständigkeit nicht. Unmittelbarer Abnahmeschwerpunkt sind die drei zuletzt ausgewählten Komponenten.
 
 ## 19. Anhänge und Artefaktidentität
 
 ### 19.1 ZIP-Inventar, neu berechnete Werte
 
-Die SHA-256-Werte identifizieren die in dieser Archivierung tatsächlich lesbaren Anhänge. Die ZIPs werden durch diesen Auftrag **nicht zusätzlich in das Repository kopiert**. Für langfristige Wiederherstellung müssen die Binäranhänge separat erhalten bleiben; ein Chat-Sandbox-Link ist kein dauerhafter Git-Artefaktspeicher.
+Die SHA-256-Werte identifizieren die am 2026-10-03 lesbaren Anhänge. Ihre Binärfassungen müssen separat erhalten bleiben; temporäre Downloadlinks ersetzen keinen dauerhaften Artefaktbestand.
 
 | ZIP-Datei | Bytegröße | ZIP-Einträge inkl. Verzeichnissen | Reguläre Dateien | Rust / TOML |
 |---|---:|---:|---:|---:|
@@ -951,9 +952,9 @@ fa47f03166cba792c68c28dbea50f760ad251eb92a45b39c7b256f29872e7af6  netcore-tetra-
 | `netcore-tetra-sndcp-complete-2026-07-21.patch` | Vorheriger WAP-Cleanroom-Stand |
 | `netcore-tetra-packet-data-complete-2026-07-21.patch` | Vorheriger SNDCP-Complete-Stand |
 | `netcore-tetra-packet-data-compile-fix-r1-2026-07-21.patch` | Vorheriger Packet-Data-Complete-Stand |
-| `netcore-tetra-multi-pdch-dashboard-legacy-wap-2026-07-21.patch` | Nutzerupload `netcore-tetra-wap(1).zip` |
+| `netcore-tetra-multi-pdch-dashboard-legacy-wap-2026-07-21.patch` | Weitergeführter Eingangsstand `netcore-tetra-wap(1).zip` |
 
-Für den letzten Patch wurde neu SHA-256 `0dda62711709e1b4d094d5f0987a1591e687627ebf156954e87e72a0089302b9` gegen das Manifest bestätigt. Die übrigen Manifestreferenzen wurden ebenfalls geprüft; nur die letzte Patchkette wurde in diesem Archivauftrag neu angewendet und verglichen.
+Für den letzten Patch wurde SHA-256 `0dda62711709e1b4d094d5f0987a1591e687627ebf156954e87e72a0089302b9` gegen das Manifest bestätigt. Übrige Manifestreferenzen wurden ebenfalls geprüft; nur die letzte Patchkette wurde am 2026-10-03 neu angewendet und verglichen.
 
 ### 19.3 Begleitdokumente
 
@@ -975,7 +976,7 @@ MULTI_PDCH_PACKET_DATA_LEGACY_WAP_2026-07-21.md
 MULTI_PDCH_PACKET_DATA_LEGACY_WAP_VALIDATION_2026-07-21.md
 ```
 
-Im finalen ZIP liegen entsprechende Dokumente teils unter anderen Namen, insbesondere `Docs/WAP_INTEGRATION.md`, `Docs/SNDCP_COMPLETE.md`, `Docs/PACKET_DATA_GATEWAY_2026-07-21.md` und `Docs/wap-port-spec.md`. Dokumentnamen und Revisionszuordnung vor einem Patchvergleich beachten. Die Begleittexte sind Entwicklungsberichte des Assistenten, keine unabhängigen Abnahmeprotokolle.
+Im finalen ZIP liegen Dokumente teilweise unter anderen Namen, insbesondere `Docs/WAP_INTEGRATION.md`, `Docs/SNDCP_COMPLETE.md`, `Docs/PACKET_DATA_GATEWAY_2026-07-21.md` und `Docs/wap-port-spec.md`. Beim Patchvergleich Dokumentnamen und Revision beachten. Die Begleittexte sind Entwicklungsberichte, keine unabhängigen Abnahmeprotokolle.
 
 ### 19.4 ETSI-Anhänge
 
@@ -1007,7 +1008,7 @@ Im finalen ZIP liegen entsprechende Dokumente teils unter anderen Namen, insbeso
 | `es_20081202v020401m.pdf` | TSIM-Anwendung, Final Draft |
 | `ETSI.pdf` | 4.100-seitige Zusammenstellung; teilweise Überschneidung mit Einzeldateien |
 
-Diese Dokumente waren als Anhänge verfügbar. Daraus folgt nicht, dass sämtliche darin spezifizierten Dienste in NetCore implementiert oder alle Tabellen in diesem Chat geprüft wurden.
+Diese Dokumente waren als Anhänge verfügbar. Daraus folgt nicht, dass sämtliche darin spezifizierten Dienste in NetCore implementiert oder alle Tabellen in diesem Planungsstand geprüft wurden.
 
 ## 20. Revisionsfeste Repository-Quellen und Verweise
 
@@ -1015,7 +1016,7 @@ Die folgenden Links verweisen bewusst auf den geprüften Commit, nicht auf einen
 
 | Gegenstand | Quelle |
 |---|---|
-| Heutiger `main` / PR-59-Merge | [Commit 7137e0dd](https://github.com/JanHG98/netcore-tetra/commit/7137e0dd69877e1b604bf89148fd8b6b590c1a97) |
+| Geprüfter `main` / PR-59-Merge | [Commit 7137e0dd](https://github.com/JanHG98/netcore-tetra/commit/7137e0dd69877e1b604bf89148fd8b6b590c1a97) |
 | Geladener Archiv-Ausgangspunkt | [Commit fd6c77b1](https://github.com/JanHG98/netcore-tetra/commit/fd6c77b1eb4e1c656daf40ac1d4b406a2ca41249) |
 | Dokumentations-/Branchvergleich | [Gepinnter Vergleich](https://github.com/JanHG98/netcore-tetra/compare/7137e0dd69877e1b604bf89148fd8b6b590c1a97...fd6c77b1eb4e1c656daf40ac1d4b406a2ca41249) |
 | Gemeinsamer Allocator | [timeslot_alloc.rs](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/crates/tetra-core/src/timeslot_alloc.rs) |
@@ -1027,7 +1028,7 @@ Die folgenden Links verweisen bewusst auf den geprüften Commit, nicht auf einen
 | Legacy-WML und SDS-Hülle | [legacy_wap.rs](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/crates/tetra-entities/src/legacy_wap.rs) |
 | Telemetrie-Datentypen | [events.rs](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/crates/tetra-entities/src/net_telemetry/events.rs) |
 | Lokaler Snapshot | [Dashboard-State](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/crates/tetra-entities/src/net_dashboard/state.rs) |
-| Heutige Asset-Einbindung | [html.rs](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/crates/tetra-entities/src/net_dashboard/html.rs) |
+| Ergänzende Asset-Einbindung | [html.rs](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/crates/tetra-entities/src/net_dashboard/html.rs) |
 | Control-Room-API | [http.rs](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/bins/netcore-control-room/src/http.rs) |
 | Operator-CLI | [Operator main.rs](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/system-backend/control-room/operator/src/main.rs) |
 | Native UI | [UI main.rs](https://github.com/JanHG98/netcore-tetra/blob/7137e0dd69877e1b604bf89148fd8b6b590c1a97/system-backend/control-room/ui/src/main.rs) |
@@ -1064,8 +1065,8 @@ Nexus wurde auf `ae234dd905629a2c0b6c8dd44f327aa21a1f8f97` betrachtet; relevante
 
 Für die Weiterarbeit sind besonders die Archive zu [DualCarrier-Ressourcen/ACK/Release](2026-10-03_flowstation-dualcarrier-bearer-ack-release-und-secondary-control.md), [Control Room, RBAC und Directory](2026-10-03_control-room-windows-ui-rbac-status-tableau-directory-api.md), [Dashboard/Wiki/DGNA](2026-10-03_basisstation-dashboard-deutsch-integrationen-wiki-dgna-gruppennamen.md) und [SDS-Services/Gateways/Bot-Architektur](2026-10-03_flowstation-sds-services-gateways-und-bot-architektur.md) relevant. Diese Links ersetzen nicht die eigene Code-/Testprüfung und übertragen keine Betriebsbestätigung aus einem anderen Thema auf den hier behandelten Paketdatenpfad.
 
-## 21. Abschluss und Archivierungsgrenze
+## 21. Arbeitsstand und nächster Schwerpunkt
 
-Dieses Dokument bewahrt die technischen Entscheidungen und Lieferstände des Chats, die reale R1-Reparaturbestätigung, die noch offenen Funktionen und die zusätzlich geprüften heutigen Quellen getrennt voneinander. Die nächste sinnvolle Arbeit ist die nachvollziehbare Abnahme der zuletzt beauftragten drei Komponenten auf einem eindeutig identifizierten aktuellen Stand, nicht ein erneutes pauschales „alles vollständig“-Paket.
+Entscheidungen, Lieferstände, bestätigte R1-Reparatur und ergänzender Repository-Abgleich bleiben getrennt. Nächster Schwerpunkt ist die reproduzierbare Abnahme der drei letzten Komponenten auf einem eindeutig identifizierten Produktstand.
 
-Der Archivauftrag umfasst nur diese Markdown-Datei und den zugehörigen Index unter `Docs/archive/` im Branch `Archiving`. Keine Passwörter, Tokens, privaten Schlüssel oder sonstigen Zugangsdaten werden übernommen. Kein Featurecode, keine Betriebsdatei, kein Firewallzustand und kein anderer Branch wird durch diesen Auftrag geändert. Das Archivieren des Chats selbst bleibt beim Nutzer.
+Offen bleiben insbesondere Endgeräte-Interoperabilität, Parallelbetrieb, tatsächlich installierte Fassung und aktive Konfiguration.

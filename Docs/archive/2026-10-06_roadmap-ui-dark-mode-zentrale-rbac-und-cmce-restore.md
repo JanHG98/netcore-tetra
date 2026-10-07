@@ -1,46 +1,44 @@
-# NetCore-Tetra: Abschlussdokumentation des Roadmap-Updates mit UI, Dark Mode, zentraler RBAC und CMCE-Restore
+# Brainstorming: Roadmap mit UI, Dark Mode, zentraler RBAC und CMCE-Restore
 
-## 1. Metadaten und Geltungsbereich
+Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
+
+## 1. Projektstand und Geltungsbereich
 
 | Feld | Wert |
 | --- | --- |
-| Thema | Fortschreibung der NetCore-Roadmap aus verfügbaren Projektgesprächen; gemeinsames WebUI-Design und Dark Mode; zentrale Anmeldung/RBAC; kurzfristige Einzelruf- und Gruppenruf-Restore-Fixes |
-| Ursprünglicher Chattitel | In den zugänglichen Metadaten nicht verfügbar. Die Überschrift dieser Datei ist eine rekonstruierte Themenbezeichnung, kein behaupteter Originaltitel. |
-| Ursprünglicher Chatlink / Chat-ID | Nicht verfügbar; kein Link erfunden. |
+| Thema | Fortschreibung der NetCore-Roadmap aus verfügbaren Projektplanungen; gemeinsames WebUI-Design und Dark Mode; zentrale Anmeldung/RBAC; kurzfristige Einzelruf- und Gruppenruf-Restore-Fixes |
 | Historischer Arbeitszeitraum | Roadmap-Veröffentlichungen vom 03.10.2026, Europe/Berlin; darin übernommene Projektideen und Quellenstände aus Juli bis Oktober 2026 |
 | Erstellung dieses Archivs | 2026-10-06; Repository-Abgleich am selben Tag |
 | Repository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
-| Ausschließlicher Schreibbranch | Archiving |
+| Ablagebranch | Archiving |
 | Geprüfter Archivbranch vor dem Schreiben | [099f58c62a29955ad387fc9ef273d3c19a34e0cb](https://github.com/JanHG98/netcore-tetra/tree/099f58c62a29955ad387fc9ef273d3c19a34e0cb), Tree b104712988dc0429c361df27b0475589c29f8d71 |
-| Zusätzlich geprüfter heutiger Hauptzweig | [main@9116c15d645458f99e236712b67a1ad970432791](https://github.com/JanHG98/netcore-tetra/tree/9116c15d645458f99e236712b67a1ad970432791) |
-| Historischer Hauptzweig dieses Roadmap-Chats | [main@6aa9be8f74ab731f72dc133a5f8e90c5018c626d](https://github.com/JanHG98/netcore-tetra/tree/6aa9be8f74ab731f72dc133a5f8e90c5018c626d) |
-| Heute geladener eigenständiger Wiki-Stand | 22a1622c3f3e9a21e7265a098ace9af2e3a81881; letzter Commit am 03.10.2026 um 04:00:09 MESZ |
-| Schreibumfang dieses Archivauftrags | Nur diese Dokumentation, zugehörige zwei Bilddateien und der bestehende Index unter Docs/archive/; keine Runtime-, Root-Roadmap- oder Wiki-Änderung |
-| Veröffentlichungsnachweis des Archivs | Der tatsächliche Archivcommit ergibt sich aus der Git-Historie dieser Datei und der Abschlussmeldung. Die oben genannten SHAs sind geprüfte Ausgangsstände, keine vorweggenommenen Archivcommits. |
+| Zusätzlich geprüfter Hauptzweig | [main@9116c15d645458f99e236712b67a1ad970432791](https://github.com/JanHG98/netcore-tetra/tree/9116c15d645458f99e236712b67a1ad970432791) |
+| Historischer Hauptzweig dieser Roadmap-Arbeitsphase | [main@6aa9be8f74ab731f72dc133a5f8e90c5018c626d](https://github.com/JanHG98/netcore-tetra/tree/6aa9be8f74ab731f72dc133a5f8e90c5018c626d) |
+| Zum Prüfstand vom 06.10.2026 geladener eigenständiger Wiki-Stand | 22a1622c3f3e9a21e7265a098ace9af2e3a81881; letzter Commit am 03.10.2026 um 04:00:09 MESZ |
 
-**Ergebnis des ursprünglichen Chats:** Die aktualisierten Ideen und die beiden hoch priorisierten Restore-Aufgaben wurden im GitHub-Wiki dokumentiert und deren Veröffentlichung anschließend geprüft. Es wurde keine der beiden Restore-Korrekturen implementiert, kein zentraler Identity-Dienst installiert und kein produktiver UI-Rollout in diesem Chat nachgewiesen.
+**Ergebnis der Roadmaparbeit:** Die aktualisierten Ideen und die beiden hoch priorisierten Restore-Aufgaben wurden im GitHub-Wiki dokumentiert und deren Veröffentlichung anschließend geprüft. Es wurde keine der beiden Restore-Korrekturen implementiert, kein zentraler Identity-Dienst installiert und kein produktiver UI-Rollout für diesen Entwicklungsstand nachgewiesen.
 
 **Zusätzlicher Befund vom 06.10.2026:** UI-PR #59 ist inzwischen gemergt. Beide Restore-Lücken bestehen im geprüften aktiven Code weiterhin. Die neuere zentrale Gesamtroadmap auf main führt den Deployment-/Syslog-Abgleich als ersten Gesamtschritt und beide Restore-Fixes als parallel bearbeitbare P0-Aufgaben. Dieser spätere Projektstand wird in Abschnitt 10 getrennt dokumentiert.
 
-## 2. Verfügbare Quellen und Auswertungslücken
+## 2. Verfügbare Quellen und offene Belege
 
-Ausgewertet wurden die zugänglichen Nachrichten und der erhaltene Fortsetzungsstand dieses Chats, die darin festgehaltenen Quellprüfungen und Veröffentlichungsnachweise sowie die heute erneut erreichbaren Repository-, PR-, CI- und Wiki-Quellen. Der ursprüngliche Nutzerauftrag lautete, die Roadmap mit den neuesten Ideen aus den Projektchats zu ergänzen. Nach dem ersten Veröffentlichungshindernis erteilte der Nutzer ausdrücklich die Freigabe „go, du darfst“. Anschließend konkretisierte er die zeitnahe Aufnahme der beiden Restore-Fixes samt Upstream-Commit und Herkunft.
+Grundlagen sind erhaltene Planungsnotizen, Quellprüfungen und Veröffentlichungsnachweise sowie die am 06.10.2026 erneut gelesenen Repository-, PR-, CI- und Wiki-Quellen. Ziel war die Ergänzung der Roadmap um neue Projektideen. Die beiden Restore-Fixes wurden anschließend mit Priorität, Upstream-Commit und Herkunft aufgenommen.
 
-Die übernommenen älteren Projektgespräche sind nur in den zugänglichen einschlägigen Auszügen, Zusammenfassungen und der damals veröffentlichten Ideensammlung erhalten. Dies ist **keine vollständige Rohtranskript-Auswertung aller NetCore-Chats**. Nicht zugängliche frühere Inhalte wurden nicht rekonstruiert oder als zusätzliche Anforderungen ausgegeben.
+Ältere Projektideen sind in einschlägigen Auszügen, Zusammenfassungen und der veröffentlichten Ideensammlung erhalten. Die Sammlung ist keine lückenlose Historie sämtlicher früherer Entwürfe; unbelegte zusätzliche Anforderungen werden daraus nicht abgeleitet.
 
 | Quelle / Anhang | Verfügbarkeit und Behandlung |
 | --- | --- |
-| Roadmap- und Restore-Entscheidungen dieses Chats | Im zugänglichen Verlauf/Fortsetzungsstand enthalten; mit den veröffentlichten Wiki-Texten abgeglichen |
-| Frühere Projektideen Juli–Oktober 2026 | Relevante übernommene Auszüge vorhanden; vollständige Originalgespräche und sämtliche damaligen Anhänge nicht durchgehend zugänglich |
+| Roadmap- und Restore-Entscheidungen dieser Arbeitsphase | Im zugänglichen Verlauf/Fortsetzungsstand enthalten; mit den veröffentlichten Wiki-Texten abgeglichen |
+| Frühere Projektideen Juli–Oktober 2026 | Relevante übernommene Auszüge vorhanden; vollständige Originalnotizen und sämtliche damaligen Anhänge nicht durchgehend zugänglich |
 | netcore-roadmap-published-1790992401156.jpg | Originaldatei wiedergefunden, visuell geprüft und unverändert mit archiviert |
 | netcore-restore-roadmap-1790992809677.jpg | Originaldatei wiedergefunden, visuell geprüft und unverändert mit archiviert |
 | netcore-wiki-proof-1790976230625.jpg | In einem weitergegebenen früheren Wiki-Bericht erwähnt; hier nicht wiedergefunden. Kein anderes ähnlich benanntes Bild wurde als Ersatz ausgegeben. |
 | Frühere lokale Wiki-Worktrees und Portierungsanalysen | Ursprüngliche Arbeitsverzeichnisse wurden inzwischen bereinigt; relevante Ergebnisse sind erhalten, aber nicht jeder damalige lokale Zwischenstand ist erneut lesbar |
-| Allgemeine ETSI-PDF-Projektquellen | 25 PDF-Dateien im aktuellen Projektquellenverzeichnis verfügbar; in diesem Roadmap-/Archivauftrag nicht vollständig normativ ausgewertet. Sie belegen keine Konformität oder vollständige Funkabnahme. |
+| Allgemeine ETSI-PDF-Projektquellen | 25 PDF-Dateien im aktuellen Projektquellenverzeichnis verfügbar; in diesem Roadmap-/Prüfdurchlauf vom 06.10.2026 nicht vollständig normativ ausgewertet. Sie belegen keine Konformität oder vollständige Funkabnahme. |
 | Live-Anlagen, Pi-/SDR-Konfigurationen und Betreiberzugänge | Für dieses Archiv nicht zugänglich bzw. nicht benutzt; keine neue Live-, Funk-, NAS-, VPN- oder Deployment-Abnahme |
 | Vollständige Testlogs und CI-Artefakte | Workflow-Metadaten erneut gelesen; nicht alle Logs/Artefakte unabhängig reproduziert |
 
-Ein im Verlauf übernommener Bericht über den Wiki-Lauf vom 02.10.2026 und den Dokumentationsmerge PR #58 ist **weitergegebener Kontext**, keine in diesem Chat nochmals ausgeführte Veröffentlichung. Dass andere Chats inzwischen zusätzliche Betriebsnachweise enthalten können, macht sie nicht zu eigenen Tests dieses Roadmap-Chats.
+Ein im Verlauf übernommener Bericht über den Wiki-Lauf vom 02.10.2026 und den Dokumentationsmerge PR #58 ist **weitergegebener Kontext**, keine erneut ausgeführte Veröffentlichung dieser Roadmaparbeit. Dass andere Arbeitsphasen inzwischen zusätzliche Betriebsnachweise enthalten können, macht sie nicht zu eigenen Tests dieser Roadmap-Arbeitsphase.
 
 Passwörter, Tokens, private Schlüssel, reale WLAN-Schlüssel und private Standort-/Adresslisten wurden nicht übernommen. Öffentlich sichtbare Beispielports und technische Protokollparameter sind als Repository-Vorgaben gekennzeichnet.
 
@@ -63,7 +61,7 @@ Behandelt wurden:
 
 Die historische Roadmap blieb eine Folge von Arbeitsblöcken ohne zugesagte Kalendertermine und ohne erfundene Fertigstellungsprozente. „Recht zeitnah“ wurde als kurzfristig hohe Priorität verstanden, nicht als vereinbartes Lieferdatum.
 
-## 4. Statusbegriffe und endgültige Festlegungen dieses Chats
+## 4. Statusbegriffe und endgültige Festlegungen dieser Arbeitsphase
 
 | Status | Bedeutung in dieser Dokumentation |
 | --- | --- |
@@ -73,9 +71,9 @@ Die historische Roadmap blieb eine Folge von Arbeitsblöcken ohne zugesagte Kale
 | Getestet | Benannter Test an benanntem Stand durchgeführt bzw. ein CI-Ergebnis abgerufen; Umfang und Grenzen genannt |
 | Im Betrieb bestätigt | Durch einen konkreten zugänglichen Anlagen-/Endgerätenachweis bestätigt; daraus folgt keine pauschale Gesamtfreigabe |
 
-Ein Gesprächssatz, eine Roadmap-Markierung, ein Mock-PASS oder eine erfolgreiche Anmeldung genügt für keinen Wechsel zu „implementiert“ oder „im Betrieb bestätigt“.
+Eine Roadmap-Markierung, ein Mock-PASS oder eine erfolgreiche Anmeldung allein belegt keine Implementierung oder Betriebsabnahme.
 
-| Festlegung | Endgültiger Stand des Chats | Begründung / Grenze |
+| Festlegung | Endgültiger Entwicklungsstand | Begründung / Grenze |
 | --- | --- | --- |
 | Neue Ideen in bestehende Roadmap aufnehmen | Beschlossen und als Wiki-Dokumentation veröffentlicht | Frühere Ziele und Historie erhalten; Dokumentation ersetzt keine Entwicklung |
 | Beide Restore-Fixes zeitnah aufnehmen | Beschlossen/geplant, kurzfristig hoch; historische IDs NETCORE-CMCE-RESTORE-01/02 | Eigenständige Stabilitätsarbeit auch ohne Mehrzellenbetrieb; kein Warten auf IAM oder vollständiges Handover |
@@ -83,7 +81,7 @@ Ein Gesprächssatz, eine Roadmap-Markierung, ein Mock-PASS oder eine erfolgreich
 | Gruppenruf-Restore an UMAC melden | Geplant | Uplink-Inaktivitätsüberwachung muss auch nach Restore eines anschließend stummen Sprechers starten |
 | Herkunft von c71c9ad5 erhalten | Beschlossen für eine spätere Portierung | Originalautor Răzvan Zeceș, FlowStation-Historie und Original-SHA nennen; Bost ist Vergleichs-/Übernahmequelle |
 | Weitere Änderungen desselben Upstream-Commits | Ideen / getrennte Prüf- und Portierkandidaten | Late Entry, Preemption und Brew-Cleanup nicht automatisch mitbeauftragt |
-| Einheitlicher Look und Dark Mode | Ziel bestätigt; im UI-Branch implementiert und CI-Ergebnisse geprüft | 26 TBS-Ansichten, 29 bestehende Dienst-WebUIs; kein Host-Rollout in diesem Chat bestätigt |
+| Einheitlicher Look und Dark Mode | Ziel bestätigt; im UI-Branch implementiert und CI-Ergebnisse geprüft | 26 TBS-Ansichten, 29 bestehende Dienst-WebUIs; kein Host-Rollout für diesen Entwicklungsstand bestätigt |
 | Zentrale Anmeldung / RBAC | Beschlossenes Planungsziel, NETCORE-IAM-01 dokumentiert | Reguläre menschliche TOML-Logins ablösen; Rechte serverseitig und pro Ressource erzwingen |
 | Identity-Produkt / Hosting | Empfehlung, keine endgültige technische Auswahl | Eigener Identity-LXC mit Keycloak bevorzugter Vorschlag, Authentik Alternative; Deployment-VM als Pilotoption |
 | Deployment/Imagebuilder | Historische Entwicklungsentscheidung Ubuntu-VM | Controller-LXC ohne Imagebuilder weiterhin möglich; Observability bleibt getrennt im LXC |
@@ -149,11 +147,11 @@ Konkreter Kandidat: [c71c9ad51462bbc64fb7669f9b192d5f6f325d8b bei Aitorrio/bost-
 
 Autor und Committer: **Răzvan Zeceș**, 19.07.2026 um 19:34:40 UTC. Derselbe Commit ist in der [FlowStation-Historie](https://github.com/razvanzeces/flowstation/commit/c71c9ad51462bbc64fb7669f9b192d5f6f325d8b) vorhanden. Beide Commit-Metadaten wurden für dieses Archiv erneut gelesen. Die Korrekturen sind daher kein erst im Oktober erschienener Bost-Fix. Bei einer angepassten Übernahme Original-SHA, Autor, Herkunft und vorhandene Lizenz-/Copyright-Hinweise erhalten.
 
-Betroffene Upstream-Dateien: cc_bs/pdu.rs, procedures/isi.rs, procedures/restoration.rs, procedures/setup.rs und tests/test_cmce_bs.rs. Der Commit umfasst mehr als die beiden vom Nutzer priorisierten Restore-Korrekturen.
+Betroffene Upstream-Dateien: cc_bs/pdu.rs, procedures/isi.rs, procedures/restoration.rs, procedures/setup.rs und tests/test_cmce_bs.rs. Der Commit umfasst mehr als die beiden durch den Betreiber priorisierten Restore-Korrekturen.
 
 ### 6.2 NETCORE-CMCE-RESTORE-01: Einzelruf-Floor konsistent wiederherstellen
 
-Historische Prüfung: NetCore main@6aa9be8. Heutige Wiederprüfung: main@9116c15 sowie der gleiche Restore-Blob auf Archiving@099f58c.
+Historische Prüfung: NetCore main@6aa9be8. Geprüfte Wiederprüfung: main@9116c15 sowie der gleiche Restore-Blob auf Archiving@099f58c.
 
 Aktiver Eingang ist routes/rd.rs: UCallRestore wird an rx_u_call_restore geroutet; dieses liest UCallRestore und ruft fsm_on_u_call_restore in procedures/restoration.rs auf. Es handelt sich um einen aktiven Eingang, nicht nur um unbenutzten Hilfscode.
 
@@ -164,7 +162,7 @@ request_to_transmit_send_data = true  -> TransmissionGrant::Granted
 request_to_transmit_send_data = false -> TransmissionGrant::NotGranted
 ~~~
 
-Es fehlen hier die Prüfung des aktuellen floor_holder und die entsprechende konsistente Vergabe beim Simplexruf. So kann eine Wiederherstellung eine Sprechfreigabe signalisieren, während der andere Teilnehmer das Sprechrecht hält. Das ist ein statischer Fehlerbefund; in diesem Chat wurde kein gleichzeitiger realer Senderfall auf einer installierten TBS reproduziert.
+Es fehlen hier die Prüfung des aktuellen floor_holder und die entsprechende konsistente Vergabe beim Simplexruf. So kann eine Wiederherstellung eine Sprechfreigabe signalisieren, während der andere Teilnehmer das Sprechrecht hält. Das ist ein statischer Fehlerbefund; für diesen Entwicklungsstand wurde kein gleichzeitiger realer Senderfall auf einer installierten TBS reproduziert.
 
 Geplante Anpassung:
 
@@ -207,13 +205,13 @@ Geplant ist, nach erfolgreichem lokalen Restore-Grant den nötigen D-TX-GRANTED-
 | Zentral verwaltete Rufzweige | Vorhandene Call-Control-/Medienfreigabe und RouteReady-/Revisionsverträge erhalten; lokale Restore-Freigabe darf zentrale Zuständigkeit nicht umgehen |
 | Mehrzellenbetrieb | Der Patch setzt vorhandenen Rufkontext voraus und implementiert keinen vollständigen MM-/CMCE-Kontexttransfer oder laufenden Medienhandover |
 
-Die zentralen Route-/Medienbedingungen sind Portierungs- und Abnahmeanforderungen aus der vorangegangenen Analyse. Im heutigen Archivabgleich wurde vor allem der aktive Restore-, Lifecycle-, Routen- und UMAC-Pfad erneut gelesen; keine vollständige erneute Prüfung sämtlicher zentraler Worker wurde behauptet.
+Die zentralen Route-/Medienbedingungen sind Portierungs- und Abnahmeanforderungen aus der vorangegangenen Analyse. Im geprüften Archivabgleich wurde vor allem der aktive Restore-, Lifecycle-, Routen- und UMAC-Pfad erneut gelesen; keine vollständige erneute Prüfung sämtlicher zentraler Worker wurde behauptet.
 
 ### 6.5 Geplante Regressionen und Abnahme
 
 | Fall | Erwartung | Nachweisstatus |
 | --- | --- | --- |
-| A spricht im Simplex-Einzelruf, B restauriert mit Sendeanforderung | Keine zweite Freigabe; A bleibt Owner | Geplant, nicht in diesem Chat ausgeführt |
+| A spricht im Simplex-Einzelruf, B restauriert mit Sendeanforderung | Keine zweite Freigabe; A bleibt Owner | Geplant, nicht für diesen Entwicklungsstand ausgeführt |
 | Freier Einzelruf-Floor | Restore mit Sendeanforderung darf vergeben; interner Owner stimmt | Geplant |
 | Restore des aktuellen Einzelruf-Owners | Gültiger Restore ohne konkurrierenden zweiten Owner | Geplant |
 | Keine Sendeanforderung / ungültiger Teilnehmer / inaktiver Ruf | Kein unerlaubter Grant; bisherige Ablehnung erhalten | Geplant |
@@ -231,7 +229,7 @@ Die grünen UI-/Radio-CI-Läufe des damaligen Branches beweisen diese fehlenden 
 
 ### 6.6 Zusätzlicher Umfang von c71c9ad5
 
-Drei getrennte Kandidaten bleiben erhalten: Gruppenruf-Late-Entry in einen bereits aktiven GSSI-Ruf statt paralleler Circuit-Allokation, Auswahl eines nicht sendenden Preemption-Opfers und Cleanup eines halb geöffneten Brew-Rufzweigs bei fehlgeschlagener netzseitiger Gruppenruf-Allokation. Sie sind **Ideen/Prüfkandidaten**, keine durch diesen Chat bestätigte Gesamtübernahme.
+Drei getrennte Kandidaten bleiben erhalten: Gruppenruf-Late-Entry in einen bereits aktiven GSSI-Ruf statt paralleler Circuit-Allokation, Auswahl eines nicht sendenden Preemption-Opfers und Cleanup eines halb geöffneten Brew-Rufzweigs bei fehlgeschlagener netzseitiger Gruppenruf-Allokation. Sie sind **Ideen/Prüfkandidaten**, keine für diesen Entwicklungsstand bestätigte Gesamtübernahme.
 
 ## 7. Gemeinsame WebUIs und Dark Mode
 
@@ -248,7 +246,7 @@ Umfang laut geprüftem PR und Update-Dokumenten:
 - eingebettete Oberflächen/Bundles in den vorhandenen Programmen, kein zusätzlicher produktiver Node-/npm-Webserver;
 - vorhandene Backend-APIs und Anmeldungen bleiben der Funktionspfad; Designänderung aktiviert keine zentrale IAM-Migration.
 
-Historischer Status im Roadmap-Chat: PR offen, UI-Branch implementiert, benannte CI-Läufe erfolgreich abgerufen, Merge und realer Host-Rollout offen. **Heute überholt ist nur „PR offen/nicht gemergt“:** der Merge wird in Abschnitt 10 nachgewiesen. Reale Bedien- und Hostabnahme bleiben für diesen Chat unbelegt.
+Historischer Status im Roadmap-Arbeitsphase: PR offen, UI-Branch implementiert, benannte CI-Läufe erfolgreich abgerufen, Merge und realer Host-Rollout offen. **Zum Prüfstand vom 06.10.2026 überholt ist nur „PR offen/nicht gemergt“:** der Merge wird in Abschnitt 10 nachgewiesen. Reale Bedien- und Hostabnahme bleiben für diese Arbeitsphase unbelegt.
 
 Nach Installation sind tatsächliche Dienstadressen, schmale Displays, Login/Logout, Tabellen/Dialoge, öffentliche Übersicht, RF-Anzeigen und gespeicherte Auswahl nach Neuladen zu prüfen. Vorschau-/Designwerte sind keine installierten Betriebsdaten.
 
@@ -256,7 +254,7 @@ Nach Installation sind tatsächliche Dienstadressen, schmale Displays, Login/Log
 
 ### 8.1 Endgültige kurze Prioritätsfolge vom 03.10.2026
 
-Diese Tabelle bewahrt **das Ergebnis dieses Chats**. Sie ist keine Behauptung, dass die inzwischen entstandene zentrale ROADMAP.md dieselbe Gesamtfolge verwendet.
+Diese Tabelle bewahrt **das Ergebnis der Planung**. Sie ist keine Behauptung, dass die inzwischen entstandene zentrale ROADMAP.md dieselbe Gesamtfolge verwendet.
 
 | Historische Priorität | Arbeitspaket | Damaliger belegter Stand / offener nächster Schritt |
 | --- | --- | --- |
@@ -292,7 +290,7 @@ UI-Abnahme, IAM-Inventur und Infrastrukturarbeiten durften neben dem Restore-Sta
 
 ### 8.3 Funk, Medien, Bedienung, Integrationen und kleinere Nebenideen
 
-| Wunsch / Kandidat | Status dieses Chats und vorhandene Grundlage | Nächster sinnvoller Schritt / Grenze |
+| Wunsch / Kandidat | Planungsstatus und vorhandene Grundlage | Nächster sinnvoller Schritt / Grenze |
 | --- | --- | --- |
 | Virtuelle Funkgeräte | Idee: PTT, Display, Tasten/D-Pad, GPS und steuerbarer Zellwechsel in Weboberfläche | Geräte-/Session-/Luftschnittstellenvertrag festlegen |
 | Virtuelle TBS und echte Simulation | mock_tbs.py ist vorhandener deterministischer Core-Testpartner; vollständiger RF-/ETSI-Simulator offen | Mock-Core-Integration, Gerätebedienung und RF-Simulation als getrennte Stufen abnehmen |
@@ -305,7 +303,7 @@ UI-Abnahme, IAM-Inventur und Infrastrukturarbeiten durften neben dem Restore-Sta
 | Kleine Touchscreens bis Anzeigewand | Erhaltener Bedienwunsch | Skalierung, mehrere Monitore, Fensterzustände, Eingaben und Offlineanzeige prüfen |
 | AD, NFC/RFID und privilegierte Rollen | Optionale IAM-Ausbaustufen, keine bestätigte Integration | Zuerst Rechte-/Sitzungsmodell; danach Verzeichnisdienst/Leser/MFA und Ausfallregeln |
 | HA/Homematic | MQTT, HA-Discovery, Command-/Ack-Ledger und Default-Deny-Grundlagen vorhanden | Funkstatus → IoT Gateway → Automation → tatsächliches Ergebnis → korrelierte SDS-Antwort testen |
-| Historisch ausbleibende SDS-Antwort | Ältere Fehlerbeobachtung, kein Nachweis eines heute fortbestehenden Fehlers | Aktuellen Build und vollständigen Rückweg reproduzieren; Empfang, Durchführung und Quittung unterscheiden |
+| Historisch ausbleibende SDS-Antwort | Ältere Fehlerbeobachtung, kein Nachweis eines zum Prüfstand vom 06.10.2026 fortbestehenden Fehlers | Aktuellen Build und vollständigen Rückweg reproduzieren; Empfang, Durchführung und Quittung unterscheiden |
 | GPIO / Sensoren / Aktoren | Hardware-Gateway-Grundlage; konkrete Hardware offen | Pinmatrix, Busse, Spannungen, Treiber und reale Rückmeldung mit Modulen prüfen |
 | Temperatur / Spannung / Lüfter / LEDs | Erhaltene Rack-Betriebswünsche | Sensor-/Aktor-Auswahl, Messung, Grenzwerte und Ausfallverhalten prototypisieren |
 | LCD/TFT / I2C-Anzeige / Watchdog | Ideen; kein geprüfter Treiber für jede Variante belegt | Konkrete Anzeige/Bus-/Reset-/Watchdog-Verträge festlegen |
@@ -323,9 +321,9 @@ UI-Abnahme, IAM-Inventur und Infrastrukturarbeiten durften neben dem Restore-Sta
 
 Weitere Vergleiche aus dem vorhandenen Upstream-Dokument bleiben relevant: Circuit-Reopen mit ausstehenden Close-Aufträgen; RTP-Socket-Rückstau vor media_ready; konfigurierbare Paketdauer; SIP-CANCEL mit verspätetem 2xx und ACK/BYE; Status-Ack und Deduplizierung; SDS-TL-Zustellbericht ohne unbeabsichtigtes emergency_clear; MAC-END-Channel-Allocation im letzten Downlinkfragment; Zugriffsmatrix für APIs, WebSockets, Assets und Medienexport. Diese Punkte wurden als einzelne Prüf-/Portierkandidaten erhalten, nicht als neue Live-Störungen bestätigt.
 
-Historische technische Details dieser Kandidaten: NetCore signalisierte ptime/maxptime 60 ms, FlowStation standardmäßig 20 ms mit konfigurierbarem Packetizer. Der NetCore-Media-Worker besaß begrenzte Queues von acht Einträgen und eine Altersgrenze von 240 ms; ein vorgelagerter ungelesener Socket-Rückstau war dadurch nicht automatisch beseitigt. FlowStation deduplizierte geeignete Statuskommandos 30 s nach Quelle/Status. Diese Zahlen sind **historische Vergleichsparameter**, keine in diesem Archiv erneut gemessenen oder für den heutigen Gesamtbetrieb empfohlenen Werte.
+Historische technische Details dieser Kandidaten: NetCore signalisierte ptime/maxptime 60 ms, FlowStation standardmäßig 20 ms mit konfigurierbarem Packetizer. Der NetCore-Media-Worker besaß begrenzte Queues von acht Einträgen und eine Altersgrenze von 240 ms; ein vorgelagerter ungelesener Socket-Rückstau war dadurch nicht automatisch beseitigt. FlowStation deduplizierte geeignete Statuskommandos 30 s nach Quelle/Status. Diese Zahlen sind **historische Vergleichsparameter**, keine in diesem Archiv erneut gemessenen oder für den geprüften Gesamtbetrieb empfohlenen Werte.
 
-## 9. Erreichtes Ergebnis, Fehler und Prüfungen des ursprünglichen Chats
+## 9. Erreichtes Ergebnis, Fehler und Prüfungen der ursprünglichen Arbeitsphase
 
 ### 9.1 Tatsächliche Dokumentationsveröffentlichung
 
@@ -337,7 +335,7 @@ fatal: could not read Username for 'https://github.com': No such device or addre
 
 Ursache war die in diesem Lauf fehlende nutzbare Git-HTTPS-Anmeldung. Der Fehler sagt nichts über die Funktionsfähigkeit von NetCore aus. **4818e1b ist kein bestätigter Ferncommit.**
 
-Nach der ausdrücklichen Nutzerfreigabe erfolgte die Veröffentlichung über den vorhandenen GitHub-Webeditor. Ein anschließender frischer Git-Abruf zeigte den Wiki-Fernstand d7b74943c4b970609eb47190d0a5f5921a779ced. Die beiden Seiten wurden im historischen Lauf vollständig gegen die beabsichtigten Texte geprüft; beide Vergleiche waren erfolgreich. Die heute geladene Wiki-Historie enthält die entsprechenden Veröffentlichungscommits:
+Die Veröffentlichung erfolgte die Veröffentlichung über den vorhandenen GitHub-Webeditor. Ein anschließender frischer Git-Abruf zeigte den Wiki-Fernstand d7b74943c4b970609eb47190d0a5f5921a779ced. Die beiden Seiten wurden im historischen Lauf vollständig gegen die beabsichtigten Texte geprüft; beide Vergleiche waren erfolgreich. Die zum Prüfstand vom 06.10.2026 geladene Wiki-Historie enthält die entsprechenden Veröffentlichungscommits:
 
 | Commit | Seite / Inhalt |
 | --- | --- |
@@ -347,7 +345,7 @@ Nach der ausdrücklichen Nutzerfreigabe erfolgte die Veröffentlichung über den
 | 5e500e5d2eb3b1a371b2e27c015068fc14b25086 | Projektideen: Floor-/Watchdog-Fixes und Abnahme |
 | 22a1622c3f3e9a21e7265a098ace9af2e3a81881 | Upstream: FlowStation-Herkunft und getrennte Portierung |
 
-Nach der konkreten Restore-Anweisung wurden **drei** Seiten fortgeschrieben: Roadmap-und-Releases, Projektideen-und-Entwicklungsstand und Upstream-Vergleich. Der historische vollständige Textvergleich nach frischem Fetch war für alle drei erfolgreich; der Wiki-Fernstand erreichte 22a1622. Heute wurde dieser Wiki-Stand erneut erfolgreich geklont und die einschlägigen Abschnitte/Historie gelesen.
+Nach der konkreten Restore-Anweisung wurden **drei** Seiten fortgeschrieben: Roadmap-und-Releases, Projektideen-und-Entwicklungsstand und Upstream-Vergleich. Der historische vollständige Textvergleich nach frischem Fetch war für alle drei erfolgreich; der Wiki-Fernstand erreichte 22a1622. Zum Prüfstand vom 06.10.2026 wurde dieser Wiki-Stand erneut erfolgreich geklont und die einschlägigen Abschnitte/Historie gelesen.
 
 Die zwei Screenshots belegen die gerenderte Veröffentlichung. Sie belegen keine Codeportierung und zeigen einen historischen Status, in dem PR #59 noch offen war.
 
@@ -364,55 +362,55 @@ Diese vier Workflow-Ergebnisse für **2fe2a1939a8795db3816d45973282781dae856f0**
 
 Die PR-Beschreibung berichtet zusätzlich sieben Browser-Suites: Shell 78 Checks, Core-Dienste 405, Media/Security 388, Auxiliary 431, Basisstation 136; Workflow 15 Tests sowie erfolgreiche Hardware-/RF-Prüfung. Weiter berichtet sie 155 Rust-Service-Tests, 14 Rust-Brew-Dashboard-Tests, 16 TBS-Backend-Tests, 76 Python-Warnservice-Tests und 20 Rust-Service-Release-Builds plus Basisstation.
 
-**Diese Umfangszahlen sind Angaben aus der PR-Beschreibung.** Sie wurden in diesem Chat nicht als komplette Testausführung reproduziert und sind nicht automatisch die Zahl aller im jeweiligen GitHub-Workflow gelaufenen Einzeltests.
+**Diese Umfangszahlen sind Angaben aus der PR-Beschreibung.** Sie wurden für diesen Entwicklungsstand nicht als komplette Testausführung reproduziert und sind nicht automatisch die Zahl aller im jeweiligen GitHub-Workflow gelaufenen Einzeltests.
 
-Historische Deployment-CI 36349402097 am Feature-Stand bbf0397 wurde im ursprünglichen Roadmap-Kontext als erfolgreich geprüft geführt. Für diesen Archivauftrag wurde dieser Lauf nicht erneut vollständig ausgewertet. Der Quell-/CI-Stand beweist weder den vollständigen ARM64-Imagebuild noch einen echten Pi-/SXceiver-Boot oder die NAS-/VPN-Abnahme.
+Historische Deployment-CI 36349402097 am Feature-Stand bbf0397 wurde im ursprünglichen Roadmap-Kontext als erfolgreich geprüft geführt. Für die Quellenprüfung vom 06.10.2026 wurde dieser Lauf nicht erneut vollständig ausgewertet. Der Quell-/CI-Stand beweist weder den vollständigen ARM64-Imagebuild noch einen echten Pi-/SXceiver-Boot oder die NAS-/VPN-Abnahme.
 
 ### 9.3 Fehlerdiagnosen und verbleibende Probleme
 
 | Problem / Befund | Diagnose / funktionierender Umgang | Verbleibende Grenze |
 | --- | --- | --- |
 | Wiki-Git-Push ohne Anmeldung | Nach ausdrücklicher Freigabe Webeditor benutzt; Fernstand danach per Git gelesen und Text geprüft | Lokaler Fehlcommit nicht als remote veröffentlicht melden |
-| Veraltete UI-Statusmeldung | Historisch korrekt „offen“; heute PR-Merge separat nachweisen | Wiki vom 03.10. ist nicht automatisch die aktuelle Gesamtroadmap |
-| Doppelte Einzelruf-Sprechfreigabe | Statischer aktiver Handlerbefund; Fix geplant | Keine Codeänderung oder reale Fehlerreproduktion dieses Chats |
+| Veraltete UI-Statusmeldung | Historisch korrekt „offen“; zum Prüfstand vom 06.10.2026 PR-Merge separat nachweisen | Wiki vom 03.10. ist nicht automatisch die aktuelle Gesamtroadmap |
+| Doppelte Einzelruf-Sprechfreigabe | Statischer aktiver Handlerbefund; Fix geplant | Keine Codeänderung oder reale Fehlerreproduktion dieser Arbeitsphase |
 | Fehlender Gruppenruf-UL-Watchdog nach Restore | Restore-/Floor-/UMAC-Zusammenhang geprüft; ergänzender Grant-Pfad geplant | Konkrete Dauer/Anlagenfolgen nicht gemessen; Rücknahme/Release-Regression offen |
 | Unvollständiger Mehrzellen-Gesamtpfad | Vorhandene Fachkerne und lokale Restore-Bausteine reichen nicht als Seamless-Nachweis | Zwei-TBS-Kontext-/Floor-/Medienabnahme ausstehend |
-| Ältere SDS-/HA-/Latenzberichte | Historische Beobachtungen erhalten; aktueller Build/Rückweg muss geprüft werden | Keine Behauptung, dass jeder alte Fehler heute fortbesteht |
+| Ältere SDS-/HA-/Latenzberichte | Historische Beobachtungen erhalten; aktueller Build/Rückweg muss geprüft werden | Keine Behauptung, dass jeder alte Fehler zum Prüfstand vom 06.10.2026 fortbesteht |
 | Audit-/Inventory-/Configdrift | Als eigene Konsolidierungsaufgabe aufgenommen | Keine aktuelle Live-Dienstzahl aus statischen Dokumenten ableiten |
 | Unzugängliche Bilder/Arbeitsverzeichnisse | Zwei Originalbilder gesichert; fehlende Quellen ausdrücklich markiert | Nicht sämtliche früheren Anhänge erneut lesbar |
 
 ### 9.4 Tatsächlich ausgeführte Prüfungen und nicht ausgeführte Arbeit
 
-Im ursprünglichen Chat tatsächlich durchgeführt bzw. belegt: Repository-/Branch-/PR-Sichtung, Quellenvergleich der Restore-Pfade, CI-Statusabfrage, Wiki-Veröffentlichung mit anschließender Fernprüfung und Screenshots.
+In der ursprünglichen Arbeitsphase tatsächlich durchgeführt bzw. belegt: Repository-/Branch-/PR-Sichtung, Quellenvergleich der Restore-Pfade, CI-Statusabfrage, Wiki-Veröffentlichung mit anschließender Fernprüfung und Screenshots.
 
-Im Archivauftrag tatsächlich durchgeführt: frischer Archiving-/main- und Tree-Abruf, Archivindex-/Dateikollisionsprüfung, Lesen der aktuellen Root-/IAM-/UI-Dokumente und relevanter CMCE-/UMAC-/SAP-Dateien, aktuelle PR-/Release-/Branch-/CI-Metadatenabfrage, erneuter Abruf des c71c9ad5-Commits aus beiden Upstream-Repositories, erfolgreicher Clone des eigenständigen Wikis sowie Sicht-/Prüfsummenprüfung der beiden Bilddateien.
+Im Prüfdurchlauf vom 06.10.2026 tatsächlich durchgeführt: frischer Archiving-/main- und Tree-Abruf, Archivindex-/Dateikollisionsprüfung, Lesen der aktuellen Root-/IAM-/UI-Dokumente und relevanter CMCE-/UMAC-/SAP-Dateien, aktuelle PR-/Release-/Branch-/CI-Metadatenabfrage, erneuter Abruf des c71c9ad5-Commits aus beiden Upstream-Repositories, erfolgreicher Clone des eigenständigen Wikis sowie Sicht-/Prüfsummenprüfung der beiden Bilddateien.
 
-**Nicht in diesem Chat ausgeführt:** neuer NetCore-Build, neuer Runtime-Testlauf, Restore-Patch, IAM-Installation, produktiver UI-Rollout, Pi-/SDR-Boot, RF-/Endgeräteabnahme, NAS-/VPN-/RELP-Test oder gemessener Seamless-Handover. Die damaligen Betriebsberichte anderer Gespräche wurden nicht stillschweigend zu eigenen Tests umgestuft.
+**Nicht für diesen Entwicklungsstand ausgeführt:** neuer NetCore-Build, neuer Runtime-Testlauf, Restore-Patch, IAM-Installation, produktiver UI-Rollout, Pi-/SDR-Boot, RF-/Endgeräteabnahme, NAS-/VPN-/RELP-Test oder gemessener Seamless-Handover. Die damaligen Betriebsberichte anderer Gespräche wurden nicht stillschweigend zu eigenen Tests umgestuft.
 
-## 10. Separater heutiger Repository-Stand vom 06.10.2026
+## 10. Separater geprüfter Repository-Stand vom 06.10.2026
 
 ### 10.1 Aktuelle Prüfung und historische Abweichungen
 
-| Gegenstand | Historisches Chatergebnis | Heutiger eigener Abgleich |
+| Gegenstand | Historisches Ergebnis | Geprüfter eigener Abgleich |
 | --- | --- | --- |
-| main | 6aa9be8 mit zusätzlicher IAM-Dokumentation; Runtime damals gegenüber 086a81fa unverändert | HEAD 9116c15d645458f99e236712b67a1ad970432791. Den historischen Satz „Runtime unverändert“ nicht pauschal auf das heutige main übertragen. |
-| Archiving | Kein historischer Runtime-Integrationsauftrag dieses Chats | Vor Schreiben HEAD 099f58c62a29955ad387fc9ef273d3c19a34e0cb gelesen; eigene bestehende Archive/Index erhalten |
+| main | 6aa9be8 mit zusätzlicher IAM-Dokumentation; Runtime damals gegenüber 086a81fa unverändert | HEAD 9116c15d645458f99e236712b67a1ad970432791. Den historischen Satz „Runtime unverändert“ nicht pauschal auf das geprüfte main übertragen. |
+| Archiving | Kein historischer Runtime-Integrationsauftrag dieser Arbeitsphase | Vor Schreiben HEAD 099f58c62a29955ad387fc9ef273d3c19a34e0cb gelesen; eigene bestehende Archive/Index erhalten |
 | PR #59 | Offen, Branch 2fe2a19 | closed, merged=true; Merge am 03.10.2026 um 05:37:28 UTC / 07:37:28 MESZ; Commit 7137e0dd69877e1b604bf89148fd8b6b590c1a97 |
-| UI-/TBS-Grundlage | Im Feature-Branch implementiert | Inzwischen auf main integriert; UI-Update-Dokumente auf main vorhanden. Host-Rollout weiterhin nicht aus diesem Chat nachgewiesen. |
+| UI-/TBS-Grundlage | Im Feature-Branch implementiert | Inzwischen auf main integriert; UI-Update-Dokumente auf main vorhanden. Host-Rollout weiterhin nicht aus dieser Arbeitsphase nachgewiesen. |
 | Restorehandler | Beide Lücken am main@6aa9be8 geprüft | Beide weiterhin im aktiven Verfahren. Identischer Blob c206b22750794be7c08633f1d67c22c4965d891b auf main und Archiving. |
-| UMAC-/Floor-Vertrag | Überwachung vorhanden, Restore aktiviert sie nicht | FloorGranted/RemoteFloorGranted, Timerinitialisierung, Slotmodell und Timeoutpfad erneut im heutigen Code geprüft |
+| UMAC-/Floor-Vertrag | Überwachung vorhanden, Restore aktiviert sie nicht | FloorGranted/RemoteFloorGranted, Timerinitialisierung, Slotmodell und Timeoutpfad erneut im geprüften Code geprüft |
 | IAM | NETCORE-IAM-01 geplant | Fachroadmap weiter geplant; 05.10.-Erweiterungen für Drive hinzugekommen. Kein Pfad namens netcore-auth im vollständigen Tree gefunden; daraus wird keine vollständige Sicherheitsinventur abgeleitet. |
-| Deployment / Discovery | Historischer Feature-Code bbf0397, nicht auf damaligem main | system-backend/deployment-core/ fehlt in beiden heute gelesenen vollständigen Trees; aktuelle Root-Roadmap dokumentiert die Übernahmelücke und Z01.1. Nicht jede Feature-Datei wurde für diesen Archivauftrag nochmals inhaltlich verglichen. |
-| Branchliste | Frühere UI-/Deployment-Feature-Branches referenziert | Heute liefert die Branch-API main und Archiving. Historische Branch-Namen sind daher Fortsetzungs-/Quellhinweise, keine behaupteten noch vorhandenen Remote-Refs. |
+| Deployment / Discovery | Historischer Feature-Code bbf0397, nicht auf damaligem main | system-backend/deployment-core/ fehlt in beiden zum Prüfstand vom 06.10.2026 gelesenen vollständigen Trees; aktuelle Root-Roadmap dokumentiert die Übernahmelücke und Z01.1. Nicht jede Feature-Datei wurde für diesen Prüfdurchlauf vom 06.10.2026 nochmals inhaltlich verglichen. |
+| Branchliste | Frühere UI-/Deployment-Feature-Branches referenziert | Zum Prüfstand vom 06.10.2026 liefert die Branch-API main und Archiving. Historische Branch-Namen sind daher Fortsetzungs-/Quellhinweise, keine behaupteten noch vorhandenen Remote-Refs. |
 | Release | v1.9.0 | API releases/latest weiterhin v1.9.0, veröffentlicht 26.09.2026 23:02:27 UTC, Ziel 086a81fa8820ef579c475a65a38e3d23644c52f0. Aktuelles main ist deshalb nicht mit dem Release gleichzusetzen. |
 | Wiki | Publiziert bis 22a1622 am 03.10. | Eigenständiges Wiki weiterhin an diesem geladenen Stand; enthält deshalb inzwischen überholte „PR #59 offen“-Passagen |
 | Gesamtpriorität | Restore an Stelle 1 der kurzen Wiki-Liste | Neuere ROADMAP.md auf main ist aktueller Einstieg und setzt Z01.1 zuerst; Z02.1/2 parallel P0. Diese Archivierung ändert keine Priorität außerhalb Docs/archive/. |
 
-Die vollständigen rekursiven Git-Trees waren beim Abruf nicht abgeschnitten. Archiving enthält am geprüften Stand keine Root-ROADMAP.md und kein AGENTS.md. Der aktuelle Hauptzweig enthält beide; AGENTS.md verweist für die heutige Projektfolge auf ROADMAP.md. Die fachliche Reihenfolge wird deshalb aus main gelesen, ohne Root-Dateien in den Archivbranch zu kopieren oder den Branch zu mergen.
+Die vollständigen rekursiven Git-Trees waren beim Abruf nicht abgeschnitten. Archiving enthält am geprüften Stand keine Root-ROADMAP.md und kein AGENTS.md. Der aktuelle Hauptzweig enthält beide; AGENTS.md verweist für die geprüfte Projektfolge auf ROADMAP.md. Die fachliche Reihenfolge wird deshalb aus main gelesen, ohne Root-Dateien in den Archivbranch zu kopieren oder den Branch zu mergen.
 
 ### 10.2 Aktuelle Gesamtfolge und konkrete Fortsetzung
 
-Die heutige Root-Roadmap NETCORE-MASTER-01 ist vom 05.10.2026 und nennt **Z01.1** als ersten Schritt: fehlende Deployment-/Syslog-Arbeit gegen aktuelles main abgleichen und einen prüfbaren Integrationsplan vorbereiten.
+Die geprüfte Root-Roadmap NETCORE-MASTER-01 ist vom 05.10.2026 und nennt **Z01.1** als ersten Schritt: fehlende Deployment-/Syslog-Arbeit gegen aktuelles main abgleichen und einen prüfbaren Integrationsplan vorbereiten.
 
 | Aktuelle ID | Priorität / Zweck | Fortsetzung und Abnahme |
 | --- | --- | --- |
@@ -428,17 +426,17 @@ Die heutige Root-Roadmap NETCORE-MASTER-01 ist vom 05.10.2026 und nennt **Z01.1*
 | Z07 / Z08 | Mehrzellen und praktischer Ausbau | Nach stabiler Einzelzelle Kontext-/Floor-/Medienpfad und Leitstellen-/Hardware-/Aktor-Piloten |
 | Z10 / Z11 | Betriebsreife / weitere Produkte | Gesicherter Betrieb, Dauerlast, Restore, später HA/Funk-Security/Regionen und nachrangige Clients/Brücken |
 
-Z02.5, Drive und die ausführlichere zentrale Gesamtfolge sind **spätere Repository-Planung**, kein rückwirkend erfundener ursprünglicher Roadmap-Chatbeschluss. Für Z02.5 wurde hier die aktuelle Roadmap gelesen, aber nicht die komplette zugehörige MM-/Group-Core-Prüfung eigenständig wiederholt. Das dort dokumentierte fehlende Handling ist ein aktueller Roadmap-Quellbefund, kein eigener neuer Live-Test dieses Archivs.
+Z02.5, Drive und die ausführlichere zentrale Gesamtfolge sind **spätere Repository-Planung**, kein rückwirkend erfundener ursprünglicher Roadmap-Arbeitsphasebeschluss. Für Z02.5 wurde hier die aktuelle Roadmap gelesen, aber nicht die komplette zugehörige MM-/Group-Core-Prüfung eigenständig wiederholt. Das dort dokumentierte fehlende Handling ist ein aktueller Roadmap-Quellbefund, kein eigener neuer Live-Test dieses Archivs.
 
 Drive wurde in der IAM-Fachroadmap am 05.10. ergänzt: lokale Konten/Gruppen und Datei-/Ordnerrechte können zuerst funktionieren; spätere zentrale Anmeldung D6 erhält stabile interne Objekt-/Identitätsreferenzen. Eine solche lokale Anfangsphase ist keine automatische Rückkehr zu regulären lokalen Logins bei Ausfall des späteren Identity-Dienstes.
 
-Für die Fortsetzung zuerst aktuelle main-SHA und Root-Roadmap prüfen, dann die innerhalb des Nutzerauftrags höchste offene Aufgabe mit erfüllten Abhängigkeiten wählen. Ein fehlender Live-Zugang blockiert den Quellvergleich Z01.1 nicht. Das aktuelle Archivmandat umfasst keine dieser Runtime-Implementierungen.
+Für die Fortsetzung zuerst main-SHA und Root-Roadmap prüfen, dann die höchste offene Aufgabe mit erfüllten Abhängigkeiten wählen. Der Quellvergleich Z01.1 ist auch ohne Live-Zugang möglich.
 
 ## 11. Relevante Dateien, Dienste, Ports und technische Parameter
 
 ### 11.1 Quellpfade und Nachweisorte
 
-Alle folgenden main-Verweise sind auf den heute geprüften Commit gepinnt, soweit ein Link angegeben ist.
+Alle folgenden main-Verweise sind auf den zum Prüfstand vom 06.10.2026 geprüften Commit gepinnt, soweit ein Link angegeben ist.
 
 | Pfad / Quelle | Relevanz |
 | --- | --- |
@@ -459,16 +457,16 @@ Alle folgenden main-Verweise sind auf den heute geprüften Commit gepinnt, sowei
 | system-backend/control-room/ui/ | Native eframe/egui-Grundlage, Fenster/Karten; keine vollständige Audioarbeitsplatzabnahme |
 | misc/brew-server/ | Eigenständiges Rust-Brew-Paket; Python-Brew/TBS Connect separat erhalten |
 | tests/e2e/netcore_e2e/mock_tbs.py | Core-Integrationspartner, kein vollständiger RF-/Endgerätesimulator |
-| install/update-basisstation.sh | Bestehender TBS-Updater mit Binarysicherung und Start-/Rückweg; nicht in diesem Chat ausgeführt |
+| install/update-basisstation.sh | Bestehender TBS-Updater mit Binarysicherung und Start-/Rückweg; nicht für diesen Entwicklungsstand ausgeführt |
 | deploy/open-lab/inventory.example.toml, generated/service-catalog.json, netcore-deploy.py | Aktuelle Root-Roadmap verweist auf 25/24-Inventardrift und Ready-Schranke |
 | Docs/CENTRAL_NETWORK_ROLLOUT.md, Docs/EDGE_FALLBACK.md, tests/e2e/README.md | Fachgrenzen, Rollout-/Fallback-/Teststufen; im Archiv kein neues Gesamtzertifikat |
-| system-backend/deployment-core/ | Nur historischer Feature-Pfad; im heutigen main/Archiving-Tree nicht vorhanden |
+| system-backend/deployment-core/ | Nur historischer Feature-Pfad; im geprüften main/Archiving-Tree nicht vorhanden |
 
 Die lebende GitHub-Wiki-Ablage ist ein eigenes Git-Repository netcore-tetra.wiki.git. Sie ist nicht mit dem Verzeichnis wiki/ im Hauptrepository oder mit Docs/archive/ gleichzusetzen.
 
 ### 11.2 Standardports der 29 betroffenen Dienst-WebUIs
 
-Quelle ist die am heutigen main gelesene DIENST-WEBUI-DESIGN-UPDATE.md. **Dies sind Repository-Vorgaben, keine geprüfte Liste real laufender Listener.** Jede VM/LXC hat ihre eigene Adresse; lokale Konfiguration und tatsächliche Unit haben Vorrang.
+Quelle ist die am geprüften main gelesene DIENST-WEBUI-DESIGN-UPDATE.md. **Dies sind Repository-Vorgaben, keine geprüfte Liste real laufender Listener.** Jede VM/LXC hat ihre eigene Adresse; lokale Konfiguration und tatsächliche Unit haben Vorrang.
 
 | Dienst | Standardport | Dienst | Standardport |
 | --- | ---: | --- | ---: |
@@ -508,20 +506,19 @@ Der TBS-Dashboard-Port ist hier nicht zusätzlich als aktueller Anlagenwert fest
 
 ### 12.1 Dokumentations- und Quellprüfung
 
-| Befehl / Operation | Ausführungsstatus in diesem Chat |
+| Befehl / Operation | Ausführungsstatus für diesen Entwicklungsstand |
 | --- | --- |
 | Git-Fetch und Textvergleich der Wiki-Seiten nach Webeditor-Veröffentlichung | Historisch erfolgreich; zwei Seiten nach erster Veröffentlichung, drei nach Restore-Ergänzung |
 | Erster Wiki-Git-Push | Tatsächlich versucht und fehlgeschlagen; fehlende HTTPS-Anmeldung, siehe Abschnitt 9 |
-| git clone --depth=12 https://github.com/JanHG98/netcore-tetra.wiki.git … | Im Archivauftrag erfolgreich ausgeführt; nur Lesen des Wikis |
-| git rev-parse HEAD und git log im geklonten Wiki | Erfolgreich; heutiger geladener Stand 22a1622 und konkrete Wiki-Commitfolge belegt |
+| git clone --depth=12 https://github.com/JanHG98/netcore-tetra.wiki.git … | Im Prüfdurchlauf vom 06.10.2026 erfolgreich ausgeführt; nur Lesen des Wikis |
+| git rev-parse HEAD und git log im geklonten Wiki | Erfolgreich; geprüfter geladener Stand 22a1622 und konkrete Wiki-Commitfolge belegt |
 | GitHub-API: Branches, rekursive Trees, Dateien, PR #59, Release, Action-Läufe | Erfolgreich gelesen; relevante Daten in den Abschnitten 9–11 |
 | GitHub-API: c71c9ad5 in Bost und FlowStation | Erfolgreich gelesen; identischer Commit und Herkunft belegt |
 | SHA-256-/Bildgrößenprüfung der beiden JPEGs | Ausgeführt; Werte in Abschnitt 14 |
-| Archivveröffentlichung | Eigener autorisierter Git-Daten-Commit auf frisch gelesenem Archiving mit überprüftem Elternstand; kein Force-Push und kein Merge |
 
 ### 12.2 Historische UI-Installation: dokumentiert, nicht ausgeführt
 
-Die beiden Update-Anleitungen sind Quellen für einen späteren Host-Rollout. Folgende Schritte wurden in diesem Chat **nicht auf einer TBS/VM/LXC ausgeführt**:
+Die beiden Update-Anleitungen sind Quellen für einen späteren Host-Rollout. Folgende Schritte wurden für diesen Entwicklungsstand **nicht auf einer TBS/VM/LXC ausgeführt**:
 
 1. Bestehenden Checkout, sauberen Arbeitsbaum, Dienst-Unit, Benutzer, ExecStart, MainPID, Konfiguration und tatsächlich gestartete Binary ermitteln. Mögliche Unitnamen sind tetra.service, bluestation.service, tetra-bluestation.service und bluestation-bs.service; keine einzelne Unit pauschal als vorhanden behaupten.
 2. Bisherige SHA, Konfiguration und Binary sichern. Bei laufender TBS /proc/<MainPID>/exe berücksichtigen; nicht versehentlich eine andere Kopie aus /usr/local/bin ersetzen.
@@ -553,7 +550,7 @@ UNIT, BINARY_PATH und CONFIG_PATH müssen aus der tatsächlichen Anlage ermittel
 
 MIGRATE_LOCAL_TTS_CONFIG=0 und DISABLE_LOCAL_PIPER=0 sind für das reine Design-Update wichtig: Der allgemeine Updater könnte sonst lokale TTS-Konfiguration migrieren bzw. den bestehenden lokalen Piper-Dienst deaktivieren. Ein erfolgreicher Dienststart ersetzt keine Funktionsabnahme.
 
-Die historischen Anleitungen beschreiben einen Wechsel auf feat/netcore-dashboard-design mit Fast-forward. **Dieser Branchname ist heute kein vorhandener Remote-Branch mehr.** Für einen künftigen Rollout einen aktuellen geprüften main-Commit oder geeigneten Release bewusst auswählen; die alte Branchwechselanweisung nicht blind ausführen. Die Ablösung dieser historischen Installationsbeschreibung ist eine Fortsetzungsaufgabe, keine Änderung außerhalb Docs/archive/ durch diesen Auftrag.
+Die historischen Anleitungen beschreiben einen Wechsel auf feat/netcore-dashboard-design mit Fast-forward. **Dieser Branchname ist zum Prüfstand vom 06.10.2026 kein vorhandener Remote-Branch mehr.** Für einen künftigen Rollout einen aktuellen geprüften main-Commit oder geeigneten Release bewusst auswählen; die alte Branchwechselanweisung nicht blind ausführen. Die Ablösung dieser historischen Installationsbeschreibung ist eine Fortsetzungsaufgabe, keine Änderung außerhalb Docs/archive/ durch diesen Auftrag.
 
 Weitere dokumentierte Beispiele, ebenfalls **nicht hier ausgeführt**:
 
@@ -570,7 +567,7 @@ Rust-Dienste benötigen den Austausch der tatsächlich verwendeten Binary nach S
 
 | Früherer Ansatz / mögliche Fehlinterpretation | Endgültige Einordnung / Grund |
 | --- | --- |
-| Ausschließlich native Bedienung als historische Präferenz | Nicht als heutiges Verbot von Weboberflächen verwenden; später ausdrücklich gemeinsame WebUIs und Dark Mode gewünscht |
+| Ausschließlich native Bedienung als historische Präferenz | Nicht als geprüftes Verbot von Weboberflächen verwenden; später ausdrücklich gemeinsame WebUIs und Dark Mode gewünscht |
 | Ausschließlich Deployment-LXC | Für Imagebuilder durch Ubuntu-VM konkretisiert; LXC ohne Imagebuilder bleibt Alternative |
 | Identity-Dienst zwingend im Control Room oder Security Core | Eigener Identity-Betrieb empfohlen, um Fachdienst-/Login-Abhängigkeit zu begrenzen |
 | Vollständiger eigener Passwort-/MFA-/Tokenserver als erster IAM-Schritt | Nicht empfohlen; etablierter IdP/OIDC, NetCore-spezifische Rechte in Fachbackends |
@@ -585,22 +582,22 @@ Rust-Dienste benötigen den Austausch der tatsächlich verwendeten Binary nach S
 | Datumswechsel oder Dokumentationsmerge erzeugt automatisch neue identische Handbuchausgabe | Nicht vorgesehen; vorhandene historische Ausgaben und Quellenstände weiter nutzen |
 | Neun Prioritätspunkte / Quellen nur bis September | Durch spätere Prüfung korrigiert: zehn Punkte, Quellen bis Oktober |
 | PR #59 weiterhin offen | Historisch korrekt, seit dem nachgewiesenen Merge überholt; Hostabnahme davon getrennt |
-| Historische Wiki-Kurzliste als heutige globale Folge | Durch spätere zentrale ROADMAP.md als Gesamtsteuerung ergänzt/überholt; das historische Chatergebnis bleibt erhalten |
+| Historische Wiki-Kurzliste als geprüfte globale Folge | Durch spätere zentrale ROADMAP.md als Gesamtsteuerung ergänzt/überholt; das historische Entwurfsergebnis bleibt erhalten |
 
 ## 14. Quellen, Bilder und zusammengehörige Archive
 
 ### 14.1 Zentrale Links und historische Commitstände
 
 - [Historische Wiki-Roadmap](https://github.com/JanHG98/netcore-tetra/wiki/Roadmap-und-Releases), insbesondere [CMCE-Restore-Priorisierung](https://github.com/JanHG98/netcore-tetra/wiki/Roadmap-und-Releases#kurzfristig-priorisiert-cmce-restore-stabilisieren).
-- [Projektideen und Entwicklungsstand](https://github.com/JanHG98/netcore-tetra/wiki/Projektideen-und-Entwicklungsstand) und [Upstream-Vergleich](https://github.com/JanHG98/netcore-tetra/wiki/Upstream-Vergleich); heute geladener gemeinsamer Wiki-Stand 22a1622c3f3e9a21e7265a098ace9af2e3a81881.
+- [Projektideen und Entwicklungsstand](https://github.com/JanHG98/netcore-tetra/wiki/Projektideen-und-Entwicklungsstand) und [Upstream-Vergleich](https://github.com/JanHG98/netcore-tetra/wiki/Upstream-Vergleich); zum Prüfstand vom 06.10.2026 geladener gemeinsamer Wiki-Stand 22a1622c3f3e9a21e7265a098ace9af2e3a81881.
 - [Historische NetCore-Basis 6aa9be8](https://github.com/JanHG98/netcore-tetra/tree/6aa9be8f74ab731f72dc133a5f8e90c5018c626d), vorheriger Dokumentationsstand f4fd490f577c1315279ecc89f0c6b1808ee7733d und damaliger Runtime-/Release-Stand 086a81fa8820ef579c475a65a38e3d23644c52f0.
 - [PR #59](https://github.com/JanHG98/netcore-tetra/pull/59): UI/Dark Mode, Head 2fe2a1939a8795db3816d45973282781dae856f0, tatsächlicher Mergecommit 7137e0dd69877e1b604bf89148fd8b6b590c1a97.
-- [PR #58](https://github.com/JanHG98/netcore-tetra/pull/58): weitergegebener früherer Dokumentationsmerge; kein neuer Runtime-Fix in diesem Chat.
+- [PR #58](https://github.com/JanHG98/netcore-tetra/pull/58): weitergegebener früherer Dokumentationsmerge; kein neuer Runtime-Fix für diesen Entwicklungsstand.
 - [Historischer Deployment-Stand bbf0397](https://github.com/JanHG98/netcore-tetra/tree/bbf039729b9b05f8d623b11195ca24a124f68d16) und [PR #57](https://github.com/JanHG98/netcore-tetra/pull/57), im Feature-Stand integrierter Discovery-/Syslog-Ausbau.
 - [Release v1.9.0](https://github.com/JanHG98/netcore-tetra/releases/tag/v1.9.0).
 - [Restore-Quellcommit Bost](https://github.com/Aitorrio/bost-flowstation/commit/c71c9ad51462bbc64fb7669f9b192d5f6f325d8b) und [identischer FlowStation-Commit](https://github.com/razvanzeces/flowstation/commit/c71c9ad51462bbc64fb7669f9b192d5f6f325d8b).
 
-Historische Vergleichsbasis des im Chat herangezogenen Upstream-Dokuments:
+Historische Vergleichsbasis des im dokumentierten Arbeitsstand herangezogenen Upstream-Dokuments:
 
 | Projekt | Damals festgehaltener SHA | Historischer Release-/Quellenhinweis |
 | --- | --- | --- |
@@ -610,7 +607,7 @@ Historische Vergleichsbasis des im Chat herangezogenen Upstream-Dokuments:
 | Nexus BS2 | ebfd0b517589d5303c4a10151a253d397d24ce3d | Damals Dokumentation ohne öffentlichen Runtime-Code |
 | Bost FlowStation | bb87b84cf5bc340271a1d50c266c6d6b817b0d69 | Damals Code/Changelog 0.4.7, GitHub-Release v0.4.0 |
 
-Die heutige Archivprüfung hat **nicht alle fünf Upstream-HEADs erneut verglichen**. Die Tabelle ist ausdrücklich historisch. Insbesondere neuere Bost-Mehrzellenarbeit anderer Chats wird dadurch nicht verneint; aus dem alten Snapshot darf kein aktueller Gesamtstatus von Bost abgeleitet werden. Nur der konkrete c71c9ad5-Commit wurde hier erneut in beiden Herkunftsrepositories abgerufen.
+Die Archivprüfung vom 06.10.2026 hat **nicht alle fünf Upstream-HEADs erneut verglichen**. Die Tabelle ist ausdrücklich historisch. Insbesondere neuere Bost-Mehrzellenarbeit anderer Arbeitsphasen wird dadurch nicht verneint; aus dem alten Snapshot darf kein aktueller Gesamtstatus von Bost abgeleitet werden. Nur der konkrete c71c9ad5-Commit wurde hier erneut in beiden Herkunftsrepositories abgerufen.
 
 ### 14.2 Archivierte Originalbilder
 
@@ -629,12 +626,12 @@ Spätere Aufnahme der beiden kurzfristig priorisierten Restore-Fixes:
 
 ![Historische CMCE-Restore-Priorisierung mit Floor- und Watchdog-Abnahme](assets/2026-10-06_roadmap-ui-rbac-cmce-restore/netcore-restore-roadmap-1790992809677.jpg)
 
-Das zusätzlich erwähnte netcore-wiki-proof-1790976230625.jpg ist nicht vorhanden und wurde nicht durch einen ähnlichen Treffer ersetzt. Weitere vollständige Originalanhänge früherer Projektchats wurden nicht als verfügbar behauptet.
+Das zusätzlich erwähnte netcore-wiki-proof-1790976230625.jpg ist nicht vorhanden und wurde nicht durch einen ähnlichen Treffer ersetzt. Weitere vollständige Originalanhänge früherer Projektunterlagen wurden nicht als verfügbar behauptet.
 
 ### 14.3 Verwandte Archive und Fortsetzungsgrenzen
 
-Das bereits vorhandene [separate Bost-/Mehrzellen-/Portierungsarchiv](2026-10-06_bost-flowstation-seamless-handover-mehrzellen-restore-und-portierungsanalyse.md) betrifft einen anderen Chat und wurde nicht überschrieben. Es kann neuere Bost-Befunde enthalten; seine eigene Quell-/Testabgrenzung beachten.
+Das bereits vorhandene [separate Bost-/Mehrzellen-/Portierungsarchiv](2026-10-06_bost-flowstation-seamless-handover-mehrzellen-restore-und-portierungsanalyse.md) betrifft eine andere Arbeitsphase und wurde nicht überschrieben. Es kann neuere Bost-Befunde enthalten; seine eigene Quell-/Testabgrenzung beachten.
 
-Weitere vorhandene Archive dokumentieren [VPN-Autotoggle](2026-10-06_raspberry-pi-openvpn-autoverbindung-vertrauenswuerdige-netze.md) sowie [Observability/Syslog/NFS](2026-10-06_observability-syslog-discovery-nfs-logarchivierung.md). Betriebsnachweise daraus bleiben Aussagen ihrer jeweiligen Chats und wurden hier nicht neu durchgeführt.
+Weitere vorhandene Archive dokumentieren [VPN-Autotoggle](2026-10-06_raspberry-pi-openvpn-autoverbindung-vertrauenswuerdige-netze.md) sowie [Observability/Syslog/NFS](2026-10-06_observability-syslog-discovery-nfs-logarchivierung.md). Betriebsnachweise daraus bleiben Aussagen ihrer jeweiligen Arbeitsphasen und wurden hier nicht neu durchgeführt.
 
-Für einen Folgechat mit Runtime-Auftrag sind die aktuellen Root-/Fachroadmaps, die ursprüngliche Restore-Herkunft und die gezielten Abnahmekriterien dieses Archivs die Fortsetzungsbasis. Die nächste konkrete Arbeit bleibt nach heutiger Gesamtfolge Z01.1, parallel sind Z02.1/2 mit den beschriebenen Verträgen möglich. UI ist integriert, Hostabnahme offen; IAM ist geplant. Der Nutzer archiviert den Chat nach eigener Prüfung selbst.
+Fortsetzungsbasis sind die dann gültigen Root-/Fachroadmaps, die Restore-Herkunft und die gezielten Abnahmekriterien. Nach der Gesamtfolge vom 06.10.2026 beginnt die Arbeit mit Z01.1; Z02.1/2 können parallel mit den beschriebenen Verträgen bearbeitet werden. UI ist integriert, Hostabnahme offen und IAM geplant.

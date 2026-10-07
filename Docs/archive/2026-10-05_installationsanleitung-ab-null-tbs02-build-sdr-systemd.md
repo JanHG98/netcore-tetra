@@ -1,16 +1,13 @@
-# NetCore-Tetra – Installationsanleitung ab 0: TBS-02, Build, SXceiver und systemd
+# Brainstorming: TBS-02 aufbauen: Build, SXceiver und systemd
 
-## 1. Metadaten und Ergebnis
+**Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
+
+## 1. Arbeitsstand und Ergebnis
 
 | Feld | Verifizierter Wert / Abgrenzung |
 |---|---|
-| Ursprünglicher Chattitel | **Installationsanleitung ab 0** |
-| Chat-ID | `6aa54239-3fa0-83ed-b3e2-0744529f9e27` |
-| Chatlink | [ChatGPT-Verlauf](https://chatgpt.com/c/6aa54239-3fa0-83ed-b3e2-0744529f9e27), [Referenz in der App](chatgpt-conversation://6aa54239-3fa0-83ed-b3e2-0744529f9e27) |
 | Erstellungsdatum dieser Dokumentation | **2026-10-05**, Datumsbezug Europe/Berlin |
-| Chat laut Metadaten angelegt | 2026-09-12, 14:14:50 Uhr Europe/Berlin |
-| Zugänglicher technischer Dialog | 2026-09-12, 15:47–16:38 Uhr Europe/Berlin; vier technische Frage-/Antwortabschnitte |
-| Archivauftrag im Quellchat | 2026-10-05, 23:08 Uhr Europe/Berlin; fünfter zugänglicher Gesprächsabschnitt |
+| Historischer Arbeitszeitraum | 2026-09-12, 15:47–16:38 Uhr Europe/Berlin; Installations- und Diagnosephase |
 | Repository | `JanHG98/netcore-tetra` |
 | Zielbranch | **`Archiving`**, bereits vorhanden |
 | Vor dem Schreiben geprüfter Archivbranch | **`45c13959b0e030e4162344fbf2b5d29fbcd820d3`** |
@@ -20,51 +17,33 @@
 | Archivdatei | `Docs/archive/2026-10-05_installationsanleitung-ab-null-tbs02-build-sdr-systemd.md` |
 | Zugehörige Belege | [Bereinigter Laufzeitlog](assets/2026-10-05_installation-ab-null-tbs02/laufzeit-20260912-bereinigt.txt), [Herkunft, Prüfsummen und Ereigniszählung](assets/2026-10-05_installation-ab-null-tbs02/provenienz.json) |
 
-**Erreichter historischer Stand:** Der Benutzer bestätigt einen erfolgreichen Build. Der anschließend als `netcore` gestartete Prozess erkennt den SXceiver und verarbeitet eine reale Anmeldung, Gruppenaffiliation, einen SDS-Eingang und einen Gruppenruf. Der Log enthält außerdem einen SIP-Rufaufbau bis `media ready`. Recorder und AudioPlayer sind wegen Dateisystemrechten deaktiviert, der SNDCP-Paketgateway scheitert an `CAP_NET_ADMIN`, und der Node Gateway ist beim zweiten Start nicht erreichbar. Eine abschließend installierte und nach Reboot geprüfte `tetra.service` ist nicht belegt.
-
-Die geprüften Commitangaben bezeichnen den **Repository-Stand vor dieser Archivänderung**. Der veröffentlichende Archiv-Commit ergibt sich aus der Git-Historie dieser Datei und wird in der Abschlussmeldung genannt; er wird nicht als selbstreferenzieller Hash in den Dateiinhalt erfunden.
+**Erreichter historischer Stand:** Ein erfolgreicher Build wurde zurückgemeldet. Der anschließend als `netcore` gestartete Prozess erkennt den SXceiver und verarbeitet eine reale Anmeldung, Gruppenaffiliation, einen SDS-Eingang und einen Gruppenruf. Der Log enthält außerdem einen SIP-Rufaufbau bis `media ready`. Recorder und AudioPlayer sind wegen Dateisystemrechten deaktiviert, der SNDCP-Paketgateway scheitert an `CAP_NET_ADMIN`, und der Node Gateway ist beim zweiten Start nicht erreichbar. Eine abschließend installierte und nach Reboot geprüfte `tetra.service` ist nicht belegt.
 
 ## 2. Quellenumfang, Zugänglichkeit und Beweismaßstab
 
-### 2.1 Tatsächlich verfügbare Quellen
+### 2.1 Quellenbasis und fehlende Betriebsbelege
 
-Der Chatabruf am 2026-10-05 lieferte fünf vollständige Gesprächsabschnitte, `hasMore=false` und keinen `nextCursor`. Der jüngste Abschnitt enthält den ausführlichen Archivauftrag sowie die Übergabe an den Work-Chat. Die vier technischen Abschnitte behandeln, chronologisch:
+Grundlagen sind der Installationsstand auf TBS-02 vom 12. September 2026, der bereinigte Laufzeitlog und die Repository-Prüfung vom 5. Oktober. Die spätere Build-Erfolgsmeldung und die manuellen Starts sind erhalten; der frühe Installationsablauf liegt nicht vollständig vor.
 
-1. Kernel-OOM beim Rust-Build und Vorschläge zu Swap und Build-Parallelität.
-2. Die Benutzerbestätigung, dass der Build durchgelaufen ist, sowie vorgeschlagene Installation, manueller Start und eine vorläufige systemd-Unit.
-3. Den gescheiterten Start als `jan` wegen unlesbarer Haupt- und Fallback-Konfiguration sowie die Korrektur auf den Dienstbenutzer.
-4. Die Benutzerbestätigung „läuft an sich“, die Erkennung des AliExpress-SDRs, den noch zu bearbeitenden lokalen Fallback und den hochgeladenen Laufzeitlog mit anschließender Diagnose.
-
-Der bereitgestellte Vorschauausschnitt war kürzer als die nun gelesenen Antworten. Insbesondere Gerätezugriff, Packet-Gateway-Helfer, Node-Gateway-Ausfall und Einordnung der Start-Overruns konnten aus der vollständigen abrufbaren letzten Antwort ergänzt werden.
-
-Der Originalanhang **`Eingefügter Text(20260912-143852).txt`** war lokal lesbar. Er enthält **244.548 Bytes und 1.146 physische Zeilen**, einschließlich zweier manueller Starts, einer Konfigurationsbearbeitung zwischen den Starts und zweier geordneter Abbrüche. Das Log enthält Uhrzeiten, aber keine Datumsangabe pro Zeile. Der Tagesbezug 2026-09-12 stammt aus Dateiname und zugehörigem Chatturn; der Suffix `143852` des Dateinamens wird nicht mit den Laufzeituhrzeiten verwechselt.
-
-### 2.2 Explizite Lücken
-
-- Der früher als 15:47 Uhr liegende Installationsdialog wird nicht geliefert, obwohl der Chat laut Metadaten bereits um 14:14 Uhr angelegt wurde. Die ursprünglichen Schritte „ab 0“ – OS-Installation, Paketinstallation, Anlage des Dienstbenutzers, Codec-/Soapy-Build und Auswahl des Quellstands – sind daher **nicht vollständig rekonstruierbar**.
-- Kein vollständiger Chat-Export und keine frühere Konfigurationsdatei stehen für diese Auswertung zur Verfügung. Es gibt keinen auswertbaren Diff der im Log sichtbaren `nano`-Bearbeitung.
-- Es wurde **ein Textanhang und kein eigenständiger Bildanhang** geliefert. Für diesen Chat werden deshalb keine Bilder hochgeladen. Das ist eine Aussage über die zugänglichen Quellen, keine Behauptung über den gesamten historischen Chat.
-- Die allgemeinen ETSI-PDFs unter `sources/` sind Projektmaterial; sie sind kein Ersatz für fehlende Chatabschnitte und wurden nicht verändert oder als Chatbilder kopiert.
-- Es fehlen die ursprüngliche Buildausgabe, `free -h`/Swap-Ausgaben nach der Reparatur, vollständige `ldd`-Ergebnisse, finale Unit und Geräteberechtigungen sowie ein Boot-/Dauerlaufprotokoll.
-- Kein vollständiger historischer Source-Snapshot oder Binary-Hash liegt vor. `b63b251b` ließ sich in den für `Archiving` und `main` geladenen Objekten nicht als Commit auflösen. Daraus folgt keine Aussage, dass dieser Commit weltweit oder in alten Archiven nicht mehr existiert.
+Es fehlen vollständige Build-, RAM-/Swap- und `ldd`-Ausgaben, der Diff der `nano`-Bearbeitung, die finale systemd-Unit, Geräteberechtigungen und ein Reboot-/Dauerlaufprotokoll. Die Binarykennung `b63b251b` ließ sich in den geladenen `Archiving`-/`main`-Objekten nicht als vollständiger Source-Commit auflösen. Originalbilder fehlen; das Textlog bleibt der Betriebsbeleg. Allgemeine ETSI-PDFs ergänzen keine fehlenden Installationsnachweise.
 
 ### 2.3 Statuslegende
 
 | Status | Verwendung in dieser Dokumentation |
 |---|---|
 | **Idee** | Option, für die keine endgültige Auswahl belegt ist. |
-| **Beschlossen/geplant** | Als nächster Ablauf vorgeschlagen oder festgelegt; Durchführung nicht belegt. Ein Assistentenvorschlag wird dabei ausdrücklich als solcher benannt. |
-| **Implementiert** | Im angegebenen, heute gelesenen Source-Stand vorhanden; keine Aussage über Installation auf TBS-02. |
-| **Getestet** | Konkrete Testausgabe oder ausdrücklich bezeichnete Benutzerbestätigung vorhanden. |
-| **Im Betrieb bestätigt** | Konkretes Verhalten auf dem realen Host im historischen Log bzw. durch den Benutzer bestätigt. Der Umfang ist auf das beobachtete Verhalten und den kurzen Mitschnitt begrenzt. |
+| **Beschlossen/geplant** | Als nächster Ablauf vorgeschlagen oder festgelegt; Durchführung nicht belegt. Ein unbestätigter Vorschlag wird dabei ausdrücklich als solcher benannt. |
+| **Implementiert** | Im angegebenen, am Prüfdatum gelesenen Source-Stand vorhanden; keine Aussage über Installation auf TBS-02. |
+| **Getestet** | Konkrete Testausgabe oder ausdrücklich bezeichnete Betriebsrückmeldung vorhanden. |
+| **Im Betrieb bestätigt** | Konkretes Verhalten auf dem realen Host im historischen Log bzw. durch Betriebsrückmeldung bestätigt. Der Umfang ist auf das beobachtete Verhalten und den kurzen Mitschnitt begrenzt. |
 
-Repository-Präsenz, vorhandener Testcode, ein erfolgreicher Prozessstart und eine Ende-zu-Ende-Abnahme sind unterschiedliche Belege. In diesem Archivierungslauf wurden keine TBS-Dienste gestartet, keine Funkhardware bedient und keine Cargo-Tests ausgeführt.
+Repository-Präsenz, vorhandener Testcode, ein erfolgreicher Prozessstart und eine Ende-zu-Ende-Abnahme sind unterschiedliche Belege. In dieser Quellenprüfung wurden keine TBS-Dienste gestartet, keine Funkhardware bedient und keine Cargo-Tests ausgeführt.
 
 ## 3. Ziel, Ausgangslage und endgültige Richtung
 
 Ziel war, die frisch aufgebaute Basisstation auf `SRV-M-TBS-02` von einem erfolgreichen Rust-Build zu einem reproduzierbaren Betrieb mit SXceiver zu führen. Die historische Binary bezeichnet ihren Radio-Runtime-Pfad als `MAIN-COMPAT (local MM/MLE/CMCE state machines)`.
 
-Die am Ende des zugänglichen Dialogs maßgebliche Reihenfolge lautet:
+Die festgehaltene Arbeitsreihenfolge lautet:
 
 1. Bestehende Buildartefakte behalten und nach OOM nicht erneut `cargo clean` ausführen.
 2. Binary und native Laufzeitabhängigkeiten prüfen; die Konfiguration mit eingeschränkten Rechten installieren.
@@ -73,11 +52,11 @@ Die am Ende des zugänglichen Dialogs maßgebliche Reihenfolge lautet:
 5. Die endgültige `tetra.service` mit SNDCP-Capabilities und Zugriff auf TUN, SPI, GPIO und ALSA erstellen bzw. vervollständigen.
 6. Automatischen Start nach Reboot und die noch offenen Funktionen am Zielgerät prüfen.
 
-Der frühe Entwurf der Unit ist durch die spätere Erkenntnis zum fehlenden `CAP_NET_ADMIN` **unvollständig geworden**. Die letzte Antwort kündigt den vollständigen systemd-Schritt an; eine nachfolgende Umsetzung ist nicht zugänglich. Der Benutzer benennt außerdem den lokalen Fallback als noch zu bearbeitende Baustelle. Seine genaue gewünschte Änderung ist nicht spezifiziert und darf nicht durch eine erfundene Fallback-Anforderung ersetzt werden.
+Der frühe Unitentwurf ist wegen des fehlenden `CAP_NET_ADMIN` **unvollständig**. Die vollständige systemd-Integration bleibt als nächster Schritt offen. Auch der lokale Fallback wurde als Baustelle benannt; die konkrete Änderung ist noch zu spezifizieren.
 
 ## 4. Historische Architektur und technische Parameter
 
-Die im Chat behandelte Kette ist:
+Die in der Planung behandelte Kette ist:
 
 ```text
 /etc/netcore/config.toml  -> bluestation-bs als netcore
@@ -142,19 +121,19 @@ Die Carrierparameter sind beobachtete historische Einstellungen. Eine Abnahme de
 
 ## 5. Chronologie und erreichte Zustände
 
-### 5.1 Build: OOM bestätigt, später Erfolg vom Benutzer bestätigt
+### 5.1 Build: OOM bestätigt, später Erfolg durch Betriebsrückmeldung bestätigt
 
-Im Chat steht eine tatsächlich ausgeführte Kerneljournal-Abfrage. Sie zeigt am 12.09. um **15:16:20** und **15:45:54** OOM-Kills von `rustc`, einmal nach `rustc invoked oom-killer` und einmal nach `cargo invoked oom-killer`. Betroffen sind PIDs 5430 und 5553, UID 1001; die angegebenen Resident-Anteile liegen bei rund 471 bzw. 477 MB, der virtuelle Speicher jeweils bei `2094396kB`.
+In der Planung steht eine tatsächlich ausgeführte Kerneljournal-Abfrage. Sie zeigt am 12.09. um **15:16:20** und **15:45:54** OOM-Kills von `rustc`, einmal nach `rustc invoked oom-killer` und einmal nach `cargo invoked oom-killer`. Betroffen sind PIDs 5430 und 5553, UID 1001; die angegebenen Resident-Anteile liegen bei rund 471 bzw. 477 MB, der virtuelle Speicher jeweils bei `2094396kB`.
 
 Damit ist Speicherdruck als Ursache dieser Abbrüche **getestet/belegt**. Die Zeilen geben nicht die gesamte RAM-Größe an und belegen nicht, wie viele Cargo-Jobs beim zweiten Versuch tatsächlich aktiv waren. Die damalige Aussage, weniger Parallelität habe bereits nicht ausgereicht, geht über die sichtbare Ausgabe hinaus.
 
-Vorgeschlagen wurden `free -h`, `swapon --show`, temporärer Swap mit bis zu 8 GB und ein fortgesetzter Build mit `CARGO_BUILD_JOBS=1`. Danach schreibt der Benutzer: „so, build leif durch, nun?“ Dies ist eine **Benutzerbestätigung eines erfolgreichen Builds**, jedoch kein Nachweis, welcher der vorgeschlagenen Swap-/Codegen-Schritte den Erfolg verursacht hat.
+Vorgeschlagen wurden `free -h`, `swapon --show`, temporärer Swap mit bis zu 8 GB und ein fortgesetzter Build mit `CARGO_BUILD_JOBS=1`. Danach wurde der erfolgreiche Build ausdrücklich zurückgemeldet. Diese **Build-Erfolgsmeldung**, jedoch kein Nachweis, welcher der vorgeschlagenen Swap-/Codegen-Schritte den Erfolg verursacht hat.
 
 ### 5.2 Konfigurationsrechte: fehlgeschlagener und erfolgreicher Start
 
 Der erste sichtbare Fehlstart als `jan` erreicht Banner und Konfigurationsparser. Sowohl `/etc/netcore/config.toml` als auch `/etc/netcore/config.toml.fallback` scheitern mit `Permission denied (os error 13)`, anschließend bricht die Anwendung ab.
 
-Die Chatdiagnose verweist auf die zuvor vorgeschlagenen Rechte `0640 netcore:netcore`. Ein tatsächliches `ls -l`-Ergebnis ist nicht vorhanden; Eigentümer und Modus sind daher **plausible Diagnose bzw. Installationsvorgabe**, keine gemessenen Dateimetadaten. Die spätere erfolgreiche Ausführung als `netcore` ist dagegen direkt im Anhang belegt.
+Die historische Diagnose verweist auf die zuvor vorgeschlagenen Rechte `0640 netcore:netcore`. Ein tatsächliches `ls -l`-Ergebnis ist nicht vorhanden; Eigentümer und Modus sind daher **plausible Diagnose bzw. Installationsvorgabe**, keine gemessenen Dateimetadaten. Die spätere erfolgreiche Ausführung als `netcore` ist dagegen direkt im Anhang belegt.
 
 Das ist außerdem von einem **Edge-/Core-Fallback** zu trennen: Der Dateifallback ist eine alternative TOML-Datei; die spätere lokale Edge-Autorität ist ein Netz-/Dienstzustand. Die beiden Fehlerklassen werden nicht vermischt.
 
@@ -196,14 +175,14 @@ Zeile 221 zeigt `sudo nano /etc/netcore/config.toml`, Zeile 222 erneut den Start
 | 16:37:22.743 | `DAlert` für Ruf 5. |
 | 16:37:25.165–.178 | Asterisk-Connect, `DConnect` mit `Infinite`, `Granted`, Duplex und `media ready`; kein Ende-zu-Ende-Audionachweis. |
 | 16:37:25.321 | Einzelne Warnung `rx_mac_data: empty PDU not passed to LLC`. Im Ausschnitt ist keine kausale Zuordnung zu einem hörbaren Fehler möglich. |
-| 16:37:43.653 | Asterisk-Release `cause=16 (UnknownTetraIdentity)`, anschließend `DRelease` und Circuit-Abbau. Nicht als bewiesenes Fehlen der angerufenen Identität behandeln; heutige Cause-Zuordnung siehe Abschnitt 8. |
+| 16:37:43.653 | Asterisk-Release `cause=16 (UnknownTetraIdentity)`, anschließend `DRelease` und Circuit-Abbau. Nicht als bewiesenes Fehlen der angerufenen Identität behandeln; geprüfte Cause-Zuordnung siehe Abschnitt 8. |
 | 16:37:50.837 | Nach erneutem `Ctrl+C` geordnetes Beenden und normaler Brew-Verbindungsabbau. |
 
-### 5.5 Statusmatrix zum historischen Chatende
+### 5.5 Statusmatrix zum historischen dokumentierten Arbeitsabschluss
 
 | Bereich | Höchster belegter Status | Grenze |
 |---|---|---|
-| Rust-Build | **Getestet – Benutzerbestätigung** | Keine vollständige Buildausgabe, keine bewiesene Swap-Konfiguration. |
+| Rust-Build | **Getestet – Betriebsrückmeldung** | Keine vollständige Buildausgabe, keine bewiesene Swap-Konfiguration. |
 | Start als `netcore`, Konfiguration lesbar | **Im Betrieb bestätigt** | Dateiinhalt und effektive Rechte nicht vollständig geliefert. |
 | SXceiver-/SoapySX-Erkennung | **Im Betrieb bestätigt** | Takt nur angenommen; exakte Hardware-/OS-Baseline fehlt. |
 | Registrierung, Affiliation, SDS-Eingang | **Im Betrieb bestätigt** | Ein Teilnehmer; SDS-Endzustellung und Packet Data nicht nachgewiesen. |
@@ -220,7 +199,7 @@ Zeile 221 zeigt `sudo nano /etc/netcore/config.toml`, Zeile 222 erneut den Start
 
 ### 6.1 Recorder und AudioPlayer
 
-Beide Starts melden `Recorder disabled: cannot initialize recording directory: Permission denied` und `Audio player disabled: cannot create /var/lib/netcore/audio: Permission denied`. Die nachfolgenden `entity Recorder not found`-Warnungen passen zur fehlgeschlagenen Registrierung der Recorder-Entity; diese Kette ist heute auch im Source nachvollziehbar.
+Beide Starts melden `Recorder disabled: cannot initialize recording directory: Permission denied` und `Audio player disabled: cannot create /var/lib/netcore/audio: Permission denied`. Die nachfolgenden `entity Recorder not found`-Warnungen passen zur fehlgeschlagenen Registrierung der Recorder-Entity; diese Kette ist am Prüfdatum auch im Source nachvollziehbar.
 
 Vorgeschlagen war, `/var/lib/netcore/audio` und `/var/lib/netcore/recordings` anzulegen und `/var/lib/netcore` rekursiv auf `netcore:netcore` und `0750` zu setzen. **Keine Ausführung oder erfolgreiche Aufnahme danach ist belegt.** Der konkrete Recording-Pfad muss aus der tatsächlich aktiven Konfiguration gelesen werden; `/var/lib/netcore/recordings` ist der vorgeschlagene Pfad, nicht ein explizit ausgegebener Logwert.
 
@@ -230,7 +209,7 @@ Für eine Fortsetzung sind gezielte Verzeichnisrechte vorzuziehen. Ein pauschale
 
 Die Fehlermeldung nennt konkret `TUNSETIFF requires CAP_NET_ADMIN in the basis-station systemd unit`. Sie wiederholt sich ungefähr im 30-Sekunden-Abstand. Ein normaler manueller Start mit `sudo -u netcore` überträgt die benötigte Capability nicht automatisch.
 
-Der letzte Chatstand fordert systemd-Capabilities und Zugriff auf `/dev/net/tun`, `/dev/spidev0.0`, `/dev/gpiochip0` und ALSA. Der heutige Repository-Drop-in enthält zusätzlich `CAP_NET_RAW`, die Gerätefreigaben und Cleanup. Das korrigiert den unvollständigen ersten Unitentwurf auf Dokumentationsebene, belegt aber keine Installation auf TBS-02.
+Der letzte Planungsstand fordert systemd-Capabilities und Zugriff auf `/dev/net/tun`, `/dev/spidev0.0`, `/dev/gpiochip0` und ALSA. Der geprüfte Repository-Drop-in enthält zusätzlich `CAP_NET_RAW`, die Gerätefreigaben und Cleanup. Das korrigiert den unvollständigen ersten Unitentwurf auf Dokumentationsebene, belegt aber keine Installation auf TBS-02.
 
 Zwei weitere Grenzen: Die ausgesendete SYSINFO-Ankündigung `sndcp_service=true` ist kein Nachweis eines funktionierenden IP-Pfads. Außerdem meldet das beobachtete MS 5102 **`tetra_packet_data=false`**. Für eine Paketdatenabnahme ist daher ein geeignetes und passend konfiguriertes Endgerät nötig; der erfolgreiche Sprachteilnehmer allein genügt nicht.
 
@@ -259,11 +238,11 @@ ALSA meldet `Invalid CTL pulse`, Fehler 524 beim HDMI-Playback-Probe und nicht g
 
 ## 7. Historische Befehle und Fortsetzungsabläufe
 
-Alle folgenden Blöcke sind dokumentierte Abläufe. Die Statusangaben unterscheiden tatsächliche Ausführung und bloßen Vorschlag. In diesem Archivauftrag wurden sie nicht auf der Basisstation ausgeführt.
+Alle folgenden Blöcke sind dokumentierte Abläufe. Die Statusangaben unterscheiden tatsächliche Ausführung und bloßen Vorschlag. In dieser Quellenprüfung wurden sie nicht auf der Basisstation ausgeführt.
 
 ### 7.1 OOM-Diagnose und Buildfortsetzung
 
-**Im Chat ausgeführt und mit Ausgabe belegt:**
+**In der Planung ausgeführt und mit Ausgabe belegt:**
 
 ```bash
 sudo journalctl -k -b --no-pager | \
@@ -281,7 +260,7 @@ CARGO_BUILD_JOBS=1 cargo build --release -p bluestation-bs
 
 Der historische Swapvorschlag lautete: `fallocate -l 8G /swapfile`, Modus `0600`, `mkswap`, `swapon`; nach dem Build optional `swapoff` und Entfernen der temporären Datei, alternativ ein Eintrag `/swapfile none swap sw 0 0` in `/etc/fstab`. Auch 4 GB wurden als mögliche Größe bei mehr RAM genannt. **Keine dieser Größen oder Persistenzentscheidungen ist als umgesetzt belegt.** Vor einer Wiederholung müssen vorhandene Swapdatei, freier Speicher und aktive Swapnutzung geprüft werden; der alte Vorschlag ist kein Auftrag, eine bestehende `/swapfile` zu überschreiben oder zu entfernen.
 
-Als weitere Option wurde `CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1` vorgeschlagen. Eine garantierte Verringerung des Spitzen-RAM lässt sich aus dem Chat nicht ableiten; insbesondere sind weniger Codegen-Units nicht pauschal eine Speicherreparatur. Der belegte Befund bleibt der OOM-Kill, der bestätigte Erfolg der spätere Buildabschluss. Bereits gebaute Crates sollten erhalten bleiben.
+Als weitere Option wurde `CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1` vorgeschlagen. Eine garantierte Verringerung des Spitzen-RAM lässt sich aus den Projektaufzeichnungen nicht ableiten; insbesondere sind weniger Codegen-Units nicht pauschal eine Speicherreparatur. Der belegte Befund bleibt der OOM-Kill, der bestätigte Erfolg der spätere Buildabschluss. Bereits gebaute Crates sollten erhalten bleiben.
 
 ### 7.2 Binary und Konfiguration installieren
 
@@ -308,7 +287,7 @@ ls -lah /etc/netcore/
 
 Der spätere Logstart belegt eine ausführbare Binary am Zielpfad und eine lesbare Hauptkonfiguration für `netcore`. Er bestätigt nicht jede einzelne Installationszeile, die Herkunft der installierten Binary oder eine vollständige Bibliotheksprüfung. Beim erneuten Einsatz dürfen vorhandene Konfigurationen nicht ohne Sicherung durch Repository-Beispiele ersetzt werden.
 
-Die damaligen Kurzprüfungen `ldd ... | grep 'not found' || echo '... gefunden'` sind als alleiniger Erfolgsnachweis ungeeignet: Auch ein fehlgeschlagenes `ldd` kann dazu führen, dass `grep` keinen Treffer findet. Für eine Fortsetzung sind vollständige Ausgabe **und Exitstatus von `ldd`** zu prüfen. Native Versionen von `libtetra-codec`, `libgsm` und SoapySDR sind in diesem Chat nicht vollständig dokumentiert.
+Die damaligen Kurzprüfungen `ldd ... | grep 'not found' || echo '... gefunden'` sind als alleiniger Erfolgsnachweis ungeeignet: Auch ein fehlgeschlagenes `ldd` kann dazu führen, dass `grep` keinen Treffer findet. Für eine Fortsetzung sind vollständige Ausgabe **und Exitstatus von `ldd`** zu prüfen. Native Versionen von `libtetra-codec`, `libgsm` und SoapySDR sind für diesen Arbeitsstand nicht vollständig dokumentiert.
 
 ### 7.3 Richtiger Benutzer und optionale Gruppenmitgliedschaft
 
@@ -331,7 +310,7 @@ Die damalige Formulierung „lesen/bearbeiten“ wird präzisiert: Gruppenmitgli
 
 ### 7.4 Datenverzeichnisse
 
-Der historische Vorschlag umfasste `mkdir -p` für Audio und Recordings sowie rekursives `chown`/`chmod` unter `/var/lib/netcore`. Die Durchführung ist offen. Eine **heute abgeleitete, ebenfalls nicht ausgeführte** gezielte Variante für genau diese konfigurierten Pfade wäre:
+Der historische Vorschlag umfasste `mkdir -p` für Audio und Recordings sowie rekursives `chown`/`chmod` unter `/var/lib/netcore`. Die Durchführung ist offen. Eine **am Prüfdatum abgeleitete, ebenfalls nicht ausgeführte** gezielte Variante für genau diese konfigurierten Pfade wäre:
 
 ```bash
 sudo install -d -o netcore -g netcore -m 0750 \
@@ -371,7 +350,7 @@ WantedBy=multi-user.target
 
 Geplanter Ort: `/etc/systemd/system/tetra.service`. Der Entwurf enthält weder SNDCP-Capabilities noch die später geforderte vollständige Gerätefreigabe. `SupplementaryGroups=audio` allein belegt außerdem keine Unix-Zugriffsrechte auf SPI/GPIO. Er darf nicht als endgültige abgenommene Unit übernommen werden.
 
-Die im Chat vorgeschlagenen nächsten Verwaltungsbefehle waren:
+Die in der Planung vorgeschlagenen nächsten Verwaltungsbefehle waren:
 
 ```bash
 sudo systemctl daemon-reload
@@ -382,9 +361,9 @@ sudo journalctl -u tetra.service -b -n 200 --no-pager
 sudo journalctl -u tetra.service -f
 ```
 
-Der damalige Assistent begrenzte den unmittelbaren Schritt ausdrücklich auf den manuellen Start; deshalb gelten diese systemd-Befehle **nicht** als bereits ausgeführt.
+Der dokumentierte unmittelbare Schritt war der manuelle Start. Für die folgenden systemd-Befehle liegt deshalb **kein Ausführungsnachweis** vor.
 
-### 7.6 Heute vorhandenen Paketgateway-Helfer verwenden
+### 7.6 Am Prüfdatum vorhandenen Paketgateway-Helfer verwenden
 
 Im aktuellen Repository ist der vom historischen Log genannte Helfer implementiert. Für eine Fortsetzung mit bereits existierender Unit und vollständigem, ausgewähltem Quellstand ist die konkrete Syntax:
 
@@ -410,31 +389,31 @@ ip -brief link
 
 Den tatsächlichen TUN-Namen aus der aktiven Konfiguration bzw. dem erfolgreichen Startlog entnehmen. Der vorliegende fehlerhafte Start belegt noch keine erzeugte TUN-Schnittstelle und keinen bestimmten Schnittstellennamen.
 
-## 8. Heute verifizierter Repository-Stand – getrennt vom Chat
+## 8. Am Prüfdatum verifizierter Repository-Stand – getrennt vom historischen Arbeitsstand
 
 Die folgenden Befunde stammen aus direkter Source-Lektüre am 2026-10-05. Die relevanten Bereiche `Cargo.toml`, `bins/bluestation-bs`, `crates/tetra-entities`, `crates/tetra-pdus`, `contrib/packet-data`, `contrib/systemd`, `install` und `sxxcvr-main/SoapySX` wurden zwischen dem genannten `Archiving`- und `main`-Commit verglichen; dafür ergab sich **kein Inhaltsunterschied**. Die Quelllinks sind auf den geprüften Archivbasis-Commit festgelegt.
 
-| Behauptung / Thema | Heutiger Befund | Status und Konsequenz |
+| Behauptung / Thema | Geprüfter Befund | Status und Konsequenz |
 |---|---|---|
-| Hauptkonfiguration mit `.fallback` | [R1]: Loader versucht exakt `<config>.fallback`, protokolliert beide Fehler und beendet ohne gültige Datei. | **Implementiert**; passt zum historischen Berechtigungsfehler. Kein Beleg für heutige Rechte auf TBS-02. |
+| Hauptkonfiguration mit `.fallback` | [R1]: Loader versucht exakt `<config>.fallback`, protokolliert beide Fehler und beendet ohne gültige Datei. | **Implementiert**; passt zum historischen Berechtigungsfehler. Kein Beleg für geprüfte Rechte auf TBS-02. |
 | `MAIN-COMPAT` | [R1]: Banner und lokale Runtime vorhanden. | **Implementiert**; Banner allein identifiziert keinen unveränderten historischen Source-Stand. |
-| Recorder-/Audio-Ausfall | [R1], [R2], [R3]: Entities werden nach erfolgreicher Initialisierung registriert; Verzeichnisfehler verhindern dies. | **Implementiert**; erklärt die Folge `Recorder not found`. Keine heute bestätigte Rechtekorrektur. |
+| Recorder-/Audio-Ausfall | [R1], [R2], [R3]: Entities werden nach erfolgreicher Initialisierung registriert; Verzeichnisfehler verhindern dies. | **Implementiert**; erklärt die Folge `Recorder not found`. Keine am Prüfdatum bestätigte Rechtekorrektur. |
 | Native Audioabhängigkeit | [R4], [R5]: Defaultfeatures `asterisk`, `recording`, `audio-player`; Codec-FFI mit `#[link(name = "tetra-codec")]`, Suchpfad über `pkg-config` im Buildskript. | **Implementiert**; die tatsächliche native Bibliotheksinstallation auf TBS-02 bleibt unvermessen. Alte Packaging-Kommentare ersetzen die Featuredefinition nicht. |
 | Soapy-/Center-Unterstützung | [R6]: unterstütztes Device öffnen, Center-Overrides verarbeiten. | **Implementiert**; die konkreten 600 kS/s/Gains/Perioden stammen aus dem historischen Log. |
-| Dual-Carrier-Modell | [R7]: aktueller Banner **v2.8**, `C2 TS1 control/guard`, Traffic `TS5–TS7`, `SecondaryBcchNoMcch`. | **Abweichung zum historischen v2.9 / idle-silent**. Beide Stände getrennt halten; weder stillschweigend gleichsetzen noch einen heutigen Rollback aus dem Log ableiten. |
-| TUN-Berechtigungsfehler | [R8]: `TUNSETIFF` und gezielte Diagnose bei `PermissionDenied`. | **Implementiert**; historisch fehlgeschlagen, heutiger Gerätebetrieb nicht geprüft. |
-| systemd-Paketgateway | [R9], [R10]: `CAP_NET_ADMIN CAP_NET_RAW`, `PrivateDevices=no`, TUN/SPI/GPIO/`char-alsa`, `ProtectKernelTunables=no`, Runtime-Verzeichnis mit `0750`, Cleanup beim Stop. | **Implementiert**; umfangreicher als die zwei Capability-Zeilen des historischen Assistentenvorschlags. |
-| Edge-Fallback | [R11]: Gateway-Verbindung, Frische der Healthmatrix und benötigte Dienste bestimmen `Degraded`/`Isolated`; zeitabhängige Erholung über `Recovering` nach `Online`. | **Implementiert**; heutiger Setter loggt nur bei geänderter Mode/Begründung. Historische wiederholte identische `Isolated`-Meldungen nicht als heutiges Verhalten ausgeben. |
+| Dual-Carrier-Modell | [R7]: aktueller Banner **v2.8**, `C2 TS1 control/guard`, Traffic `TS5–TS7`, `SecondaryBcchNoMcch`. | **Abweichung zum historischen v2.9 / idle-silent**. Beide Stände getrennt halten; weder stillschweigend gleichsetzen noch einen geprüften Rollback aus dem Log ableiten. |
+| TUN-Berechtigungsfehler | [R8]: `TUNSETIFF` und gezielte Diagnose bei `PermissionDenied`. | **Implementiert**; historisch fehlgeschlagen, Betrieb auf Zielhardware nicht geprüft. |
+| systemd-Paketgateway | [R9], [R10]: `CAP_NET_ADMIN CAP_NET_RAW`, `PrivateDevices=no`, TUN/SPI/GPIO/`char-alsa`, `ProtectKernelTunables=no`, Runtime-Verzeichnis mit `0750`, Cleanup beim Stop. | **Implementiert**; umfangreicher als die zwei Capability-Zeilen des historischen unbestätigter Vorschlags. |
+| Edge-Fallback | [R11]: Gateway-Verbindung, Frische der Healthmatrix und benötigte Dienste bestimmen `Degraded`/`Isolated`; zeitabhängige Erholung über `Recovering` nach `Online`. | **Implementiert**; geprüfter Setter loggt nur bei geänderter Mode/Begründung. Historische wiederholte identische `Isolated`-Meldungen nicht als Verhalten des geprüften Source-Stands ausgeben. |
 | Config-Reparatur | [R12]: bestehende Unit/Config nötig; Dienstbenutzer/-gruppe ermitteln, Config-Verzeichnis `root:<Dienstgruppe>`/`0750`, Hauptdatei `root:<Dienstgruppe>`/`0660`, Lesetest und Dienststart. | **Implementiert, anderes Rechtekonzept** als historisch `netcore:netcore`/`0640`. Schreibt Gruppenrechte und behandelt nicht automatisch die `.fallback`-Datei. Kein universeller Ersatz für die historische Anleitung. |
 | Update mit Rechteerhalt | [R13]: Parser-Regressionstests, Build, optionale TTS-Konfigurationsmigration mit Wiederherstellung von UID/GID/Modus, Binary-Backup und Fehlerbehandlung. | **Implementiert**, in diesem Auftrag nicht ausgeführt. Der Helfer erzwingt in seinem Buildaufruf nicht selbst `CARGO_BUILD_JOBS=1`; Low-RAM-Buildbedingungen gesondert festlegen. |
 | Zentralisierung TTS | [R1]: lokale Basisstations-TTS wird als deprecated deaktiviert und auf Media Library verwiesen. | **Implementiert**; zentrale Verfügbarkeit nicht aus dem historischen Log ableitbar. |
-| SIP-Abbruchgründe | [R14], [R15]: explizite SIP-/Q.850-zu-TETRA-Abbildung; Q.850 16/26 wird `UserRequestedDisconnection`. BYE/CANCEL und fehlerhafte INVITEs haben Regressionstestcode. | **Korrektur im heutigen Source implementiert**; Tests hier nicht ausgeführt und Einbau in historische Binary nicht belegt. |
+| SIP-Abbruchgründe | [R14], [R15]: explizite SIP-/Q.850-zu-TETRA-Abbildung; Q.850 16/26 wird `UserRequestedDisconnection`. BYE/CANCEL und fehlerhafte INVITEs haben Regressionstestcode. | **Korrektur im geprüften Source implementiert**; Tests hier nicht ausgeführt und Einbau in historische Binary nicht belegt. |
 
 ### 8.1 Besondere Korrektur: `cause=16` ist ohne Namensraum mehrdeutig
 
-Im historischen Log interpretiert CMCE Asterisk-Release 16 als `UnknownTetraIdentity`. Der aktuelle TETRA-Enum definiert diesen Wert tatsächlich als 16; der heutige SIP-Grenzadapter übersetzt Q.850-Causes dagegen vor der Übergabe an CMCE. Seine Tests erwarten für normales BYE/CANCEL TETRA-Cause 1.
+Im historischen Log interpretiert CMCE Asterisk-Release 16 als `UnknownTetraIdentity`. Der aktuelle TETRA-Enum definiert diesen Wert tatsächlich als 16; der geprüfte SIP-Grenzadapter übersetzt Q.850-Causes dagegen vor der Übergabe an CMCE. Seine Tests erwarten für normales BYE/CANCEL TETRA-Cause 1.
 
-**Schlussfolgerung, keine bewiesene historische Ursache:** Der alte Befund ist mit einer früheren Vermischung der Cause-Namensräume vereinbar. Ohne SIP-Mitschnitt und exakten historischen Source kann nicht entschieden werden, ob die Gegenstelle wirklich eine unbekannte Identität meldete oder ein normales Auflegen falsch benannt wurde. Der heutige Code adressiert gerade diese Fehlerklasse. Offen bleibt ein Test mit der tatsächlich eingesetzten Binary und den SIP-Reason-Informationen; ein neuer Identitätsfehler darf nicht allein aus dem alten Wortlaut behauptet werden.
+**Schlussfolgerung, keine bewiesene historische Ursache:** Der alte Befund ist mit einer früheren Vermischung der Cause-Namensräume vereinbar. Ohne SIP-Mitschnitt und exakten historischen Source kann nicht entschieden werden, ob die Gegenstelle wirklich eine unbekannte Identität meldete oder ein normales Auflegen falsch benannt wurde. Der geprüfte Code adressiert gerade diese Fehlerklasse. Offen bleibt ein Test mit der tatsächlich eingesetzten Binary und den SIP-Reason-Informationen; ein neuer Identitätsfehler darf nicht allein aus dem alten Wortlaut behauptet werden.
 
 ## 9. Ersetzte, präzisierte und nicht bestätigte Aussagen
 
@@ -445,25 +424,23 @@ Im historischen Log interpretiert CMCE Asterisk-Release 16 als `UnknownTetraIden
 | Node Gateway sei „kein Basisstationsproblem“ | Lokaler RF-Betrieb geht weiter; die zentrale Anbindung ist weiterhin ausgefallen. |
 | Einfache Unit mit nur `SupplementaryGroups=audio` | Spätere Anforderung ergänzt SNDCP-Capabilities und Gerätezugriff; finale Unit fehlt. |
 | `jan` durch Gruppenzugehörigkeit lesen und bearbeiten lassen | `0640` erlaubt Gruppenlesen; Bearbeiten braucht ein gesondertes Rechte-/Adminverfahren. |
-| Rekursiv `/var/lib/netcore` auf `0750` setzen | Alter, unbestätigter Vorschlag; heute gezielte Verzeichnis-/Dateirechte anhand aktiver Pfade und bestehender Daten vorsehen. |
+| Rekursiv `/var/lib/netcore` auf `0750` setzen | Alter, unbestätigter Vorschlag; am Prüfdatum gezielte Verzeichnis-/Dateirechte anhand aktiver Pfade und bestehender Daten vorsehen. |
 | `codegen-units=1` sei sicher deutlich speichersparender | Nicht durch einen Vergleich belegt; als optionale historische Idee erhalten. |
 | `ldd`-Pipeline ohne Treffer bedeute alle Bibliotheken vorhanden | Vollständige Ausgabe und Prozessstatus erforderlich. |
 | Aktueller Repo-Stand entspreche der laufenden v1.3.0-Binary | Nicht belegt; historische Kurzkennung nicht aufgelöst, UMAC-Banner und Cause-Behandlung unterscheiden sich. |
 
-Die letzte ausdrückliche Benutzeranforderung für diese Arbeit beschränkt sämtliche Repository-Änderungen auf `Docs/archive/`, erlaubt Commit und Push auf `Archiving` und schließt Force-Push und Merge aus. Die hier aufgeführten Verbesserungen bleiben Dokumentation und Roadmap; an Runtime, Installationsskripten oder Konfigurationen wird dafür nichts geändert.
-
 ## 10. Offene Aufgaben und nächste Schritte
 
-Die Reihenfolge **Rechte → endgültige systemd-Integration → autonomer Rebootstart** folgt dem letzten technischen Chatstand. Die zusätzlich aus Log und Repository abgeleiteten Prüfungen sind als solche gekennzeichnet; sie waren keine bereits abgeschlossene Vereinbarung.
+Die Reihenfolge **Rechte → endgültige systemd-Integration → autonomer Rebootstart** folgt dem letzten technischen Planungsstand. Die zusätzlich aus Log und Repository abgeleiteten Prüfungen sind als solche gekennzeichnet; sie waren keine bereits abgeschlossene Vereinbarung.
 
 1. **Aktiven Zielstand sichern und zuordnen.** Installierte Binary samt Prüfsumme, vollständigen Source-Commit, SoapySX-Version, OS/Architektur, RAM/Swap, aktive Unit und bestehende Konfigurationen lokal sichern. Die Kennung `b63b251b` und die tatsächliche Carrier-Semantik nachvollziehen. Zugangsdaten nicht in neue Logs/Archive übernehmen.
 2. **Rechte und Datenpfade korrigieren – historisch nächste Aufgabe.** Haupt- und Fallback-Konfiguration als Dienstbenutzer prüfen; tatsächlich konfigurierte Recording-, Audio-, Cache- und Archivpfade feststellen. Gezielt Berechtigungen reparieren, danach Recorder-/AudioPlayer-Initialisierung und reale Aufnahme/Wiedergabe belegen.
 3. **`tetra.service` vervollständigen – historisch geplant.** Arbeitsverzeichnis und Binarypfad bestätigen, Unix-Gruppen/ACLs und systemd-Gerätefreigaben zusammen prüfen, Paketgateway-Drop-in integrieren. Manuellen und systemd-Start nicht gleichzeitig auf dieselbe SDR-Hardware richten. Anschließend Start/Stop, Neustart und Reboot testen.
 4. **SNDCP Ende-zu-Ende abnehmen – aus dem Fehler abgeleitet.** Erfolgreiche TUN-Erzeugung, Schnittstellen-/Routing-/Firewallzustand und PDP/IP-Verkehr mit einem packet-data-fähigen MS dokumentieren. Ein `sndcp_service=true`-Broadcast und das hier beobachtete MS-Profil 5102 reichen nicht.
-5. **Node Gateway und lokalen Fallback fertigstellen – Benutzerwunsch, Details noch offen.** Reale Zieladresse und Betriebsmodus prüfen, TCP-/Anwendungskonnektivität und Healthmatrix belegen; anschließend `Recovering -> Online` sowie erneuten kontrollierten Ausfall/Recovery mit lokalen Funktionen prüfen. Brew-Verbindung und Core-Verbindung getrennt protokollieren.
+5. **Node Gateway und lokalen Fallback fertigstellen – Projektwunsch, Details noch offen.** Reale Zieladresse und Betriebsmodus prüfen, TCP-/Anwendungskonnektivität und Healthmatrix belegen; anschließend `Recovering -> Online` sowie erneuten kontrollierten Ausfall/Recovery mit lokalen Funktionen prüfen. Brew-Verbindung und Core-Verbindung getrennt protokollieren.
 6. **SIP-Cause-Regression und Sprache prüfen – zusätzliche Logerkenntnis.** Aktuelle Mappingimplementierung bzw. deren Installation feststellen; normalen Ruf 91103 → 103, beidseitige Audioübertragung und Auflegen testen. SIP-Reason und TETRA-Cause korrelieren. Vorhandene Regressionstests auf der passenden Linux-Buildumgebung ausführen.
 7. **RF-/Dauerlasttest nachholen – zusätzliche Absicherung.** Reale Clock-/Hardwaredaten erfassen, ALSA-Probewarnungen einordnen, Overrun-/Deadline-Verhalten nach Warmstart und unter Last messen; zweiten Carrier und parallele Rufe gezielt testen. Kein pauschales Tuning allein aus den Startmeldungen ableiten.
-8. **Fehlende Dokumentationsbasis ergänzen.** Frühen Installationsdialog, verwendete OS-/Paket-/Codec-/Soapy-Kommandos, finale Unit und spätere Erfolgsausgaben nachtragen, sobald verfügbar. Es liegen keine belegten weiteren Nebenideen aus dem abgeschnittenen frühen Verlauf vor.
+8. **Fehlende Dokumentationsbasis ergänzen.** Frühen Installationsablauf, verwendete OS-/Paket-/Codec-/Soapy-Kommandos, finale Unit und spätere Erfolgsausgaben nachtragen, sobald verfügbar. Es liegen keine belegten weiteren Nebenideen aus dem abgeschnittenen frühen Verlauf vor.
 
 Offene Ideen bleiben: Swap nur temporär oder dauerhaft, optionale Leseberechtigung für `jan` und die alternative Codegen-Einstellung. Sie wurden im sichtbaren Verlauf nicht endgültig ausgewählt.
 
@@ -500,7 +477,7 @@ Die folgenden Links bezeichnen den geprüften Code am Archivbasis-Commit, nicht 
 - [R4] – Binary-Features: `bins/bluestation-bs/Cargo.toml`.
 - [R5] – Native Codec-Anbindung: `crates/tetra-entities/src/net_audio/codec.rs`; ergänzend `crates/tetra-entities/build.rs`.
 - [R6] – Soapy-Geräte-/Centerpfad: `crates/tetra-entities/src/phy/components/soapyio.rs`.
-- [R7] – Heutiges Dual-Carrier-/Timeslotmodell: `crates/tetra-entities/src/umac/umac_bs.rs`.
+- [R7] – Geprüftes Dual-Carrier-/Timeslotmodell: `crates/tetra-entities/src/umac/umac_bs.rs`.
 - [R8] – TUN-Erzeugung und Rechtefehler: `crates/tetra-entities/src/sndcp/packet_gateway.rs`.
 - [R9] – systemd-Drop-in: `contrib/systemd/tetra.service.d/20-packet-data-gateway.conf`.
 - [R10] – Installationshelfer: `contrib/packet-data/netcore-tetra-packet-gateway-install`.
@@ -528,14 +505,6 @@ Die folgenden Links bezeichnen den geprüften Code am Archivbasis-Commit, nicht 
 
 Verwandte, bereits vorhandene Archive wurden vor dem Schreiben geprüft und nicht überschrieben:
 
-- [Basisstation Clean Install, SXceiver/SoapySX, SNDCP/TUN und Healthchecks](2026-10-05_basisstation-clean-install-sxceiver-soapysx-sndcp-healthchecks.md): anderer historischer Zeitraum und Host TBS-01; kein Ersatz für diesen TBS-02-Chat.
-- [Main-kompatibler RF-Pfad, Pi-Neuinstallation und SWMI-Fallback](2026-10-05_main-kompatibler-rf-pfad-pi-neuinstallation-sxceiver-und-swmi-fallback.md): anderer historischer Chat/Source-Stand.
-- [Archivindex](README.md): vorhandene Einträge bleiben erhalten; dieser eindeutig durch Chat-ID und Titel zugeordnete Eintrag wird ergänzt.
-
-## 13. Prüfung und Publikationsumfang dieses Archivauftrags
-
-Für die Archivierung wurden der Remote-Branch und ein sauberer separater Checkout geprüft, vorhandene Archive nach Chat-ID, Titel, Host und Binarykennung durchsucht und der Index gelesen. Es gab keinen eindeutig diesem Chat zugeordneten bestehenden Eintrag. Die neue Datei überschreibt deshalb keine fremde Zusammenfassung.
-
-Der Publikationsumfang umfasst ausschließlich diese Dokumentation, die neue Indexzeile sowie den bereinigten Log und seine Provenienzdatei unter `Docs/archive/`. Die Prüfung umfasst Pfadbeschränkung, unveränderte bisherige Indexinhalte, lokale Links und festgelegte Source-Referenzen, Logprüfsummen, unveränderte Zeilenzahl, Ereigniszählungen und die Bereinigung opaker Nutzdaten. Vor und nach der Veröffentlichung werden Commitumfang und Remote-Stand kontrolliert.
-
-Diese Dokumentationsprüfung ist **kein** Rust-Build, kein Deployment, kein heutiger RF-Test und keine Abnahme der offenen Betriebsaufgaben. Eine PR- oder Releasezuordnung zum historischen Build ist nicht belegt und wird nicht erfunden.
+- [Basisstation Clean Install, SXceiver/SoapySX, SNDCP/TUN und Healthchecks](2026-10-05_basisstation-clean-install-sxceiver-soapysx-sndcp-healthchecks.md): anderer historischer Zeitraum und Host TBS-01; kein Ersatz für diesen TBS-02-Arbeitsstand.
+- [Main-kompatibler RF-Pfad, Pi-Neuinstallation und SWMI-Fallback](2026-10-05_main-kompatibler-rf-pfad-pi-neuinstallation-sxceiver-und-swmi-fallback.md): anderer historischer Arbeits-/Source-Stand.
+- [Archivindex](README.md): vorhandene Einträge bleiben erhalten; dieser eindeutig durch Thema und Zeitraum zugeordnete Eintrag wird ergänzt.

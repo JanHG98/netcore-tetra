@@ -1,33 +1,30 @@
-# Deployment-VM, selektive Releases, TBS-Imagebuilder und Auto-Discovery
+# Brainstorming: Deployment-VM, selektive Releases, TBS-Imagebuilder und Auto-Discovery
 
-## 1. Metadaten und Statusbegriffe
+**Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
+
+## 1. Arbeitsstand und Statusbegriffe
 
 | Feld | Wert |
 |---|---|
 | Projekt | NetCore-TETRA, `JanHG98/netcore-tetra` |
-| Ursprünglicher Chattitel | In der zugänglichen Oberfläche nicht überliefert; abgeleiteter Arbeitstitel: **Deployment-Controller, TBS-Imagebuilder und Auto-Discovery** |
-| Ursprungsdialog / Chatlink | Nicht verfügbar; es wurde keine belastbare Chat-ID oder URL bereitgestellt |
-| Zugänglicher Gesprächszeitraum | Inhaltlich ab 19.09.2026; Archivauftrag am 05.10.2026, Europe/Berlin |
-| Erstellung dieser Abschlussdokumentation | **2026-10-05**, Europe/Berlin |
+| Zugänglicher Planungszeitraum | Planung ab 19.09.2026; Repository-Prüfung am 05.10.2026, Europe/Berlin |
+| Erstellung dieser Projektnotiz | **2026-10-05**, Europe/Berlin |
 | Zielbranch | Bestehender Branch **`Archiving`** |
 | Geprüfter Zielbranch vor dem Archivcommit | [`c65447b7d33186f8e0bf6b063e891357315c504c`](https://github.com/JanHG98/netcore-tetra/tree/c65447b7d33186f8e0bf6b063e891357315c504c) |
-| Zusätzlich geprüfter heutiger Hauptzweig | [`main@9116c15d645458f99e236712b67a1ad970432791`](https://github.com/JanHG98/netcore-tetra/tree/9116c15d645458f99e236712b67a1ad970432791) |
+| Zusätzlich geprüfter Hauptzweig | [`main@9116c15d645458f99e236712b67a1ad970432791`](https://github.com/JanHG98/netcore-tetra/tree/9116c15d645458f99e236712b67a1ad970432791) |
 | Historischer Entwicklungsstand | [`bbf039729b9b05f8d623b11195ca24a124f68d16`](https://github.com/JanHG98/netcore-tetra/tree/bbf039729b9b05f8d623b11195ca24a124f68d16), Komponente `0.2.3`, früherer Branch `feature/openlab-discovery-deployment` |
-| Umfang des Archivauftrags | Nur diese Datei und der Archivindex unter `Docs/archive/`; kein Merge und keine Änderungen an Runtime-, Roadmap- oder Deployment-Dateien |
-
-Der geprüfte Zielbranch ist die Quellenbasis vor dem Archivcommit. Der tatsächliche Commit, der dieses Dokument veröffentlicht, wird nicht vor seiner Erstellung erfunden; er steht in der Git-Historie und in der Abschlussmeldung.
 
 Dieses Dokument verwendet folgende Statusbegriffe streng:
 
 - **Idee:** diskutierte Option ohne abschließende Festlegung.
-- **Beschlossen/geplant:** vom Nutzer ausdrücklich gewünschtes Zielbild oder verbindlich festgehaltene Architekturentscheidung; noch kein Umsetzungsnachweis.
+- **Beschlossen/geplant:** ausdrücklich festgehaltenes Zielbild oder verbindlich festgehaltene Architekturentscheidung; noch kein Umsetzungsnachweis.
 - **Implementiert:** durch Quelltext oder Konfiguration an einem genau genannten Commit belegt.
 - **Getestet:** durch einen konkret ausgeführten Test belegt; Testgrenzen werden genannt.
-- **Im Betrieb bestätigt:** an realen LXCs, einer realen TBS oder Funkhardware beobachtet. Für die in diesem Chat entworfene Gesamtlösung liegt kein solcher Nachweis vor.
+- **Im Betrieb bestätigt:** an realen LXCs, einer realen TBS oder Funkhardware beobachtet. Für die entworfene Gesamtlösung liegt kein solcher Nachweis vor.
 
 ## 2. Kurzfassung des Ergebnisses
 
-Der Chat legt ein zentrales Bedien- und Betriebsmodell für NetCore-TETRA fest:
+Die Planung legt ein zentrales Bedien- und Betriebsmodell für NetCore-TETRA fest:
 
 1. Eine **Management-VM** verwaltet Releases, Nodes, Dienststände, TBS-Provisionierung und personalisierte Raspberry-Pi-Images über ein gemeinsames WebUI. Eine lokale GUI über die Proxmox-Konsole dient als Notzugang.
 2. Updates werden **selektiv pro Komponente und Zielrolle** verteilt. Eine Änderung am SIP-Switch darf nicht alle LXCs oder TBS aktualisieren.
@@ -37,30 +34,17 @@ Der Chat legt ein zentrales Bedien- und Betriebsmodell für NetCore-TETRA fest:
 6. Ein universeller TBS-Schlüssel, der an alle LXCs verteilt wird, wurde verworfen. Die Zielarchitektur trennt Geräteidentität, Konfigurationssignatur und dienstspezifische Credentials.
 7. Die Management-VM ist eine **Control Plane**, kein Bestandteil des zeitkritischen Funk-, Ruf-, SDS- oder Medienpfads. Ein Ausfall der VM darf bestehende TBS und Core-Dienste nicht stilllegen.
 
-Der spätere Repository-Stand verändert die Einordnung wesentlich: Ein großer Teil dieses Zielbilds wurde im historischen Commit `bbf0397...` als Open-Lab-Entwicklung implementiert und statisch getestet. Dieser Code fehlt am 05.10.2026 jedoch sowohl in `main` als auch in `Archiving`. Die heutige zentrale Roadmap führt seine kontrollierte Wiederaufnahme deshalb als **Z01 / P0**. Vollständige, sichere Zero-Touch-Provisionierung mit PKI, automatisch erzeugten SIP-/VPN-Zugängen und transaktionaler Verteilung an alle Fachkerne ist auch im historischen Stand nicht belegt.
+Der spätere Repository-Stand verändert die Einordnung wesentlich: Ein großer Teil dieses Zielbilds wurde im historischen Commit `bbf0397...` als Open-Lab-Entwicklung implementiert und statisch getestet. Dieser Code fehlt am 05.10.2026 jedoch sowohl in `main` als auch in `Archiving`. Die geprüfte zentrale Roadmap führt seine kontrollierte Wiederaufnahme deshalb als **Z01 / P0**. Vollständige, sichere Zero-Touch-Provisionierung mit PKI, automatisch erzeugten SIP-/VPN-Zugängen und transaktionaler Verteilung an alle Fachkerne ist auch im historischen Stand nicht belegt.
 
-## 3. Quellenumfang und Auswertungslücken
+## 3. Quellenumfang und Offene Nachweise
 
-### 3.1 Ausgewertete Quellen
+### 3.1 Quellenbasis
 
-Ausgewertet wurden:
+Die Planung umfasst Release-Deployment, Komponenteninventar, TBS-Provisionierung, Management-VM, Imagebuilder und aktive VLAN-Discovery. Vergleichsstände sind der historische Implementierungscommit `bbf039729b9b05f8d623b11195ca24a124f68d16`, der benannte `Archiving`-Commit und `main@9116c15d645458f99e236712b67a1ad970432791` vom 5. Oktober 2026.
 
-- der vollständig in dieser Unterhaltung sichtbare Dialog über Release-Deployment, Versionsinventar, TBS-Provisionierung, Management-VM, Imagebuilder und VLAN-Discovery;
-- der aktuelle Zielbranch `Archiving` bei `c65447b...`;
-- der am Archivtag aktuelle Hauptzweig `main` bei `9116c15...`;
-- der per vollständigem SHA weiterhin abrufbare historische Entwicklungsstand `bbf0397...`;
-- die zentrale Roadmap, Open-Lab-Deploymentdateien, der heutige Provisioning Core und die historische Deployment-Core-Implementierung;
-- neu ausgeführte statische Tests und lokale, nicht mutierende Deployment-Prüfungen, siehe Abschnitt 14.
+### 3.2 Offene Nachweise
 
-### 3.2 Nicht verfügbare oder nicht belegte Inhalte
-
-- Ursprünglicher Chattitel, Chat-ID und Chatlink waren nicht verfügbar und wurden nicht erfunden.
-- Es gab keinen Zugriff auf die laufende Management-VM `VM-H-DEPLOY-01`, die 27 genannten LXCs, reale TBS, PBX, VPN-Gateway oder sonstige Live-Systeme.
-- Laufende Versionsstände, aktuelle Konfigurationen, Credentials, Healthwerte und Installationsbelege der realen Hosts wurden nicht gelesen.
-- Der frühere Branch `feature/openlab-discovery-deployment` existiert am Archivtag nicht mehr als Remote-Branch. Sein Commit `bbf0397...` ist noch direkt abrufbar; ein heutiger aktiver Branch daraus darf nicht behauptet werden.
-- Die im aktuellen Turn verfügbaren 25 ETSI-PDFs wurden im fachlichen Dialog nicht verwendet. Sie liefern keinen Nachweis für Deployment, Imagebau oder IP-Service-Discovery und wurden deshalb nicht in dieses Archiv kopiert.
-- Der sichtbare Chat enthält keine eigenständigen hochgeladenen Bilder. Die textuellen Mermaid-Skizzen werden als Diagramme im Markdown erhalten; es gab kein Bild-Binary, das unter `Docs/archive/` hochzuladen war.
-- „LCC“ wurde im Gespräch als zentrales WebUI beziehungsweise Management verstanden. Die ausgeschriebene Produktbezeichnung und endgültige Systemgrenze wurden nicht formal festgelegt.
+Ein tatsächlich gebautes Pi-Image, ein kompletter Rollout auf reale Hosts sowie eine Ende-zu-Ende-Abnahme der Discovery-/Recovery-Kette sind nicht belegt. Eigenständige Originalbilder fehlen; Architekturbeziehungen sind als Mermaid- und Textdiagramme erhalten. Die 25 ETSI-PDFs liefern keine Deployment- oder IP-Discovery-Nachweise. „LCC“ bezeichnet hier die zentrale Management-/WebUI-Idee; endgültiger Produktname und Systemgrenze sind offen.
 
 ## 4. Ziel und Ausgangslage
 
@@ -73,7 +57,7 @@ Ausgangspunkt war der wachsende manuelle Pflegeaufwand einer verteilten NetCore-
 - bei einer defekten SD-Karte ist der genaue Installations- und Credential-Stand schwer reproduzierbar;
 - manuelle IP- und Endpoint-Pflege skaliert bei mehreren LXCs und TBS schlecht.
 
-Der Nutzer wollte deshalb eine zentrale Befehlskette, bevorzugt auf Basis veröffentlichter GitHub-Releases, und später eine vollständig automatisierte TBS-Aufnahme sowie aktive Dienstsuche im gemeinsamen VLAN.
+Ziel ist deshalb eine zentrale Befehlskette mit veröffentlichten GitHub-Releases, automatisierter TBS-Aufnahme und aktiver Dienstsuche im gemeinsamen VLAN.
 
 ## 5. Entwicklung der Architekturentscheidung
 
@@ -81,7 +65,7 @@ Der Nutzer wollte deshalb eine zentrale Befehlskette, bevorzugt auf Basis veröf
 
 Die erste Zielrichtung war ein zentraler Controller, der auf ein GitHub-Ereignis reagiert, Tests beziehungsweise einen freigegebenen Stand kennt und Updates abhängigkeitsbewusst ausrollt. Direkte `git pull`-Aufrufe auf allen Produktiv-LXCs wurden als ungeeignet bewertet.
 
-Der Nutzer entschied sich anschließend ausdrücklich für **GitHub-Releases**, zunächst mit den automatisch bereitgestellten `Source code.zip`-Archiven. Daraus entstand das Ziel:
+Festgelegt wurden **GitHub-Releases**, zunächst mit den automatisch bereitgestellten `Source code.zip`-Archiven:
 
 - neuer Release erscheint;
 - zentraler Dienst lädt den Stand einmal;
@@ -113,7 +97,7 @@ Ein einzelner Commit pro Host wurde verworfen, weil mehrere Dienste auf einem No
 
 ### 5.3 Vom Deployment-Controller zur TBS-Provisionierung
 
-Der Nutzer erweiterte den Umfang: Der zentrale Dienst soll neue TBS im gesamten System anmelden. Ursprünglich war vorgesehen, einen TBS-Schlüssel oder Benutzer/Passwort ähnlich dem SIP-Switch zu erzeugen und an alle System-LXCs zu verteilen.
+Der Umfang wurde um die systemweite Anmeldung neuer TBS erweitert. Ursprünglich war vorgesehen, einen TBS-Schlüssel oder Benutzer/Passwort ähnlich dem SIP-Switch zu erzeugen und an alle System-LXCs zu verteilen.
 
 Diese Generalschlüssel-Idee wurde korrigiert. Endgültig geplant sind:
 
@@ -146,7 +130,7 @@ Der zunächst diskutierte Deployment-LXC wurde ausdrücklich zur **VM** weiteren
 
 ### 5.6 Zentrale Registry reicht nicht: echte VLAN-Discovery
 
-Eine zunächst vorgeschlagene zentrale Service Registry entsprach nicht dem endgültigen Nutzerwunsch. Die Korrektur lautete:
+Eine zunächst vorgeschlagene zentrale Service Registry entsprach nicht dem endgültigen Projektwunsch. Die Korrektur lautete:
 
 - alle Dienste hängen in einem gemeinsamen VLAN;
 - dort dürfen sie aktiv suchen und sich ankündigen;
@@ -156,7 +140,7 @@ Eine zunächst vorgeschlagene zentrale Service Registry entsprach nicht dem endg
 
 Ein zusätzliches Pflicht-Provisionierungs-VLAN wurde verworfen. Remote-TBS sollen über eine bereits vorhandene VPN-/Routingverbindung eingebunden werden können.
 
-## 6. Endgültige Anforderungen des Chats
+## 6. Festgelegte Anforderungen
 
 ### 6.1 Release- und Deploymentsteuerung
 
@@ -303,7 +287,7 @@ Vorgesehene Funktionen:
 
 ### 8.2 Node-/Discovery-Agent
 
-Im Chat als `netcore-node-agent` beziehungsweise später als gemeinsamer Discovery-Agent beschrieben. Vorgesehene Aufgaben:
+In der Planung als `netcore-node-agent` beziehungsweise später als gemeinsamer Discovery-Agent beschrieben. Vorgesehene Aufgaben:
 
 - lokale systemd-Units und echte Installationspfade erkennen;
 - Build-/Commitstand je Komponente melden;
@@ -377,7 +361,7 @@ Die TBS-Aufnahme soll keine neue fachliche Wahrheit erfinden. Vorgesehene Anknü
 
 Ob all diese Dienste eine schreibende Provisionierungs-API erhalten oder einzelne Einträge aus einer zentralen, revisionierten Service-Matrix beziehen, blieb offen.
 
-## 9. Datenmodelle und Beispielverträge aus dem Chat
+## 9. Datenmodelle und Vertragsentwürfe
 
 Die folgenden Strukturen sind Entwürfe und dürfen nicht als vorhandene API ausgegeben werden.
 
@@ -439,7 +423,7 @@ netcore/deployment/nodes/{node_id}/desired
 netcore/deployment/nodes/{node_id}/events
 ```
 
-Vorgesehen war, `status` und `desired` retained zu senden, Einzelereignisse nicht retained. Binärartefakte sollten über HTTPS laufen. Diese Topics sind im Chat vorgeschlagen, nicht als heutiger Repository-Vertrag belegt.
+Vorgesehen war, `status` und `desired` retained zu senden, Einzelereignisse nicht retained. Binärartefakte sollten über HTTPS laufen. Diese Topics sind in der Planung vorgeschlagen, nicht als geprüfter Repository-Vertrag belegt.
 
 ## 10. Update-, Rollback- und Recoveryabläufe
 
@@ -536,7 +520,7 @@ Bei nicht erreichbarer Management-VM:
 
 ### 12.1 Einordnung
 
-Nach dem ursprünglichen Gespräch entstand auf dem damaligen Branch `feature/openlab-discovery-deployment` eine konkrete Open-Lab-Implementierung. Der fest geprüfte Commit lautet `bbf039729b9b05f8d623b11195ca24a124f68d16`, Commitnachricht `fix(deployment): repair host enrollment and existing service rollouts`, Komponentenversion `0.2.3`.
+Nach der ursprünglichen Planung entstand auf dem damaligen Branch `feature/openlab-discovery-deployment` eine konkrete Open-Lab-Implementierung. Der fest geprüfte Commit lautet `bbf039729b9b05f8d623b11195ca24a124f68d16`, Commitnachricht `fix(deployment): repair host enrollment and existing service rollouts`, Komponentenversion `0.2.3`.
 
 Der Branchname ist am 05.10.2026 nicht mehr als Remote-Branch vorhanden. Der Commit war per SHA weiterhin abrufbar. Seine Implementierung ist daher **historisch vorhanden**, aber **nicht im aktuellen `main` oder `Archiving` integriert**.
 
@@ -588,9 +572,9 @@ Historische Konfiguration und Zustand:
 | Imagecache/-work/-artefakte | `/var/lib/netcore-image-builder/{cache,work,artifacts}` |
 | Imagebuilder-Socket | `/run/netcore-image-builder/api.sock` |
 
-### 12.3 Wesentliche Abweichungen vom Chat-Zielbild
+### 12.3 Wesentliche Abweichungen vom Planungszielbild
 
-| Chat-Ziel | Historischer Codebefund | Konsequenz |
+| Planungsziel | Historischer Codebefund | Konsequenz |
 |---|---|---|
 | Releases und `Source code.zip` als führende Einheit | Git-Branch, Tag oder Commit; verwalteter Git-Checkout; README sagt ausdrücklich keine Source-ZIPs | Bei Z01 entscheiden, ob produktiv nur Release-Tags erlaubt werden oder der Git-Ref-Mechanismus bleibt |
 | Änderungen im ZIP automatisch Komponenten zuordnen | Zielservice/Rolle wird ausgewählt; kein belegter automatischer Monorepo-Impact-Diff | Komponenten-/Abhängigkeitsmanifest bleibt offen |
@@ -598,7 +582,7 @@ Historische Konfiguration und Zustand:
 | Geräte-PKI und dienstspezifische Credentials | Open Lab ohne Login, Tokens, TLS, Clientzertifikate oder RBAC | nicht produktionsreif; IAM/PKI ist eigener Arbeitsblock |
 | VPN automatisch erstellen | vorhandenes OpenVPN-Profil kann eingebettet werden; Controller erzeugt keinen VPN-Peer | VPN-Automation/Rotation offen |
 | SIP-User automatisch anlegen | keine belegte SIP-Provisionierungs-API; lokale Asterisk-/Fallback-Konfiguration bleibt gesondert | SIP-Lebenszyklus offen |
-| Update nur nach erfolgreicher Readiness abschließen | wenn Dienst lebt, aber nicht ready ist, kann der historische Code `ready=false` zurückgeben und den Marker dennoch als `installed` schreiben | heutige Roadmap nennt die Ready-Schranke ausdrücklich als Z01.3 |
+| Update nur nach erfolgreicher Readiness abschließen | wenn Dienst lebt, aber nicht ready ist, kann der historische Code `ready=false` zurückgeben und den Marker dennoch als `installed` schreiben | geprüfte Roadmap nennt die Ready-Schranke ausdrücklich als Z01.3 |
 | allgemeiner atomarer Rollback | Konfigurationsbackup und vorheriger Commit vorhanden; kein automatischer Gesamtrollback | Rückweg je Dienst und Datenmigration definieren |
 | signierte Discovery | Umgebung, Quellnetz und Rollen werden geprüft; Nachrichten/HTTP sind Open Lab und nicht kryptografisch authentisiert | Trust-Modell vor produktiver Nutzung ergänzen |
 | mDNS/DNS-SD plus eigenes Protokoll | eigenes Multicast-/HTTP-Verfahren, keine belegte mDNS-/DNS-SD-Implementierung | frühere Protokollidee ist nicht der historische Iststand |
@@ -623,9 +607,9 @@ Die README nennt ausdrücklich:
 Open Lab: kein Login, keine Tokens, kein TLS, keine Zertifikate, kein RBAC
 ```
 
-Erreichbare Teilnehmer können Installationen und Neustarts auslösen. Images können OS-, WLAN- und VPN-Daten enthalten; Downloads sind im erreichbaren Labornetz offen. Das ist für ein isoliertes Testnetz vertretbar, erfüllt aber nicht das im Chat formulierte produktive Vertrauensmodell.
+Erreichbare Teilnehmer können Installationen und Neustarts auslösen. Images können OS-, WLAN- und VPN-Daten enthalten; Downloads sind im erreichbaren Labornetz offen. Das ist für ein isoliertes Testnetz vertretbar, erfüllt aber nicht das in der Planung formulierte produktive Vertrauensmodell.
 
-## 13. Heutiger Repository-Stand am 05.10.2026
+## 13. Geprüfter Repository-Stand am 05.10.2026
 
 ### 13.1 Branches und Übernahmelücke
 
@@ -636,22 +620,22 @@ main       → 9116c15d645458f99e236712b67a1ad970432791
 Archiving  → c65447b7d33186f8e0bf6b063e891357315c504c
 ```
 
-Weder `main` noch `Archiving` enthält `system-backend/deployment-core/`. Die heutige [`ROADMAP.md`](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md) hält genau dies fest:
+Weder `main` noch `Archiving` enthält `system-backend/deployment-core/`. Die geprüfte [`ROADMAP.md`](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md) hält genau dies fest:
 
-- Z01.1: historischen Feature-Stand vollständig gegen heutiges `main` vergleichen;
+- Z01.1: historischen Feature-Stand vollständig gegen geprüftes `main` vergleichen;
 - Z01.2: Deployment, Discovery, Imagebuilder, VPN und Syslog kontrolliert übernehmen;
 - Z01.3: Inventory, Ready-Schranke und CI vereinheitlichen;
 - Z01.4: Installation, Upgrade, Recovery, vollständigen ARM64-Build und realen Pi-/SXceiver-Boot abnehmen.
 
 PR #57 integrierte die Syslog-Arbeit in den damaligen Feature-Branch, nicht nachweislich in `main`. Ein kompletter alter Commitstapel soll laut Roadmap nicht ungeprüft übernommen werden, damit neuere UI- und Fachänderungen erhalten bleiben.
 
-### 13.2 Heute vorhandenes statisches Open-Lab-Deployment
+### 13.2 Am Prüfdatum vorhandenes statisches Open-Lab-Deployment
 
 `deploy/open-lab/` ist vorhanden und validiert ein Inventory mit **25 Diensten**. Es rendert statische Konfigurationen aus festen Hosts/Ports und kann per SSH in Abhängigkeitsreihenfolge installieren. Es enthält keine aktive VLAN-Discovery und keinen Pi-Imagebuilder.
 
 Der Deployer erzeugt aus dem lokalen Checkout ein deterministisches `.tar.gz` samt SHA256, überträgt es per `scp`/`ssh`, baut auf dem Zielhost, schreibt die gerenderte TOML, startet systemd neu und prüft `/health/ready`. Das ist bereits kontrollierter als ein unbestimmtes `git pull`, aber kein Release-Watcher und keine automatische `changed files -> affected services -> target nodes`-Kette.
 
-Selektive Planung bedeutet heute außerdem **Abhängigkeitsschluss**, nicht zwingend „nur genau dieser eine Host“: Der geprüfte Plan für `sip-switch` zog Node Gateway, Mobility Core, Subscriber Core, Group Core, Call Control, SDS Router und IoT Gateway vor dem SIP Switch ein. Vor einer späteren Updateautomatik ist daher zu entscheiden, ob Abhängigkeiten nur geprüft oder tatsächlich ebenfalls neu ausgerollt werden. Das Chat-Ziel war, unveränderte Dienste nicht unnötig zu aktualisieren.
+Selektive Planung bedeutet am Prüfdatum außerdem **Abhängigkeitsschluss**, nicht zwingend „nur genau dieser eine Host“: Der geprüfte Plan für `sip-switch` zog Node Gateway, Mobility Core, Subscriber Core, Group Core, Call Control, SDS Router und IoT Gateway vor dem SIP Switch ein. Vor einer späteren Updateautomatik ist daher zu entscheiden, ob Abhängigkeiten nur geprüft oder tatsächlich ebenfalls neu ausgerollt werden. Das Planungsziel war, unveränderte Dienste nicht unnötig zu aktualisieren.
 
 Wichtige Dateien:
 
@@ -664,9 +648,9 @@ deploy/open-lab/generated/ports.csv
 wiki/Open-Lab-Deployment.md
 ```
 
-Der heutige statische Deployer ist daher nicht mit dem historischen Deployment-Core gleichzusetzen.
+Der geprüfte statische Deployer ist daher nicht mit dem historischen Deployment-Core gleichzusetzen.
 
-### 13.3 Heutiger Provisioning Core
+### 13.3 Geprüfter Provisioning Core
 
 Der vorhandene `system-backend/provisioning-core/` auf TCP `8125` verwaltet Teilnehmer, Gruppen und Mitgliedschaften über Subscriber Core und Group Core. Seine README sagt ausdrücklich:
 
@@ -675,9 +659,9 @@ Der vorhandene `system-backend/provisioning-core/` auf TCP `8125` verwaltet Teil
 - Open Lab ohne Login oder TLS;
 - Subscriber Core und Group Core bleiben autoritativ.
 
-Er ist fachlich sinnvoll, aber nicht der in diesem Chat entworfene TBS-Provisionierungs-Orchestrator. Eine spätere Integration sollte die Namen sauber trennen oder eine übergeordnete Orchestrierung ergänzen, statt beide Konzepte unbemerkt zu vermischen.
+Er ist fachlich sinnvoll, aber nicht der für diesen Arbeitsstand entworfene TBS-Provisionierungs-Orchestrator. Eine spätere Integration sollte die Namen sauber trennen oder eine übergeordnete Orchestrierung ergänzen, statt beide Konzepte unbemerkt zu vermischen.
 
-### 13.4 Weitere heutige Anknüpfungspunkte
+### 13.4 Weitere geprüfte Anknüpfungspunkte
 
 **Node Gateway:** `system-backend/node-gateway/` nimmt TBS-/Backend-WebSockets auf TCP `8080` entgegen. Die erste Node-Nachricht ist ein `Hello`; geprüft werden Protokollversion und eine nichtleere `node_id`. Im Open-Lab-Stand ist dies Laufzeitregistrierung, keine kryptografische Geräteaufnahme. Eine neue Sitzung mit derselben ID ersetzt die alte. Statische `service_monitor.targets` verteilen Healthinformationen, sind aber keine gegenseitige Discovery.
 
@@ -722,7 +706,7 @@ node --check system-backend/deployment-core/static/app.js
 bash -n für Deployment-/Image-Installer und lxc-network.sh
 ```
 
-### 14.3 Heutiger statischer Deployer
+### 14.3 Geprüfter statischer Deployer
 
 Auf `Archiving@c65447b...` wurden ohne Änderungen an Zielhosts ausgeführt:
 
@@ -757,7 +741,7 @@ Ergebnis: `OK: 25 services, contract=netcore.v1, mode=open_lab`; der Gesamtplan 
 
 | Fehlerbild oder Risiko | Diagnose / Ursache | Festgelegte beziehungsweise offene Lösung |
 |---|---|---|
-| Jeder Dienst benötigt manuelle URLs in `.toml` | keine gemeinsame aktive Discovery im heutigen Hauptzweig | historischen Discovery-Core kontrolliert integrieren; Cache/Bindings erhalten |
+| Jeder Dienst benötigt manuelle URLs in `.toml` | keine gemeinsame aktive Discovery im geprüften Hauptzweig | historischen Discovery-Core kontrolliert integrieren; Cache/Bindings erhalten |
 | unnötiges Update aller Nodes | Releaseänderung nicht Komponenten/Rollen zugeordnet | Komponenten-/Impact-Mapping und Zielrollen definieren |
 | „installiert“ obwohl alter Prozess läuft | Dateikopie, installierter Stand und laufende Build-ID werden vermischt | Soll/Installiert/Laufend getrennt melden; einheitliches `/version` |
 | Source-ZIP ist kein Produktionsartefakt | keine gebauten Binaries, kein Manifest, keine Projektprüfsumme | eigenes Artefakt oder verifizierter Git-SHA; Entscheidung in Z01 |
@@ -766,7 +750,7 @@ Ergebnis: `OK: 25 services, contract=netcore.v1, mode=open_lab`; der Gesamtplan 
 | zentrale VM als Single Point of Failure | Discovery/Runtime würde bei jeder Aktion von Zentrale abhängen | lokale Caches, Betrieb ohne Controller; Control Plane vom Datenpfad trennen |
 | Multicast über VPN funktioniert nicht automatisch | Layer-2-Pakete werden nicht normal geroutet | Unicast-Seeds beziehungsweise Relay; VPN separat herstellen |
 | mehrere Instanzen einer Rolle | zufällige Zuordnung kann falschen Dienst wählen | sichtbarer Konflikt und explizites Binding |
-| Discovery-Fund wird blind vertraut | fremder Host kann Rollen behaupten | später PKI, Signaturen, RBAC und Replay-Schutz; heute Open-Lab-Grenze |
+| Discovery-Fund wird blind vertraut | fremder Host kann Rollen behaupten | später PKI, Signaturen, RBAC und Replay-Schutz; am Prüfdatum Open-Lab-Grenze |
 | Readiness bleibt rot, Marker wird installiert | historischer Deployer akzeptiert live/degraded | Ready-Schranke in Z01.3 korrigieren |
 | Recovery-Image wird geklont | zwei Stationen teilen Identität und Credentials | neues Recovery-Enrollment, Rotation und Widerruf |
 | halbfertige TBS-Provisionierung | mehrere Fachkerne können unterschiedlich erfolgreich schreiben | transaktionaler/retrybarer Workflow mit Audit und idempotenten Schritten |
@@ -791,7 +775,7 @@ Nicht übernommen. Lokale Dienste suchen im bestehenden gemeinsamen VLAN; entfer
 
 ### 16.5 Zentrale Registry als alleinige Discovery
 
-Vom Nutzer ausdrücklich korrigiert. Gewünscht ist aktive gegenseitige Suche im VLAN. Das zentrale Inventar bleibt ergänzend.
+Ausdrücklich korrigiert. Gewünscht ist aktive gegenseitige Suche im VLAN. Das zentrale Inventar bleibt ergänzend.
 
 ### 16.6 Deployment-LXC mit integriertem privilegiertem Imagebau
 
@@ -818,7 +802,7 @@ cd netcore-tetra
 sudo bash system-backend/deployment-core/install/install-vm.sh
 ```
 
-**Status:** historisch vorgeschlagen/implementiert, in diesem Archivlauf nicht ausgeführt. Der genannte Branch existiert heute nicht mehr; für eine neue Installation ist dieser Befehl deshalb nicht unverändert verwendbar. Erst Z01.2 soll den Code in einen heutigen Branch integrieren.
+**Status:** historisch vorgeschlagen/implementiert, in diesem Archivlauf nicht ausgeführt. Der genannte Branch existiert am Prüfdatum nicht mehr; für eine neue Installation ist dieser Befehl deshalb nicht unverändert verwendbar. Erst Z01.2 soll den Code in einen geprüften Branch integrieren.
 
 ### 17.2 Historische Agent-Aufnahme
 
@@ -841,7 +825,7 @@ journalctl -u netcore-discovery -n 100 --no-pager
 
 **Status:** dokumentierter Ablauf; keine Live-VM vorhanden, daher nicht ausgeführt.
 
-### 17.4 Heute vorhandener statischer Deployer
+### 17.4 Am Prüfdatum vorhandener statischer Deployer
 
 ```bash
 python3 deploy/open-lab/netcore-deploy.py \
@@ -854,7 +838,7 @@ python3 deploy/open-lab/netcore-deploy.py \
 
 ## 18. Statusmatrix
 
-| Funktion | Chatentscheidung | Historischer Commit `bbf0397...` | Heutiges `main@9116c15...` | Betriebsnachweis |
+| Funktion | Festlegung | Historischer Commit `bbf0397...` | Geprüftes `main@9116c15...` | Betriebsnachweis |
 |---|---|---|---|---|
 | zentrale Management-VM | beschlossen/geplant | implementiert als Open-Lab-VM-Installer | fehlt; Z01-P0 | keiner |
 | gemeinsames WebUI | beschlossen/geplant | implementiert | fehlt | keiner |
@@ -877,7 +861,7 @@ python3 deploy/open-lab/netcore-deploy.py \
 
 ## 19. Offene Aufgaben und priorisierte nächste Schritte
 
-Die heutige zentrale Roadmap hat Vorrang vor der historischen Reihenfolge. Für dieses Thema folgt daraus:
+Die geprüfte zentrale Roadmap hat Vorrang vor der historischen Reihenfolge. Für dieses Thema folgt daraus:
 
 ### P0 / Z01.1 – vollständiger Quellvergleich
 
@@ -890,7 +874,7 @@ Die heutige zentrale Roadmap hat Vorrang vor der historischen Reihenfolge. Für 
 
 1. Deployment-/Discovery-/Imagecode in einen neuen Feature-Branch auf Basis des aktuellen `main` übertragen.
 2. keine neueren UI- oder Fachänderungen überschreiben.
-3. heutige Dienstkataloge und Ports generieren statt historische Listen zu kopieren.
+3. geprüfte Dienstkataloge und Ports generieren statt historische Listen zu kopieren.
 4. Agent-/Controller-Upgradepfad und Rückweg dokumentieren.
 
 ### P0 / Z01.3 – Korrektheit und CI
@@ -926,7 +910,7 @@ Die heutige zentrale Roadmap hat Vorrang vor der historischen Reihenfolge. Für 
 4. Discovery-Button und globale Suche in allen aktuellen WebUIs regressionsprüfen.
 5. Unicast-Seed beziehungsweise Relay an einer echten Remote-TBS über VPN testen.
 
-## 20. Roadmap-Kandidaten aus diesem Chat
+## 20. Roadmap-Kandidaten
 
 Folgende Punkte sind als dauerhafte Roadmap-Kandidaten zu erhalten, sofern sie nicht bereits durch Z01/Z04 abgedeckt sind:
 
@@ -946,7 +930,7 @@ Folgende Punkte sind als dauerhafte Roadmap-Kandidaten zu erhalten, sofern sie n
 
 ## 21. Relevante Dateien, Commits, Branches und PRs
 
-### Heutiger Hauptzweig
+### Geprüfter Hauptzweig
 
 - [`ROADMAP.md`](https://github.com/JanHG98/netcore-tetra/blob/9116c15d645458f99e236712b67a1ad970432791/ROADMAP.md): Z01-Priorität und bestätigte Übernahmelücke.
 - `deploy/open-lab/inventory.example.toml`
@@ -960,7 +944,7 @@ Folgende Punkte sind als dauerhafte Roadmap-Kandidaten zu erhalten, sofern sie n
 ### Historischer Entwicklungsstand
 
 - Commit [`bbf039729b9b05f8d623b11195ca24a124f68d16`](https://github.com/JanHG98/netcore-tetra/tree/bbf039729b9b05f8d623b11195ca24a124f68d16)
-- früherer Branch: `feature/openlab-discovery-deployment`, heute nicht mehr als Head vorhanden
+- früherer Branch: `feature/openlab-discovery-deployment`, am Prüfdatum nicht mehr als Head vorhanden
 - `system-backend/deployment-core/README.md`
 - `system-backend/deployment-core/main.py`
 - `system-backend/deployment-core/discovery.py`
@@ -974,12 +958,12 @@ Folgende Punkte sind als dauerhafte Roadmap-Kandidaten zu erhalten, sofern sie n
 
 ## 22. Anhänge und Bilder
 
-Im zugänglichen fachlichen Chat waren keine eigenständigen Bilddateien enthalten. Daher wurde kein Bild unter `Docs/archive/assets/` angelegt. Die im Dialog verwendeten Architekturbeziehungen sind in dieser Datei als Mermaid beziehungsweise Textdiagramm reproduziert.
+Eigenständige Originalbilder liegen für diese Planung nicht vor. Die Architekturbeziehungen sind als Mermaid- und Textdiagramme erhalten.
 
 Die 25 am Archivtag bereitgestellten ETSI-PDFs sind allgemeine Projektquellen aus einem anderen Sachzusammenhang. Sie wurden für diese Deployment-/Discovery-Dokumentation nicht benötigt, nicht inhaltlich ausgewertet und nicht dupliziert.
 
 ## 23. Abschlussbewertung
 
-Die Grundentscheidung des Chats bleibt sinnvoll und ist inzwischen teilweise durch historischen Code konkretisiert: Eine Management-VM mit Imagebuilder und dezentralen Agents passt besser zur verteilten NetCore-TETRA-Architektur als manuelle `.toml`-Pflege und wiederholte Einzelupdates. Aktive Discovery im vorhandenen VLAN, ein personalisiertes Pi-Image und lokale Caches treffen den praktischen Einsatz einschließlich Remote-TBS und SD-Karten-Recovery gut.
+Die Grundentscheidung der Planung bleibt sinnvoll und ist inzwischen teilweise durch historischen Code konkretisiert: Eine Management-VM mit Imagebuilder und dezentralen Agents passt besser zur verteilten NetCore-TETRA-Architektur als manuelle `.toml`-Pflege und wiederholte Einzelupdates. Aktive Discovery im vorhandenen VLAN, ein personalisiertes Pi-Image und lokale Caches treffen den praktischen Einsatz einschließlich Remote-TBS und SD-Karten-Recovery gut.
 
-Der entscheidende aktuelle Befund ist jedoch: **Die Entwicklung ist nicht im heutigen Hauptzweig vorhanden.** Außerdem löst der historische Open-Lab-Stand noch nicht die sichere, vollständige TBS-Provisionierung. Der nächste fachlich richtige Schritt ist deshalb weder ein neues Parallelkonzept noch ein sofortiger Produktivrollout, sondern der in der Gesamtroadmap bereits festgelegte Z01-Vergleich und die kontrollierte Integration. Danach folgen reale VM-, Image-, Pi-/SXceiver-, VPN-, selektive Update- und Recoverytests; erst anschließend kann aus dem guten Entwicklungsstand ein belastbarer Betriebsdienst werden.
+Der entscheidende aktuelle Befund ist jedoch: **Die Entwicklung ist nicht im geprüften Hauptzweig vorhanden.** Außerdem löst der historische Open-Lab-Stand noch nicht die sichere, vollständige TBS-Provisionierung. Der nächste fachlich richtige Schritt ist deshalb weder ein neues Parallelkonzept noch ein sofortiger Produktivrollout, sondern der in der Gesamtroadmap bereits festgelegte Z01-Vergleich und die kontrollierte Integration. Danach folgen reale VM-, Image-, Pi-/SXceiver-, VPN-, selektive Update- und Recoverytests; erst anschließend kann aus dem guten Entwicklungsstand ein belastbarer Betriebsdienst werden.

@@ -1,75 +1,74 @@
-# Abschlussdokumentation: POCSAG versus LoRa – Alarmierung, Argumente und Faktenkorrektur
+# Brainstorming: POCSAG versus LoRa – Anforderungen an die Alarmierung
 
-> **Archivstatus:** Historischer Diskussions- und Dokumentationschat, kein Implementierungs- oder Betriebsnachweis. Die damaligen Assistenzantworten enthalten erhebliche fachliche Fehler. Abschnitt 5 kennzeichnet diese ausdrücklich; Abschnitt 6 enthält eine davon getrennte, bei der Archivierung ergänzte Einordnung. Aus diesem Chat folgt weder eine pauschale Ablehnung von LoRa noch eine freigegebene NetCore-Alarmierungsarchitektur.
+> **Archivstatus:** Historischer Diskussions- und Dokumentationschat, kein Implementierungs- oder Betriebsnachweis. Die damaligen Entwurfsfassungen enthalten erhebliche fachliche Fehler. Abschnitt 5 kennzeichnet diese ausdrücklich; Abschnitt 6 enthält eine davon getrennte, bei der Quellenprüfung ergänzte Einordnung. Aus dieser Entwicklungsphase folgt weder eine pauschale Ablehnung von LoRa noch eine freigegebene NetCore-Alarmierungsarchitektur.
 
-## 1. Metadaten und Prüfgrundlage
+## Zielbild und Festlegungen
+
+- **POCSAG versus LoRa** nach Alarmierungsanforderungen vergleichen: ungeplante Alarme, viele Empfänger, Innenraumabdeckung und Rückmeldungen.
+- LoRa, LoRaWAN-Klassen und konkrete Produkte getrennt bewerten; pauschale Technologie-Rangfolgen sind verworfen.
+- Airtime, Last, Empfangsmodell, Frequenzbedingungen und Bestätigungsstufen brauchen konkrete Annahmen.
+- DAPNET-Empfang/Weiterleitung ist im Code vorhanden; dieses Modul sendet selbst **kein POCSAG**. Eine Alarmierungsarchitektur ist noch offen.
+
+## 1. Arbeitsstand und Prüfgrundlage
 
 | Feld | Inhalt |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Zunächst allgemeine Gegenargumente zu LoRa; anschließend ausdrücklich POCSAG versus LoRa für Alarmierung/Funkruf |
-| Ursprünglicher Chattitel | Nicht als UI-Metadatum verfügbar. Die erste sichtbare Nutzerfrage lautet: „Argumente GEGEN LoRa mit denen ich jede Diskussion Gewinne?“ |
 | Arbeitsbezeichnung | POCSAG versus LoRa: Alarmierungsargumente und fachliche Korrekturen |
-| Chatlink | Nicht verfügbar; kein Link rekonstruiert oder erfunden |
 | Erstellungsdatum dieser Zusammenfassung | 2026-10-04 |
 | Historische Nachrichtenzeitpunkte | Im unmittelbar verfügbaren Verlauf nicht belastbar ausgewiesen; keine exakten Datierungen aus Hilfskontext übernommen |
 | Repository | `JanHG98/netcore-tetra` |
-| Geprüfter und alleiniger Schreibbranch | `Archiving` |
+| Geprüfter Branch | `Archiving` |
 | Geprüfter Ausgangscommit | `3aa13c5a6d283325841a262ac93264bfa22ea168` |
 | Ausgangs-Tree | `f171847cd9174081a4249e432efec1f92be5b102` |
 | Datum des Ausgangscommits | 2026-10-04T01:35:35Z; dies ist ein Repository-Zeitpunkt, nicht das Datum der ursprünglichen LoRa-Diskussion |
 | Ausgangscommit-Nachricht | `docs(archive): preserve TETRA textbook chat, standards audit and correction roadmap` |
-| Historischer Canvas | Erfolgreich angelegt als „Argumente Gegen Lora“; sichtbarer Erstellungstext im Chat vorhanden |
+| Historischer Canvas | Erfolgreich angelegt als „Argumente Gegen Lora“; sichtbarer Erstellungstext in der Planung vorhanden |
 | Archivdatei | `Docs/archive/2026-10-04_pocsag-versus-lora-alarmierung-argumente-und-faktenkorrektur.md` |
 | Archivindex | `Docs/archive/README.md` |
-| Publikationsnachweis | Der diese Datei hinzufügende Git-Commit und die anschließende Abschlussmeldung; der Ausgangscommit oben ist ausdrücklich nicht der neue Archivcommit |
 
-Der technische Abgleich ist auf den genannten Snapshot beschränkt. Der Defaultbranch heißt laut Repository-Metadaten `main`; die zunächst verwendete GitHub-Codesuche durchsucht diesen Defaultbranch. Suchtreffer wurden deshalb nicht ungeprüft als Befund für `Archiving` ausgegeben. Der hier beschriebene DAPNET-Code und die Root-README wurden zusätzlich explizit am Ausgangscommit gelesen. [R1–R3]
+Der technische Abgleich bezieht sich auf den genannten `Archiving`-Snapshot. DAPNET-Code und Root-README wurden an diesem Commit geprüft; Treffer der Defaultbranch-Suche dienen nur als Suchhinweise. [R1–R3]
 
 ### 1.1 Evidenz- und Statusbegriffe
 
 - **Idee:** Vorschlag ohne verbindliche Annahme oder Ausarbeitung.
-- **Beschlossen/geplant:** Im Chat ausdrücklich gewünschte Arbeit oder Festlegung; noch kein Umsetzungsbeleg.
+- **Beschlossen/geplant:** In der Planung ausdrücklich gewünschte Arbeit oder Festlegung; noch kein Umsetzungsbeleg.
 - **Implementiert:** Ein Artefakt oder konkreter Code ist nachweisbar vorhanden. Bei Quellcode bedeutet dies noch keinen erfolgreichen Build oder Betrieb.
 - **Getestet:** Ein benannter Test wurde tatsächlich ausgeführt und sein Ergebnis ist verfügbar.
 - **Im Betrieb bestätigt:** Beobachteter Betrieb auf einem identifizierbaren Zielsystem; eine Beschreibung oder ein Codekommentar genügt nicht.
 
-Die Kennzeichnungen **historisch**, **neu recherchiert** und **aus Code abgeleitet** benennen unterschiedliche Quellenebenen. Insbesondere sind die fachlichen Korrekturen dieses Archivs keine nachträglich erfundenen Nutzerentscheidungen.
+Die Kennzeichnungen **historisch**, **neu recherchiert** und **aus Code abgeleitet** benennen unterschiedliche Quellenebenen. Insbesondere sind die fachlichen Korrekturen dieses Archivs keine nachträglich erfundenen Festlegungen.
 
-### 1.2 Zugänglichkeit und Auswertungslücken
+### 1.2 Zugänglichkeit und Quellenlücken
 
-Ausgewertet wurden die sichtbaren Nutzer- und Assistenzbeiträge einschließlich des erfolgreichen Canvas-Erstellungsaufrufs sowie der spätere Archivierungsauftrag. Ein aktueller Live-Abruf des Canvas ist nicht verfügbar. Damit ist dessen damaliger Erstellungstext belegt, nicht aber ein möglicherweise außerhalb des sichtbaren Verlaufs geänderter Endstand.
+Verfügbar sind die allgemeine LoRa-Argumentationssammlung, deren Canvas-Erstfassung und der spätere POCSAG-Vergleich. Der Canvas-Endstand wurde nicht erneut abgerufen; die Übernahme des POCSAG-Teils ist nicht belegt.
 
-Es stehen 25 projektweit bereitgestellte ETSI-PDFs zur Verfügung. Diese wurden inventarisiert und im maschinell extrahierten Volltext nach den zentralen Vergleichsbegriffen durchsucht. Das ist ausdrücklich keine vollständige fachliche oder visuelle Durcharbeitung aller 8.061 PDF-Seiten. Einzelheiten und Grenzen stehen in Abschnitt 13.
-
-Nicht verfügbar sind ein authentischer ursprünglicher UI-Chattitel, der Chatlink, eine reale Vergleichsanlage, Pager-/LoRa-Gerätedaten, Messprotokolle, Frequenzzuteilungen und Betreiberanforderungen. Weitere versteckte Chatteile werden nicht behauptet. Allgemeine Erinnerungen an andere NetCore-Chats wurden nicht zu Festlegungen dieses Chats umgedeutet.
+Die 25 ETSI-PDFs wurden inventarisiert und nach den Vergleichsbegriffen durchsucht; eine vollständige fachliche Prüfung ihrer **8.061 Dateiseiten** fand nicht statt (Abschnitt 13). Für den Vergleich fehlen konkrete Pager-/LoRa-Geräte, Messprotokolle, Frequenzzuteilungen und Betreiberanforderungen.
 
 ## 2. Ziel, Ausgangslage und behandelte Themen
 
-Jan wollte zunächst schlagkräftige Argumente gegen LoRa für eine Diskussion. Der erste Auftrag war rhetorisch formuliert und enthielt keinen technischen Anforderungskatalog. Die erste Assistenzantwort lieferte entsprechend eine stark zugespitzte Negativliste. Anschließend wurde deren Übernahme in ein Canvas ausdrücklich gewünscht und ausgeführt.
+Ausgangspunkt war eine zugespitzte Sammlung von Gegenargumenten zu LoRa. Mit der Präzisierung auf **POCSAG versus LoRa** änderte sich der Maßstab: Entscheidend ist die Eignung für Alarmierungsnachrichten und große Empfängergruppen.
 
-Die entscheidende spätere Präzisierung lautete: **„es geht bei der diskussion um POCSAG, daher mal bitte da gute argumente“**. Damit wurde der Vergleichsmaßstab auf POCSAG verschoben. Es ging nicht mehr sinnvoll um beliebige IoT-Sensorik, sondern um die Eignung einer Funklösung für Alarmierungsnachrichten und viele Empfänger.
+Zu vergleichen sind Reichweite, Gebäudedämpfung, Leistung, Duty Cycle, Airtime, Gruppenadressierung, Kapazität, Latenz, Zuverlässigkeit, Rückmeldungen, Architektur, Cloud-Abhängigkeiten, Sicherheit, Interoperabilität, Batterielaufzeit und Kosten. Als Ausgabeformen bleiben ein einseitiges Argumentationsblatt, eine Folie und grafische Symbole denkbar.
 
-Behandelt wurden Reichweite und Gebäudedämpfung, Sendeleistung, Duty Cycle, Airtime, Gruppenadressierung, Skalierung, Latenz, Zustellzuverlässigkeit, Rückmeldungen, Netzarchitektur, Cloud-Abhängigkeiten, Sicherheit, Interoperabilität, Batterielaufzeit und Kosten. Daneben wurden ein einseitiges Argumentationsblatt, eine Folie, grafische Symbole und eine Ergänzung des bestehenden Canvas vorgeschlagen.
-
-**Nicht behandelt oder festgelegt wurden** ein konkretes LoRa-System, ein LoRaWAN-Profil, ein Mesh-Protokoll, eine POCSAG-Sendeanlage, eine NetCore-Gateway-Spezifikation oder eine Beschaffung. LoRa, LoRaWAN und ein darauf aufgebautes Alarmierungsprodukt dürfen deshalb in der Fortsetzung nicht als dasselbe behandelt werden.
+Ein konkretes LoRa-System, LoRaWAN-Profil, Mesh-Protokoll, POCSAG-Sender, NetCore-Gateway und eine Beschaffung sind noch nicht festgelegt. LoRa, LoRaWAN und ein darauf aufbauendes Alarmierungsprodukt benötigen jeweils einen eigenen Vergleichsmaßstab.
 
 ## 3. Historischer Verlauf und tatsächlich entstandene Artefakte
 
-| Schritt | Historischer Inhalt | Nachweis und Status |
+| Schritt | Entwicklung des Vergleichs | Status |
 |---|---|---|
-| H1 | Wunsch nach Argumenten gegen LoRa | Sichtbare Nutzerfrage; Diskussionsziel, keine technische Entscheidung |
-| H2 | „Anti-LoRa“-Antwort mit sieben Themenblöcken, Einzeilern, Gegenargumentetabelle und Alternativen | Text vorhanden; Aussagen waren überwiegend unbelegt und teilweise falsch |
-| H3 | „bitte im Canvas“ | Expliziter Dokumentationsauftrag |
-| H4 | Canvas „Argumente Gegen Lora“ wurde erstellt | Erfolgreiche Werkzeugantwort vorhanden; **Dokument implementiert**, kein Funk- oder Softwaretest |
-| H5 | Präzisierung auf POCSAG | Spätere ausdrückliche Nutzerkorrektur; hat Vorrang vor dem allgemeinen Vergleichsrahmen |
-| H6 | Zweite Antwort mit zehn Pro-POCSAG-/Contra-LoRa-Blöcken und Vergleichstabelle | Text vorhanden; erhebliche zusätzliche Übertreibungen und Fehler |
-| H7 | Angebot, den POCSAG-Vergleich als zweiten Canvas-Abschnitt einzufügen | Nur Assistenzangebot; kein sichtbarer Update-Aufruf und keine nachgewiesene Ausführung |
-| H8 | Auftrag zur technischen Archivierung in `Archiving` | Ausdrücklich autorisiert; Dokumentationsänderungen ausschließlich unter `Docs/archive/` |
+| H1 | Gegenargumente zu LoRa sammeln | Argumentationsziel; kein Anforderungskatalog |
+| H2 | Allgemeine Liste mit sieben Themenblöcken, Einzeilern, Gegenargumentetabelle und Alternativen | Text vorhanden; viele Aussagen unbelegt oder falsch |
+| H3–H4 | Allgemeine Sammlung als Canvas „Argumente Gegen Lora“ anlegen | Erstfassung vorhanden, keine Funk-/Softwareprüfung |
+| H5 | Vergleich auf POCSAG und Alarmierung begrenzen | Maßgebliche Präzisierung |
+| H6 | Zehn Pro-POCSAG-/Contra-LoRa-Blöcke mit Tabelle | Text vorhanden; Korrekturen in Abschnitt 5 |
+| H7 | POCSAG-Vergleich als zweiten Canvas-Abschnitt ergänzen | Idee; Umsetzung nicht belegt |
+| H8 | Quellen und Code separat prüfen | Dokumentations- und Quellenabgleich vom 04.10.2026 |
 
 ### 3.1 Gesicherter Canvas-Umfang
 
-Die im Chat sichtbare Erstfassung trägt die Überschrift **„Argumente GEGEN LoRa – Das Anti-LoRa-Arsenal“**. Ihre Abschnitte heißen sinngemäß:
+Die in der Planung sichtbare Erstfassung trägt die Überschrift **„Argumente GEGEN LoRa – Das Anti-LoRa-Arsenal“**. Ihre Abschnitte heißen sinngemäß:
 
 1. Physik und Regulatorik;
 2. Kapazität und Skalierung;
@@ -88,26 +87,22 @@ Die Erstfassung enthält insbesondere die problematischen Behauptungen über ver
 
 | ID | Anforderung/Festlegung | Status und Begründung |
 |---|---|---|
-| D1 | Argumentation soll POCSAG als Vergleichsgegenstand berücksichtigen | **Beschlossen:** ausdrückliche spätere Präzisierung durch Jan |
+| D1 | Argumentation soll POCSAG als Vergleichsgegenstand berücksichtigen | **Beschlossen:** festgelegte Präzisierung |
 | D2 | Argumentationsmaterial soll im Canvas vorliegen | **Teilweise erfüllt:** allgemeine Erstfassung erstellt; POCSAG-Ergänzung nicht belegt |
-| D3 | Historischen Verlauf technisch archivieren | **Beschlossen:** aktueller Auftrag mit Zielpfad und Schreibautorisierung |
-| D4 | Historie, heutiger Code und Vorschläge unterscheiden | **Beschlossen:** ausdrückliche Archivierungsanforderung |
-| D5 | Vorhandene Archive bewahren; ausschließlich `Archiving` und `Docs/archive/` ändern | **Beschlossen:** keine Freigabe für andere Branches, Roadmap-Dateien oder Produktivcode |
-| D6 | Verfügbare Originalbilder mitsichern | **Beschlossen, hier ohne eigenständige Bildquelle:** keine Chatbilder verfügbar; keine Ersatzbilder erzeugt |
 
-**Keine Entscheidung aus diesem Chat:** POCSAG als verpflichtende Primäralarmierung, Abschaffung von LoRa, Einführung eines neuen DAPNET-Dienstes, Verwendung einer bestimmten Frequenz, ein garantierter Alarmierungs-SLA, eine konkrete maximale Latenz oder eine Zulassung für sicherheitskritischen Betrieb.
+**Keine Entscheidung aus dieser Entwicklungsphase:** POCSAG als verpflichtende Primäralarmierung, Abschaffung von LoRa, Einführung eines neuen DAPNET-Dienstes, Verwendung einer bestimmten Frequenz, ein garantierter Alarmierungs-SLA, eine konkrete maximale Latenz oder eine Zulassung für sicherheitskritischen Betrieb.
 
-Das rhetorische Ziel, jede Diskussion zu gewinnen, ist keine Abnahmebedingung. Als neue redaktionelle Konsequenz der Archivprüfung wird die Argumentationsgrundlage auf überprüfbare Anforderungen zurückgeführt; dies ersetzt keine noch ausstehende technische Entscheidung durch Jan.
+Das rhetorische Ziel, jede Diskussion zu gewinnen, ist keine Abnahmebedingung. Als neue redaktionelle Konsequenz der Quellenprüfung wird die Argumentationsgrundlage auf überprüfbare Anforderungen zurückgeführt; die technische Auswahl bleibt offen.
 
 ## 5. Historische Aussagen und Korrekturregister
 
-**Leseregel:** Die linke Spalte dokumentiert Aussagen der damaligen Assistenz. Sie ist keine Empfehlung. „Nicht belegt“ bedeutet nicht automatisch das Gegenteil, sondern dass der Chat keinen belastbaren Nachweis liefert. Die rechte Spalte ist die neue Prüfung vom 2026-10-04.
+**Leseregel:** Die linke Spalte dokumentiert Aussagen der früheren Entwürfe. Sie ist keine Empfehlung. „Nicht belegt“ bedeutet nicht automatisch das Gegenteil, sondern dass die Planung keinen belastbaren Nachweis liefert. Die rechte Spalte ist die neue Prüfung vom 2026-10-04.
 
 ### 5.1 Regulatorik, Leistungsdaten und Reichweite
 
 | ID | Historische Aussage | Bewertung und Archivkorrektur |
 |---|---|---|
-| K01 | EU-868 bedeute generell 1 % oder 0,1 % Duty Cycle; LoRa sei deshalb grundsätzlich nicht echtzeitfähig | **Zu pauschal.** Bedingungen hängen von Band, Geräteklasse und Kanalzugangsverfahren ab. Der gesonderte aktuelle Beleg steht in Abschnitt 6.2. [W1] |
+| K01 | EU-868 bedeute generell 1 % oder 0,1 % Duty Cycle; LoRa sei deshalb grundsätzlich nicht echtzeitfähig | **Zu pauschal.** Bedingungen hängen von Band, Geräteklasse und Kanalzugangsverfahren ab. Der gesonderte am Prüfdatum vorliegende Beleg steht in Abschnitt 6.2. [W1] |
 | K02 | POCSAG habe grundsätzlich keine Duty-Cycle-Beschränkung | **Unbelegt.** Eine Protokollbezeichnung ist kein Frequenznutzungsrecht. Die reale Zuteilung wurde nicht vorgelegt. |
 | K03 | POCSAG sende mit 50–100 W ERP, LoRa mit 14 dBm/25 mW | **Unzulässige Verallgemeinerung.** Es wurden weder Senderdaten noch Zuteilungen verglichen. Die Zahlen sind keine NetCore-Konfiguration. ERP, EIRP und Geräteleistung müssen beim späteren Vergleich getrennt werden. |
 | K04 | POCSAG gehe durch Beton, LoRa bleibe an der Wand hängen | **Nicht belastbar.** Es fehlen Linkbudget, Antennen, Gebäudetyp, Empfangsreserve und Messung. Aus der Modulation allein folgt keine solche Rangfolge. |
@@ -135,7 +130,7 @@ Das rhetorische Ziel, jede Diskussion zu gewinnen, ist keine Abnahmebedingung. A
 | K16 | Kein Rückkanal bedeute keine Angriffsfläche; POCSAG könne nur abgehört, nicht manipuliert werden | **Zurückzuziehen.** Ein Empfangspfad ist kein Authentizitätsnachweis. Die beschriebene Basisstruktur enthält Fehlerkorrektur; Fehlerkorrektur allein authentisiert keinen Absender. Das ist eine sicherheitstechnische Ableitung, kein ausgeführter Angriffstest. [W3] |
 | K17 | AES-128/Join-Prozesse machten LoRaWAN prinzipiell unsicherer als POCSAG | **Nicht belegt.** Die bloße Existenz von Schlüsselmanagement ist kein Sicherheitsmangel. Für beide konkreten Systeme fehlen Bedrohungsmodell, Provisionierung, Updateverfahren und Prüfung. |
 | K18 | FSK sei generell robuster, Chirp Spread Spectrum generell empfindlich gegen Überlagerungen und Mehrwege | **Unbelegte pauschale Rangfolge.** Keine vergleichbaren Empfängerdaten oder Störtests vorhanden; kein universelles Urteil archivieren. |
-| K19 | Semtech-IP bedeute zwangsläufig unbeherrschbaren Lock-in | **Nur eine zu prüfende Beschaffungsfrage.** Im Chat gab es keine Lieferanten-, Lizenz-, Second-Source- oder Produktlebenszyklusanalyse. |
+| K19 | Semtech-IP bedeute zwangsläufig unbeherrschbaren Lock-in | **Nur eine zu prüfende Beschaffungsfrage.** In der Planung gab es keine Lieferanten-, Lizenz-, Second-Source- oder Produktlebenszyklusanalyse. |
 | K20 | POCSAG sei wartungsarm bis wartungsfrei, brauche keine Sicherheitspatches; Pager liefen generell jahrelang mit einer Batterie | **Nicht belegt.** Geräte, Batterie, Rufaufkommen und Betriebsprofil wurden nicht angegeben. Infrastrukturwartung ist nicht aus one-way ableitbar. |
 | K21 | POCSAG sei automatisch billiger, LoRa automatisch eine OPEX-Falle ohne SLA-Anbieter | **Nicht belegt.** Keine Angebote, Betriebskostenrechnung oder Verträge vorhanden. Vorhandene Infrastruktur wurde nur behauptet, nicht für diesen Vergleich nachgewiesen. |
 | K22 | LoRa sei nur für Mülltonnen/Feuchtesensoren; kritische Alarmierung sei grundsätzlich ausgeschlossen | **Rhetorik, kein Eignungsnachweis.** Anforderungen und vollständige Alarmkette müssen bewertet werden. Auch POCSAG allein liefert keinen Sicherheitsnachweis für ein Gesamtsystem. |
@@ -144,7 +139,7 @@ Das rhetorische Ziel, jede Diskussion zu gewinnen, ist keine Abnahmebedingung. A
 
 Die zugespitzten Sätze „POCSAG sendet, und alle wissen’s“ sowie „Wenn’s egal ist, nimm LoRa“ werden ausdrücklich **nicht** als fachliche Schlussfolgerungen fortgeführt. Die historische Vergleichstabelle mit generellen Aussagen zu Reichweite, Latenz, Sicherheit und Kosten ist durch dieses Korrekturregister als Entscheidungsgrundlage gesperrt.
 
-## 6. Bei der Archivierung ergänzte technische Einordnung
+## 6. Bei der Dokumentation ergänzte technische Einordnung
 
 **Status dieses Abschnitts: neu recherchierte Einordnung und eigene Ableitung, nicht historische Projektentscheidung.** Er dient dazu, die Diskussion fachlich sinnvoll fortsetzen zu können, ohne die frühere Polemik unverändert in eine Roadmap zu übernehmen.
 
@@ -156,7 +151,7 @@ Bei LoRaWAN Class A folgen kurze Empfangsfenster auf einen Uplink des Endgeräts
 
 Daraus folgt als **eigene Anforderungsableitung**: Für die Diskussion ist die Frage „Wie schnell erreicht ein ungeplanter Alarm einen batteriebetriebenen Empfänger im ungünstigsten zulässigen Betriebszustand?“ stärker als „Welche Funktechnik ist immer besser?“. Ein Gegnerentwurf, der ausschließlich selten sendende Class-A-Geräte vorsieht, muss diese Lücke erklären. Ein Gegenentwurf mit anderem Empfangsmodell darf nicht mit dem Class-A-Argument widerlegt werden.
 
-Weitere belastbare Prüffragen sind: Gibt es gemessene Innenraumabdeckung? Wie lang ist die letzte Alarmzustellung bei einer Serie verschiedener Alarmgruppen? Was passiert nach Ausfall eines Standorts oder des Backhauls? Welche Versorgung bleibt nach Stromausfall? Wer trägt Wartung und Entstörung? Ein bestehendes POCSAG-Netz kann hier Vorteile haben, **wenn diese konkret nachgewiesen sind**. Für die NetCore-Installation wurde dies in diesem Chat nicht gezeigt.
+Weitere belastbare Prüffragen sind: Gibt es gemessene Innenraumabdeckung? Wie lang ist die letzte Alarmzustellung bei einer Serie verschiedener Alarmgruppen? Was passiert nach Ausfall eines Standorts oder des Backhauls? Welche Versorgung bleibt nach Stromausfall? Wer trägt Wartung und Entstörung? Ein bestehendes POCSAG-Netz kann hier Vorteile haben, **wenn diese konkret nachgewiesen sind**. Für die NetCore-Installation wurde dies in dieser Entwicklungsphase nicht gezeigt.
 
 ### 6.2 Korrigierter regulatorischer Bezug
 
@@ -189,7 +184,7 @@ Die Werte ergeben sich aus `T = Bitzahl / Datenrate`. Sie sind **keine Messung d
 
 Als **neuer Arbeitsvorschlag** sind mindestens zu erfassen: Zahl unterschiedlicher Alarmtexte und Zielgruppen, Textlängen inklusive Protokolloverhead, Wiederholungsstrategie, erlaubte gleichzeitige Last, Empfangsmodell, Zahl und Koordination der Sender sowie Rückmeldeverkehr. Eine einzige identische Gruppennachricht an viele passive Empfänger ist ein anderer Fall als viele unterschiedliche Einzelalarme.
 
-Für ACKs ist die Zeit getrennt zu bilanzieren: `T_gesamt = T_daten + T_ack + T_wiederholungen`. Diese Gleichung rechtfertigt keinen konstanten Faktor zwei. Erst eine konkrete Konfiguration erlaubt Aussagen zur maximalen Last. Im ursprünglichen Chat wurde keine solche Konfiguration angegeben.
+Für ACKs ist die Zeit getrennt zu bilanzieren: `T_gesamt = T_daten + T_ack + T_wiederholungen`. Diese Gleichung rechtfertigt keinen konstanten Faktor zwei. Erst eine konkrete Konfiguration erlaubt Aussagen zur maximalen Last. In den ursprünglichen Planungsunterlagen wurde keine solche Konfiguration angegeben.
 
 ### 6.5 Sicherheits- und Bestätigungsstufen
 
@@ -203,7 +198,7 @@ Für eine spätere NetCore-Anbindung wird folgende **neue begriffliche Trennung 
 | Endgerät bestätigt | Passend korrelierte Geräteantwort liegt vor | Wahrnehmung oder Reaktion eines Menschen |
 | Mensch quittiert | Benutzer hat eine definierte Aktion ausgeführt | Tatsächliches Eintreffen oder Erledigung der Aufgabe |
 
-Diese Trennung ist besonders wichtig, weil die heutige DAPNET-Implementierung verschiedene dieser Stufen nicht gleichsetzt; Details folgen in Abschnitt 7. Ein fehlender Rückkanal kann eine Systemanforderung an bestätigte Zustellung nicht erfüllen, indem man bloß die Senderstatistik umbenennt.
+Diese Trennung ist besonders wichtig, weil die zusätzliche DAPNET-Implementierung verschiedene dieser Stufen nicht gleichsetzt; Details folgen in Abschnitt 7. Ein fehlender Rückkanal kann eine Systemanforderung an bestätigte Zustellung nicht erfüllen, indem man bloß die Senderstatistik umbenennt.
 
 ## 7. Zusätzlich geprüfter Repository-Stand am 2026-10-04
 
@@ -215,7 +210,7 @@ Die Codesuche nach `POCSAG` fand auf dem Defaultbranch einen Guide-Verweis und d
 
 ### 7.2 Projektkontext aus der Root-README
 
-Die gelesene README beschreibt `v1.9.0` mit NINA/KATWARN, eigenen Warnmeldungen und Funk-/SDS-Korrekturen. Sie nennt `system-backend/alert-service`, den zentralen `system-backend/sip-switch` und einen lokalen Asterisk-Fallback. Dies wird hier ausschließlich als **heutiger Dokumentationsbefund** festgehalten. Diese Komponenten wurden in diesem Archivlauf weder vollständig codegeprüft noch gebaut oder im Betrieb getestet. Sie sind keine Ergebnisse des historischen POCSAG-Chats. [R2]
+Die gelesene README beschreibt `v1.9.0` mit NINA/KATWARN, eigenen Warnmeldungen und Funk-/SDS-Korrekturen. Sie nennt `system-backend/alert-service`, den zentralen `system-backend/sip-switch` und einen lokalen Asterisk-Fallback. Dies wird hier ausschließlich als **geprüfter Dokumentationsbefund** festgehalten. Diese Komponenten wurden in diesem Prüflauf weder vollständig codegeprüft noch gebaut oder im Betrieb getestet. Sie sind keine Ergebnisse der historischen POCSAG-Planung. [R2]
 
 ### 7.3 Tatsächlich vorhandener DAPNET-Baustein
 
@@ -243,7 +238,7 @@ In `handle_rwth_message` wird nach erfolgreichem Parsen zuerst ein positives Cor
 
 Auch ein erfolgreicher `tx.send(ControlCommand::SendSds { ... })` oder `SendRawSdsType4` bedeutet in der betrachteten Funktion zunächst die Übergabe an den internen Kanal. Die Funktion wartet dort nicht auf die Quittierung eines Funkgeräts. Die Telegram-Funktion bestätigt die Weitergabe an den Sink, nicht die Wahrnehmung beim Benutzer. [R3]
 
-**Bedeutung für diesen Chat:** Das bestehende Modul darf weder als POCSAG-Sender noch als Beleg für garantierte Alarmzustellung beworben werden. Es ist ebenso wenig ein hier neu entwickelter LoRa-/POCSAG-Konverter.
+**Bedeutung für diese Planung:** Das bestehende Modul darf weder als POCSAG-Sender noch als Beleg für garantierte Alarmzustellung beworben werden. Es ist ebenso wenig ein hier neu entwickelter LoRa-/POCSAG-Konverter.
 
 ### 7.5 Schnittstellen und relevante Parameter
 
@@ -266,34 +261,34 @@ Es wurden keine historischen Betriebssystempfade, Systemd-Units, RIC-/ISSI-Zutei
 
 ### 7.6 Neu erkannte Prüfaufgaben, keine behaupteten Fehlerbehebungen
 
-Aus dem gelesenen Code ergeben sich mögliche Fortsetzungspunkte: Bedeutung des Core-ACKs im UI verständlich darstellen, Verhalten bei Zielpfadausfall prüfen, Nachrichten-ID-Lebensdauer und Wiederholung nach Neustart bewerten sowie Absicherung der TCP-Verbindung und Umgang mit Telemetrie-Nutztexten dokumentieren. Ob das heutige System diese Punkte an anderer Stelle bereits abdeckt, wurde nicht untersucht.
+Aus dem gelesenen Code ergeben sich mögliche Fortsetzungspunkte: Bedeutung des Core-ACKs im UI verständlich darstellen, Verhalten bei Zielpfadausfall prüfen, Nachrichten-ID-Lebensdauer und Wiederholung nach Neustart bewerten sowie Absicherung der TCP-Verbindung und Umgang mit Telemetrie-Nutztexten dokumentieren. Ob das zusätzliche System diese Punkte an anderer Stelle bereits abdeckt, wurde nicht untersucht.
 
-Es wird **kein behobener Produktfehler** behauptet. Der historische Chat enthielt ohnehin keinen implementierten Funkpfad und keinen Fehlerbericht zu diesem Modul. Seine heutige Existenz ist ein zusätzlich erhobener Repository-Befund und lässt sich aus diesem Chat keinem damaligen Commit oder PR zuordnen.
+Es wird **kein behobener Produktfehler** behauptet. Die historische Planung enthält keinen implementierten Funkpfad oder Fehlerbericht zu diesem Modul. Seine zusätzliche Existenz ist ein zusätzlich erhobener Repository-Befund und lässt sich aus dieser Entwicklungsphase keinem damaligen Commit oder PR zuordnen.
 
 ## 8. Erreichter Entwicklungs- und Betriebsstand
 
 | Gegenstand | Idee | Beschlossen/geplant | Implementiert | Getestet | Im Betrieb bestätigt |
 |---|---|---|---|---|---|
 | Allgemeines Anti-LoRa-Dokument | Historisch formuliert | Canvas ausdrücklich gewünscht | Canvas-Erstellung belegt | Kein fachlicher Test bei damaliger Erstellung | Nicht anwendbar |
-| POCSAG-Vergleich | Im Chat ausgearbeitet | Themenfokus ausdrücklich gewünscht | Als Chattext vorhanden; Canvas-Ergänzung nicht belegt | Keine Vergleichsmessung | Nein |
-| Quellenbasierte Korrektur | Neu im Archivlauf | Bestandteil dieser nachvollziehbaren Abschlussprüfung | In dieser Archivdatei dokumentiert | Quellen-/Plausibilitätsprüfung, keine Funkabnahme | Nicht anwendbar |
-| NetCore-LoRa-/POCSAG-Sendeintegration aus diesem Chat | Nicht spezifiziert | Nicht beschlossen | Nicht nachgewiesen | Nein | Nein |
-| Vorhandener DAPNET-Empfangs-/Weiterleitungscode | Nicht Ergebnis dieses Chats | Historische Beauftragung hier unbekannt | Im geprüften Repository-Snapshot vorhanden | In diesem Lauf nicht ausgeführt | Nicht nachgewiesen |
-| Einseitige Folie/Cheat Sheet | Von der Assistenz angeboten | Nicht ausdrücklich beauftragt | Nicht erstellt | Nein | Nicht anwendbar |
+| POCSAG-Vergleich | In der Planung ausgearbeitet | Themenfokus ausdrücklich gewünscht | Als Entwicklungsnotizen vorhanden; Canvas-Ergänzung nicht belegt | Keine Vergleichsmessung | Nein |
+| Quellenbasierte Korrektur | Neu im Prüflauf | Bestandteil dieser nachvollziehbaren Quellenprüfung | In dieser Archivdatei dokumentiert | Quellen-/Plausibilitätsprüfung, keine Funkabnahme | Nicht anwendbar |
+| NetCore-LoRa-/POCSAG-Sendeintegration aus dieser Entwicklungsphase | Nicht spezifiziert | Nicht beschlossen | Nicht nachgewiesen | Nein | Nein |
+| Vorhandener DAPNET-Empfangs-/Weiterleitungscode | Nicht Ergebnis der Planung | Historische Beauftragung hier unbekannt | Im geprüften Repository-Snapshot vorhanden | In diesem Lauf nicht ausgeführt | Nicht nachgewiesen |
+| Einseitige Folie/Cheat Sheet | Als Ausgabeform vorgeschlagen | Nicht ausdrücklich beauftragt | Nicht erstellt | Nein | Nicht anwendbar |
 
-**Gesamtergebnis des historischen Chats:** Dokumentationsmaterial und eine fachliche Eingrenzung, aber keine belastbare Auswahlentscheidung. **Gesamtergebnis dieses Archivlaufs:** gesicherte Verlaufseinordnung, Korrekturregister, gezielter Repository-Abgleich und klar begrenzte Fortsetzungsaufgaben.
+**Gesamtergebnis der historischen Planung:** Dokumentationsmaterial und eine fachliche Eingrenzung, aber keine belastbare Auswahlentscheidung. **Gesamtergebnis dieses Prüflaufs:** gesicherte Verlaufseinordnung, Korrekturregister, gezielter Repository-Abgleich und klar begrenzte Fortsetzungsaufgaben.
 
 ## 9. Befehle, Arbeitsabläufe und aufgetretene Probleme
 
 ### 9.1 Historische Installation und Reparatur
 
-Im ursprünglichen Chat wurden keine Shellbefehle, Installations- oder Deploymentabläufe ausgeführt. Es gab keine Logs eines Pagers, Gateways oder Senders und keine erfolgreiche Fehlerbehebung an einem Zielsystem. Der einzige nachgewiesene historische Werkzeugschritt war die Canvas-Erstellung.
+In den ursprünglichen Planungsunterlagen wurden keine Shellbefehle, Installations- oder Deploymentabläufe ausgeführt. Es gab keine Logs eines Pagers, Gateways oder Senders und keine erfolgreiche Fehlerbehebung an einem Zielsystem. Der einzige nachgewiesene historische Werkzeugschritt war die Canvas-Erstellung.
 
-### 9.2 Tatsächliche Arbeiten während der Archivierung
+### 9.2 Tatsächliche Arbeiten während der Dokumentation
 
 | Arbeitsschritt | Ergebnis | Grenze |
 |---|---|---|
-| GitHub-Branch, Metadaten, Archivverzeichnis und Index lesen | Erfolgreich über den verbundenen GitHub-Zugang | Snapshotprüfung; erneuter Branchabgleich vor Veröffentlichung erforderlich |
+| GitHub-Branch, Metadaten, Archivverzeichnis und Index lesen | Erfolgreich über den verbundenen GitHub-Zugang | Fixierter Quellstand, keine Prüfung laufender Dienste |
 | Root-README und DAPNET-Zeilen 1–540 am festen Commit lesen | Erfolgreich | Kein vollständiges Repository-Audit |
 | Projektdateien über Files suchen/listen | 25 projektgebundene PDFs identifiziert | Kein unabhängiger historischer Bildanhang gefunden |
 | PDF-Seitenzahlen, Dateigrößen und SHA-256 lokal ermitteln | Erfolgreich für alle 25 Dateien | Dateiintegrität/Inventar, kein fachlicher Volltest |
@@ -322,7 +317,7 @@ pdftotext -layout DATEI.pdf -
 
 ### 9.3 Fachliche Fehlerursache und funktionierende Abhilfe
 
-Die Fehler der alten Antworten entstanden erkennbar auf Argumentationsebene: ein vorgegebenes Pro-/Contra-Ergebnis wurde über technische Einschränkungen gestellt, Eigenschaften verschiedener Protokollschichten wurden vermischt und hypothetische Worst Cases als allgemeiner Normalfall ausgegeben. Dies ist eine Bewertung der sichtbaren Antworttexte, keine Behauptung über unbekannte interne Entstehungsvorgänge.
+Die Fehler der frühen Vergleichsentwürfe entstanden erkennbar auf Argumentationsebene: ein vorgegebenes Pro-/Contra-Ergebnis wurde über technische Einschränkungen gestellt, Eigenschaften verschiedener Protokollschichten wurden vermischt und hypothetische Worst Cases als allgemeiner Normalfall ausgegeben. Dies ist eine Bewertung der vorliegenden Argumentationstexte, keine Behauptung über unbekannte interne Entstehungsvorgänge.
 
 Die hier angewandte Abhilfe besteht aus expliziter Rücknahme unzutreffender Absolutaussagen, Primärquellenabgleich und Trennung von Systemanforderungen, Funkverfahren, Nutzungsrechten und tatsächlichem Code. Die alte Canvas-Fassung ist dadurch **nicht automatisch technisch korrigiert**; deren Überarbeitung bleibt gesondert offen.
 
@@ -344,11 +339,11 @@ Tatsächlich durchgeführt wurden Dokumenten-/Metadatenprüfung, gezielte Quellc
 | Wiederholung, Neustart und Duplikate | Identifizierte Nachrichten-IDs und Lebensdauer | Verlust-/Duplikatverhalten ohne falsche Zustellanzeige | **Neu aus Code abgeleitete Idee**, nicht ausgeführt |
 | Sicherheits-/Betriebsabnahme | Verantwortlichkeit, Zugriffs- und Schlüsselkonzept | Nachweis gegen vereinbarte Anforderungen | **Idee**, keine Freigabe für Realalarmierung |
 
-Für keinen Test wurden im Chat numerische Abnahmeschwellen vereinbart. Diese müssen vor der Durchführung festgelegt werden; nachträgliches Anpassen an ein gewünschtes Ergebnis wäre kein belastbarer Vergleich.
+Für keinen Test wurden in der Planung numerische Abnahmeschwellen vereinbart. Diese müssen vor der Durchführung festgelegt werden; nachträgliches Anpassen an ein gewünschtes Ergebnis wäre kein belastbarer Vergleich.
 
 ## 11. Ersetzte Ansätze und erhaltene Nebenideen
 
-Der allgemeine Angriff auf LoRa ohne Anwendungsbezug wurde durch Jans POCSAG-Präzisierung als Gesprächsrahmen überholt. Die technische Wahl selbst blieb offen. Die Rücknahme der falschen Aussagen stammt aus dieser Archivprüfung und wird nicht als frühere ausdrückliche Nutzerkorrektur dargestellt.
+Der allgemeine Angriff auf LoRa ohne Anwendungsbezug wurde durch die Präzisierung auf POCSAG als Planungsrahmen überholt. Die technische Wahl selbst blieb offen. Die Rücknahme der falschen Aussagen stammt aus dieser Quellenprüfung und wird nicht als frühere ausdrückliche Korrektur dargestellt.
 
 Erhalten bleiben als **Ideen**: ein einseitiges Argumentationsblatt, eine optisch aufbereitete Folie, ein kompaktes Cheat Sheet, eine Grafik zu Sendezeitbudget und Downlink-Flaschenhals sowie ein zweiter Abschnitt im bestehenden Canvas. Das früher vorgeschlagene Jamming-Symbol war lediglich eine Gestaltungsidee; es entstand weder ein Bild noch ein technischer Störversuch.
 
@@ -356,7 +351,7 @@ Die genannten Alternativen LTE-M, NB-IoT, 5G RedCap, Wi-Fi HaLow, private LTE/5G
 
 ## 12. Offene Aufgaben, Roadmap-Kandidaten und nächste Schritte
 
-Die folgenden Prioritäten sind **Vorschläge dieser Abschlussprüfung**, keine bereits früher vereinbarten Liefertermine. Es wurde keine Roadmap außerhalb des Archivs verändert.
+Die folgenden Prioritäten sind **Vorschläge dieser Quellenprüfung**, keine bereits früher vereinbarten Liefertermine. Es wurde keine Roadmap außerhalb des Archivs verändert.
 
 | ID | Aufgabe | Status | Vorgeschlagene Priorität / Abhängigkeit |
 |---|---|---|---|
@@ -370,9 +365,8 @@ Die folgenden Prioritäten sind **Vorschläge dieser Abschlussprüfung**, keine 
 | RM-08 | Sicherheits-, Protokollierungs-, Wartungs- und Ausfallkonzept für beide konkreten Vergleichssysteme prüfen | **Idee** | Vor Eignungsaussage für kritische Alarmierung |
 | RM-09 | Messreihe nach Abschnitt 10.1 durchführen und Ergebnisse versioniert ablegen | **Idee** | Nach festgelegten Abnahmekriterien |
 | RM-10 | Quellenbasierte Kurzfassung/Folie mit sachlichen Diskussionsfragen erstellen | **Historische Nebenidee, nicht beauftragt** | Nach RM-01 und vorzugsweise Anforderungsklärung |
-| RM-11 | Originalen Chatlink/UI-Titel und einen eventuell abweichenden aktuellen Canvas-Stand nachtragen | **Offene Metadatenlücke** | Nur bei Verfügbarkeit; keine Voraussetzung für Erhalt dieses Archivs |
 
-**Empfohlener nächster fachlicher Schritt:** Zuerst RM-02 und RM-03 bearbeiten. Ohne konkrete Gegenanlage und Erfolgskriterien wäre ein neuer pauschaler Technikvergleich erneut nur Meinung. Bis dahin ist das Archiv eine überprüfbare Gesprächsgrundlage, keine Produktfreigabe.
+**Empfohlener nächster fachlicher Schritt:** Zuerst RM-02 und RM-03 bearbeiten. Ohne konkrete Gegenanlage und Erfolgskriterien wäre ein neuer pauschaler Technikvergleich erneut nur Meinung. Bis dahin ist das Archiv eine überprüfbare Planungsgrundlage, keine Produktfreigabe.
 
 Für die Diskussion ergeben sich als neue, nicht gemessene Prüfaufforderungen beispielsweise: „Zeig die maximale Alarmverzögerung bei deinem tatsächlichen Empfangsprofil“, „Trenne Gruppen-Broadcast von vielen verschiedenen Alarmtexten“ und „Sag genau, ob dein ACK den Eingang, die Aussendung oder das Endgerät bestätigt“. Diese Formulierungen ersetzen die zurückgezogenen pauschalen Siegesbehauptungen.
 
@@ -380,7 +374,7 @@ Für die Diskussion ergeben sich als neue, nicht gemessene Prüfaufforderungen b
 
 ### 13.1 Einordnung des bereitgestellten PDF-Bestands
 
-Files meldete **25 Dateien, sämtlich `source_kind=project`**, und keine eigenständigen direkten Chat-Uploads. Der gesamte Bestand war im Arbeitscontainer vorhanden. Er besteht aus TETRA-Normen bzw. Normenentwürfen und einer großen Zusammenstellung. Die Titel/Versionen in der folgenden Tabelle bezeichnen **die bereitgestellten Dateien**, nicht notwendigerweise den heute neuesten oder gültigen Normstand.
+Files meldete **25 Dateien, sämtlich `source_kind=project`**, und keine eigenständigen themenspezifischen Bildanhänge. Der gesamte Bestand war im Arbeitscontainer vorhanden. Er besteht aus TETRA-Normen bzw. Normenentwürfen und einer großen Zusammenstellung. Die Titel/Versionen in der folgenden Tabelle bezeichnen **die bereitgestellten Dateien**, nicht notwendigerweise den zum Prüfdatum neuesten oder gültigen Normstand.
 
 | Nr. | Datei | Identität / Themenbereich laut Titel | PDF-Seiten |
 |---|---|---|---:|
@@ -414,37 +408,37 @@ Die Summe beträgt **8.061 Seiten einschließlich mehrfach enthaltener Dokumente
 
 Die exakte, groß-/kleinschreibungsunabhängige Wortsuche nach `POCSAG`, `LoRa` und `LoRaWAN` ergab in allen 25 extrahierten PDF-Texten null Treffer. Die semantische Files-Suche lieferte TETRA-Abschnitte, aber keine direkte Vergleichsgrundlage für die damaligen Absolutaussagen. Damit werden diese PDFs **nicht als Quellen für einen Sieg von POCSAG über LoRa verwendet**. Ihre Themen können für andere NetCore-Arbeiten relevant sein, begründen hier aber keine neue Feature-Roadmap.
 
-Besonders zu beachten: Ein PICS-Formular ist kein ausgefüllter Konformitätsnachweis; eine Radio-Testnorm kein bestandenes Testergebnis; die TETRA-Security-Spezifikation kein Audit der NetCore-Installation. Die vorhandenen Entwürfe A07, A17, A22 und A23 werden nicht stillschweigend zu verabschiedeten aktuellen Normen oder zu einer beschlossenen Projektbaseline erklärt.
+Besonders zu beachten: Ein PICS-Formular ist kein ausgefüllter Konformitätsnachweis; eine Radio-Testnorm kein bestandenes Testergebnis; die TETRA-Security-Spezifikation kein Audit der NetCore-Installation. Die vorhandenen Entwürfe A07, A17, A22 und A23 werden nicht stillschweigend zu verabschiedeten am Prüfdatum vorliegenden Normen oder zu einer beschlossenen Projektbaseline erklärt.
 
 ### 13.2 Bilder und binäre Anlagen
 
-Im sichtbaren historischen LoRa-/POCSAG-Dialog wurden **keine eigenständigen Bilder hochgeladen oder erzeugt**. Die damalige Folien-/Grafikidee wurde nicht umgesetzt. Die bei der Dateibereitstellung dargestellten ETSI-Deckblätter und eingebetteten Abbildungen gehören zu den Projekt-PDFs; sie sind keine Originalbilder dieses Diskussionschats.
+In der historischen LoRa-/POCSAG-Planung wurden **keine eigenständigen Bilder hochgeladen oder erzeugt**. Die damalige Folien-/Grafikidee wurde nicht umgesetzt. Die bei der Dateibereitstellung dargestellten ETSI-Deckblätter und eingebetteten Abbildungen gehören zu den Projekt-PDFs; sie sind keine Originalbilder dieses Vergleichsentwurfs.
 
-Daher wurden für diesen Auftrag keine Bilddateien hinzugefügt, keine Platzhaltergrafiken erzeugt und keine Deckblätter als angebliche Chatbilder exportiert. Die projektweiten Normen wurden inventarisiert, aber nicht als vollständige PDF-Dubletten unter `Docs/archive/` erneut hochgeladen. Sie sind für den konkreten Vergleich keine direkt verwendeten Originalbelege. Auch während der neuen Webprüfung betrachtete Screenshots sind keine historischen Chatassets.
+Daher wurden für diese Quellenprüfung keine Bilddateien hinzugefügt, keine Platzhaltergrafiken erzeugt und keine Deckblätter als angebliche Originalbilder exportiert. Die projektweiten Normen wurden inventarisiert, aber nicht als vollständige PDF-Dubletten unter `Docs/archive/` erneut hochgeladen. Sie sind für den konkreten Vergleich keine direkt verwendeten Originalbelege. Auch während der neuen Webprüfung betrachtete Screenshots sind keine historischen Projektassets.
 
-Eine später auftauchende echte Chatgrafik oder ein authentischer Canvas-Export kann diesem eindeutig benannten Archiv nachträglich zugeordnet werden. Ihre gegenwärtige Nichtverfügbarkeit wird nicht durch einen erfundenen Dateilink kaschiert.
+Eine später auftauchende echte Projektgrafik oder ein authentischer Canvas-Export kann diesem eindeutig benannten Archiv nachträglich zugeordnet werden. Ihre gegenwärtige Nichtverfügbarkeit wird nicht durch einen erfundenen Dateilink kaschiert.
 
 ## 14. Relevante Quellen, Repository-Bezüge und Versionsgrenzen
 
-### 14.1 Historische Gesprächsquellen
+### 14.1 Historische Arbeitsgrundlagen
 
-**H1–H8** bezeichnen die in Abschnitt 3 aufgeführten sichtbaren Schritte. Die historischen technischen Aussagen waren nicht mit Primärquellen belegt. Der Canvas-Erstellungserfolg bestätigt ein Dokument, nicht die Richtigkeit seines Inhalts. Es gibt aus diesem Chat keinen nachgewiesenen Codecommit, PR oder Release.
+**H1–H8** bezeichnen die in Abschnitt 3 aufgeführten sichtbaren Schritte. Die historischen technischen Aussagen waren nicht mit Primärquellen belegt. Der Canvas-Erstellungserfolg bestätigt ein Dokument, nicht die Richtigkeit seines Inhalts. Es gibt aus dieser Entwicklungsphase keinen nachgewiesenen Codecommit, PR oder Release.
 
-### 14.2 Im Archivlauf tatsächlich gelesene Repository-Quellen
+### 14.2 Im Prüflauf tatsächlich gelesene Repository-Quellen
 
-- **R1:** [Geprüfter Ausgangscommit](https://github.com/JanHG98/netcore-tetra/commit/3aa13c5a6d283325841a262ac93264bfa22ea168), zugehörige Branch-/Tree-Metadaten und Archivverzeichnis. Der Commit gehörte vor dieser Arbeit zur Archivierung eines anderen Chats; er wird nicht als POCSAG-Implementierungscommit ausgegeben.
+- **R1:** [Geprüfter Ausgangscommit](https://github.com/JanHG98/netcore-tetra/commit/3aa13c5a6d283325841a262ac93264bfa22ea168), zugehörige Branch-/Tree-Metadaten und Archivverzeichnis. Der Commit gehörte vor dieser Arbeit zur Dokumentation einer anderen Projektphase; er wird nicht als POCSAG-Implementierungscommit ausgegeben.
 - **R2:** [Root-README am geprüften Commit](https://github.com/JanHG98/netcore-tetra/blob/3aa13c5a6d283325841a262ac93264bfa22ea168/README.md). Dokumentierter Release- und Warnfunktionskontext, kein eigener Laufzeittest.
 - **R3:** [DAPNET-Modul am geprüften Commit, Zeilen 1–540](https://github.com/JanHG98/netcore-tetra/blob/3aa13c5a6d283325841a262ac93264bfa22ea168/crates/tetra-entities/src/net_dapnet/mod.rs#L1-L540). Maßgeblicher Codebeleg für Worker, Core-ACK und Weiterleitung.
 - **R4:** [Archivindex vor diesem Auftrag](https://github.com/JanHG98/netcore-tetra/blob/3aa13c5a6d283325841a262ac93264bfa22ea168/Docs/archive/README.md). Vorhandene Einträge bleiben erhalten.
 
-Nur als Suchhinweis, **nicht als vollständige Prüfung**: `Docs/NetCore-Tetra-Komplettguide-2026-09-28.md` erschien bei der Defaultbranch-Suche nach POCSAG. Die damalige Suchindex-Version wurde nicht zur Codebaseline dieses Archivs gemacht. Es wurde kein PR erfunden oder ein thematisch benachbarter PR als Ergebnis dieses Chats ausgegeben.
+Nur als Suchhinweis, **nicht als vollständige Prüfung**: `Docs/NetCore-Tetra-Komplettguide-2026-09-28.md` erschien bei der Defaultbranch-Suche nach POCSAG. Die damalige Suchindex-Version wurde nicht zur Codebaseline dieses Archivs gemacht. Es wurde kein PR erfunden oder ein thematisch benachbarter PR als Ergebnis der Planung ausgegeben.
 
 ### 14.3 Neue externe Prüfung, Abrufdatum 2026-10-04
 
-- **W1 – Bundesnetzagentur:** [Vfg 91/2025, SRD-Allgemeinzuteilung](https://www.bundesnetzagentur.de/DE/Fachthemen/Telekommunikation/Frequenzen/Allgemeinzuteilungen/_DL/vfg91_2025.pdf?__blob=publicationFile&v=3). Arbeitszyklus-/Nutzungsbedingungen sowie PDF-Seite 17, Bandnummern 48 und 54; Tabelle zusätzlich als Screenshot geprüft. Primärquelle, keine individuelle Frequenzzuteilung für Jan.
+- **W1 – Bundesnetzagentur:** [Vfg 91/2025, SRD-Allgemeinzuteilung](https://www.bundesnetzagentur.de/DE/Fachthemen/Telekommunikation/Frequenzen/Allgemeinzuteilungen/_DL/vfg91_2025.pdf?__blob=publicationFile&v=3). Arbeitszyklus-/Nutzungsbedingungen sowie PDF-Seite 17, Bandnummern 48 und 54; Tabelle zusätzlich als Screenshot geprüft. Primärquelle, keine individuelle Frequenzzuteilung für die geplante Anlage.
 - **W2 – Swissphone:** [POCSAG-Technologie](https://www.swissphone.com/de/loesungen/technologien/pocsag/). Verwendet für unidirektionales Funkrufprinzip, Gruppen-Broadcast und zusätzlichen Mobilfunk-Rückkanal. Werbliche Absolutaussagen über praktisch ausgeschlossene Überlastung wurden ausdrücklich nicht übernommen.
 - **W3 – Raveon Technologies:** [Technical Brief AN142 Rev A3: The POCSAG Paging Protocol](https://www.raveon.com/pdfiles/AN142%28POCSAG%29.pdf). Seiten 1–2: Datenraten, Präambel und Batchaufbau; Seite 4: Fehlerkorrektur. Herstellerbeschreibung, nicht Ersatz für eine vollständige Norm-/Geräteprüfung. Andere Detailaussagen des Dokuments wurden nicht pauschal übernommen.
-- **W4 – LoRa Alliance:** [LoRaWAN Specification v1.0.3](https://lora-alliance.org/resource_hub/lorawan-specification-v1-0-3/). Herausgeberbeschreibung belegt Unicast-/Multicast-Unterstützung für Class B; keine Behauptung, dass 1.0.3 heute die neueste Version sei.
+- **W4 – LoRa Alliance:** [LoRaWAN Specification v1.0.3](https://lora-alliance.org/resource_hub/lorawan-specification-v1-0-3/). Herausgeberbeschreibung belegt Unicast-/Multicast-Unterstützung für Class B; keine Behauptung, dass 1.0.3 zum Prüfdatum die neueste Version sei.
 - **W5 – LoRa Alliance:** [What is LoRaWAN Specification](https://lora-alliance.org/about-lorawan-old/). Verwendet für Protokoll-/Architekturabgrenzung, Empfangsklassen, Multicast/FOTA und Datenraten-Trade-off. Aussagen wie „no latency“ oder vollständig interferenzfreie Datenraten wurden nicht als absolute technische Garantie übernommen.
 - **W6 – LoRa Alliance:** [LoRaWAN Specification v1.1](https://lora-alliance.org/resource_hub/lorawan-specification-v1-1/). Herausgeberbeschreibung nennt Handover-Roaming, Class B und Security-Erweiterungen; belegt nicht automatisch die Umsetzung in jedem Gerät.
 
@@ -452,10 +446,6 @@ Ein direkter Abruf der zusätzlich gesuchten ITU-Referenz M.584 gelang in diesem
 
 Die normativen Projektanhänge A01–A25 werden durch Dateiname, Ausgabe und Seitenzahl identifiziert. Ihr aktuellster Veröffentlichungsstatus wurde nicht vollständig online nachverfolgt, weil sie keine direkte Grundlage des LoRa-/POCSAG-Vergleichs bilden.
 
-## 15. Speicherung und Fortsetzungsgrenze
+## 15. Fortsetzung
 
-Das Archiv wird als reine Dokumentationsänderung zusammen mit dem bestehenden Index auf `Archiving` veröffentlicht. Der neue Commit baut auf dem unmittelbar vor dem Schreiben kontrollierten Branchstand auf; bei zwischenzeitlichen Änderungen sind Tree und Index neu zu übernehmen. Ein Force-Push, Merge oder eine Änderung an Produktivcode gehört nicht zu diesem Auftrag.
-
-Der Publikationsablauf verwendet die GitHub-Git-Objekte für Blob, Tree und einen Commit mit genau einem Elterncommit sowie eine nicht erzwungene Branchreferenz-Aktualisierung. Das ist eine Veröffentlichung im Remote-Repository, kein behaupteter erfolgreicher lokaler `git push`. Die tatsächliche Commit-ID wird erst vom Schreibwerkzeug vergeben und in der Abschlussmeldung genannt; sie wird nicht vorab in diese Datei erfunden.
-
-**Fortsetzungspunkt:** Die alte Argumentationsfassung ist fachlich überholt. Zuerst den realen Alarmierungsfall und die Gegenanlage spezifizieren, anschließend vorhandene NetCore-Pfade und Nachweise prüfen. Bis dahin sind weder „POCSAG gewinnt immer“ noch „LoRa reicht sicher aus“ durch diesen Chat oder den gezielten Repository-Abgleich belegt.
+**Fortsetzungspunkt:** Die alte Argumentationsfassung ist fachlich überholt. Zuerst den realen Alarmierungsfall und die Gegenanlage spezifizieren, anschließend vorhandene NetCore-Pfade und Nachweise prüfen. Bis dahin sind weder „POCSAG gewinnt immer“ noch „LoRa reicht sicher aus“ durch diese Planung oder den gezielten Repository-Abgleich belegt.

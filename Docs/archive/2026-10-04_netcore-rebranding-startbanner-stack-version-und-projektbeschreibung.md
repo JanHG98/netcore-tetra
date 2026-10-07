@@ -1,16 +1,21 @@
-# Technische Chat-Abschlussdokumentation: NetCore-Rebranding, Startbanner, Stack-Version und deutsche Projektbeschreibung
+# Brainstorming: NetCore-Rebranding, Startbanner, Stack-Version und Projektbeschreibung
 
-> **Historisches Chatarchiv mit separater Repository-Prüfung.** Ein Textentwurf ist kein Commit, Quellcode ist kein erfolgreicher Build und ein Banner ist keine Betriebsbestätigung. Dieses Dokument enthält keine Freigabe für Änderungen außerhalb von `Docs/archive/`.
+> **Historisches Projektarchiv mit separater Repository-Prüfung.** Ein Textentwurf ist kein Commit, Quellcode ist kein erfolgreicher Build und ein Banner ist keine Betriebsbestätigung. Dieses Dokument enthält keine Freigabe für Änderungen außerhalb von `Docs/archive/`.
 
-## 1. Metadaten und Auswertungsumfang
+## Zielbild und Festlegungen
+
+- Sichtbarer Projektname: **NetCore-Tetra**; technische Cratenamen können davon getrennt bleiben.
+- Historische Versionsquelle: `STACK_VERSION` kombiniert Cargo- und Git-Kennung. Der Prüfstand enthält bereits `STACK_NAME`/`STACK_DISPLAY`.
+- Gesucht sind zwei projektpassende Bannerzeilen und eine deutsche Beschreibung mit nachvollziehbaren Upstream-Credits.
+- Offen: Textauswahl, Verhältnis Release-/Workspace-Version, CLI-Anzeige und aktualisierte Funktionsbeschreibung.
+
+## 1. Arbeitsstand und Quellenbasis
 
 | Merkmal | Wert |
 |---|---|
 | Projekt / Zielrepository | `JanHG98/netcore-tetra` |
 | Thema | Umstellung des sichtbaren TETRA-BlueStation-Auftritts auf NetCore-Tetra; Rust-Startbanner; Versionsquelle; deutsche Projektbeschreibung und Danksagungen |
-| Ursprünglicher Chattitel | Nicht verfügbar. Der Dokumenttitel ist eine beschreibende Archivbezeichnung. |
-| Ursprünglicher Chatlink | Nicht verfügbar; es wurde kein Link konstruiert. |
-| Historischer Zeitraum | Einzelne Nachrichten lassen sich ergänzend dem 31.03.–01.04.2026 zuordnen; kein vollständig datierter Chatexport vorhanden. |
+| Historischer Zeitraum | Einzelne Entwurfsstände lassen sich teilweise dem 31.03.–01.04.2026 zuordnen; Originaldatierung unvollständig. |
 | Erstellungsdatum | **2026-10-04**, Zeitzone `Europe/Berlin` |
 | Geprüfter Branch | **`Archiving`** |
 | Fixierter technischer Prüfsnapshot | **`3fb792cf4c3653b6ad91652b1265b18ac8c1772e`** |
@@ -18,33 +23,28 @@
 | Damals genannte Repository-Adresse | `https://github.com/JanHG98/bluestation` |
 | Archivdatei | `Docs/archive/2026-10-04_netcore-rebranding-startbanner-stack-version-und-projektbeschreibung.md` |
 | Archivindex | `Docs/archive/README.md` |
-| Schreibumfang | Nur diese Zusammenfassung und der zugehörige Indexeintrag. Keine Produktcode-, Versions-, Workflow-, Tag-, Release- oder Deploymentänderung. |
-
-**Prüfcommit und Ablagecommit sind zu unterscheiden:** Der oben genannte Commit fixiert den untersuchten Code. Der Commit zur Speicherung dieser Datei entsteht danach und ist über ihre Git-Historie und die Abschlussmeldung nachvollziehbar. Vor der Speicherung muss der dann aktuelle Kopf von `Archiving` erneut gelesen werden; neuere Archivbeiträge bleiben erhalten.
 
 ### 1.1 Verfügbare Quellen und Grenzen
 
-Ausgewertet wurde der sichtbare Verlauf vom ursprünglichen `eprintln!`-Banner über die Suche nach `tetra_core::STACK_VERSION`, den vom Nutzer selbst gefundenen Definitionsausdruck bis zur deutschen Anpassung des englischen Projekt-/Dokumentationstextes. Eine ergänzende Verlaufssuche bestätigte Fundstelle und Themen, lieferte aber keinen Originaltitel und keinen Chatlink.
+Grundlagen sind das ursprüngliche `eprintln!`-Banner, der gefundene Ausdruck für `tetra_core::STACK_VERSION` und der englische Projekt-/Dokumentationstext mit deutschem Entwurf. Der historische Zeitraum lässt sich nur teilweise dem **31.03.–01.04.2026** zuordnen.
 
-Es liegen **keine damaligen Buildausgaben, Laufzeitlogs, Screenshots der Konsole, Git-Diffs oder Implementierungscommits dieses Chats** vor. Ob der Nutzer Vorschläge damals lokal eingebaut hatte, ist damit nicht feststellbar. Der heutige Code wird separat beschrieben; seine Änderungen werden nicht ohne Beleg diesem Chat zugeschrieben.
+Buildausgaben, Laufzeitlogs, Konsolenscreenshots, Git-Diffs und Implementierungscommits dieser Entwurfsphase fehlen. Die Prüfung beschreibt gezielt den angegebenen `Archiving`-Snapshot, keine installierte Anlage oder vollständige Repository-Historie.
 
-Die 25 verfügbaren PDFs sind vom Dateidienst als **Projektquellen** ausgewiesen. Für diesen Auftrag wurden Dateiverfügbarkeit, Seitenzahl, Dateihash und Deckblattinformationen geprüft. Eine vollständige normative Auswertung ihrer insgesamt 8.061 Dateiseiten wurde nicht durchgeführt. Die Summe ist keine Anzahl einzigartiger Normseiten; insbesondere `ETSI.pdf` ist eine umfangreiche Datei mit einem EN-300-812-Deckblatt, deren vollständige Zusammensetzung hier nicht rekonstruiert wurde. Im sichtbaren Gespräch gibt es keine aus diesen PDFs abgeleitete Branding- oder Versionsentscheidung. Sie werden in Abschnitt 12 inventarisiert, nicht als Implementierungsnachweis verwendet.
-
-Die Prüfung betrifft gezielt den genannten `Archiving`-Snapshot. Kein vollständiges Audit aller Repository-Dateien, anderer Branches, des früheren Repositories oder der installierten Anlage wurde vorgenommen. Angaben aus anderen Projektchats wurden nicht als Entscheidungen dieses Gesprächs übernommen.
+Die 25 Projekt-PDFs wurden nach Datei, Deckblatt, Seitenzahl und Hash inventarisiert. Ihre insgesamt **8.061 Dateiseiten** sind nicht vollständig normativ geprüft; `ETSI.pdf` umfasst 4.100 Seiten mit möglichen Überschneidungen. Aus diesen Unterlagen wurde keine Branding- oder Versionsentscheidung abgeleitet (Inventar in Abschnitt 12).
 
 ### 1.2 Statusbegriffe
 
 | Status | Bedeutung |
 |---|---|
-| **Idee** | Diskutierte Möglichkeit oder Assistentenvorschlag ohne ausdrückliche Auswahl. |
-| **Beschlossen/geplant** | Ausdrücklicher Nutzerwunsch bzw. autorisierter Arbeitsauftrag; Umsetzung gesondert nachzuweisen. |
+| **Idee** | Diskutierte Möglichkeit oder Vorschlag ohne ausdrückliche Auswahl. |
+| **Beschlossen/geplant** | Ausdrückliches Planungsziel bzw. autorisierter Arbeitsauftrag; Umsetzung gesondert nachzuweisen. |
 | **Implementiert** | Im ausdrücklich bezeichneten Repository-Snapshot als Code bzw. Datei gefunden. |
 | **Getestet** | Konkrete Ausführung mit dokumentiertem Ergebnis. Reine Quellcodelektüre zählt nicht als Laufzeittest. |
 | **Im Betrieb bestätigt** | Zuordenbare Beobachtung auf dem tatsächlichen Zielsystem. |
 
 ## 2. Ergebnis für die spätere Fortsetzung
 
-Der Nutzer wollte **NetCore-Tetra statt BlueStation als sichtbare Projektidentität**, alternative projektpassende Texte unter dem Startbanner und eine deutsche Projektbeschreibung. Der wichtigste historische technische Befund wurde vom Nutzer selbst geliefert:
+Ziel war **NetCore-Tetra statt BlueStation als sichtbare Projektidentität**, alternative projektpassende Texte unter dem Startbanner und eine deutsche Projektbeschreibung. Der wichtigste historische technische Befund wurde ausdrücklich selbst geliefert:
 
 ```rust
 // Historischer, vom Nutzer gezeigter Stand:
@@ -53,17 +53,17 @@ pub const STACK_VERSION: &str =
     const_format::formatcp!("{}-{}", env!("CARGO_PKG_VERSION"), GIT_VERSION);
 ```
 
-Damit war die Fundstelle geklärt. Die Definition von `GIT_VERSION` sowie die damalige konkrete Cargo-Version wurden in diesem Chat jedoch nicht gezeigt. Mehrere vorherige Assistentenaussagen waren lediglich Vermutungen, obwohl der Nutzer ausdrücklich um eine Repository-Prüfung gebeten hatte.
+Damit war die Fundstelle geklärt. Die Definition von `GIT_VERSION` sowie die damalige konkrete Cargo-Version wurden in dieser Entwicklungsphase jedoch nicht gezeigt. Mehrere vorherige Entwurfsbehauptungen waren lediglich Vermutungen, ohne den damaligen Quelltext zu prüfen.
 
-**Der heute geprüfte Stand ist weiterentwickelt:** `STACK_NAME`, `STACK_CODENAME`, `GIT_HASH`, `STACK_VERSION` und `STACK_DISPLAY` existieren bereits in `crates/tetra-core/src/lib.rs`. Die numerische Paketversion wird über Workspace-Vererbung in der **Root-`Cargo.toml` unter `[workspace.package]`** festgelegt und lautet im Prüfsnapshot `1.3.0`. Das Banner zeigt NetCore-Tetra, die echte Repository-URL und weiterhin eine technische Versionszeile. Gleichzeitig bestehen BlueStation-Reste in CLI-Beschreibungen, zwei User-Agent-Vorlagen und dem Core-Moduldokumentationstext. [R1] [R2] [R3] [R4]
+**Der am Prüfdatum geprüfte Stand ist weiterentwickelt:** `STACK_NAME`, `STACK_CODENAME`, `GIT_HASH`, `STACK_VERSION` und `STACK_DISPLAY` existieren bereits in `crates/tetra-core/src/lib.rs`. Die numerische Paketversion wird über Workspace-Vererbung in der **Root-`Cargo.toml` unter `[workspace.package]`** festgelegt und lautet im Prüfsnapshot `1.3.0`. Das Banner zeigt NetCore-Tetra, die echte Repository-URL und weiterhin eine technische Versionszeile. Gleichzeitig bestehen BlueStation-Reste in CLI-Beschreibungen, zwei User-Agent-Vorlagen und dem Core-Moduldokumentationstext. [R1] [R2] [R3] [R4]
 
-Die gewünschte deutsche Projektbeschreibung wurde im Chat als Textentwurf geliefert. Die aktuelle Root-README ist aber eine andere, releasebezogene NetCore-Fassung mit der Kennung `v1.9.0`; `wiki/Home.md` enthält ebenfalls eine weiterentwickelte Systembeschreibung. Diese zwei Versionskennungen dürfen ohne weitere Klärung weder gleichgesetzt noch durch einen automatischen Bump angeglichen werden. [R5] [R6]
+Die gewünschte deutsche Projektbeschreibung wurde in der Planung als Textentwurf geliefert. Die am Prüfdatum vorliegende Root-README ist aber eine andere, releasebezogene NetCore-Fassung mit der Kennung `v1.9.0`; `wiki/Home.md` enthält ebenfalls eine weiterentwickelte Systembeschreibung. Diese zwei Versionskennungen dürfen ohne weitere Klärung weder gleichgesetzt noch durch einen automatischen Bump angeglichen werden. [R5] [R6]
 
-## 3. Ziel, Ausgangslage und Gesprächsverlauf
+## 3. Ziel, Ausgangslage und Entwurfsentwicklung
 
 ### 3.1 Ursprüngliches Banner
 
-Der Nutzer zeigte folgenden Rust-Ausgabeblock und fragte nach einer Umstellung auf NetCore-Tetra:
+Ausgangspunkt der Umstellung auf NetCore-Tetra war dieser Rust-Ausgabeblock:
 
 ```rust
 eprintln!("░▀█▀░█▀▀░▀█▀░█▀▄░█▀█░░░░░█▀▄░█░░░█░█░█▀▀░█▀▀░▀█▀░█▀█░▀█▀░▀█▀░█▀█░█▀█");
@@ -74,7 +74,7 @@ eprintln!("  https://github.com/MidnightBlueLabs/tetra-bluestation");
 eprintln!("  Version: {}", tetra_core::STACK_VERSION);
 ```
 
-Der Assistent lieferte ein dreizeiliges Netcore-Tetra-Banner, setzte jedoch eine Platzhalter-Repository-URL ein und schlug ohne Prüfung alternative Symbolpfade wie `netcore_tetra::STACK_VERSION` oder `crate::STACK_VERSION` vor. **Das war kein Nachweis existierender Crates oder Konstanten.**
+Der erste Bannerentwurf hatte drei Zeilen, eine Platzhalter-Repository-URL und ungeprüfte Symbolpfade wie `netcore_tetra::STACK_VERSION` oder `crate::STACK_VERSION` vor. **Das war kein Nachweis existierender Crates oder Konstanten.**
 
 Historischer Bannerentwurf; nicht mit dem heutigen, in der Breite abweichenden Banner verwechseln:
 
@@ -89,7 +89,7 @@ Die sogenannten ASCII-Banner verwenden tatsächlich Unicode-Blockzeichen. Eine P
 
 ### 3.2 Gewünschte Alternativen für zwei Textzeilen
 
-Der Nutzer wollte **anstelle der Repository-URL und Versionszeile** etwas anderes, das zum Projekt passt. Der Assistent bot mehrere Varianten an, behielt dabei aber jeweils eine Versionszeile bei. Der Wunsch, beide Zeilen zu ersetzen, wurde daher nicht vollständig erfüllt.
+Ziel war **anstelle der Repository-URL und Versionszeile** etwas anderes, das zum Projekt passt. Die Varianten behielten jeweils eine Versionszeile bei. Der Wunsch, beide Zeilen zu ersetzen, wurde daher nicht vollständig erfüllt.
 
 | Historischer Vorschlag | Einordnung |
 |---|---|
@@ -98,24 +98,24 @@ Der Nutzer wollte **anstelle der Repository-URL und Versionszeile** etwas andere
 | `Initializing distributed core...` | Nicht ausgewählter Text; kein Beleg einer verteilten Initialisierung. |
 | `Node online. Awaiting workload.` | Nicht ausgewählt; würde Onlinezustand suggerieren. |
 | `Ready.` | Nicht ausgewählt; Bereitschaft nicht nachgewiesen. |
-| `Systems up. Nothing broken (yet).` | Humorvolle Idee, keine bestätigte Auswahl dieses Chats. |
-| `Core linked. Network stable.` | Favorit des Assistenten, **nicht** verbindliche Nutzerentscheidung. |
+| `Systems up. Nothing broken (yet).` | Humorvolle Idee, keine bestätigte Auswahl dieser Planung. |
+| `Core linked. Network stable.` | Unverbindlicher Favorit des Entwurfs, **nicht** verbindliche Festlegung. |
 
-Die weiteren angebotenen Zeilen waren `Stack Version: {}` bzw. `v{}`. Es wurde kein endgültiger Zweizeiler festgelegt. Ein späterer verwandter Bannerchat ist separat archiviert und darf nicht rückwirkend als ausdrückliche Auswahl in diesem Gespräch gelten; siehe Abschnitt 13.
+Die weiteren angebotenen Zeilen waren `Stack Version: {}` bzw. `v{}`. Es wurde kein endgültiger Zweizeiler festgelegt. Ein späterer verwandter Bannerentwurf ist separat archiviert und darf nicht rückwirkend als ausdrückliche Auswahl in dieser Planung gelten; siehe Abschnitt 13.
 
 ### 3.3 Suche nach der Versionskonstante
 
-Der Nutzer nannte die damalige Adresse `JanHG98/bluestation` und die Stelle `bluestation/bins/bluestation-bs/src/main.rs`. Der Präfix `bluestation/` kann ein damaliges Checkout-Verzeichnis bezeichnen; ein damaliger Repository-Unterordner ist damit nicht bewiesen.
+Als damalige Adresse ist `JanHG98/bluestation` mit der Fundstelle `bluestation/bins/bluestation-bs/src/main.rs` überliefert. Der Präfix `bluestation/` kann ein damaliges Checkout-Verzeichnis bezeichnen; ein damaliger Repository-Unterordner ist damit nicht bewiesen.
 
-Statt einer tatsächlichen Repository-Lektüre gab der Assistent Suchvorschläge und vermutete `lib.rs`, `version.rs`, eine lokale Cargo-Version oder `CARGO_PKG_NAME`. Als Befehl wurde lediglich vorgeschlagen:
+Die frühen Suchansätze vermuteten `lib.rs`, `version.rs`, eine lokale Cargo-Version oder `CARGO_PKG_NAME`. Als Befehl wurde lediglich vorgeschlagen:
 
 ```bash
 grep -R "STACK_VERSION" .
 ```
 
-**Ausführungsstatus:** Im historischen Chat nicht ausgeführt bzw. nicht durch eine Ausgabe belegt.
+**Ausführungsstatus:** In den historischen Planungsunterlagen nicht ausgeführt bzw. nicht durch eine Ausgabe belegt.
 
-Anschließend lieferte der Nutzer selbst den oben wiedergegebenen Ausdruck aus `crates/tetra-core/src/lib.rs`. Dieser konkrete Fund ersetzt die vorherigen Vermutungen über die Definitionsstelle.
+Der danach belegte Quellenfund war der oben wiedergegebene Ausdruck aus `crates/tetra-core/src/lib.rs`. Dieser konkrete Fund ersetzt die vorherigen Vermutungen über die Definitionsstelle.
 
 ### 3.4 Ideen zur Trennung von Name und Version
 
@@ -145,7 +145,7 @@ Die allgemeine Unterscheidung zwischen Paket-/App-Version und Core-Version war n
 
 ### 3.5 Deutsche Projektbeschreibung
 
-Der Nutzer stellte einen englischen Text mit Projektbeschreibung, Dokumentationsworkflow und Danksagungen bereit und bat um eine deutsche Anpassung an das NetCore-Universum. Der Ausgangstext beschrieb:
+Für die deutsche NetCore-Fassung lag ein englischer Text mit Projektbeschreibung, Dokumentationsworkflow und Danksagungen vor. Der Ausgangstext beschrieb:
 
 - einen freien, erweiterbaren TETRA-Stack für Experimente und Forschung im Alpha-Stadium;
 - die Aussendung eines Basisstations-Downlinks, Empfang durch korrekt konfigurierte MS, Verbindung zur Basisstation und Talkgroup-Anmeldung;
@@ -153,23 +153,22 @@ Der Nutzer stellte einen englischen Text mit Projektbeschreibung, Dokumentations
 - ein Dokumentationsrepository mit Pull Requests und behaupteter automatischer Wiki-Aktualisierung aus `main`;
 - die unten dokumentierten ursprünglichen Beiträge und Danksagungen.
 
-Der Assistent übersetzte und strukturierte diese Inhalte unter Netcore-Tetra, Dokumentation und Danksagungen. **Es wurde dabei kein Code geprüft und keine Datei gespeichert.** Aussagen wie „Sprachübertragung teilweise implementiert“ sind deshalb als historischer Beschreibungsstand zu lesen, nicht als heutiger Funktionstest.
+Der deutsche Entwurf strukturierte diese Inhalte unter Netcore-Tetra, Dokumentation und Danksagungen. **Es wurde dabei kein Code geprüft und keine Datei gespeichert.** Aussagen wie „Sprachübertragung teilweise implementiert“ sind deshalb als historischer Beschreibungsstand zu lesen, nicht als geprüfter Funktionstest.
 
 ## 4. Endgültige Anforderungen und nicht getroffene Entscheidungen
 
 | Gegenstand | Historischer Status | Begründung / Grenze |
 |---|---|---|
-| Sichtbares Branding auf NetCore-Tetra umstellen | **Beschlossen/geplant** | Ausdrücklicher Nutzerwunsch. Kein Auftrag zur vollständigen technischen Umbenennung aller Pakete. |
-| Zwei Texte unter dem Banner projektpassend ersetzen | **Beschlossen/geplant**, Textauswahl offen | Nutzerwunsch eindeutig; keine konkrete Variante ausgewählt. |
-| Definition von `STACK_VERSION` finden | **Geklärt im Chat** | Konkrete Datei und Formel vom Nutzer geliefert. |
+| Sichtbares Branding auf NetCore-Tetra umstellen | **Beschlossen/geplant** | Ausdrückliches Planungsziel. Kein Auftrag zur vollständigen technischen Umbenennung aller Pakete. |
+| Zwei Texte unter dem Banner projektpassend ersetzen | **Beschlossen/geplant**, Textauswahl offen | Planungsziel eindeutig; keine konkrete Variante ausgewählt. |
+| Definition von `STACK_VERSION` finden | **Geklärt in der Planung** | Konkrete Datei und Formel ausdrücklich geliefert. |
 | Deutsche Projektbeschreibung erstellen | **Beschlossen/geplant; Textentwurf geliefert** | Gewünschte Sprache ausdrücklich Deutsch. Keine Veröffentlichung nachgewiesen. |
-| `STACK_NAME`, `STACK_FULL` oder App/Core-Doppelanzeige verwenden | **Idee** | Damals Alternativen des Assistenten, keine endgültige Auswahl. |
+| `STACK_NAME`, `STACK_FULL` oder App/Core-Doppelanzeige verwenden | **Idee** | Damals Entwurfsvarianten, keine endgültige Auswahl. |
 | `tetra-core` technisch umbenennen | **Nicht beschlossen** | Für sichtbares Branding nicht automatisch erforderlich. |
-| Neue konkrete Versionsnummer festlegen | **Nicht beschlossen** | In diesem Chat kein Zielwert gewählt. |
+| Neue konkrete Versionsnummer festlegen | **Nicht beschlossen** | In dieser Entwicklungsphase kein Zielwert gewählt. |
 | Wiki automatisch aus `main` aktualisieren | **Historische Textaussage, Umsetzung unbestätigt** | Aus Vorlage übernommen, kein damaliger Workflow-Nachweis. |
-| Archiv auf GitHub speichern | **Beschlossen/geplant** | Neuer ausdrücklicher Auftrag: vorhandener Branch `Archiving`, nur `Docs/archive/`. |
 
-Es wurden keine technischen Prioritätsstufen, Termine, verantwortlichen Bearbeiter oder Implementierungs-PRs für das Rebranding vereinbart. Die später aufgeführten Reihenfolgen sind Vorschläge dieser Abschlussdokumentation, keine rückwirkenden Beschlüsse.
+Es wurden keine technischen Prioritätsstufen, Termine, verantwortlichen Bearbeiter oder Implementierungs-PRs für das Rebranding vereinbart. Die später aufgeführten Reihenfolgen sind Vorschläge dieser Notizen, keine rückwirkenden Beschlüsse.
 
 ## 5. Zusätzlich geprüfter Repository-Stand am 04.10.2026
 
@@ -177,7 +176,7 @@ Alle Befunde dieses Abschnitts beziehen sich auf `3fb792cf4c3653b6ad91652b1265b1
 
 ### 5.1 Tatsächliche Pfade und Workspace
 
-Die Repository-Wurzel enthält direkt `bins/`, `crates/`, `Cargo.toml`, `Docs/`, `wiki/` und `.github/`. Der zunächst ausprobierte Pfad `bluestation/crates/tetra-core/src/lib.rs` lieferte beim heutigen Lesen HTTP 404; der korrekte Pfad ohne vorangestelltes `bluestation/` war zugänglich. Das war ein **Pfadproblem der Archivprüfung**, kein Build- oder Funkfehler.
+Die Repository-Wurzel enthält direkt `bins/`, `crates/`, `Cargo.toml`, `Docs/`, `wiki/` und `.github/`. Der zunächst ausprobierte Pfad `bluestation/crates/tetra-core/src/lib.rs` lieferte beim geprüften Lesen HTTP 404; der korrekte Pfad ohne vorangestelltes `bluestation/` war zugänglich. Das war ein **Pfadproblem der Quellenprüfung**, kein Build- oder Funkfehler.
 
 Die einschlägigen Manifeste lauten auszugsweise:
 
@@ -207,9 +206,9 @@ name = "bluestation-bs"
 path = "src/main.rs"
 ```
 
-**Die aktuelle numerische Versionsquelle ist somit Root-`Cargo.toml`, nicht eine eigenständige `version = ...`-Zeile im Core-Manifest.** Cargo stellt dem kompilierten Paket die geerbte Version als `CARGO_PKG_VERSION` bereit. Die Workspace-Felder sind opt-in; aus einer Root-Metadatenzeile folgt nicht, dass jedes Paket jedes Feld erbt. Die Lizenzzeile wird hier nur als Manifestinhalt dokumentiert; eine Prüfung der Lizenz-/Attributionslage aller übernommenen Komponenten wurde nicht vorgenommen. [R3] [R4] [E1] [E2]
+**Die am Prüfdatum vorliegende numerische Versionsquelle ist somit Root-`Cargo.toml`, nicht eine eigenständige `version = ...`-Zeile im Core-Manifest.** Cargo stellt dem kompilierten Paket die geerbte Version als `CARGO_PKG_VERSION` bereit. Die Workspace-Felder sind opt-in; aus einer Root-Metadatenzeile folgt nicht, dass jedes Paket jedes Feld erbt. Die Lizenzzeile wird hier nur als Manifestinhalt dokumentiert; eine Prüfung der Lizenz-/Attributionslage aller übernommenen Komponenten wurde nicht vorgenommen. [R3] [R4] [E1] [E2]
 
-### 5.2 Aktuelle Branding- und Versionskonstanten
+### 5.2 Am Prüfdatum vorliegende Branding- und Versionskonstanten
 
 In `crates/tetra-core/src/lib.rs` stehen, ohne die zusätzlichen erläuternden Kommentare wiederzugeben:
 
@@ -242,9 +241,9 @@ Root-Cargo.toml: workspace.package.version
   -> Verwendung durch aufrufenden Code, unter anderem das Startbanner
 ```
 
-`const_format::formatcp!` erzeugt die Zeichenkette zur Kompilierzeit. `git_version!` verwendet die angegebenen `git describe`-Argumente. Der vorgefundene Code verfolgt bewusst eine commitbasierte Darstellung ohne Tag-Namen und ohne `-modified`-Zusatz; der Kommentar nennt lokale Operator-Patches und den OTA-Vergleich als Motivation. Der OTA-Pfad selbst wurde in diesem Auftrag nicht geprüft. [R1] [E3] [E4] [E5]
+`const_format::formatcp!` erzeugt die Zeichenkette zur Kompilierzeit. `git_version!` verwendet die angegebenen `git describe`-Argumente. Der vorgefundene Code verfolgt bewusst eine commitbasierte Darstellung ohne Tag-Namen und ohne `-modified`-Zusatz; der Kommentar nennt lokale Operator-Patches und den OTA-Vergleich als Motivation. Der OTA-Pfad selbst wurde bei der dokumentierten Prüfung nicht geprüft. [R1] [E3] [E4] [E5]
 
-**Wichtig für spätere Änderungen:** Das heutige `STACK_VERSION` enthält das `v` bereits. Die historische Ausgabe `"{} v{}"` würde damit ein doppeltes `v` erzeugen. Außerdem heißt die heutige Git-Konstante `GIT_HASH`; ein alter Block mit `GIT_VERSION` ist nicht ungeprüft über den aktuellen Stand zu kopieren. `STACK_FULL` ist im geprüften Core-Definitionsblock nicht vorhanden; die entsprechende aktuelle kombinierte Anzeige heißt `STACK_DISPLAY`.
+**Wichtig für spätere Änderungen:** Das zusätzliche `STACK_VERSION` enthält das `v` bereits. Die historische Ausgabe `"{} v{}"` würde damit ein doppeltes `v` erzeugen. Außerdem heißt die zusätzliche Git-Konstante `GIT_HASH`; ein alter Block mit `GIT_VERSION` ist nicht ungeprüft über den am Prüfdatum vorliegenden Stand zu kopieren. `STACK_FULL` ist im geprüften Core-Definitionsblock nicht vorhanden; die entsprechende am Prüfdatum vorliegende kombinierte Anzeige heißt `STACK_DISPLAY`.
 
 Die fehlende Dirty-Markierung bedeutet nicht, dass ein Build unveränderten Quellen entspricht. Zwei Builds können denselben Commitbezug zeigen und trotzdem lokale Änderungen enthalten. Ein eingebetteter Hash ist keine Aussage über die augenblickliche Repository-Spitze, einen laufenden Dienst oder die Herkunft eines bereits installierten Binaries. [R1] [E3] [E5]
 
@@ -259,9 +258,9 @@ eprintln!("  Version: {}", tetra_core::STACK_VERSION);
 eprintln!("  Radio runtime: MAIN-COMPAT (local MM/MLE/CMCE state machines)");
 ```
 
-Der aktuelle Ablauf in `main()` ist: **Banner ausgeben → `Args::parse()` → Konfiguration laden → weitere Initialisierung**. Daraus folgt unmittelbar: Das Banner kann weder eine erfolgreiche Konfigurationsprüfung noch einen erfolgreichen Funk-/Netzwerkstart belegen. Die vorgeschlagenen Texte `Network stable`, `Ready` oder `All systems nominal` wären an dieser frühen Stelle ohne zusätzliche Prüfung irreführend. [R2]
+Der am Prüfdatum vorliegende Ablauf in `main()` ist: **Banner ausgeben → `Args::parse()` → Konfiguration laden → weitere Initialisierung**. Daraus folgt unmittelbar: Das Banner kann weder eine erfolgreiche Konfigurationsprüfung noch einen erfolgreichen Funk-/Netzwerkstart belegen. Die vorgeschlagenen Texte `Network stable`, `Ready` oder `All systems nominal` wären an dieser frühen Stelle ohne zusätzliche Prüfung irreführend. [R2]
 
-Der ursprüngliche Wunsch nach zwei anderen Texten ist im Prüfsnapshot nicht als gewählter Zweizeiler erkennbar: URL und Versionszeile bestehen weiterhin. Das ist eine Abweichung zwischen Wunsch und aktuellem Code, aber kein Nachweis, dass ein späterer Entschluss des Nutzers missachtet wurde; ein solcher liegt für diesen Chat nicht vor.
+Der ursprüngliche Wunsch nach zwei anderen Texten ist im Prüfsnapshot nicht als gewählter Zweizeiler erkennbar: URL und Versionszeile bestehen weiterhin. Das ist eine Abweichung zwischen Wunsch und aktuellem Code, aber kein Nachweis, dass eine spätere Projektentscheidung missachtet wurde; ein solcher liegt für diese Planung nicht vor.
 
 ### 5.4 Verbleibende BlueStation-Bezeichnungen
 
@@ -276,34 +275,34 @@ Der ursprüngliche Wunsch nach zwei anderen Texten ist im Prüfsnapshot nicht al
 
 Diese Tabelle ist **keine vollständige Suche nach jeder Altbezeichnung im Repository**. User-Agent-Änderungen betreffen eine Schnittstelle und sollten mit den Gegenstellen geprüft werden; aus einem neuen Banner folgt keine automatische Freigabe zum Umbenennen von Paket-, Protokoll-, Unit- oder Dateinamen. [R1] [R2] [R4]
 
-### 5.5 Heutige Dokumentation und Wiki-Automatik
+### 5.5 Zusätzliche Dokumentation und Wiki-Automatik
 
-Die Root-README trägt `NetCore-TETRA` und beschreibt einen Releasekontext `v1.9.0` mit Warnfunktionen und SIP-/Fallback-Themen. Sie ist nicht der kurze Alpha-Text aus diesem Chat. Diese README-Aussagen wurden nicht als Ende-zu-Ende-Tests der genannten Funktionen übernommen. [R5]
+Die Root-README trägt `NetCore-TETRA` und beschreibt einen Releasekontext `v1.9.0` mit Warnfunktionen und SIP-/Fallback-Themen. Sie ist nicht der kurze Alpha-Text aus dieser Entwicklungsphase. Diese README-Aussagen wurden nicht als Ende-zu-Ende-Tests der genannten Funktionen übernommen. [R5]
 
-`wiki/Home.md` beschreibt NetCore als TETRA-Basisstation mit verteilten Netzdiensten und Leitstellenwerkzeugen. Die Seite benennt selbst als Dokumentationsbasis einen älteren `main`-Stand vom 26.09.2026, weist auf abweichende Installationen hin und trennt Quellcode von abgenommenem Funkbetrieb. Ihre Inhalte belegen einen heutigen Dokumentationstext, nicht den kompletten gegenwärtigen Betriebszustand. [R6]
+`wiki/Home.md` beschreibt NetCore als TETRA-Basisstation mit verteilten Netzdiensten und Leitstellenwerkzeugen. Die Seite benennt selbst als Dokumentationsbasis einen älteren `main`-Stand vom 26.09.2026, weist auf abweichende Installationen hin und trennt Quellcode von abgenommenem Funkbetrieb. Ihre Inhalte belegen einen geprüften Dokumentationstext, nicht den kompletten gegenwärtigen Betriebszustand. [R6]
 
-Der vollständig gelesene `.github/`-Tree enthält sechs Workflow-Dateien: `alert-service-tests.yml`, `asterisk-installer-tests.yml`, `dashboard-ui-tests.yml`, `phy-slotter-tests.yml`, `service-ui-tests.yml` und `tmp-v170-dual-umac.yml`. Eine dedizierte Wiki-Synchronisationsdatei ist darin nicht erkennbar. Die Inhalte sämtlicher Workflows, externe Automationen und ein etwaiges separates Dokumentationsrepository wurden nicht vollständig geprüft. **Die historische Aussage „Wiki wird automatisch aus main aktualisiert“ bleibt deshalb unbestätigt; sie darf nicht ungeprüft als aktueller Workflow veröffentlicht werden.** [R7]
+Der vollständig gelesene `.github/`-Tree enthält sechs Workflow-Dateien: `alert-service-tests.yml`, `asterisk-installer-tests.yml`, `dashboard-ui-tests.yml`, `phy-slotter-tests.yml`, `service-ui-tests.yml` und `tmp-v170-dual-umac.yml`. Eine dedizierte Wiki-Synchronisationsdatei ist darin nicht erkennbar. Die Inhalte sämtlicher Workflows, externe Automationen und ein etwaiges separates Dokumentationsrepository wurden nicht vollständig geprüft. **Die historische Aussage „Wiki wird automatisch aus main aktualisiert“ bleibt deshalb unbestätigt; sie darf nicht ungeprüft als am Prüfdatum vorliegender Workflow veröffentlicht werden.** [R7]
 
 ## 6. Architektur, Schnittstellen und technische Parameter
 
-Der Gegenstand dieses Chats ist in erster Linie die **Darstellungs- und Build-Metadatenebene**, nicht eine Umgestaltung der Funkarchitektur.
+Der Gegenstand dieser Planung ist in erster Linie die **Darstellungs- und Build-Metadatenebene**, nicht eine Umgestaltung der Funkarchitektur.
 
 | Komponente / Parameter | Rolle und belegter Stand |
 |---|---|
 | `tetra-core` / Rust-Pfad `tetra_core` | Gemeinsame Hilfstypen sowie Branding-/Versionskonstanten; Beibehaltung des technischen Namens ist mit NetCore-Branding vereinbar. |
 | `bluestation-bs` | Konsument der Konstanten; eigenes Binärtarget und Clap-basierte Argumentverarbeitung. |
 | `eprintln!` | Konsolenausgabe des Banners; keine Zustandsprüfung. |
-| `CARGO_PKG_VERSION` | Versionsmetadatum des jeweils kompilierten Pakets; im betrachteten Core und Binary aktuell aus dem Workspace geerbt. |
+| `CARGO_PKG_VERSION` | Versionsmetadatum des jeweils kompilierten Pakets; im betrachteten Core und Binary zum Prüfdatum aus dem Workspace geerbt. |
 | `const_format` | Kompilierzeit-Formatierung; zusätzliche Namen sind definierte Konstanten, keine automatisch verfügbaren Symbole. |
 | `git-version` | Liefert Kompilierzeit-Git-Kennung nach den konfigurierten Argumenten bzw. Fallback. |
 | CLI `--help` / `--version` | Durch Clap vorbereitet; die nackte `version`-Ableitung und die manuelle Stack-Versionszeile sind getrennte Ausgabepfade. Ihre tatsächlichen Ausgaben wurden nicht gestartet. |
 | WebSocket-User-Agent | Zusätzliche Branding-Verbraucher in Telemetrie, Legacy-Control und Control Room. |
-| `config.toml` | Keine im Chat beschlossene Branding-/Versionsoption darin; das betrachtete Branding liegt im Rust-Code. |
-| Ports, Frequenzen, MCC/MNC/ISSI, IP-Adressen | In diesem Einzelchat keine konkreten Werte festgelegt. Keine Übernahme aus anderen Projektchats. |
-| Brew / BrandMeister | Bestandteil der historischen Beschreibung; keine Verbindungsparameter oder Live-Abnahme dieses Chats. |
+| `config.toml` | Keine in der Planung beschlossene Branding-/Versionsoption darin; das betrachtete Branding liegt im Rust-Code. |
+| Ports, Frequenzen, MCC/MNC/ISSI, IP-Adressen | In diesem Einzelchat keine konkreten Werte festgelegt. Keine Übernahme aus anderen Projektphasen. |
+| Brew / BrandMeister | Bestandteil der historischen Beschreibung; keine Verbindungsparameter oder Live-Abnahme dieser Planung. |
 | TETRA Downlink, MS, Talkgroups, Sprachrufe, PDU-Parser | Historischer Projektumfang der bereitgestellten Vorlage; keine neue Protokollimplementierung durch das Rebranding. |
 
-Quellen: Chatabschnitte 3.1–3.5, [R1]–[R4], [E1]–[E4]. Die Standardsammlung ergänzt Hintergrundmaterial, nicht die projektspezifische Versionslogik.
+Quellen: Entwurfsabschnitte 3.1–3.5, [R1]–[R4], [E1]–[E4]. Die Standardsammlung ergänzt Hintergrundmaterial, nicht die projektspezifische Versionslogik.
 
 ## 7. Deutsche Beschreibung und Danksagungen: bewahrter Inhalt
 
@@ -311,11 +310,11 @@ Quellen: Chatabschnitte 3.1–3.5, [R1]–[R4], [E1]–[E4]. Die Standardsammlun
 
 Der deutsche Entwurf bezeichnete Netcore-Tetra als freien, modularen und erweiterbaren TETRA-Stack für Experimente, Forschung und Entwicklung digitaler Bündelfunksysteme. Er kennzeichnete den damaligen Stand als Alpha, nicht vollständig ausgebaut und nicht produktionsreif. Ein korrekt konfiguriertes MS könne den ausgesendeten Downlink empfangen, sich verbinden und an Talkgroups anmelden. Sprachübertragung sei teilweise implementiert; Brew/BrandMeister optional. Viele Funktionen seien noch in Entwicklung, umfangreicher Parsercode jedoch vorhanden.
 
-Der Dokumentationsteil übernahm: Änderungen im Dokumentationsrepository, Einbringung per Pull Request, automatische Wiki-Erzeugung aus `main`, weitere Hinweise zu Beiträgen und Issues in der Dokumentation. **Diese Formulierungen sind historische Textarbeit, kein verifizierter Prozessbeschluss für das heutige Monorepository.**
+Der Dokumentationsteil übernahm: Änderungen im Dokumentationsrepository, Einbringung per Pull Request, automatische Wiki-Erzeugung aus `main`, weitere Hinweise zu Beiträgen und Issues in der Dokumentation. **Diese Formulierungen sind historische Textarbeit, kein verifizierter Prozessbeschluss für das zusätzliche Monorepository.**
 
 ### 7.2 Ursprüngliche Beiträge und Attribution
 
-Die vom Nutzer vorgelegte Danksagung würdigte konkret:
+Die ausdrücklich vorgelegte Danksagung würdigte konkret:
 
 | Genannte Personen / Projekte | Beitrag laut bereitgestellter Vorlage |
 |---|---|
@@ -325,42 +324,42 @@ Die vom Nutzer vorgelegte Danksagung würdigte konkret:
 | Stichting NLnet / RETETRA3 | In der Vorlage genannte Förderung der Implementierung freier TETRA-Software aus dem RETETRA3-Kontext. |
 | Wouter Bokslag / Midnight Blue | Im ursprünglichen Startbanner ausdrücklich genannte Herkunft. |
 
-Der damalige deutsche Assistententext erwähnte die ersten vier Gruppen, ersetzte bei den Contributors BlueStation durch Netcore-Tetra und nahm die Bannerherkunft nicht zusätzlich auf. Für eine spätere Veröffentlichung sollten **Ursprungsbeiträge und NetCore-Weiterentwicklung getrennt erkennbar bleiben**. Das ist hier ein Dokumentationsvorschlag; kein Auftrag zur Änderung der Lizenz oder sämtlicher Urheberangaben.
+Der damalige deutsche Textentwurf erwähnte die ersten vier Gruppen, ersetzte bei den Contributors BlueStation durch Netcore-Tetra und nahm die Bannerherkunft nicht zusätzlich auf. Für eine spätere Veröffentlichung sollten **Ursprungsbeiträge und NetCore-Weiterentwicklung getrennt erkennbar bleiben**. Das ist hier ein Dokumentationsvorschlag; kein Auftrag zur Änderung der Lizenz oder sämtlicher Urheberangaben.
 
 Die Vorlage belegt insbesondere **keine direkte NLnet-Förderzusage an NetCore-Tetra**. Ein späterer NetCore-Text sollte die Finanzierung dem beschriebenen Ursprungskontext zuordnen, statt eine eigene Förderung zu suggerieren. Der verlinkte RETETRA3-Verweis wird als historische Quelle bewahrt; eine zusätzliche Förderprüfung wurde nicht durchgeführt.
 
 ### 7.3 Korrektur der früheren Positionierungsempfehlung
 
-Die frühere Assistentenaussage, der Text solle möglichst wenig nach Fork und mehr nach eigenständigem Stack aussehen, ist keine technische Entscheidung des Nutzers und kein geeigneter Beleg für eigenständige Urheberschaft. **Eigene Produktidentität und transparente Upstream-Herkunft schließen einander nicht aus.**
+Die frühere Entwurfsbehauptung, der Text solle möglichst wenig nach Fork und mehr nach eigenständigem Stack aussehen, ist keine festgelegte Projektentscheidung und kein geeigneter Beleg für eigenständige Urheberschaft. **Eigene Produktidentität und transparente Upstream-Herkunft schließen einander nicht aus.**
 
-Eine neue, an den aktuellen Funktionsstand angepasste README ist ein offener Folgeauftrag. Die Alpha-Vorlage sollte dabei nicht einfach über die heutige README oder Systemwiki-Seite kopiert werden.
+Eine neue, an den am Prüfdatum vorliegenden Funktionsstand angepasste README ist ein offener Folgeauftrag. Die Alpha-Vorlage sollte dabei nicht einfach über die zusätzliche README oder Systemwiki-Seite kopiert werden.
 
 ## 8. Fehler, Diagnose, überholte Ansätze und verbleibende Probleme
 
 | Problem / Aussage | Diagnose / Korrektur | Status |
 |---|---|---|
-| Erbetene Repo-Suche wurde historisch durch Vermutungen ersetzt | Damals keine Tool- oder Datei-Lektüre belegt; Nutzer fand die Definition selbst. Heutige Prüfung ist nachgeholt und separat referenziert. | Historische Auskunftslücke behoben, keine rückwirkende Implementierung. |
-| Platzhalter in der vorgeschlagenen Repository-URL | Nicht als endgültige Projektadresse verwenden. Heutiges Banner enthält `JanHG98/netcore-tetra`. | Im heutigen Banner korrigiert. |
-| Vermutete reine Cargo-Version | Tatsächliche historische Formel kombinierte Cargo-Version und `GIT_VERSION`. | Durch Nutzerfund ersetzt. |
+| Erbetene Repo-Suche wurde historisch durch Vermutungen ersetzt | Damals keine Tool- oder Datei-Lektüre belegt; Definition im Quelltext gefunden. Zusätzliche Prüfung ist nachgeholt und separat referenziert. | Historische Auskunftslücke behoben, keine rückwirkende Implementierung. |
+| Platzhalter in der vorgeschlagenen Repository-URL | Nicht als endgültige Projektadresse verwenden. Heutiges Banner enthält `JanHG98/netcore-tetra`. | Im geprüften Banner korrigiert. |
+| Vermutete reine Cargo-Version | Tatsächliche historische Formel kombinierte Cargo-Version und `GIT_VERSION`. | Durch Quellenfund ersetzt. |
 | Aussage „BlueStation steckt gar nicht in der Version“ | Kein BlueStation-Literal im gezeigten Formatstring; der damalige Inhalt von `GIT_VERSION` war aber unbekannt. Ein Tag-/Präfixbezug ließ sich damals nicht ausschließen. | Frühere Gewissheit nicht gerechtfertigt. |
-| `tetra_core` als automatisch zu beseitigende Altlast | Technischer Cratename und Produktname sind getrennt. Heutiger Code demonstriert diese Trennung bereits. | Kein Rename-Beschluss. |
+| `tetra_core` als automatisch zu beseitigende Altlast | Technischer Cratename und Produktname sind getrennt. Geprüfter Code demonstriert diese Trennung bereits. | Kein Rename-Beschluss. |
 | Vorschläge `netcore_tetra::...` / `crate::...` | Ohne passende Definition oder Re-Export keine austauschbaren Symbolpfade. | Nicht ungeprüft übernehmen. |
-| „Version in Core-Cargo.toml ändern“ | Heute steht dort `version.workspace = true`; numerische Quelle ist Root-Manifest. | Konkrete aktuelle Fundstelle geklärt. |
+| „Version in Core-Cargo.toml ändern“ | Heute steht dort `version.workspace = true`; numerische Quelle ist Root-Manifest. | Konkrete am Prüfdatum vorliegende Fundstelle geklärt. |
 | Historische `v{}`-Ausgabe | Heute bereits `v` in `STACK_VERSION`. | Doppelpräfix bei Übernahme vermeiden. |
-| Statische „Ready/Network stable“-Zeile vor Initialisierung | Kein gemessener Zustand; aktuelles Banner läuft vor Argument- und Konfigurationsprüfung. | Textauswahl weiterhin offen. |
-| Automatischer Wiki-Sync als Tatsache | Historisch nur Textvorlage; aktueller tatsächlicher Sync nicht belegt. | Offen. |
-| Root-README `v1.9.0`, Cargo `1.3.0` | Verschiedene gelesene Kennungen; ihre beabsichtigte Beziehung in diesem Chat nicht definiert. | Versionsmodell dokumentieren, nicht blind angleichen. |
-| Frühere Pfadangabe mit `bluestation/` | Heutiger Root-Tree enthält `crates/` und `bins/` direkt. | Lesepfad korrigiert. |
+| Statische „Ready/Network stable“-Zeile vor Initialisierung | Kein gemessener Zustand; am Prüfdatum vorliegendes Banner läuft vor Argument- und Konfigurationsprüfung. | Textauswahl weiterhin offen. |
+| Automatischer Wiki-Sync als Tatsache | Historisch nur Textvorlage; am Prüfdatum vorliegender tatsächlicher Sync nicht belegt. | Offen. |
+| Root-README `v1.9.0`, Cargo `1.3.0` | Verschiedene gelesene Kennungen; ihre beabsichtigte Beziehung in dieser Entwicklungsphase nicht definiert. | Versionsmodell dokumentieren, nicht blind angleichen. |
+| Frühere Pfadangabe mit `bluestation/` | Geprüfter Root-Tree enthält `crates/` und `bins/` direkt. | Lesepfad korrigiert. |
 
-Nicht beobachtet wurden in diesem Chat Compilerfehler, Verbindungsabbrüche, fehlgeschlagene Deployments oder Funkstörungen. Solche Probleme dürfen nicht aus allgemeinen Projektinformationen ergänzt werden.
+Nicht beobachtet wurden in dieser Entwicklungsphase Compilerfehler, Verbindungsabbrüche, fehlgeschlagene Deployments oder Funkstörungen. Solche Probleme dürfen nicht aus allgemeinen Projektinformationen ergänzt werden.
 
 ## 9. Befehle, Abläufe und Tests
 
-### 9.1 Tatsächlich ausgeführte Arbeit dieses Archivauftrags
+### 9.1 Tatsächlich ausgeführte Arbeit dieses Dokumentationslaufs
 
 Die GitHub-Verbindung wurde verwendet, um Branchkopf, Root-Tree, Archivverzeichnis, Archivindex und die in Abschnitt 13 genannten Dateien am fixierten Commit zu lesen. Zusätzlich wurde die vorhandene benachbarte Banner-/Release-Zusammenfassung zur Abgrenzung geprüft. Die verfügbaren Projektanhänge wurden über den Dateidienst inventarisiert; lokale PDF-Dateien wurden für Seitenzahlen, Deckblatttext und SHA-256 gelesen. **Es wurde kein OCR durchgeführt und kein Funkdienst gestartet.**
 
-Diese Tätigkeiten sind erfolgreiche **Quellen- und Strukturprüfungen**, keine Software-/HF-Funktionstests. Die angekündigte Speicherung erfolgt als gesonderter Archivschritt; nur ein tatsächlich aktualisierter Branch mit anschließendem Rücklesen gilt als gespeicherter Auftrag.
+Diese Tätigkeiten sind **Quellen- und Strukturprüfungen**, keine Software-/HF-Funktionstests.
 
 ### 9.2 Suchbefehle für die Fortsetzung — nur vorgeschlagen
 
@@ -405,49 +404,46 @@ Ein normaler Start mit Funkkonfiguration wird hier **nicht** als Test vorgeschla
 | Prüfung | Ergebnis / Grenze |
 |---|---|
 | Historischer Rust-Build | Kein Ergebnis vorhanden. |
-| Heutige Pfad- und Konstantenprüfung | Definierte Dateien und Werte am Prüfsnapshot gelesen. |
+| Zusätzliche Pfad- und Konstantenprüfung | Definierte Dateien und Werte am Prüfsnapshot gelesen. |
 | Workspace-Versionskette | Root-Version sowie Vererbung in beiden Manifesten gelesen; keine Cargo-Metadaten- oder Compilerausführung. |
 | Banner-Startreihenfolge | Durch Quellcode gelesen; keine reale Terminalausgabe. |
 | Wiki-Veröffentlichung | Nicht nachgewiesen. |
 | Zielgerät / TBS / Funkgeräte | Nicht geprüft. |
 | Brew-/BrandMeister-Verbindung | Nicht geprüft. |
-| Im Betrieb bestätigtes Rebranding | In diesem Chat kein zuordenbarer Nachweis. |
+| Im Betrieb bestätigtes Rebranding | In dieser Entwicklungsphase kein zuordenbarer Nachweis. |
 
 ## 10. Roadmap-Kandidaten, offene Wünsche und nächste Schritte
 
-Die Reihenfolge ist ein **Vorschlag dieser Abschlussdokumentation**. Keine dieser Produktänderungen gehört zum aktuellen Schreibauftrag.
+Die Reihenfolge ist ein **Vorschlag dieser Notizen**. Die Produktänderungen sind offene Folgearbeiten.
 
 | ID | Kandidat / offener Wunsch | Ausgangsstatus | Nächster konkreter Schritt / Abhängigkeit |
 |---|---|---|---|
-| RB-01 | Einheitliche sichtbare Schreibweise `NetCore-Tetra` | Wunsch beschlossen; aktueller Code teilweise umgesetzt | Banner, CLI-Hilfe, Moduldokumentation und veröffentlichte Texte gezielt abgleichen; `NetCore-TETRA`/`Netcore-Tetra` bewusst vereinheitlichen oder begründen. |
-| RB-02 | Projektpassender Zweizeiler statt URL und Version | Wunsch beschlossen, Text offen | Nutzerentscheidung nachholen, ob beide Zeilen entfallen oder die Diagnoseversion an anderer Stelle bleibt. Keine der sieben Ideen als gewählt behandeln. |
+| RB-01 | Einheitliche sichtbare Schreibweise `NetCore-Tetra` | Wunsch beschlossen; am Prüfdatum vorliegender Code teilweise umgesetzt | Banner, CLI-Hilfe, Moduldokumentation und veröffentlichte Texte gezielt abgleichen; `NetCore-TETRA`/`Netcore-Tetra` bewusst vereinheitlichen oder begründen. |
+| RB-02 | Projektpassender Zweizeiler statt URL und Version | Wunsch beschlossen, Text offen | Festlegung nachholen, ob beide Zeilen entfallen oder die Diagnoseversion an anderer Stelle bleibt. Keine der sieben Ideen als gewählt behandeln. |
 | RB-03 | Zentrale Konstanten statt verstreuter Produktliterale | Heute teilweise implementiert | Vorhandene `STACK_NAME`/`STACK_DISPLAY` wiederverwenden statt `STACK_FULL` parallel neu einzuführen; gewünschte Ausgabestellen einzeln prüfen. |
-| RB-04 | CLI-Version und Banner-Version nachvollziehbar machen | Idee / neu erkannter Abgleichbedarf | Prüfen, ob `--version` ebenfalls Stack-/Git-Kennung zeigen soll; Core und Binary erben aktuell dieselbe Nummer. |
-| RB-05 | Verbleibende User-Agent-Altkennungen prüfen | Konkreter heutiger Befund | Kompatibilität mit Telemetrie-/Control-Gegenstellen klären; erst danach gezielte Änderung. |
-| RB-06 | Deutsche Projektbeschreibung auf heutigen Stand bringen | Historischer Entwurf vorhanden | Aktuelle Funktionsmatrix und Betriebsgrenzen zugrunde legen; Ursprungstext, heutigen Code und reale Abnahme trennen. |
+| RB-04 | CLI-Version und Banner-Version nachvollziehbar machen | Idee / neu erkannter Abgleichbedarf | Prüfen, ob `--version` ebenfalls Stack-/Git-Kennung zeigen soll; Core und Binary erben zum Prüfdatum dieselbe Nummer. |
+| RB-05 | Verbleibende User-Agent-Altkennungen prüfen | Konkreter geprüfter Befund | Kompatibilität mit Telemetrie-/Control-Gegenstellen klären; erst danach gezielte Änderung. |
+| RB-06 | Deutsche Projektbeschreibung auf geprüften Stand bringen | Historischer Entwurf vorhanden | Am Prüfdatum vorliegende Funktionsmatrix und Betriebsgrenzen zugrunde legen; Ursprungstext, geprüften Code und reale Abnahme trennen. |
 | RB-07 | Credits und Herkunft korrekt erhalten | Historischer Quellinhalt vorhanden | Wouter/Midnight Blue, BlueStation/Osmocom, Tatu und Contributors passend zuordnen; NLnet nicht als eigene Förderzusage darstellen. |
 | RB-08 | Wiki-Workflow belastbar beschreiben | Unbestätigte historische Aussage | Tatsächliche Pflegequelle, Branch, Sync-Auslöser und Veröffentlichungsnachweis ermitteln. |
 | RB-09 | Releasekennung versus Rust-Workspace-Version erklären | README `v1.9.0` / Cargo `1.3.0` gelesen | Beabsichtigte Versionsebenen dokumentieren; kein automatisches Gleichziehen ohne Entscheidung. |
-| RB-10 | Buildherkunft trotz fehlender Dirty-Anzeige erfassen | Heutige Git-Policy implementiert | Bedarf an separaten Build-/Patch-Metadaten bewerten; bestehende Anzeige-/OTA-Policy nicht unbemerkt ändern. |
-| RB-11 | Ursprünglichen Chattitel/Chatlink ergänzen | Metadaten fehlen | Nur bei verlässlicher Bereitstellung durch Nutzer oder Export ergänzen. |
+| RB-10 | Buildherkunft trotz fehlender Dirty-Anzeige erfassen | Zusätzliche Git-Policy implementiert | Bedarf an separaten Build-/Patch-Metadaten bewerten; bestehende Anzeige-/OTA-Policy nicht unbemerkt ändern. |
 
 **Sinnvolle Arbeitsfolge:** zuerst RB-02 und RB-09 entscheiden; danach die kleinen Darstellungsänderungen RB-01/RB-03/RB-04 bearbeiten; Schnittstellenänderungen RB-05 separat abnehmen; Dokumentation und Credits RB-06 bis RB-08 aktualisieren. RB-10 bleibt eine optionale Nachvollziehbarkeitsverbesserung. Termine wurden nicht vereinbart.
 
 Kleine Nebenideen bleiben ausdrücklich erhalten: humorvolle Bootmeldungen; kombiniertes Name-/Versionsfeld; getrennte App-/Core-Anzeige; Debug-/Release-Buildinformationen. Letztere wurden nur als mögliche spätere Vertiefung angeboten und nicht ausgearbeitet oder beauftragt.
 
-## 11. Archivierung, Bilder und Schreibgrenzen
+## 11. Bilder und Artefakte
 
-Der vorhandene Archivindex wurde gelesen. Die bereits bestehende Datei `2026-10-03_startbanner-runtime-versionierung-arm64-release-rustfmt.md` gehört zu einem **anderen** Gespräch mit FlowStation-Einstieg, Runtime-Summary, ARM64-Workflow und Rustfmt. Sie wird nicht überschrieben. Der neue Eintrag dokumentiert den hier behandelten ursprünglichen Rebranding-/Versionsfund-/Übersetzungschat.
+**Bildprüfung:** Im verfügbaren Verlauf sind keine eigenständigen Fotos, Screenshots oder generierten Projektbilder dieser Planung vorhanden. Der Dateidienst führt ausschließlich 25 PDF-Projektquellen auf; auch unter den bereitgestellten Originaldateien wurde kein eigenständiges Bild gefunden. Die sichtbaren ETSI-Deckblattvorschauen sind Bestandteile dieser PDFs, keine separat erstellten NetCore-Bilder. Deshalb wird für diese Planung kein Bildasset hochgeladen und kein Ersatzbild erfunden. Die Rust-Unicode-Banner sind oben als Text erhalten.
 
-**Bildprüfung:** Im verfügbaren Verlauf sind keine eigenständigen Fotos, Screenshots oder generierten Projektbilder dieses Chats vorhanden. Der Dateidienst führt ausschließlich 25 PDF-Projektquellen auf; auch unter den bereitgestellten Originaldateien wurde kein eigenständiges Bild gefunden. Die sichtbaren ETSI-Deckblattvorschauen sind Bestandteile dieser PDFs, keine separat erstellten NetCore-Bilder. Deshalb wird für diesen Chat kein Bildasset hochgeladen und kein Ersatzbild erfunden. Die Rust-Unicode-Banner sind oben als Text erhalten.
-
-Die Norm-PDFs werden für diesen thematisch engen Auftrag **inventarisiert, nicht als vollständige Kopien oder seitenweise Bildexporte ins Archiv hochgeladen**. Es gibt keine im Chat besprochene Normgrafik, die für das Verständnis des Rebrandings zusätzlich gesichert werden müsste. Das ist eine bewusste Umfangsabgrenzung, keine Behauptung, die PDFs seien unzugänglich.
+Die Norm-PDFs werden für diesen thematischen Abgleich **inventarisiert, nicht als vollständige Kopien oder seitenweise Bildexporte ins Archiv hochgeladen**. Es gibt keine in der Planung besprochene Normgrafik, die für das Verständnis des Rebrandings zusätzlich gesichert werden müsste. Das ist eine bewusste Umfangsabgrenzung, keine Behauptung, die PDFs seien unzugänglich.
 
 Beim Speichern gelten: ausschließlich `Archiving`; nur Zusammenfassung und `Docs/archive/README.md`; bestehende Indexzeilen erhalten; kein Force-Push; kein Merge. Der spätere Ablagecommit darf außerhalb dieses Pfadbereichs keine Änderungen enthalten. Ein separater Abschlusscheck liest Zusammenfassung und Index vom Zielbranch zurück und prüft den tatsächlichen Commitumfang. Zugangsdaten werden nicht übernommen.
 
 ## 12. Anhanginventar
 
-Die Angaben beziehen sich auf die **bereitgestellten Ausgaben**, nicht auf einen behaupteten aktuellen ETSI-Publikationsstatus. Entwürfe bleiben als solche gekennzeichnet. Erfasst wurden Deckblatt, Seitenzahl und ein auf zwölf Hexzeichen verkürzter SHA-256 zur Zuordnung; kein Volltext-/Konformitätstest.
+Die Angaben beziehen sich auf die **bereitgestellten Ausgaben**, nicht auf einen behaupteten am Prüfdatum vorliegenden ETSI-Publikationsstatus. Entwürfe bleiben als solche gekennzeichnet. Erfasst wurden Deckblatt, Seitenzahl und ein auf zwölf Hexzeichen verkürzter SHA-256 zur Zuordnung; kein Volltext-/Konformitätstest.
 
 | Datei | Bereitgestellte Ausgabe / Thema | Seiten | SHA-256, gekürzt |
 |---|---|---:|---|
@@ -479,17 +475,17 @@ Die Angaben beziehen sich auf die **bereitgestellten Ausgaben**, nicht auf einen
 
 ## 13. Quellen, verwandte Archive und Nachvollziehbarkeit
 
-### Historische Chatquellen
+### Historische Arbeitsgrundlagen
 
-**H1:** Nutzeranfrage zum originalen dreizeiligen BlueStation-Banner mit Wouter Bokslag/Midnight Blue und `tetra_core::STACK_VERSION`.
+**H1:** Ausgangspunkt zum originalen dreizeiligen BlueStation-Banner mit Wouter Bokslag/Midnight Blue und `tetra_core::STACK_VERSION`.
 
-**H2:** Nutzerwunsch nach einem Ersatz der zwei Zeilen für Repository-URL und Version; sieben nachfolgende Assistentenideen ohne endgültige Auswahl.
+**H2:** Planungsziel nach einem Ersatz der zwei Zeilen für Repository-URL und Version; sieben nachfolgende Entwurfsideen ohne endgültige Auswahl.
 
-**H3:** Anfrage zur Repository-Prüfung unter `JanHG98/bluestation` und der danach vom Nutzer selbst gelieferte Ausdruck aus `crates/tetra-core/src/lib.rs`.
+**H3:** Anfrage zur Repository-Prüfung unter `JanHG98/bluestation` und der danach ausdrücklich selbst gelieferte Ausdruck aus `crates/tetra-core/src/lib.rs`.
 
-**H4:** Assistentenvorschläge `STACK_NAME`, `STACK_FULL`, App-/Core-Anzeige; keine gespeicherten Änderungen belegt.
+**H4:** Entwurfsvorschläge `STACK_NAME`, `STACK_FULL`, App-/Core-Anzeige; keine gespeicherten Änderungen belegt.
 
-**H5:** Englische Projekt-/Dokumentationsvorlage einschließlich Danksagungen und der daraufhin gelieferte deutsche Entwurf. Historischer Förderverweis: [RETETRA3 bei NLnet](https://nlnet.nl/project/RETETRA3/), in diesem Auftrag nicht zusätzlich inhaltlich überprüft.
+**H5:** Englische Projekt-/Dokumentationsvorlage einschließlich Danksagungen und der daraufhin gelieferte deutsche Entwurf. Historischer Förderverweis: [RETETRA3 bei NLnet](https://nlnet.nl/project/RETETRA3/), bei der dokumentierten Prüfung nicht zusätzlich inhaltlich überprüft.
 
 ### Verifizierte Repository-Quellen
 
@@ -505,9 +501,9 @@ Die folgenden Links sind auf den technischen Prüfsnapshot gepinnt, nicht auf ei
 
 Das Datum des Prüfsnapshot-Commits ist im GitHub-Objekt `2026-10-03T22:35:04Z`, entsprechend bereits 04.10.2026 in `Europe/Berlin`. Die Zusammenfassung verwendet deshalb den tatsächlichen lokalen Erstellungstag **2026-10-04**.
 
-### Externe technische Primärquellen zur heutigen Einordnung
+### Externe technische Primärquellen zur geprüften Einordnung
 
-Diese Quellen ergänzen die historische Darstellung; sie ersetzen keine Chatfestlegung und keinen Repository-Test:
+Diese Quellen ergänzen die historische Darstellung; sie ersetzen keine Projektfestlegung und keinen Repository-Test:
 
 - **E1:** [Cargo: Environment Variables][E1] — Bedeutung von `CARGO_PKG_VERSION`.
 - **E2:** [Cargo: Workspaces][E2] — Vererbung über `version.workspace = true`.
@@ -517,9 +513,9 @@ Diese Quellen ergänzen die historische Darstellung; sie ersetzen keine Chatfest
 
 ### Verwandtes, getrennt zu behandelndes Archiv
 
-[Startbanner, Runtime-Diagnose, Versionierung, ARM64-Releases und rustfmt](2026-10-03_startbanner-runtime-versionierung-arm64-release-rustfmt.md) ist ein bestehender Nachbarbeitrag. Er wurde nur zur Abgrenzung gelesen und bleibt unverändert. Seine Nutzerentscheidungen, Testaussagen oder historischen Codeblöcke sind nicht automatisch Bestandteil dieses Chats.
+[Startbanner, Runtime-Diagnose, Versionierung, ARM64-Releases und rustfmt](2026-10-03_startbanner-runtime-versionierung-arm64-release-rustfmt.md) ist ein bestehender Nachbarbeitrag. Er wurde nur zur Abgrenzung gelesen und bleibt unverändert. Seine Festlegungen, Testaussagen oder historischen Codeblöcke sind nicht automatisch Bestandteil dieser Planung.
 
-**Historische Implementierungscommits / PRs dieses Chats:** nicht verfügbar. **Laufender TBS-Build:** nicht ermittelt. **Archiv-Ablagecommit:** über Git-Historie dieser Datei und Abschlussmeldung feststellbar; nicht mit dem oben gepinnten Prüfcommit verwechseln.
+**Historische Implementierungscommits / PRs:** nicht verfügbar. **Laufender TBS-Build:** nicht ermittelt. Der Quellcode-Abgleich bleibt auf den genannten Prüfcommit bezogen.
 
 [R1]: https://github.com/JanHG98/netcore-tetra/blob/3fb792cf4c3653b6ad91652b1265b18ac8c1772e/crates/tetra-core/src/lib.rs
 [R2]: https://github.com/JanHG98/netcore-tetra/blob/3fb792cf4c3653b6ad91652b1265b18ac8c1772e/bins/bluestation-bs/src/main.rs

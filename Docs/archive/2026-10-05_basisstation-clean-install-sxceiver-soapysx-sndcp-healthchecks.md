@@ -1,36 +1,36 @@
-# NetCore-Tetra – Basisstation Clean Install, SXceiver/SoapySX, SNDCP/TUN und zentrale Healthchecks
+# Brainstorming: Basisstation Clean Install, SXceiver/SoapySX, SNDCP und Healthchecks
 
-## Metadaten
+**Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
+
+## Arbeitsstand
 
 | Feld | Wert |
 |---|---|
 | Thema | Neuaufbau einer NetCore-Tetra-Basisstation auf frischer SD-Karte; SXceiver/SoapySX-Fehlersuche; `RxReadError`; Raspberry-Pi-5-I²S/DMA und Unterspannung; SNDCP/TUN; Subscriber-Core-/Media-Library-Healthchecks |
-| Ursprünglicher Chattitel | Nicht zuverlässig aus der verfügbaren Chatoberfläche/API auslesbar. Kein Titel wird erfunden. |
-| Chatlink | Nicht verfügbar. Die Chat-URL wurde dem Modell nicht bereitgestellt. |
 | Zusammenfassung erstellt | 2026-10-05 |
-| Historischer Betriebszeitraum im Chat | vor allem 2026-08-02; spätere Archiv-/Projektfortsetzung am 2026-10-05 |
+| Historischer Betriebszeitraum in der Planung | vor allem 2026-08-02; spätere Archiv-/Projektfortsetzung am 2026-10-05 |
 | Zielrepository | `JanHG98/netcore-tetra` |
 | Zielbranch für dieses Archiv | `Archiving` |
 | Zielbranch vor dem Archiv-Commit geprüft | `Archiving` @ `9af2de92b120dc612d83a17f78eeee9a97f2f775` |
 | Zusätzlich geprüfter aktueller Codebranch | `main` @ `e5d825b33db2e1fce14bcb2cc23e73c241873a18` |
-| Früher im Chat verwendeter Branchname | `mqtt`; am 2026-10-05 nicht mehr als eigener Branch vorhanden, GitHub-Branchsuche lieferte keinen Treffer. Die REST-Abfrage für `mqtt` verwies auf `main`. |
-| Archivumfang | Dieser Chat einschließlich der im Verlauf sichtbaren/geladenen Logs, späteren Korrekturen, des angehängten Textlogs und des letzten Systemdienste-Screenshots. |
+| Früher in der Planung verwendeter Branchname | `mqtt`; am 2026-10-05 nicht mehr als eigener Branch vorhanden, GitHub-Branchsuche lieferte keinen Treffer. Die REST-Abfrage für `mqtt` verwies auf `main`. |
+| Belege | Laufzeit- und Diagnoselogs, später präzisierte Befunde, Textlog und Systemdienste-Screenshot. |
 
-> **Wichtige Quellenabgrenzung:** Diese Datei trennt Chatbeobachtungen, vorgeschlagene Maßnahmen und heutigen Repository-Befund. Ein im Chat vorgeschlagener Befehl ist nicht automatisch ausgeführt worden; ein im Repository vorhandener Baustein ist nicht automatisch im Live-System installiert oder erfolgreich abgenommen.
+> **Stand der Arbeiten:** Laufzeitbeobachtungen, geplante Reparaturen und Repository-Befunde sind getrennt. Befehlsvorschläge bleiben offen, solange keine Ausgaben vorliegen; vorhandener Code allein bestätigt keine Installation oder Abnahme auf TBS-01.
 
 ## Statuslegende
 
 - **Idee** – diskutierter Ansatz ohne verbindliche Umsetzungsentscheidung.
-- **Beschlossen/geplant** – im Chat als gewünschter oder nächster Weg festgelegt, aber nicht durch Code/Live-Ausgabe als umgesetzt belegt.
+- **Beschlossen/geplant** – in der Planung als gewünschter oder nächster Weg festgelegt, aber nicht durch Code/Live-Ausgabe als umgesetzt belegt.
 - **Implementiert** – im aktuell geprüften Repository vorhanden.
-- **Getestet** – im Chat durch konkrete Ausgabe eines Tests oder Dienststarts belegt.
-- **Im Betrieb bestätigt** – im Chat als funktionierender Live-Betrieb über einen relevanten Zeitraum bzw. anhand konkreter Dienst-/Funktionsausgabe belegt.
+- **Getestet** – in der Planung durch konkrete Ausgabe eines Tests oder Dienststarts belegt.
+- **Im Betrieb bestätigt** – in der Planung als funktionierender Live-Betrieb über einen relevanten Zeitraum bzw. anhand konkreter Dienst-/Funktionsausgabe belegt.
 
 ---
 
 ## 1. Ziel, Ausgangslage und behandelte Themen
 
-Der Chat entwickelte sich von einer Basisstations-Reparatur zu einem bewusst vollständigen Neuaufbau. Die zentralen Ziele waren:
+Die Arbeit entwickelte sich von einer Basisstations-Reparatur zu einem bewusst vollständigen Neuaufbau. Die zentralen Ziele waren:
 
 1. eine instabile Raspberry-Pi-5-/SXceiver-Basisstation reproduzierbar zu diagnostizieren,
 2. SoapySX, ALSA/I²S und NetCore-PHY sauber voneinander zu trennen,
@@ -38,7 +38,7 @@ Der Chat entwickelte sich von einer Basisstations-Reparatur zu einem bewusst vol
 4. nach erfolgreicher Isolation eine **neue Installation von Null an auf neuer SD-Karte ohne Backups** zu definieren,
 5. den NetCore-Paketdatenpfad (`SNDCP` + Linux-TUN `ntetra0`) sauber in die neue Installation einzubinden,
 6. anschließend die systemweiten NetCore-Dienste und deren Fallback-/Healthanzeige zu prüfen,
-7. aktuelle Repository-Implementierungen gegen die historischen Chatannahmen abzugleichen.
+7. aktuelle Repository-Implementierungen gegen die historischen Annahmen abzugleichen.
 
 Die Basisstation wurde im Verlauf mit einer dualen 400-MHz-Konfiguration betrieben. Die in den Logs und Konfigurationsständen wiederkehrenden Eckdaten waren:
 
@@ -128,7 +128,7 @@ Daher wurde der Python-Test als separater Binding-/Library-Mismatch behandelt un
 
 ### 2.5 Asterisk zunächst deaktivieren, lokale SIP-Architektur später sauber herstellen
 
-**Status: beschlossen; Asterisk-Build vorhanden, finaler Fallback-Livebetrieb in diesem Chat nicht bestätigt.**
+**Status: beschlossen; Asterisk-Build vorhanden, finaler Fallback-Livebetrieb für diesen Arbeitsstand nicht bestätigt.**
 
 Ein früher Start scheiterte mit:
 
@@ -147,7 +147,7 @@ Die Architekturentscheidung war:
 
 ### 2.6 SNDCP/TUN nur mit korrekten Linux-Capabilities aktivieren
 
-**Status: im Repository implementiert; Live-Abnahme in diesem Chat offen.**
+**Status: im Repository implementiert; Live-Abnahme für diesen Arbeitsstand offen.**
 
 Der Paketdatenpfad soll ein Linux-TUN-Interface `ntetra0` erzeugen. Der frühere Dienststart meldete:
 
@@ -177,7 +177,7 @@ Der letzte Dashboard-Screenshot zeigte:
 - bei Subscriber Core: `connect failed: Connection refused (os error 111)`;
 - bei Media Library: `read failed: Resource temporarily unavailable (os error 11)`.
 
-Gleichzeitig funktionierte nach Nutzerangabe die Media-Library-WebUI. Daraus wurde korrekt abgeleitet:
+Gleichzeitig funktionierte nach Betriebsrückmeldung die Media-Library-WebUI. Daraus wurde korrekt abgeleitet:
 
 - WebUI-Erreichbarkeit ist kein Beweis für erfolgreichen Health-Check;
 - der Node Gateway kann einen falschen/defekten Healthpfad oder einen transienten Socketfehler sehen, obwohl `/` im Browser funktioniert;
@@ -185,7 +185,7 @@ Gleichzeitig funktionierte nach Nutzerangabe die Media-Library-WebUI. Daraus wur
 
 ---
 
-## 3. Historischer Ablauf des Chats
+## 3. Historischer Ablauf der Planung
 
 ### 3.1 TBS startet bis in den RF-Pfad
 
@@ -329,7 +329,7 @@ Damit war der RX-Streamingpfad grundsätzlich funktionsfähig, aber das Stop/Res
 
 ### 3.8 Entscheidung: neue SD, keinerlei Backups
 
-Auf Nutzerwunsch wurde ein vollständiger Neuaufbau entworfen. Die vorgeschlagene Reihenfolge war:
+Auf Projektwunsch wurde ein vollständiger Neuaufbau entworfen. Die vorgeschlagene Reihenfolge war:
 
 1. Raspberry Pi OS Lite 64-bit frisch installieren;
 2. Stromversorgung testen;
@@ -345,7 +345,7 @@ Auf Nutzerwunsch wurde ein vollständiger Neuaufbau entworfen. Die vorgeschlagen
 12. RF-Gate für mindestens zehn Minuten;
 13. dann Node Gateway/Edge Fallback, Media Library, NFS/Audio, SNDCP/WAP, Asterisk nacheinander aktivieren.
 
-**Status: beschlossen/geplant.** Nicht jeder dieser Schritte ist im verfügbaren Chat durch eine erfolgreiche Ausgabe belegt.
+**Status: beschlossen/geplant.** Nicht jeder dieser Schritte ist in den verfügbaren Unterlagen durch eine erfolgreiche Ausgabe belegt.
 
 ### 3.9 `ntetra0` fehlt
 
@@ -379,7 +379,7 @@ interface_name = "ntetra0"
 
 sowie `/dev/net/tun` und `CAP_NET_ADMIN` vorgeschlagen.
 
-**Live-Erfolg von `ntetra0` wurde in diesem Chat nicht mehr bestätigt.**
+**Live-Erfolg von `ntetra0` wurde für diesen Arbeitsstand nicht mehr bestätigt.**
 
 ### 3.10 Systemweite Dienste: Subscriber Core und Media Library
 
@@ -402,7 +402,7 @@ Interpretation:
 - Unit/Drop-in wurde nach dem letzten daemon-reload verändert;
 - Neustart/`daemon-reload` stand aus.
 
-Für die Media Library galt dagegen: WebUI funktionierte laut Nutzer, aber der Healthcheck im TBS-/Node-Gateway-Dashboard scheiterte. Daher wurde eine Pfad-/Healthcheck-/Socketdiagnose empfohlen, nicht eine pauschale Annahme, der gesamte Dienst sei tot.
+Für die Media Library galt dagegen: WebUI funktionierte laut Betriebsrückmeldung, aber der Healthcheck im TBS-/Node-Gateway-Dashboard scheiterte. Daher wurde eine Pfad-/Healthcheck-/Socketdiagnose empfohlen, nicht eine pauschale Annahme, der gesamte Dienst sei tot.
 
 ---
 
@@ -426,9 +426,9 @@ Raspberry Pi 5
   └─ systemd: tetra.service
 ```
 
-### 4.2 Relevante zentrale Dienste im Live-Plan dieses Chats
+### 4.2 Relevante zentrale Dienste im Live-Plan dieser Planung
 
-| Komponente | Live-IP/Port im Projektkontext | Relevanz im Chat |
+| Komponente | Live-IP/Port im Projektkontext | Relevanz in der Planung |
 |---|---:|---|
 | TBS `SRV-M-TBS-01` | `10.0.1.20:8080` | Basisstation/Dashboard |
 | Node Gateway | `10.0.1.179:8080` | Service-Matrix, zentrale Verbindung und Edge-Fallback |
@@ -455,7 +455,7 @@ Raspberry Pi 5
 
 ### 4.3 Edge Fallback
 
-Die Basisstation verwendet eine Service-Matrix mit Fail-closed-Verhalten für unbekannte/stale Services. Relevante Konfigurationswerte aus dem im Chat geprüften Stand:
+Die Basisstation verwendet eine Service-Matrix mit Fail-closed-Verhalten für unbekannte/stale Services. Relevante Konfigurationswerte aus dem in der Planung geprüften Stand:
 
 ```toml
 [edge_fallback]
@@ -514,7 +514,7 @@ Bei Subscriber-Core-Ausfall bleibt die Zelle deshalb lokal handlungsfähig, verw
 
 ### TETRA-Codecs
 
-Für den Feature-Build mit Asterisk/Recording/Audio wurden im Chat als Abhängigkeiten festgehalten:
+Für den Feature-Build mit Asterisk/Recording/Audio wurden in der Planung als Abhängigkeiten festgehalten:
 
 - `libgsm1-dev` / `libgsm`;
 - `outerplane/tetra-codec` als native Shared Library;
@@ -622,7 +622,7 @@ ip link show ntetra0
 
 **Ergebnis:** `Device "ntetra0" does not exist.`
 
-### 6.3 Nur vorgeschlagen / in diesem Chat nicht als erfolgreich bestätigt
+### 6.3 Nur vorgeschlagen / für diesen Arbeitsstand nicht als erfolgreich bestätigt
 
 - vollständige frische SD-Installation aller Phasen bis zum finalen TBS-Dauerbetrieb;
 - `systemctl daemon-reload && enable --now netcore-subscriber-core.service` nach dem letzten Screenshot;
@@ -661,9 +661,9 @@ SNDCP packet gateway stopped: ... Permission denied
 
 **Diagnose:** TUN-/Netzwerkadministrationsrechte fehlten. Der Paketdatenpfad benötigt `/dev/net/tun` und `CAP_NET_ADMIN`.
 
-**Heutiger Repository-Befund:** Der aktuelle Code nennt bei `TUNSETIFF` explizit `CAP_NET_ADMIN` und verweist auf `contrib/packet-data/netcore-tetra-packet-gateway-install`. Die Dokumentation beschreibt den systemd-Drop-in mit `CAP_NET_ADMIN`, `/dev/net/tun`, Sysctl-Zugriff und Cleanup.
+**Geprüfter Repository-Befund:** Der aktuelle Code nennt bei `TUNSETIFF` explizit `CAP_NET_ADMIN` und verweist auf `contrib/packet-data/netcore-tetra-packet-gateway-install`. Die Dokumentation beschreibt den systemd-Drop-in mit `CAP_NET_ADMIN`, `/dev/net/tun`, Sysctl-Zugriff und Cleanup.
 
-**Live-Status:** Noch nicht bestätigt, da `ntetra0` im Chat zuletzt fehlte.
+**Live-Status:** Noch nicht bestätigt, da `ntetra0` in der Planung zuletzt fehlte.
 
 ### 7.3 `RxReadError` in NetCore
 
@@ -731,15 +731,15 @@ ALSA error in alsa_tx.reset(): Input/output error
 
 **Vorgeschlagene Reparatur:** `systemctl daemon-reload`, anschließend `enable --now netcore-subscriber-core.service`, Port `8100` und Health-Endpunkte prüfen.
 
-**Status:** Reparaturausgang in diesem Chat nicht mehr gezeigt.
+**Status:** Reparaturausgang für diesen Arbeitsstand nicht mehr gezeigt.
 
 ### 7.9 Media Library rot, obwohl WebUI funktioniert
 
-**Symptom:** Dashboard/Service-Matrix meldete `read failed: Resource temporarily unavailable (os error 11)`, Nutzer bestätigte funktionierende WebUI.
+**Symptom:** Dashboard/Service-Matrix meldete `read failed: Resource temporarily unavailable (os error 11)`, funktionierende WebUI durch Betriebsrückmeldung bestätigt.
 
 **Diagnose:** Healthpfad/Readiness/Socketfehler oder Node-Gateway-Healthworker; nicht automatisch kompletter Dienststillstand.
 
-**Heutiger Repository-Befund:** Standardmarker sind `/health/live` und `/health/ready`; die Betriebsdokumentation verwendet für Media Library `http://127.0.0.1:8230/health/live`.
+**Geprüfter Repository-Befund:** Standardmarker sind `/health/live` und `/health/ready`; die Betriebsdokumentation verwendet für Media Library `http://127.0.0.1:8230/health/live`.
 
 **Offen:** direkter Curl-Test lokal und vom Node Gateway; danach Gateway-Healthworker prüfen.
 
@@ -760,8 +760,8 @@ ALSA error in alsa_tx.reset(): Input/output error
 | nativer RX-Test nach Kaltstart | ca. 0.6 MSps stabil über Testdauer | getestet/erfolgreich | nur RX; Stop/Reset war weiterhin fehlerhaft |
 | TBS-Start | erreichte RF-/Dashboard-/Brew-Initialisierung | getestet | endete später mit `RxReadError` |
 | `ntetra0` | nicht vorhanden | getestet | Packet Gateway war im Clean-RF-Profil bewusst deaktiviert bzw. noch nicht erfolgreich aktiviert |
-| Subscriber Core status | `inactive (dead)` | getestet | Neustart danach nicht im Chat belegt |
-| Media Library WebUI | laut Nutzer erreichbar | im Betrieb bestätigt für WebUI | keine Bestätigung der Health-/Readiness-API |
+| Subscriber Core status | `inactive (dead)` | getestet | Neustart danach nicht in der Planung belegt |
+| Media Library WebUI | laut Betriebsrückmeldung erreichbar | im Betrieb bestätigt für WebUI | keine Bestätigung der Health-/Readiness-API |
 
 ---
 
@@ -793,17 +793,17 @@ ALSA error in alsa_tx.reset(): Input/output error
 
 ### Wiederherstellen alter Backups auf der neuen SD
 
-**Explizit verworfen.** Nutzer verlangte einen Neuaufbau ohne Backups.
+**Explizit verworfen.** Neuaufbau ohne Backups ausdrücklich festgelegt.
 
 ---
 
-## 10. Heutiger Repository-Abgleich (2026-10-05)
+## 10. Geprüfter Repository-Abgleich (2026-10-05)
 
 ### 10.1 Branches und Commits
 
 - `Archiving` war vor diesem Archiv-Commit auf `9af2de92b120dc612d83a17f78eeee9a97f2f775`.
 - `main` wurde geprüft auf `7137e0dd69877e1b604bf89148fd8b6b590c1a97` (`Merge pull request #59 ... NetCore-Design mit Dark Mode ...`).
-- Ein eigener Branch `mqtt` ist am Prüftag nicht mehr vorhanden; Branchsuche ergab keinen Treffer. Historische Chatbefehle, die `mqtt` voraussetzen, sind daher **nicht** unverändert auf den heutigen Repositoryzustand zu übertragen.
+- Ein eigener Branch `mqtt` ist am Prüftag nicht mehr vorhanden; Branchsuche ergab keinen Treffer. Historische historische Befehle, die `mqtt` voraussetzen, sind daher **nicht** unverändert auf den geprüften Repositoryzustand zu übertragen.
 
 ### 10.2 PHY / SoapyIO
 
@@ -815,7 +815,7 @@ ALSA error in alsa_tx.reset(): Input/output error
 Err(_) => Err(RxTxDevError::RxReadError)
 ```
 
-Der konkrete SoapySDR-Fehler wird damit im NetCore-Layer weiterhin nicht sichtbar gemacht. Die im Chat identifizierte Logging-Lücke ist also am aktuellen `main` noch relevant.
+Der konkrete SoapySDR-Fehler wird damit im NetCore-Layer weiterhin nicht sichtbar gemacht. Die in der Planung identifizierte Logging-Lücke ist also am aktuellen `main` noch relevant.
 
 ### 10.3 SXceiver-Defaults
 
@@ -830,7 +830,7 @@ Aktueller `main` enthält:
 - `contrib/packet-data/netcore-tetra-packet-gateway-install` als vorgesehene systemd-Integration;
 - Dokumentation `Docs/PACKET_DATA_COMPLETE_INTEGRATION_2026-07-21.md` mit `ntetra0`, Routing/NAT, Cleanup und Diagnose.
 
-Damit ist die Chatidee nicht nur Konzept: **der Packet-Data-Gateway ist im Repository implementiert**. Nicht bestätigt ist lediglich, dass er auf der im Chat neu aufgebauten TBS bereits korrekt installiert und gestartet wurde.
+Damit ist die Entwicklungsidee nicht nur Konzept: **der Packet-Data-Gateway ist im Repository implementiert**. Nicht bestätigt ist lediglich, dass er auf der in der Planung neu aufgebauten TBS bereits korrekt installiert und gestartet wurde.
 
 ### 10.5 Subscriber Core
 
@@ -845,7 +845,7 @@ Aktueller `main` enthält:
 - systemd `Restart=on-failure`, `RestartSec=3`;
 - State-Pfad `/var/lib/netcore-subscriber-core`.
 
-Der letzte Live-Zustand im Chat (`inactive dead`) entspricht daher **nicht** dem vom aktuellen Installer vorgesehenen Sollzustand.
+Der letzte Live-Zustand in der Planung (`inactive dead`) entspricht daher **nicht** dem vom aktuellen Installer vorgesehenen Sollzustand.
 
 ### 10.6 Media Library
 
@@ -858,7 +858,7 @@ Aktueller `main` enthält eine gehärtete `netcore-media-library.service` mit:
 - zentraler Piper-/TTS-Abhängigkeit;
 - Installations-/Migrationshelfern.
 
-Die Standard-Healthpfade im aktuellen System sind `/health/live` und `/health/ready`. Der Screenshotfehler ist daher heute gezielt gegen diese Pfade zu prüfen.
+Die Standard-Healthpfade im aktuellen System sind `/health/live` und `/health/ready`. Der Screenshotfehler ist daher am Prüfdatum gezielt gegen diese Pfade zu prüfen.
 
 ### 10.7 Basisstations-Updater
 
@@ -941,7 +941,7 @@ Die Standard-Healthpfade im aktuellen System sind `/health/live` und `/health/re
 12. **RF-Monitor-Agent und Observability erst nach stabiler Basis anbinden.**
 13. **Signatur-/USB-Workflow zuletzt neu aufbauen; keine alte Signatur übernehmen.**
 
-### Roadmap-Kandidaten aus diesem Chat
+### Roadmap-Kandidaten aus dieser Planung
 
 - standardisierter `netcore-tbs-preflight` für Stromversorgung, HAT-ID, ALSA, SoapySX, `/dev/net/tun`, Capabilities und zentrale Healthchecks;
 - `SoapyIo`-Fehlertelemetrie mit originalem Fehlercode;
@@ -981,7 +981,7 @@ Die Standard-Healthpfade im aktuellen System sind `/health/live` und `/health/re
 - `tools/check_full_system_integration.py`
 - `Docs/NetCore-Tetra-Komplettguide.md`
 
-### Externe Quellen/Repos, die im Chat technisch verwendet wurden
+### Externe Quellen/Repos, die in der Planung technisch verwendet wurden
 
 - `tejeez/sxxcvr`, Commit `9705147dd8c189625071f3f163ea56119bda4a05`
 - `outerplane/tetra-codec`
@@ -990,15 +990,15 @@ Die Standard-Healthpfade im aktuellen System sind `/health/live` und `/health/re
 
 - historisch wurde `mqtt` als aktiver Entwicklungsbranch verwendet;
 - dieser Branch existiert am 2026-10-05 nicht mehr separat;
-- heutiger `main` enthält PR #59 als letzten geprüften Commitstand;
+- geprüfter `main` enthält PR #59 als letzten geprüften Commitstand;
 - dieses Archiv wird ausschließlich im Branch `Archiving` abgelegt und nicht gemerged.
 
 ---
 
-## 14. Anhänge und Bilder dieses Chats
+## 14. Anhänge und Bilder dieser Planung
 
 ### 14.1 Systemdienste-/Fallback-Screenshot
-Der im Chat gezeigte Screenshot dokumentiert den Dienstmatrix-Zustand mit Subscriber Core und Media Library in Rot/Fallback bei gleichzeitig zahlreichen grünen Diensten.
+Der in der Planung gezeigte Screenshot dokumentiert den Dienstmatrix-Zustand mit Subscriber Core und Media Library in Rot/Fallback bei gleichzeitig zahlreichen grünen Diensten.
 
 ![Systemdienste: Subscriber Core und Media Library im Fallback](assets/2026-10-05_basisstation-clean-install-sxceiver-soapysx-sndcp-healthchecks/systemdienste-fallback-subscriber-media-library.jpg)
 
@@ -1006,7 +1006,7 @@ Archivdatei:
 
 `Docs/archive/assets/2026-10-05_basisstation-clean-install-sxceiver-soapysx-sndcp-healthchecks/systemdienste-fallback-subscriber-media-library.jpg`
 
-Der ursprüngliche Chat-Upload war ein PNG mit 1700×886 Pixeln. Die verfügbare GitHub-Schnittstelle konnte in diesem Lauf den ursprünglichen Chat-Binärblob nicht direkt übernehmen. Deshalb wurde eine 180×94-Pixel-JPEG-Ableitung desselben Screenshots archiviert. Der visuelle Inhalt bleibt als Archivvorschau erhalten; die Datei ist ausdrücklich **nicht byteidentisch** mit dem Original.
+Der ursprüngliche Originalupload war ein PNG mit 1700×886 Pixeln. Die verfügbare GitHub-Schnittstelle konnte in diesem Lauf den ursprünglichen Original-Binärblob nicht direkt übernehmen. Deshalb wurde eine 180×94-Pixel-JPEG-Ableitung desselben Screenshots archiviert. Der visuelle Inhalt bleibt als Archivvorschau erhalten; die Datei ist ausdrücklich **nicht byteidentisch** mit dem Original.
 
 SHA-256 des ursprünglichen hochgeladenen PNGs:
 
@@ -1034,16 +1034,15 @@ ccaaac9f8bbc7355123c6bc34600805e8c00b671a642e18c9389986256625ce8
 
 ---
 
-## 15. Auswertungslücken und Grenzen
+## 15. Offene Nachweise und Grenzen
 
-- Der ursprüngliche Chat-Titel und eine direkte Chat-URL waren nicht verfügbar.
-- Einige frühe Diagnose-/Installationsschritte liegen nur in der verdichteten verfügbaren Chat-Historie vor; wo keine konkrete Shellausgabe vorlag, wurden sie ausdrücklich als vorgeschlagen/geplant markiert.
+- Einige frühe Diagnose-/Installationsschritte liegen nur in der verdichteten verfügbaren Projekthistorie vor; wo keine konkrete Shellausgabe vorlag, wurden sie ausdrücklich als vorgeschlagen/geplant markiert.
 - Es gibt keine belastbare Bestätigung im verfügbaren Verlauf, dass die komplette spätere Clean-Install-Prozedur bis zum finalen Langzeitbetrieb vollständig abgeschlossen wurde.
 - Es gibt keine abschließende Ausgabe, dass `ntetra0` nach Aktivierung tatsächlich existierte.
 - Es gibt keine abschließende Ausgabe, dass Subscriber Core nach `daemon-reload`/Start wieder `ONLINE` wurde.
-- Es gibt keine abschließende Ausgabe, dass der Media-Library-Healthcheck vom Node Gateway wieder erfolgreich war; lediglich die WebUI war laut Nutzer erreichbar.
+- Es gibt keine abschließende Ausgabe, dass der Media-Library-Healthcheck vom Node Gateway wieder erfolgreich war; lediglich die WebUI war laut Betriebsrückmeldung erreichbar.
 - Die aktuellen Repository-Prüfungen beziehen sich auf `main` @ `7137e0dd...`; der Archivbranch dient nur der Dokumentation und kann einen anderen Code-Snapshot enthalten.
-- Die Projektumgebung enthielt weitere ETSI-PDFs und andere Dateien, die für diesen konkreten operativen Debuggingchat nicht ausschlaggebend waren und daher nicht erneut in dieses Archiv kopiert wurden.
+- Die Projektumgebung enthielt weitere ETSI-PDFs und andere Dateien, die für diesen konkreten operativen Diagnosezeitraum nicht ausschlaggebend waren und daher nicht erneut in dieses Archiv kopiert wurden.
 
 ---
 
@@ -1058,6 +1057,6 @@ ccaaac9f8bbc7355123c6bc34600805e8c00b671a642e18c9389986256625ce8
 
 ## 17. Kurzfazit
 
-Der wichtigste technische Erkenntnisgewinn dieses Chats ist die Trennung der Fehlerdomänen: Der ursprüngliche `RxReadError` war **nicht ausreichend spezifisch** und ließ sich zeitweise als nativer SoapySX-/ALSA-Streamfehler außerhalb NetCore reproduzieren. Gleichzeitig zeigte der Raspberry Pi 5 wiederholte Unterspannung. Nach einem sauberen Kaltstart lief der native SXceiver-RX-Pfad mit praktisch exakt 600 kS/s, womit Hardware und I²S grundsätzlich funktionsfähig sind. Offen bleiben insbesondere das Stream-Stop/Reset-Verhalten, die HAT-ID-Konsistenz, das detaillierte Fehlerlogging, `ntetra0`/CAP_NET_ADMIN sowie zwei zentrale Healththemen (Subscriber Core wirklich gestoppt, Media Library WebUI erreichbar aber Healthcheck rot).
+Der wichtigste technische Erkenntnisgewinn dieser Planung ist die Trennung der Fehlerdomänen: Der ursprüngliche `RxReadError` war **nicht ausreichend spezifisch** und ließ sich zeitweise als nativer SoapySX-/ALSA-Streamfehler außerhalb NetCore reproduzieren. Gleichzeitig zeigte der Raspberry Pi 5 wiederholte Unterspannung. Nach einem sauberen Kaltstart lief der native SXceiver-RX-Pfad mit praktisch exakt 600 kS/s, womit Hardware und I²S grundsätzlich funktionsfähig sind. Offen bleiben insbesondere das Stream-Stop/Reset-Verhalten, die HAT-ID-Konsistenz, das detaillierte Fehlerlogging, `ntetra0`/CAP_NET_ADMIN sowie zwei zentrale Healththemen (Subscriber Core wirklich gestoppt, Media Library WebUI erreichbar aber Healthcheck rot).
 
 Für die Fortsetzung ist daher nicht eine weitere pauschale Neuinstallation die höchste Priorität, sondern die **reproduzierbare Abnahme der einzelnen Gates**: stabile Versorgung → SoapySX Start/Stop → NetCore RF → Packet Data → zentrale Healthmatrix → Integrationen.

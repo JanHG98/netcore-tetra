@@ -1,27 +1,25 @@
-# Abschlussdokumentation: Flowstation Wetterdaten und SDS-Abfragedienst
+# Brainstorming: Flowstation Wetterdaten und SDS-Abfragedienst
 
-## Metadaten
+## Rahmen und Quellenstand
 
 - **Projekt:** NetCore-Tetra
 - **Thema:** Wetterdaten für Flowstation/NetCore-Tetra per SDS und bedarfsgesteuerte Wetterabfrage vom Funkgerät
-- **Ursprünglicher Chattitel:** im zugänglichen Verlauf nicht als eigener Titel überliefert; Nutzer-Stichwort: „Flowstation“
-- **Chatlink:** im zugänglichen Kontext nicht verfügbar
 - **Erstellt:** 2026-10-03
 - **Zielbranch:** `Archiving`
 - **Vor dem Schreiben geprüfter Branch-HEAD:** `44cfe017ad4610a16a29746c41042eb47fc577f4`
 - **Repository:** `JanHG98/netcore-tetra`
 
-> Statusbegriffe werden streng getrennt: **Idee**, **beschlossen/geplant**, **implementiert**, **getestet**, **im Betrieb bestätigt**. Eine Chat-Aussage allein gilt nicht als Implementierungsnachweis.
+> Statusbegriffe werden streng getrennt: **Idee**, **beschlossen/geplant**, **implementiert**, **getestet**, **im Betrieb bestätigt**. Eine Planungsaussage allein gilt nicht als Implementierungsnachweis.
 
 ## 1. Ziel und Ausgangslage
 
 Ausgangspunkt war die Frage, ob Flowstation Wetterdaten online beziehen – insbesondere vom DWD – und als TETRA-SDS verteilen kann. Danach wurde die Idee wesentlich erweitert: Ein Funkgerät soll eine definierte Serviceadresse, beispielhaft `40004`, per SDS ansprechen und automatisch eine Wetter-SDS als Antwort erhalten. Damit entsteht ein SDS-basierter Request/Response-Dienst („WeatherBot“).
 
-Dieser Chat war ein Architektur-/Ideenchat. **Es wurde hier kein WeatherBot-Code geschrieben, kein Deployment durchgeführt und kein Funk-Livetest dokumentiert.**
+**Arbeitsstand: Architekturidee.** WeatherBot-Code, Deployment und Funk-Livetest sind nicht dokumentiert.
 
-## 2. Endgültiger fachlicher Wunsch aus dem Chat
+## 2. Verbindliches Funktionsziel
 
-**Status: beschlossen/geplant als gewünschte Funktion; noch nicht implementiert nachgewiesen.**
+**Status: beschlossen/geplant als gewünschte Funktion; noch Implementierung nicht nachgewiesen.**
 
 Der gewünschte Ablauf ist:
 
@@ -43,7 +41,7 @@ bestehender SDS-Versandpfad
 Antwort-SDS an die anfragende ISSI
 ```
 
-Beispiel aus dem Chat:
+Beispielanfrage:
 
 ```text
 MS -> Serviceadresse 40004
@@ -67,9 +65,9 @@ Der Vorteil gegenüber reinem Push ist, dass Wetterdaten gezielt angefordert wer
 
 **Status: Idee, nicht reserviert nachgewiesen.**
 
-`40004` wurde vom Nutzer beispielhaft genannt. Eine heutige Repository-Suche ergab keinen Treffer für `40004`. Vor Implementierung muss daher eine kollisionsfreie Serviceadresse verbindlich im NetCore-Adressplan reserviert werden.
+`40004` ist eine ausdrücklich genannte Beispieladresse. Eine Repository-Suche ergab keinen Treffer für `40004`. Vor Implementierung muss daher eine kollisionsfreie Serviceadresse verbindlich im NetCore-Adressplan reserviert werden.
 
-Im Chat wurde als mögliche spätere Aufteilung skizziert:
+Mögliche spätere Aufteilung:
 
 ```text
 40001 = Flowstation System
@@ -107,7 +105,7 @@ Der Router soll Transport und Fachlogik trennen. Er nimmt eine bereits dekodiert
 
 **Status: Idee.**
 
-Im Chat wurde sinngemäß folgendes internes Modell vorgeschlagen:
+Vorgeschlagenes internes Modell:
 
 ```rust
 struct WeatherSdsMessage {
@@ -128,15 +126,15 @@ Das ist Pseudocode, kein vorhandener Repository-Typ. Der Dienst soll externe Dat
 
 **Bright Sky – Status: Idee.** Bright Sky wurde als einfacher nutzbare API-Schicht für DWD-Daten vorgeschlagen, um die Integration gegenüber rohen DWD-Dateidaten zu vereinfachen.
 
-Im Chat wurde **keine endgültige Datenquelle beschlossen**. Vor Implementierung müssen konkrete Endpunkte, Datenformate, Verfügbarkeit und Nutzungsbedingungen aktuell geprüft werden.
+**Die Datenquelle ist noch nicht festgelegt.** Vor Implementierung müssen konkrete Endpunkte, Datenformate, Verfügbarkeit und Nutzungsbedingungen aktuell geprüft werden.
 
-## 5. Heutiger Repository-Abgleich
+## 5. Am 03.10.2026 geprüfter Repository-Abgleich
 
 Der Branch `Archiving` wurde vor dem Schreiben geprüft; Ausgangs-HEAD war `44cfe017ad4610a16a29746c41042eb47fc577f4`.
 
 ### 5.1 SDS-Grundlage ist bereits implementiert
 
-**Status: implementiert im Repository; kein neuer Live-Test in diesem Chat.**
+**Status: implementiert im Repository; kein neuer Live-Test in dieser Entwicklungsphase.**
 
 Vorhanden sind unter anderem:
 
@@ -173,13 +171,13 @@ Die README des Alert Service nennt standardmäßig 120 Zeichen Funktext. Das ist
 
 Die ursprüngliche Annahme „DWD müsste vollständig neu angebunden werden“ ist teilweise überholt: DWD-Warnungen sind über den bestehenden BBK/NINA-Pfad bereits Teil des Alert Service.
 
-Weiterhin offen und Gegenstand dieses Chats ist ein **interaktiver Abruf allgemeiner Wetter-/Forecastdaten per SDS**.
+Weiterhin offen und Gegenstand dieses Vorhabens ist ein **interaktiver Abruf allgemeiner Wetter-/Forecastdaten per SDS**.
 
 ### 5.4 WeatherBot fehlt weiterhin
 
 Repository-Suchen nach `WeatherService`, `WeatherBot`, `Bright Sky`, `brightsky` und `40004` ergaben keine entsprechende Implementierung.
 
-**Aktueller Status des Kernfeatures: nicht implementiert nachgewiesen.**
+**Aktueller Status des Kernfeatures: Implementierung nicht nachgewiesen.**
 
 ## 6. Relevanter Standardsbezug
 
@@ -195,7 +193,7 @@ Diese Dokumentation führt **keine vollständige Normkonformitätsprüfung** des
 
 **Status: geplant/empfohlen; konkrete Policy offen.**
 
-Im Chat wurden vorgeschlagen:
+Vorgeschlagene Betriebsregeln:
 
 - SDS-Kommandos nicht unbeschränkt für jede ISSI freigeben,
 - Weather-Request separat aktivierbar machen,
@@ -221,17 +219,17 @@ Für die Umsetzung zusätzlich wichtig: Eingaben strikt begrenzen, keine SDS-ges
 | allgemeine Wetterdaten | nicht nachgewiesen | kein WeatherService gefunden |
 | WeatherBot | nicht implementiert | keine Treffer |
 | Service-ISSI `40004` | Idee | keine Reservierung nachgewiesen |
-| SDS Command Router für WX | nicht implementiert nachgewiesen | Roadmap-Kandidat |
-| Funk-Livetest Request -> Response | nicht getestet | kein Test im Chat |
-| DWD/Bright-Sky-Livetest | nicht getestet | kein Test im Chat |
+| SDS Command Router für WX | Implementierung nicht nachgewiesen | Roadmap-Kandidat |
+| Funk-Livetest Request -> Response | nicht getestet | kein Test in den Arbeitsnotizen |
+| DWD/Bright-Sky-Livetest | nicht getestet | kein Test in den Arbeitsnotizen |
 
 ## 9. Befehle, Deployment, Fehler und Tests
 
-In diesem Chat wurden **keine Shell-Befehle, Installationen, Deployments oder Reparaturen ausgeführt**. Es traten daher keine WeatherBot-Laufzeitfehler auf.
+In dieser Entwicklungsphase wurden **keine Shell-Befehle, Installationen, Deployments oder Reparaturen ausgeführt**. Es traten daher keine WeatherBot-Laufzeitfehler auf.
 
 Es wurden auch keine produktiven WeatherBot-Konfigurationsdateien angelegt.
 
-Der heutige Repository-Abgleich bestätigt nur vorhandene SDS- und Alert-Service-Bausteine. Er bestätigt **nicht**, dass ein Funkgerät aktuell eine SDS an eine Service-ISSI senden und darauf dynamisch erzeugte Wetterdaten empfangen kann.
+Der Repository-Abgleich bestätigt nur vorhandene SDS- und Alert-Service-Bausteine. Er bestätigt **nicht**, dass ein Funkgerät aktuell eine SDS an eine Service-ISSI senden und darauf dynamisch erzeugte Wetterdaten empfangen kann.
 
 ## 10. Verworfene oder präzisierte Ansätze
 
@@ -273,10 +271,10 @@ ETSI-Unterlagen aus dem Projektkontext:
 - EN 300 392-1 – General network design
 - EN 300 392-5 – Peripheral Equipment Interface (PEI)
 
-## 13. Auswertungslücken
+## 13. Offene Nachweise
 
-Der in dieser Unterhaltung sichtbare Verlauf zum Thema Flowstation/Wetter wurde vollständig berücksichtigt. Ein eigener ursprünglicher Chatlink und ein expliziter UI-Chattitel waren nicht verfügbar.
+Die Konzeption enthält noch keine Implementierungs- oder Betriebsbelege.
 
-Die zahlreichen im Projektkontext vorhandenen ETSI-PDFs wurden **nicht vollständig Seite für Seite ausgewertet**, weil dieser Chat keine vollständige SDS-Normimplementierung oder Konformitätsanalyse zum Gegenstand hatte. Herangezogen wurden die für das Thema unmittelbar relevanten SDS-Bezüge.
+Die zahlreichen im Projektkontext vorhandenen ETSI-PDFs wurden **nicht vollständig Seite für Seite ausgewertet**, weil die Konzeption keine vollständige SDS-Normimplementierung oder Konformitätsanalyse umfasst. Herangezogen wurden die für das Thema unmittelbar relevanten SDS-Bezüge.
 
 Es wurden keine Passwörter, Tokens, Schlüssel oder sonstigen Zugangsdaten in diese Archivdokumentation übernommen.

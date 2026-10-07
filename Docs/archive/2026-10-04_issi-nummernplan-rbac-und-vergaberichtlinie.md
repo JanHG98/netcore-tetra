@@ -1,70 +1,69 @@
-# Technische Abschlussdokumentation: ISSI-Nummernplan, Vergaberichtlinie und RBAC
+# Brainstorming: ISSI-Nummernplan, Vergaberichtlinie und RBAC
 
-> **Archivstatus:** Abschluss des verfügbaren Entwurfsdialogs, keine Freigabe eines vollständig validierten Nummernplans und kein Nachweis eines produktiven RBAC-Rollouts. Die zuletzt angenommene Struktur `[D][K][EE][NNNN]` wird historisch bewahrt. Ihre verbleibenden Fehler werden ausdrücklich getrennt dokumentiert: insbesondere der Überlauf bei `D=1/K=9` und der Widerspruch zwischen einer stabilen ISSI und einem durch Nummernwechsel dargestellten Betriebsmodus.
+> **Planungsstand:** Nummernplan und RBAC sind konzeptionell beschrieben, noch nicht vollständig validiert oder produktiv ausgerollt. Die zuletzt angenommene Struktur `[D][K][EE][NNNN]` wird historisch bewahrt. Ihre verbleibenden Fehler werden ausdrücklich getrennt dokumentiert: insbesondere der Überlauf bei `D=1/K=9` und der Widerspruch zwischen einer stabilen ISSI und einem durch Nummernwechsel dargestellten Betriebsmodus.
 
-## 1. Metadaten, Quellenlage und Abgrenzung
+## Zielbild und Festlegungen
+
+- Acht Organisationen erhalten getrennte ISSI-Blöcke für HRT, MRT und eigene Leitstellen.
+- Rollen und Berechtigungen werden außerhalb der ISSI geführt; GSSI folgt als eigenes Thema.
+- Letzter Entwurf: `[D][K][EE][NNNN]`. Der 24-Bit-Maximalwert **16.777.215** hat Vorrang vor dem Dezimalschema.
+- Offen: Überlauf bei `D=1/K=9`, stabile Identität versus Betriebsmodus sowie konsolidierte Richtlinie und Geräteprüfung.
+
+## 1. Arbeitsstand und Quellenbasis
 
 | Merkmal | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
-| Thema dieses Chats | Organisationseigene ISSI-Blöcke für Leitstellen, HRT, MRT und Sonderteilnehmer; Rollen außerhalb der Nummer; formale Vergaberichtlinie und Karteikarten-Kurzfassung |
-| Ursprünglicher Chattitel | Nicht zuverlässig verfügbar; der Titel dieser Datei ist ein beschreibender Archivtitel |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link rekonstruiert oder erfunden |
+| Thema | Organisationseigene ISSI-Blöcke für Leitstellen, HRT, MRT und Sonderteilnehmer; Rollen außerhalb der Nummer; formale Vergaberichtlinie und Karteikarten-Kurzfassung |
 | Erstellungsdatum dieser Zusammenfassung | **2026-10-04**, Europe/Berlin |
 | Repository | `JanHG98/netcore-tetra` |
-| Ausschließlicher Ziel- und Prüfbranch dieses Auftrags | `Archiving` |
 | Geprüfter Repository-Commit vor den Archivänderungen | `e1a3bbcdce7c25015882126a8371642a55eb206b` |
 | Zugehöriger Root-Tree | `6bd7ce8e27004c5d6b16cb0a8fc224b4943c2d2f` |
 | Erneute Branchprüfung vor der Erstellung | Weiterhin derselbe Commit |
-| Historisches Canvas | Titel „ISSI-Vergaberichtlinie NetCore-Tetra“; interne Dokumentreferenz `693dbd74fcd08191979b27386e9b367d`, **kein öffentlicher Chat- oder Dokumentlink** |
-| Änderungen dieses Auftrags | Diese Archivdatei und der zugehörige Eintrag in `Docs/archive/README.md`; keine Änderungen an Code, Wiki, Konfiguration oder produktiven Richtlinien außerhalb des Archivverzeichnisses |
-
-Die Commitnummer oben bezeichnet den tatsächlich untersuchten **Quellstand**, nicht den noch zu erzeugenden Commit dieser Datei. Der Archivcommit ist über die Dateihistorie feststellbar. Der Auftrag erlaubt weder einen Merge des Archivbranches noch eine Umstellung produktiver Teilnehmernummern.
+| Historisches Canvas | Titel „ISSI-Vergaberichtlinie NetCore-Tetra“; interne Dokumentreferenz `693dbd74fcd08191979b27386e9b367d`, **interne Referenz ohne öffentliche URL** |
 
 ### 1.1 Was zugänglich war
 
-Ausgewertet wurde der hier verfügbare Verlauf von der ersten Frage nach Eigentümer-/Geräteblöcken über die späteren Korrekturen bis zur letzten Canvas-Kurzfassung und diesem Archivauftrag. Die sichtbaren historischen Canvas-Aufrufe einschließlich Fehlermeldung und eingeschränktem Wiederholungsversuch wurden einbezogen. Relevante Repository-Dateien wurden am genannten Commit gelesen; die dafür benutzten Quellen sind in Abschnitt 15 einzeln aufgeführt.
+Grundlagen sind die Entwürfe zu Eigentümer-/Geräteblöcken, deren Korrekturen und die Karteikartenfassung der ISSI-Richtlinie. Die dokumentierten Canvas-Änderungen einschließlich fehlgeschlagener Vollanpassung wurden mit den Repository-Dateien des genannten Prüfstands abgeglichen. Einzelbelege stehen in Abschnitt 15.
 
-Alle **25 bereitgestellten PDF-Anhänge** waren als Dateien zugänglich. Sie wurden nach Dateiname, Titel-/Versionsangabe, Seitenzahl und Prüfsummenpräfix inventarisiert. Die unmittelbar einschlägigen Identitätsabschnitte aus EN 300 392-1 wurden gezielt gelesen; dessen Abbildung 3 auf PDF-Seite 29 wurde zusätzlich visuell geprüft. Das ist **keine vollständige inhaltliche Durcharbeitung sämtlicher 8.061 PDF-Seiten**. Die Seitenzahl schließt die 4.100-seitige Zusammenstellung `ETSI.pdf` ein und ist keine Anzahl unterschiedlicher Normseiten.
+Alle **25 PDF-Anhänge** wurden nach Datei, Titel, Version, Seitenzahl und Prüfsummenpräfix inventarisiert. Die einschlägigen Identitätsabschnitte aus EN 300 392-1 wurden gezielt gelesen; Abbildung 3 auf PDF-Seite 29 wurde visuell geprüft. Die **8.061 Dateiseiten** umfassen die 4.100-seitige Zusammenstellung `ETSI.pdf` und sind weder vollständig fachlich geprüft noch alle unterschiedlich.
 
 ### 1.2 Ausdrückliche Grenzen
 
-- Ein vollständiger, erneut ausgelesener **aktueller Canvas-Endstand** stand für diesen Auftrag nicht zur Verfügung. Überliefert sind dessen Erstellung und die sichtbaren Änderungen. Daraus lässt sich insbesondere nicht ableiten, dass alle Abschnitte konsistent aktualisiert wurden.
-- Für die einzelnen historischen Nachrichten liegen keine belastbaren Zeitstempel vor. Ihre Reihenfolge ist bekannt, nicht ihr genaues Erstellungsdatum.
-- Namen und vollständige Zuordnung der acht Organisationen wurden in diesem Chat nicht genannt.
+- Ein vollständiger, erneut ausgelesener **am Prüfdatum vorliegender Canvas-Endstand** stand für diese Quellenprüfung nicht zur Verfügung. Überliefert sind dessen Erstellung und die sichtbaren Änderungen. Daraus lässt sich insbesondere nicht ableiten, dass alle Abschnitte konsistent aktualisiert wurden.
+- Für die einzelnen historischen Entwurfsstände liegen keine belastbaren Zeitstempel vor. Ihre Reihenfolge ist bekannt, nicht ihr genaues Erstellungsdatum.
+- Namen und vollständige Zuordnung der acht Organisationen wurden in dieser Entwicklungsphase nicht genannt.
 - Es wurden keine Motorola-/Sepura-Programmierprofile, CPS-/Radio-Manager-Ausgaben, Firmwarestände oder realen Funkmessungen bereitgestellt.
-- Die Repository-Prüfung war eine gezielte statische Prüfung, kein vollständiges Sicherheitsaudit und kein Vergleich aller Branches. In diesem Auftrag wurde kein anderer Branch als Quellstand untersucht.
+- Die Repository-Prüfung war eine gezielte statische Prüfung, kein vollständiges Sicherheitsaudit und kein Vergleich aller Branches. Bei der dokumentierten Prüfung wurde kein anderer Branch als Quellstand untersucht.
 - Es wurden keine Basisstationen, Leitstellen, Verzeichnisserver oder Endgeräte kontaktiert, um einen Live-Betrieb zu bestätigen.
 - Passwörter, Tokens, private Schlüssel, Authentisierungswerte und andere Zugangsdaten werden nicht archiviert.
 
 ### 1.3 Bilder und sonstige Assets
 
-Im zugänglichen fachlichen Chat und im ursprünglichen gemounteten Dateibestand gab es **keine eigenständigen Chatbilder, Fotos, Screenshots oder generierten Designbilder**. Vorhanden waren die 25 PDFs mit ihren eingebetteten Titelbildern, Tabellen und Abbildungen. Diese sind Normanhänge und keine zusätzlichen ursprünglichen Chatbilddateien.
+In den zugänglichen Fachunterlagen und im ursprünglichen gemounteten Dateibestand gab es **keine eigenständigen Originalbilder, Fotos, Screenshots oder generierten Designbilder**. Vorhanden waren die 25 PDFs mit ihren eingebetteten Titelbildern, Tabellen und Abbildungen. Diese sind Normanhänge und keine zusätzlichen ursprünglichen Bilddateien.
 
-Für die Quellenprüfung wurde eine lokale Ansicht von PDF-Seite 29 erzeugt. Sie ist ein neues Arbeitsmittel dieser Archivierung, kein historisches Chatbild, und wird nicht als solches ins Repository hochgeladen. Es gibt daher in diesem Auftrag keine nachzuarchivierenden eigenständigen Bilddateien. Die PDFs selbst werden nicht zusätzlich in das Archiv kopiert; die Dateiliste und die gezielt verwendeten Fundstellen bleiben erhalten.
+## 2. Ziel, Ausgangslage und verbindliche Anforderungen
 
-## 2. Ziel, Ausgangslage und verbindliche Nutzeranforderungen
-
-Jan benötigt einen nachvollziehbaren Nummernplan für ein Netz mit zunächst **acht Eigentümern beziehungsweise Organisationen**, die HRT und MRT besitzen. Geräte mit Leitstellenfunktion sollen einen eigenen Nummernbereich erhalten. Der Aufbau soll professionell und ausbaufähig sein, aber nicht durch mehrfach codierte Rollen und Sonderfälle unnötig kompliziert werden.
+Benötigt wird ein nachvollziehbarer Nummernplan für ein Netz mit zunächst **acht Eigentümern beziehungsweise Organisationen**, die HRT und MRT besitzen. Geräte mit Leitstellenfunktion sollen einen eigenen Nummernbereich erhalten. Der Aufbau soll professionell und ausbaufähig sein, aber nicht durch mehrfach codierte Rollen und Sonderfälle unnötig kompliziert werden.
 
 Die ausdrücklich formulierten Anforderungen, in ihrer zuletzt gültigen Lesart:
 
 | Anforderung | Herkunft und Status |
 |---|---|
-| Eigene ISSI-Blöcke für Leitstellen | Vom Nutzer verlangt; **beschlossen/geplant** |
-| Je Eigentümer getrennte HRT- und MRT-Blöcke | Vom Nutzer verlangt; **beschlossen/geplant** |
-| Aktuell acht Eigentümer | Vom Nutzer angegeben; keine vollständige Namensliste vorhanden |
-| Jede Organisation darf eigene LST betreiben | Vom Nutzer ausdrücklich bestätigt; **beschlossen/geplant** |
-| LST sollen vollständig berechtigt sein | Vom Nutzer gefordert; genauer organisationsübergreifender Geltungsbereich und administrative Ausnahmen nicht abschließend bestimmt |
+| Eigene ISSI-Blöcke für Leitstellen | Als Anforderung festgehalten; **beschlossen/geplant** |
+| Je Eigentümer getrennte HRT- und MRT-Blöcke | Als Anforderung festgehalten; **beschlossen/geplant** |
+| Aktuell acht Eigentümer | Als Ausgangslage festgehalten; keine vollständige Namensliste vorhanden |
+| Jede Organisation darf eigene LST betreiben | Ausdrücklich festgelegt; **beschlossen/geplant** |
+| LST sollen vollständig berechtigt sein | Als Ziel festgehalten; genauer organisationsübergreifender Geltungsbereich und administrative Ausnahmen nicht abschließend bestimmt |
 | Ursprünglich achtstellige ISSI | Darstellungswunsch; später durch den ausdrücklich genannten Maximalwert begrenzt |
-| Maximalwert 16.777.215 beachten | Ausdrückliche Nutzerkorrektur; Vorrang vor sämtlichen früheren, zu großen Beispielen |
-| Nummern durch verständliches Aneinanderhängen von Feldern bilden | Vom Nutzer gewünscht; keine Multiplikationsformel als notwendige Bedienlogik |
-| Rolle `R` aus der ISSI herausnehmen | Nach Erläuterung vom Nutzer durch den Auftrag zur Canvas-Anpassung angenommen; Rollen sollen außerhalb der Nummer liegen |
+| Maximalwert 16.777.215 beachten | Ausdrückliche Korrektur; Vorrang vor sämtlichen früheren, zu großen Beispielen |
+| Nummern durch verständliches Aneinanderhängen von Feldern bilden | Gewünscht; keine Multiplikationsformel als notwendige Bedienlogik |
+| Rolle `R` aus der ISSI herausnehmen | Für die Richtlinienanpassung festgelegt; Rollen sollen außerhalb der Nummer liegen |
 | Richtlinie und Ergänzungen im Canvas | Mehrfach ausdrücklich beauftragt; historische Dokumentbearbeitung, keine automatische Codeimplementierung |
-| GSSI später als eigenes Thema/Dokument behandeln | Ausdrückliche Abgrenzung des Nutzers; keine GSSI-Vergaberichtlinie in diesem Chat abgeschlossen |
-| Sehr kurze Karteikartenfassung | Vom Nutzer beauftragt; als Canvas-Anhang überliefert |
+| GSSI später als eigenes Thema/Dokument behandeln | Festgelegte Abgrenzung; keine GSSI-Vergaberichtlinie in dieser Entwicklungsphase abgeschlossen |
+| Sehr kurze Karteikartenfassung | Geplant; als Canvas-Anhang überliefert |
 
-Der Nutzer wünschte keine konkrete Organisation namens „Feuerwehr Stadt“ oder „Rettungsdienst“ als bereits registrierten Eigentümer. Solche Bezeichnungen waren Beispiele des Assistenten. Auch die zwischenzeitliche Mischung aus Betreiber `01` plus acht weiteren Organisationen war keine belastbare Bestandsliste.
+„Feuerwehr Stadt“ und „Rettungsdienst“ waren Platzhalter, keine registrierten Eigentümer. Auch die zwischenzeitliche Mischung aus Betreiber `01` plus acht weiteren Organisationen war keine belastbare Bestandsliste.
 
 ## 3. Statusbegriffe und erreichtes Ergebnis
 
@@ -72,31 +71,31 @@ Für diese Dokumentation gelten folgende Unterscheidungen:
 
 | Kennzeichnung | Bedeutung |
 |---|---|
-| **Idee** | Im Dialog vorgeschlagen, aber nicht als konkrete Umsetzung beauftragt oder abschließend ausgewählt |
-| **Beschlossen/geplant** | Vom Nutzer festgelegt oder zur Aufnahme in die Dokumentation angenommen; noch kein Nachweis von Software oder Betrieb |
+| **Idee** | Als Ansatz vorgeschlagen, aber nicht als konkrete Umsetzung beauftragt oder abschließend ausgewählt |
+| **Beschlossen/geplant** | Festgelegt oder zur Aufnahme in die Dokumentation angenommen; noch kein Nachweis von Software oder Betrieb |
 | **Implementiert** | Im untersuchten Repository ist zugehöriger ausführbarer Code erkennbar; sein Einsatz ist damit nicht bestätigt |
 | **Getestet** | Eine konkrete Prüfung wurde tatsächlich ausgeführt, mit hier genannter Reichweite |
-| **Im Betrieb bestätigt** | Durch konkrete Live-Beobachtung belegt; für den neuen Nummernplan und die beschriebenen Sicherheitsfunktionen in diesem Chat **nicht erreicht** |
+| **Im Betrieb bestätigt** | Durch konkrete Live-Beobachtung belegt; für den neuen Nummernplan und die beschriebenen Sicherheitsfunktionen in dieser Entwicklungsphase **nicht erreicht** |
 
-### 3.1 Ergebnis des historischen Chats
+### 3.1 Ergebnis der historischen Planung
 
-Erreicht wurde ein mehrstufig entwickelter **Dokumentationsentwurf** mit Organisations- und Geräteklassen, Rollenentkopplung, Vergabegrundsätzen, Sonderbetriebsüberlegungen und einer Kurzfassung. Die sichtbaren Canvas-Antworten bestätigen mehrere Textänderungen. Sie belegen weder einen Nummernvergabedienst noch funktionierende RBAC-, MFA-, Break-Glass- oder Mandantentrennung im Netz.
+Erreicht wurde ein mehrstufig entwickelter **Dokumentationsentwurf** mit Organisations- und Geräteklassen, Rollenentkopplung, Vergabegrundsätzen, Sonderbetriebsüberlegungen und einer Kurzfassung. Die dokumentierten Revisionen bestätigen mehrere Textänderungen. Sie belegen weder einen Nummernvergabedienst noch funktionierende RBAC-, MFA-, Break-Glass- oder Mandantentrennung im Netz.
 
 Die wiederholten historischen Aussagen „final“, „verbindlich“, „100 % kompatibel“, „BOS-Niveau“, „auditfest“ und „zukunftsfest“ gingen über die Nachweise hinaus. Sie werden hier **nicht als Abnahmeergebnis übernommen**.
 
-### 3.2 Zusätzlich heute überprüft
+### 3.2 Zusätzlich am Prüfdatum überprüft
 
-Im Repository existieren inzwischen unter anderem eine organisatorische ISSI-Wiki-Seite, numerische SSI-Datentypen, lokale Control-Room-Rollen und Directory-Konfigurationsfelder. Diese Bausteine werden in Abschnitt 9 getrennt beschrieben. Sie sind kein Beleg dafür, dass genau die vollständige Richtlinie dieses Chats implementiert oder produktiv eingeschaltet ist.
+Im Repository existieren inzwischen unter anderem eine organisatorische ISSI-Wiki-Seite, numerische SSI-Datentypen, lokale Control-Room-Rollen und Directory-Konfigurationsfelder. Diese Bausteine werden in Abschnitt 9 getrennt beschrieben. Sie sind kein Beleg dafür, dass genau die vollständige Richtlinie dieser Planung implementiert oder produktiv eingeschaltet ist.
 
 ## 4. Entwicklung des Nummernplans und ersetzte Ansätze
 
 ### 4.1 Erste Vorschläge mit Kategorie, Eigentümer und Rolle
 
-Der Assistent schlug zunächst eine Hierarchie aus Teilnehmerkategorie, Eigentümer, Geräte-/Rollenart und Laufnummer vor. Kategorien waren früh `1=LST`, `2=HRT`, `3=MRT`, `9=Test`; später kamen `4=Infrastruktur` und `5=virtuell` hinzu.
+Der erste Ansatz war eine Hierarchie aus Teilnehmerkategorie, Eigentümer, Geräte-/Rollenart und Laufnummer. Kategorien waren früh `1=LST`, `2=HRT`, `3=MRT`, `9=Test`; später kamen `4=Infrastruktur` und `5=virtuell` hinzu.
 
 Eine vereinfachte Alternative bestand aus ausdrücklich vergebenen Bereichen wie `1000000–1000999` für LST, `2001000–2001999` für HRT eines Eigentümers und `3001000–3001999` für MRT. Diese Alternative wurde nicht als endgültiger Plan ausgewählt.
 
-Danach wurde ein angeblich achtstelliges Schema `[K][EEE][G][NNNN]` genannt. Tatsächlich sind das **neun Stellen**. Das Beispiel `1 001 1 0001` ergibt `100110001` und ist nicht nur zu lang, sondern auch größer als der später genannte 24-Bit-Raum. Andere Beispiele derselben Antwort ließen stillschweigend Stellen weg. Dieser Ansatz ist überholt und darf nicht als konsistente Spezifikation verwendet werden.
+Danach wurde ein angeblich achtstelliges Schema `[K][EEE][G][NNNN]` genannt. Tatsächlich sind das **neun Stellen**. Das Beispiel `1 001 1 0001` ergibt `100110001` und ist nicht nur zu lang, sondern auch größer als der später genannte 24-Bit-Raum. Andere Beispiele desselben Entwurfs ließen stillschweigend Stellen weg. Dieser Ansatz ist überholt und darf nicht als konsistente Spezifikation verwendet werden.
 
 ### 4.2 Achtstelliger Entwurf `[K][EE][R][NNNN]`
 
@@ -112,7 +111,7 @@ Historische Rollenkennungen:
 
 Damit wurden Rollen und Sonderfälle teils doppelt codiert: als Klasse, als Rolle und zusätzlich als Laufnummernfenster. HRT/MRT wurden zeitweise zusätzlich über unterschiedliche Laufnummern getrennt, obwohl bereits die Klasse unterschied. Recorder tauchten sowohl bei LST als auch bei Infrastruktur auf. Für diese Mehrfachbelegungen entstand keine abschließende Vorrangregel.
 
-Wesentlich schwerer wiegt der Wertebereich: Beispiele wie `20300042`, `30300007`, `50350001` und `90300001` überschreiten `16777215`. Ein achtstelliges Dezimalschema ist nicht beliebig mit allen Ziffern kombinierbar. Der ursprüngliche Entwurf wurde durch Jans Korrektur des Maximalwerts ersetzt.
+Wesentlich schwerer wiegt der Wertebereich: Beispiele wie `20300042`, `30300007`, `50350001` und `90300001` überschreiten `16777215`. Ein achtstelliges Dezimalschema ist nicht beliebig mit allen Ziffern kombinierbar. Der ursprüngliche Entwurf wurde nach der Korrektur des Maximalwerts ersetzt.
 
 ### 4.3 Siebenstelliger Entwurf `[K][EE][NNNN]`
 
@@ -134,7 +133,7 @@ Die festgehaltenen Beispiele für Organisation `03` waren:
 | Virtuell | `5 / 03 / 0001` | `5030001` |
 | Test | `9 / 03 / 0001` | `9030001` |
 
-Jan stellte zutreffend fest, dass dies siebenstellige Zahlen sind. Eine optionale Anzeige mit einer führenden Null wurde ergänzt. Die Kurzform `[K][EE][NNN]` wurde nicht übernommen; vier Laufnummernziffern blieben das Ziel.
+Der Entwurf ergibt siebenstellige Zahlen. Eine optionale Anzeige mit einer führenden Null wurde ergänzt. Die Kurzform `[K][EE][NNN]` wurde nicht übernommen; vier Laufnummernziffern blieben das Ziel.
 
 Die Begründung, drei Laufnummernziffern würden „morgen garantiert zu klein“, war eine unbelegte Größenprognose. Vier Stellen sind eine geplante Reserve, keine aus dem Bestand von acht Organisationen abgeleitete zwingende technische Voraussetzung.
 
@@ -142,7 +141,7 @@ Korrigierte Kapazitätsangaben: Mit `K=9`, `EE=99`, `NNNN=9999` ist der größte
 
 ### 4.4 Letzter angenommener Entwurf `[D][K][EE][NNNN]`
 
-Auf Jans Frage nach einer Bedeutung der ersten Ziffer `0` oder `1` wurde eine Betriebsdomäne `D` vorgeschlagen. Diese Struktur wurde anschließend zur Canvas-Anpassung angenommen. Die Rolle sollte ausdrücklich als Metadatum außerhalb der Nummer bleiben.
+Für die erste Ziffer `0` oder `1` wurde die Betriebsdomäne `D` vorgeschlagen. Diese Struktur wurde anschließend zur Canvas-Anpassung angenommen. Die Rolle sollte ausdrücklich als Metadatum außerhalb der Nummer bleiben.
 
 **Dies ist der letzte historische Zielentwurf, aber nicht in allen Kombinationen gültig.** Seine noch offenen Korrekturen werden in Abschnitt 8 erklärt, nicht stillschweigend in die historische Entscheidung hineingeschrieben.
 
@@ -221,25 +220,25 @@ Weitere dokumentierte Ziele: keine undokumentierte Wiederverwendung, Freigabe un
 
 RBAC wurde als **Role-Based Access Control / rollenbasierte Zugriffskontrolle** erläutert. Die gewählte Grundidee lautet: Die Teilnehmerkennung identifiziert; ein zugeordnetes Rechteprofil entscheidet über erlaubte Aktionen. Ein Rollenwechsel soll nicht automatisch einen Nummernwechsel erfordern.
 
-Beispiele im Chat waren Dispatcher, Supervisor, Admin, Technik, Führung sowie eingeschränkte Bot-/Automatikprofile. Für ein HRT mit ISSI `2030042` sollte beispielsweise eine zusätzliche Führungsrolle vergeben werden können, ohne die ISSI zu ändern.
+Beispiele in der Planung waren Dispatcher, Supervisor, Admin, Technik, Führung sowie eingeschränkte Bot-/Automatikprofile. Für ein HRT mit ISSI `2030042` sollte beispielsweise eine zusätzliche Führungsrolle vergeben werden können, ohne die ISSI zu ändern.
 
 Die Rollenlisten sind Konzeptbeispiele, keine nachgewiesenen produktiven Profile. „Hauptleitstelle“ versus „Backup“ bezeichnet zudem eine betriebliche Funktion, „ATEX“ eine Geräteeigenschaft, „Reserve“ einen Lebenszykluszustand und „Supervisor“ ein Berechtigungsprofil. Diese unterschiedlichen Eigenschaften sollten bei der Fortsetzung nicht unbesehen in ein einziges Rollenfeld gepackt werden.
 
 Frühe Regeln wie `ISSI beginnt mit 1 → darf alles` oder eine globale Freigabe des LST-Blocks wurden später ausdrücklich durch Policy-/RBAC-Überlegungen ersetzt. Sie sind **verworfen**. Das gilt auch dann, wenn jede Organisation eigene voll funktionsfähige Leitstellen erhalten soll. Eine Nummer ist kein Authentisierungsnachweis.
 
-ABAC als spätere Ergänzung für Kontextbedingungen wie Zeit, Ort und Lage wurde erwähnt. Ein vollständiges ABAC-Modell wurde nicht entworfen. Die pauschale Abwertung anderer Zugriffsmodelle im Dialog ist keine begründete Architekturentscheidung.
+ABAC als spätere Ergänzung für Kontextbedingungen wie Zeit, Ort und Lage wurde erwähnt. Ein vollständiges ABAC-Modell wurde nicht entworfen; andere Zugriffsmodelle sind damit nicht fachlich ausgeschlossen.
 
 ### 6.3 Leitstellen und Organisationsgrenzen
 
-Jede Organisation darf eigene LST-Adressen besitzen. Der Nutzer verlangte deren vollständige Berechtigung. Der Assistent ergänzte als geplante Governance: standardmäßig Steuerung der eigenen Organisation, fremde Bereiche nur nach ausdrücklicher Freigabe.
+Jede Organisation darf eigene LST-Adressen besitzen. Vollständige Berechtigung ist als Ziel festgehalten. Der Governance-Vorschlag sieht vor: standardmäßig Steuerung der eigenen Organisation, fremde Bereiche nur nach ausdrücklicher Freigabe.
 
-Die konkrete Frage, ob LST dauerhaft fremde Organisationsgruppen steuern dürfen, wurde nicht abschließend beantwortet. Der Nutzer wechselte stattdessen zur Erstellung der Richtlinie. Daraus folgt weder eine Freigabe globaler Administratorrechte für jede LST noch der Nachweis einer technisch durchgesetzten strikten Mandantentrennung.
+Die konkrete Frage, ob LST dauerhaft fremde Organisationsgruppen steuern dürfen, wurde nicht abschließend beantwortet. Daraus folgt weder eine Freigabe globaler Administratorrechte für jede LST noch der Nachweis einer technisch durchgesetzten strikten Mandantentrennung.
 
 Offen bleiben insbesondere die Trennung zwischen Dispositionsrechten, Teilnehmerverwaltung, Netzkonfiguration, Schlüsselverwaltung und organisationsübergreifender Aufsicht sowie die Zuordnung von menschlichem Leitstellenbenutzer, Arbeitsplatz und technischer Funkidentität.
 
 ### 6.4 Ergänzte Richtlinienkapitel
 
-| Kapitel/Thema | Historisch aufgenommener Inhalt | Tatsächlicher Status dieses Chats |
+| Kapitel/Thema | Historisch aufgenommener Inhalt | Planungs- und Umsetzungsstatus |
 |---|---|---|
 | ISSI → Rechte → GSSI | Grundsätze, dass Rechte nicht allein aus einer Nummer folgen und Gruppen-Policies nötig sind | **Beschlossen/geplant als Dokumentation**; keine vollständige Rechte-/Gruppenmatrix |
 | Organisationsübergreifende Steuerung | Explizite und zeitlich begrenzte Freigaben, Protokollierung | **Geplant**; kein implementierter Mandantenfreigabedienst nachgewiesen |
@@ -260,7 +259,7 @@ Die Trennung der Dokumente darf bei der späteren Vergabe nicht mit unabhängige
 
 ## 7. Canvas-Bearbeitung: Erfolg, Fehler und Konsistenzgrenzen
 
-Die ursprüngliche Richtlinie enthielt die Abschnitte 1–10 zu Zweck, Grundsätzen, Format, Klassen, Eigentümern, Rollen, Laufnummern, Vergabe, Sicherheit und Revision. Auf ausdrücklichen Auftrag wurden die Abschnitte 11–16 für Rechte-/Gruppenbezug, organisationsübergreifende Steuerung, Break-Glass, Betriebsmodi, Lifecycle und Audit ergänzt. Später folgten Beispiele und die Karteikartenfassung.
+Die ursprüngliche Richtlinie enthielt die Abschnitte 1–10 zu Zweck, Grundsätzen, Format, Klassen, Eigentümern, Rollen, Laufnummern, Vergabe, Sicherheit und Revision. Als Erweiterung wurden die Abschnitte 11–16 für Rechte-/Gruppenbezug, organisationsübergreifende Steuerung, Break-Glass, Betriebsmodi, Lifecycle und Audit ergänzt. Später folgten Beispiele und die Karteikartenfassung.
 
 | Historischer Bearbeitungsschritt | Sichtbares Ergebnis |
 |---|---|
@@ -275,11 +274,11 @@ Die relevante Fehlermeldung lautete sinngemäß `updates.0.pattern: pattern not 
 
 **Verbleibendes Dokumentproblem:** Die erfolgreiche Wiederholung übernahm nicht die gesamte zuvor vorgesehene Änderungsliste. Daher waren insbesondere Klassenbereiche, Vergaberegeln, Laufnummernfenster und Anhang nicht nachweislich vollständig an D angepasst. Nach der sichtbaren Änderungskette können die neue D-Struktur in Abschnitt 3, ältere K-Millionenformeln in anderen Abschnitten und die später ergänzte Kurzfassung gleichzeitig im Dokument stehen.
 
-Die damalige Abschlussmeldung „konsistent überall angepasst“ war daher nicht durch eine vollständige Rücklese gedeckt. Für eine Fortsetzung ist ein vollständiger Canvas-Export beziehungsweise eine komplett neu konsolidierte Richtlinienfassung erforderlich. Dieser Archivauftrag ändert das Canvas nicht nachträglich.
+Die damalige Behauptung „konsistent überall angepasst“ war daher nicht durch eine vollständige Rücklese gedeckt. Für eine Fortsetzung ist ein vollständiger Canvas-Export beziehungsweise eine komplett neu konsolidierte Richtlinienfassung erforderlich. Der Canvas-Endstand bleibt zu konsolidieren.
 
-## 8. Heutige fachliche Prüfung: Korrekturen und offene Architekturfragen
+## 8. Zusätzliche fachliche Prüfung: Korrekturen und offene Architekturfragen
 
-Dieser Abschnitt ist eine **zusätzliche technische Prüfung bei der Archivierung**. Er ersetzt nicht unbemerkt die historische Nutzerentscheidung durch einen neuen Nummernplan.
+Dieser Abschnitt ist eine **zusätzliche technische Prüfung bei der Quellenprüfung**. Er ersetzt nicht unbemerkt die historische Festlegung durch einen neuen Nummernplan.
 
 ### 8.1 24 Bit sind ein Wertebereich, keine freie achtstellige Dezimalnummer
 
@@ -287,7 +286,7 @@ Die bereitgestellte EN 300 392-1 V1.6.1, Abschnitt 7.2.1 auf Seite 27, definiert
 
 Rechnerisch gilt `2^24 - 1 = 16777215`. Allerdings ist dies **nicht gleichbedeutend mit der größten frei vergebbaren normalen Individualadresse**: Abschnitt 7.7.8 auf Seiten 37–38 reserviert die aus 24 Einsen bestehende SSI für Gruppen-Broadcast. Deshalb darf der Zahlenraum nicht ohne weitere Regeln als vollständiger regulärer ISSI-Pool freigegeben werden. [N1]
 
-Die Aussage des Nutzers zum Eingabelimit von Motorola und Sepura wird als Gerätehinweis bewahrt. Mangels konkreter Geräte-/Softwaretests wird daraus keine allgemeine Hersteller-Kompatibilitätszusage abgeleitet.
+Der Hinweis zum Eingabelimit von Motorola und Sepura wird als Gerätehinweis bewahrt. Mangels konkreter Geräte-/Softwaretests wird daraus keine allgemeine Hersteller-Kompatibilitätszusage abgeleitet.
 
 ### 8.2 D/K-Kombinationen des letzten Entwurfs
 
@@ -306,7 +305,7 @@ Alle Beispiele einzeln unterhalb des Limits zu wählen genügt nicht. Die zugela
 
 EN 300 392-1, Abschnitt 7.2.5, Seite 30, beschreibt die ISSI-Zuteilung als langfristig; Abschnitt 7.2.2, Seite 28, weist darauf hin, dass keine Standardverfahren zur dynamischen Zuteilung von ITSIs definiert sind. Daraus ergibt sich insbesondere kein allgemeiner standardisierter „D umschalten“-Mechanismus. [N1]
 
-**Neue Empfehlung zur Klärung, noch nicht vom Nutzer entschieden:** Entweder D ist eine dauerhaft zugeteilte Adressdomäne mit zulässigen Kombinationen, oder ein veränderlicher Betriebsmodus wird ausschließlich als Metadatum geführt. D zugleich als wechselnden Modus und als stabile Funkidentität zu behandeln ist nicht konsistent. Vor Abschluss dieser Entscheidung keine Massenumprogrammierung vornehmen.
+**Neue Empfehlung zur Klärung, noch nicht entschieden:** Entweder D ist eine dauerhaft zugeteilte Adressdomäne mit zulässigen Kombinationen, oder ein veränderlicher Betriebsmodus wird ausschließlich als Metadatum geführt. D zugleich als wechselnden Modus und als stabile Funkidentität zu behandeln ist nicht konsistent. Vor Abschluss dieser Entscheidung keine Massenumprogrammierung vornehmen.
 
 ### 8.4 Übungen, reale Sonderlagen und Reserve sind nicht dasselbe
 
@@ -328,9 +327,9 @@ Für positionsbasierte Auswertung muss zuerst eine eindeutig dezimale Interpreta
 
 Numerische Gültigkeit, Belegungskollision, organisatorische Klassifikation, Authentisierung und Autorisierung sind unterschiedliche Prüfungen. Selbst ein formal richtiger Wert aus dem LST-Bereich darf keine selbstbehauptete Leitstellenberechtigung verleihen. UI-Rollen, API-Zugriff und tatsächliche Durchsetzung im Funk-/SwMI-Pfad sind getrennt nachzuweisen. Ein in der Weboberfläche angezeigtes Profil belegt keine entsprechende Kontrolle jedes HRT/MRT-Verkehrs oder des DMO-Betriebs.
 
-## 9. Heutiger Repository-Stand, getrennt vom Chat-Ergebnis
+## 9. Geprüfter Repository-Stand, getrennt vom Planungsergebnis
 
-Alle folgenden eigenen Codebefunde beziehen sich auf `Archiving` bei `e1a3bbcdce7c25015882126a8371642a55eb206b`. Die Quellen wurden über die verbundene GitHub-Schnittstelle gelesen. Ein lokaler anonymer Clone war nicht erfolgreich; daraus folgt keine fehlende Lesbarkeit oder Schreibbarkeit über den Connector.
+Codebefunde beziehen sich auf `Archiving` bei `e1a3bbcdce7c25015882126a8371642a55eb206b`. Die Quelltexte wurden direkt am Prüfstand gelesen.
 
 ### 9.1 Nummernplan und numerische Adressen
 
@@ -340,7 +339,7 @@ Alle folgenden eigenen Codebefunde beziehen sich auf `Archiving` bei `e1a3bbcdce
 | `system-backend/shared/contracts/src/address.rs` | `MAX_SSI = 0x00ff_ffff`; Makro erzeugt `Ssi`, `Issi`, `Gssi`; `new`, `TryFrom<u32>` und `FromStr` führen die obere Bereichsprüfung aus; `Display` und Serde-Darstellung sind numerisch | Die Prüfung akzeptiert auch 0 und den reinen Maximalwert. Keine D/K/EE-/Reservierungs-/Belegungsprüfung in dieser Datei [R2] |
 | Dieselbe Contract-Datei | Tests `accepts_full_24_bit_range`, `rejects_values_above_24_bits`, `serde_is_numeric_and_roundtrips`; Beispiel `4_010_001` wird als JSON-Zahl `4010001` serialisiert | **Tests vorhanden**, hier nicht als Rust-Testlauf ausgeführt [R2] |
 | `crates/tetra-core/src/address.rs` | `TetraAddress` enthält öffentliche Felder `ssi: u32` und `ssi_type`; `new` übernimmt die Werte ohne Bereichsprüfung; `issi` delegiert an `new` | An dieser Stelle kein Schutz gegen zu große Eingabewerte; keine Behauptung, alle vorgelagerten Aufrufer seien ungeprüft [R3] |
-| `crates/tetra-config/src/bluestation/sec_directory.rs` | `bs_issi: u32`, Default `4010001`; bei 0 wird der Default eingesetzt; im gelesenen `apply_directory_patch` keine obere SSI-Bereichsprüfung | Directory-Identität ist vorhanden, aber kein generischer Zuteilungsdienst nach diesem Chatplan [R4] |
+| `crates/tetra-config/src/bluestation/sec_directory.rs` | `bs_issi: u32`, Default `4010001`; bei 0 wird der Default eingesetzt; im gelesenen `apply_directory_patch` keine obere SSI-Bereichsprüfung | Directory-Identität ist vorhanden, aber kein generischer Zuteilungsdienst nach diesem Nummernplanentwurf [R4] |
 
 Zusätzlicher **statischer Prüfkandidat**: Der Contract-Typ leitet `Deserialize` direkt für einen transparenten `u32`-Wrapper ab. Es ist in dieser Datei kein eigener Deserialisierungsweg über `new` erkennbar. Deshalb muss ausdrücklich geprüft werden, ob JSON-Eingaben oberhalb von 24 Bit dieselbe Prüfung durchlaufen. Das ist hier ein begründeter Code-Review-Befund, **kein ausgeführter negativer Serde-Test und kein behaupteter nachgewiesener Angriffspfad**. [R2]
 
@@ -348,13 +347,13 @@ Zusätzlicher **statischer Prüfkandidat**: Der Contract-Typ leitet `Deserialize
 
 `bins/netcore-control-room/src/auth.rs` implementiert die Rollen `Node`, `Viewer`, `Operator`, `Admin`. Die Methode `allows` bildet die Hierarchie Admin → Operator → Viewer ab; Node ist eine gesonderte technische Rolle. Außerdem existieren Benutzerstrukturen, Login und HTTP-/WebSocket-Autorisierungsfunktionen. [R5]
 
-Das ist vorhandener Code und darf bei der Weiterentwicklung nicht ignoriert werden. Gleichzeitig bildet er nicht automatisch den vollständigen geplanten ISSI-/Eigentümer-/Gruppen-/Sonderlagenplan dieses Chats ab. In den gelesenen Identitätsstrukturen ist insbesondere keine solche komplette D/K/EE-Zuordnung erkennbar.
+Das ist vorhandener Code und darf bei der Weiterentwicklung nicht ignoriert werden. Gleichzeitig bildet er nicht automatisch den vollständigen geplanten ISSI-/Eigentümer-/Gruppen-/Sonderlagenplan dieser Planung ab. In den gelesenen Identitätsstrukturen ist insbesondere keine solche komplette D/K/EE-Zuordnung erkennbar.
 
 Wenn Authentisierung in diesem Modul deaktiviert ist, liefern Login beziehungsweise die gelesenen Autorisierungsfunktionen eine Identität `auth-disabled` mit **Admin**-Rolle. `main.rs` enthält die Schalter `--auth-enabled` und `--no-auth`, übergibt sie an die Konfiguration und protokolliert den Open-Lab-Zustand. [R5][R6]
 
-Die aktuelle `system-backend/control-room/Readme.md` beschreibt den Betriebsentwurf dieser Phase ausdrücklich ohne produktive Authentisierungs-/RBAC-Aktivierung, ohne Login, Tokens, TLS oder mTLS und ohne Zertifizierungsbehauptung. Das ist eine wichtige Einschränkung gegenüber den historischen „Profi-/BOS“-Zusicherungen. Die Dokumentation formuliert allgemein Operatorrechte für erreichbare Clients; der gelesene deaktivierte Auth-Code liefert sogar die genannte Admin-Identität. Eine vollständige Prüfung der tatsächlich erreichbaren Aktionen wurde hier nicht durchgeführt. [R7]
+Die am Prüfdatum vorliegende `system-backend/control-room/Readme.md` beschreibt den Betriebsentwurf dieser Phase ausdrücklich ohne produktive Authentisierungs-/RBAC-Aktivierung, ohne Login, Tokens, TLS oder mTLS und ohne Zertifizierungsbehauptung. Das ist eine wichtige Einschränkung gegenüber den historischen „Profi-/BOS“-Zusicherungen. Die Dokumentation formuliert allgemein Operatorrechte für erreichbare Clients; der gelesene deaktivierte Auth-Code liefert sogar die genannte Admin-Identität. Eine vollständige Prüfung der tatsächlich erreichbaren Aktionen wurde hier nicht durchgeführt. [R7]
 
-**Bewertung:** Rollen-/Auth-Bausteine sind **implementiert**. Ihre produktive Aktivierung, eine organisationsübergreifende ISSI-RBAC, MFA, Break-Glass und eine Funk-Ende-zu-Ende-Durchsetzung sind durch diesen Archivauftrag **nicht getestet und nicht im Betrieb bestätigt**.
+**Bewertung:** Rollen-/Auth-Bausteine sind **implementiert**. Ihre produktive Aktivierung, eine organisationsübergreifende ISSI-RBAC, MFA, Break-Glass und eine Funk-Ende-zu-Ende-Durchsetzung sind durch diesen Dokumentationslauf **nicht getestet und nicht im Betrieb bestätigt**.
 
 ### 9.3 Directory und Policies: vorhandene Anschlussstellen
 
@@ -362,17 +361,17 @@ Die Directory-Konfiguration beschreibt HTTP/JSON-Laufzeitexport, die logische Ba
 
 Diese Konfigurationsstelle ist ein konkreter Anknüpfungspunkt für weitere Prüfung. Sie beweist weder, dass der Schalter im eingesetzten TOML aktiviert ist, noch dass alle relevanten Codepfade vollständig durch ihn geschützt sind. Vor einer neuen „zentralen RBAC von null“ müssen vorhandene Auth-, Directory- und Policy-Mechanismen zusammengeführt und ihre Grenzen geprüft werden.
 
-Die Directory-Readme beschreibt Geräte-, Basisstations-, Gruppen- und Status-APIs. Der zugehörige Dateibaum enthält `netcore-directory.py`; die Readme nennt in Start-/Kopierbefehlen dagegen `netcore_directory_server.py`. Dieser Namensunterschied ist ein **heute festgestellter Dokumentationsprüfpunkt**, kein historischer Fehler dieses ISSI-Chats. Die Befehle wurden hier nicht ausgeführt. [R8]
+Die Directory-Readme beschreibt Geräte-, Basisstations-, Gruppen- und Status-APIs. Der zugehörige Dateibaum enthält `netcore-directory.py`; die Readme nennt in Start-/Kopierbefehlen dagegen `netcore_directory_server.py`. Dieser Namensunterschied ist ein **zum Prüfdatum festgestellter Dokumentationsprüfpunkt**, kein historischer Fehler dieser ISSI-Planung. Die Befehle wurden hier nicht ausgeführt. [R8]
 
-### 9.4 Abgleich mit einem bereits vorhandenen anderen Chatarchiv
+### 9.4 Abgleich mit einem bereits vorhandenen anderen Projektarchiv
 
-`Docs/archive/2026-10-03_basisstation-issi-eigentuemer-und-systemidentitaet.md` dokumentiert einen **anderen** Dialog: Dort wurde `04010001` beziehungsweise numerisch `4010001` für die Basisstations-/Systemidentität gewählt und Eigentümer `01` Jan zugeordnet. Diese fremde Zusammenfassung wird nicht überschrieben. [R9]
+`Docs/archive/2026-10-03_basisstation-issi-eigentuemer-und-systemidentitaet.md` dokumentiert eine **andere** Projektfestlegung: Dort wurde `04010001` beziehungsweise numerisch `4010001` für die Basisstations-/Systemidentität gewählt und Eigentümer `01` Jan zugeordnet. Die Zuordnung ist ein ergänzender Quellenbefund. [R9]
 
-Die Adresse passt zu `D=0/K=4/EE=01/NNNN=0001` und zum hier erneut geprüften Directory-Code-Default. Daraus entsteht jedoch keine vollständige Liste aller acht Eigentümer. Die dort beschriebenen weiteren lokalen SDS-Routen und hart codierten Quellen wurden in diesem Archivauftrag nicht erneut vollständig geprüft; sie bleiben verlinkte Anschlussbefunde, nicht eigene neue Testergebnisse.
+Die Adresse passt zu `D=0/K=4/EE=01/NNNN=0001` und zum hier erneut geprüften Directory-Code-Default. Daraus entsteht jedoch keine vollständige Liste aller acht Eigentümer. Die dort beschriebenen weiteren lokalen SDS-Routen und hart codierten Quellen wurden in diesem Dokumentationslauf nicht erneut vollständig geprüft; sie bleiben verlinkte Anschlussbefunde, nicht eigene neue Testergebnisse.
 
 ## 10. Architektur, Schnittstellen und technische Parameter
 
-### 10.1 Fachliches Zielbild aus diesem Chat
+### 10.1 Fachliches Zielbild aus dieser Entwicklungsphase
 
 Die geplanten Zuständigkeiten lassen sich folgendermaßen trennen:
 
@@ -389,40 +388,40 @@ Audit und Lifecycle
     → Zuteilung, Änderung, Sperrung, Sonderfreigabe und Wiederverwendung
 ```
 
-Dies ist ein fachliches Modell, **kein in diesem Chat eingerichteter neuer Dienst**. Es gab keine Festlegung auf einen zusätzlichen LXC, eine bestimmte RBAC-Software, eine Datenbankmigration oder ein verbindliches Auth-Protokoll. Der konkrete Ausbau muss vorhandene Komponenten berücksichtigen.
+Dies ist ein fachliches Modell, **kein in dieser Entwicklungsphase eingerichteter neuer Dienst**. Es gab keine Festlegung auf einen zusätzlichen LXC, eine bestimmte RBAC-Software, eine Datenbankmigration oder ein verbindliches Auth-Protokoll. Der konkrete Ausbau muss vorhandene Komponenten berücksichtigen.
 
-### 10.2 Relevante heute gelesene Parameter und Pfade
+### 10.2 Relevante am Prüfdatum gelesene Parameter und Pfade
 
 | Bereich | Wert / Schnittstelle | Nachweisstatus |
 |---|---|---|
 | Numerischer SSI-Raum | 24 Bit; Rohobergrenze `0xFFFFFF = 16777215` | Normfundstelle und Code-Konstante, keine vollständige Vergabepolicy |
 | Historischer Anzeigenaufbau | `[D][K][EE][NNNN]`, acht Positionen | Angenommener Entwurf mit offenen Einschränkungen |
-| Aktuelle Contract-Typen | `Ssi`, `Issi`, `Gssi` | Implementiert in `system-backend/shared/contracts/src/address.rs` |
+| Am Prüfdatum vorliegende Contract-Typen | `Ssi`, `Issi`, `Gssi` | Implementiert in `system-backend/shared/contracts/src/address.rs` |
 | RF-Core-Adresse | `TetraAddress { ssi: u32, ssi_type }` | Implementiert in `crates/tetra-core/src/address.rs` |
 | Directory-Standardadresse | `http://127.0.0.1:8095` | Code-Default, nicht die bestätigte Live-Adresse |
 | Directory-Standard-ISSI | `4010001` | Code-Default; Anzeige im anderen Archiv `04010001` |
 | Directory-Timeout | Default `1500 ms`, Begrenzung auf `250–10000 ms` | In `sec_directory.rs` geprüft |
 | Directory-Policy-Schalter | `enforce_policies=false`, `policy_fail_closed=false` als Defaults | Konfigurationscode, keine Aussage über aktiv ausgerollte Werte |
 | Directory-Policy-Schnittstelle | `/api/policy-check` | Im Konfigurationskommentar als Anschlussstelle genannt; Ende-zu-Ende nicht getestet |
-| Control-Room-WebUI | Port `9010`, WebSockets `/node` und `/ui` | Aktuelle Readme; kein Live-Portscan |
-| Control-Room-Gesundheit/Status | `/health/live`, `/health/ready`, `/api/v1/control-room/overview`, `/metrics` | Aktuelle Readme, nicht aufgerufen |
+| Control-Room-WebUI | Port `9010`, WebSockets `/node` und `/ui` | Am Prüfdatum vorliegende Readme; kein Live-Portscan |
+| Control-Room-Gesundheit/Status | `/health/live`, `/health/ready`, `/api/v1/control-room/overview`, `/metrics` | Am Prüfdatum vorliegende Readme, nicht aufgerufen |
 | Control-Room-Benutzerrollen | `viewer`, `operator`, `admin`; technische Rolle `node` | Auth-Code geprüft |
 | Control-Room-Persistenz | SQLite für Benutzer-/Audit-Anschlussstellen; weitere Zustände laut Readme in JSON | Code-/Dokumentationsbefund, keine Prüfung von Datenbestand oder Manipulationsschutz |
 | Nummernplan-Seite | `wiki/ISSI-and-GSSI.md` | Vorhanden; organisatorischer Vorschlag |
-| Historische Richtlinie | Canvas, interne Referenz in Abschnitt 1 | Kein unmittelbar ausgelesener aktueller Export |
-| Archivpfade | Diese Datei; `Docs/archive/README.md` | Ausschließlicher Schreibumfang des Auftrags |
+| Historische Richtlinie | Canvas, interne Referenz in Abschnitt 1 | Kein unmittelbar ausgelesener am Prüfdatum vorliegender Export |
+| Dokumentation | Diese Datei; `Docs/archive/README.md` | Entwurfs- und Quellenstand |
 
-MCC/MNC, Standort, Rufzeichen, Frequenzen, Keys und Endgeräteseriennummern wurden in diesem spezifischen Nummernplandialog nicht verbindlich festgelegt. Werte aus anderen Projektchats werden hier nicht als neue Anforderungen eingeführt. Die Netzidentität muss bei einer späteren Registrierung trotzdem berücksichtigt werden.
+MCC/MNC, Standort, Rufzeichen, Frequenzen, Keys und Endgeräteseriennummern wurden in diesem spezifischen Nummernplanentwurf nicht verbindlich festgelegt. Werte aus anderen Projektphasen werden hier nicht als neue Anforderungen eingeführt. Die Netzidentität muss bei einer späteren Registrierung trotzdem berücksichtigt werden.
 
 ## 11. Tests, Prüfungen und Befehle
 
 ### 11.1 Historischer Stand
 
-Im ursprünglichen Chat wurden keine Shellbefehle zur Installation, kein Git-Commit des Nummernplans, keine Datenbankmigration, kein Firmware-/Codeplug-Update und kein Funkversuch nachgewiesen. Die dargestellten Rechenbeispiele waren Erläuterungen, keine erfolgreichen Endgerätetests.
+In den ursprünglichen Planungsunterlagen wurden keine Shellbefehle zur Installation, kein Git-Commit des Nummernplans, keine Datenbankmigration, kein Firmware-/Codeplug-Update und kein Funkversuch nachgewiesen. Die dargestellten Rechenbeispiele waren Erläuterungen, keine erfolgreichen Endgerätetests.
 
-Die einzigen sichtbaren ausgeführten Schreiboperationen waren die Canvas-Textoperationen aus Abschnitt 7. Die vorgeschlagenen Filter wie `^1EE` und Präfix-ACLs waren Konzeptbeispiele; die unsichere Ableitung voller Rechte aus dem Präfix ist überholt.
+Dokumentiert sind lediglich die Richtlinienrevisionen aus Abschnitt 7. Die vorgeschlagenen Filter wie `^1EE` und Präfix-ACLs waren Konzeptbeispiele; die unsichere Ableitung voller Rechte aus dem Präfix ist überholt.
 
-### 11.2 Tatsächlich bei dieser Archivierung durchgeführt
+### 11.2 Tatsächlich bei der Quellenprüfung durchgeführt
 
 | Prüfung/Ablauf | Ergebnis und Grenze |
 |---|---|
@@ -469,15 +468,15 @@ Ergänzend wurden für beide D-Werte, alle sechs Klassen und `EE=01–99` jeweil
 
 ### 11.4 Nur dokumentierte, nicht ausgeführte Betriebsbefehle
 
-Die heute gelesene Control-Room-Readme zeigt `cargo build --locked --release --package netcore-control-room` und einen Start mit `--config ... --no-auth`. Diese Befehle wurden **nicht ausgeführt** und sind hier keine Empfehlung für einen produktiven Sicherheitsbetrieb. Auch Directory-Start, Seed-Import und `systemctl enable --now` aus dessen Readme wurden nicht ausgeführt; zuvor ist insbesondere der Dateinamenswiderspruch aus Abschnitt 9.3 zu klären.
+Die am Prüfdatum gelesene Control-Room-Readme zeigt `cargo build --locked --release --package netcore-control-room` und einen Start mit `--config ... --no-auth`. Diese Befehle wurden **nicht ausgeführt** und sind hier keine Empfehlung für einen produktiven Sicherheitsbetrieb. Auch Directory-Start, Seed-Import und `systemctl enable --now` aus dessen Readme wurden nicht ausgeführt; zuvor ist insbesondere der Dateinamenswiderspruch aus Abschnitt 9.3 zu klären.
 
 ## 12. Fehlerregister und Wirkung der Korrekturen
 
 | ID | Fehler/Unklarheit | Ursache/Diagnose | Stand bzw. nächste Maßnahme |
 |---|---|---|---|
-| ISSI-01 | Erste Antwort behandelte VPN statt ISSI | Thematisch unpassende Assistentenantwort | Nicht als beschlossene ISSI-Architektur verwenden; Nebenidee in Abschnitt 13 bewahrt |
+| ISSI-01 | Früher VPN-Nebenentwurf außerhalb des ISSI-Themas | Thematisch unpassende Entwurfsfassung | Nicht als beschlossene ISSI-Architektur verwenden; Nebenidee in Abschnitt 13 bewahrt |
 | ISSI-02 | Angeblich achtstelliges Schema hatte neun Stellen | Feldbreiten nicht addiert, inkonsistente Beispiele | Durch späteren Entwurf ersetzt |
-| ISSI-03 | Viele achtstellige Beispiele größer als 24 Bit | Reiner Dezimalaufbau ohne Zahlenraumprüfung | Nutzerkorrektur hat Vorrang; alte Beispiele nicht vergeben |
+| ISSI-03 | Viele achtstellige Beispiele größer als 24 Bit | Reiner Dezimalaufbau ohne Zahlenraumprüfung | Korrektur hat Vorrang; alte Beispiele nicht vergeben |
 | ISSI-04 | Formel und Aneinanderhängen als grundsätzlich unterschiedliche Systeme dargestellt | Missverständliche Erklärung desselben Dezimalaufbaus | Präfixschreibweise ist als Bedienlogik ausreichend; Validator bleibt nötig |
 | ISSI-05 | Falsche Kapazität/Maximalwerte | 0000 nicht sauber berücksichtigt; Klassen/Eigentümer nicht vollständig in Maximalwert einbezogen | 9.999 nutzbare Laufnummern bei 0001–9999; K/EE/NNNN-Maximum 9.999.999 |
 | ISSI-06 | D=1/K=9 überschreitet Grenze | D vor siebenstelligen K9-Block gesetzt | **Offen, hohe Priorität**; Kombination sperren oder Entwurf ausdrücklich ändern |
@@ -488,13 +487,13 @@ Die heute gelesene Control-Room-Readme zeigt `cargo build --locked --release --p
 | ISSI-11 | Canvas nicht überall umgestellt | Großer Patch fehlgeschlagen, Wiederholung änderte nur drei Abschnitte | Vollständige Rücklese/Neufassung erforderlich |
 | ISSI-12 | Voller Rohzahlenraum als frei vergebbar betrachtet | Reservierte SSI und Netzkontext nicht berücksichtigt | Norm- und Netzbelegungsprüfung in Vergabeprozess aufnehmen |
 | ISSI-13 | Lokale Rollen vorhanden, aber Sicherheit pauschal angenommen | Implementierung, Konfiguration und Live-Betrieb vermischt | Vorhandene Auth-Codepfade, Open-Lab und tatsächliche Aktivierung getrennt abnehmen |
-| ISSI-14 | Unterschiedliche Eingangsvalidierungen im Code | Generischer u32-Core, teilweise geprüfte Wrapper, eigener Config-Pfad | Validator-/Deserialisierungsprüfung als Roadmap-Kandidat, keine Codeänderung in diesem Auftrag |
+| ISSI-14 | Unterschiedliche Eingangsvalidierungen im Code | Generischer u32-Core, teilweise geprüfte Wrapper, eigener Config-Pfad | Validator-/Deserialisierungsprüfung als Roadmap-Kandidat, keine Codeänderung bei der dokumentierten Prüfung |
 
 ## 13. Weitere Ideen und Wünsche, die erhalten bleiben
 
 ### 13.1 Teilnehmer und Organisation
 
-Virtuelle Sprecher, Bots, Automatik, KI-/Analyseagenten, Gateways, Recorder und Crosspatch-/SIP-Kopplungen wurden als mögliche eigene Teilnehmerklassen beziehungsweise Profile genannt. Begriffe wie Shadow-ISSI und Virtual Speaker waren Ideen, keine spezifizierten oder durch diesen Chat implementierten Dienste. Nicht jeder Backenddienst benötigt automatisch eine eigene Funkteilnehmerkennung; der jeweilige tatsächliche Sende-/Empfangsbedarf ist noch festzulegen.
+Virtuelle Sprecher, Bots, Automatik, KI-/Analyseagenten, Gateways, Recorder und Crosspatch-/SIP-Kopplungen wurden als mögliche eigene Teilnehmerklassen beziehungsweise Profile genannt. Begriffe wie Shadow-ISSI und Virtual Speaker waren Ideen, keine spezifizierten oder durch diese Planung implementierten Dienste. Nicht jeder Backenddienst benötigt automatisch eine eigene Funkteilnehmerkennung; der jeweilige tatsächliche Sende-/Empfangsbedarf ist noch festzulegen.
 
 Weitere Wünsche waren temporäre Gast-/Übungspools, Erweiterungsreserve für weitere Organisationen, einfache Log-/UI-Filter, eine maschinenlesbare Registratur, Zuordnung von ISSI zu Eigentümer und Verwendungszweck sowie automatisierte, konfliktfreie Vergabe. Die Reservevorschläge schwankten zwischen 10–20 Prozent und festen Nummernfenstern; es gibt keine abgeschlossene Kapazitätsrechnung oder verbindliche Quote.
 
@@ -504,19 +503,19 @@ Erhalten bleiben die geplanten separaten Rollenprofile, Organisations-/Mandanten
 
 MFA und Break-Glass wurden nicht nach Benutzerkonsole, Geräteidentität und Funkgerät differenziert. Ein menschlicher zweiter Faktor lässt sich nicht allein dadurch realisieren, dass ein HRT eine besondere Nummer bekommt. Diese Abgrenzung muss in einer konkreten Implementierung nachgeholt werden.
 
-Die Karteikarte als PDF, Hoch-/Querformat, Schwarz-Weiß beziehungsweise Wiki-Einseite wurde angeboten. Angefordert und im Verlauf umgesetzt wurde die kurze Textfassung im Canvas; eine tatsächlich erzeugte druckfertige PDF-Karte ist in diesem Chat nicht belegt.
+Die Karteikarte als PDF, Hoch-/Querformat, Schwarz-Weiß beziehungsweise Wiki-Einseite wurde angeboten. Angefordert und im Verlauf umgesetzt wurde die kurze Textfassung im Canvas; eine tatsächlich erzeugte druckfertige PDF-Karte ist in dieser Entwicklungsphase nicht belegt.
 
-### 13.3 Nebenidee VPN aus der ersten, unpassenden Antwort
+### 13.3 Nebenidee: VPN und Netztrennung
 
-Die erste Assistentenantwort beschrieb ein vermeintliches Kapitel 9.4 zur VPN-Integration: Site-to-Site-, Client- und Mesh-VPN, beispielhaft WireGuard/Nebula; Verbindung von Nodes, Webpanel und App; Trennung von Produktions-, Management- und Service-VLANs; verschlüsselte Management-/Audio-/Steuerdaten; automatische Wiederverbindung; LAN plus LTE/5G; VPN-Verbindungsaufbau vor App-Nutzung; Always-on-, On-demand- und Fallback-Betrieb.
+Die erste Entwurfsfassung beschrieb ein vermeintliches Kapitel 9.4 zur VPN-Integration: Site-to-Site-, Client- und Mesh-VPN, beispielhaft WireGuard/Nebula; Verbindung von Nodes, Webpanel und App; Trennung von Produktions-, Management- und Service-VLANs; verschlüsselte Management-/Audio-/Steuerdaten; automatische Wiederverbindung; LAN plus LTE/5G; VPN-Verbindungsaufbau vor App-Nutzung; Always-on-, On-demand- und Fallback-Betrieb.
 
-Für diese Aussagen gab es in diesem Chat keine passende Nutzerfrage, keine konkrete Umsetzung und keine erfolgreiche Inbetriebnahme. Sie werden ausschließlich als **unbestätigte Nebenidee** erhalten. Insbesondere „alle Komponenten ausschließlich per VPN“, vollständige Verschlüsselung oder eine ausfallsichere Mesh-Topologie dürfen daraus nicht als heute bestehende Eigenschaften abgeleitet werden. Der aktuelle Control-Room-Open-Lab-Hinweis ist davon getrennt zu beachten.
+Diese Nebenidee war keinem konkreten ISSI-Anwendungsfall zugeordnet; Umsetzung und Inbetriebnahme sind nicht belegt. Sie werden ausschließlich als **unbestätigte Nebenidee** erhalten. Insbesondere „alle Komponenten ausschließlich per VPN“, vollständige Verschlüsselung oder eine ausfallsichere Mesh-Topologie dürfen daraus nicht als zum Prüfdatum bestehende Eigenschaften abgeleitet werden. Der am Prüfdatum vorliegende Control-Room-Open-Lab-Hinweis ist davon getrennt zu beachten.
 
 ## 14. Offene Aufgaben und Roadmap-Kandidaten
 
 ### 14.1 Bereits vereinbarte Reihenfolge
 
-Vom Nutzer vereinbart sind die Konzentration auf ISSI, das Auslagern der Rolle und die spätere **separate** Behandlung von GSSI. Weitere Fristen, Zuständige oder nummerierte Prioritäten wurden nicht verbindlich vergeben. Die folgende Priorisierung ist eine **neue technische Empfehlung aus der Archivprüfung**, keine behauptete frühere Vereinbarung.
+Ausdrücklich vereinbart sind die Konzentration auf ISSI, das Auslagern der Rolle und die spätere **separate** Behandlung von GSSI. Weitere Fristen, Zuständige oder nummerierte Prioritäten wurden nicht verbindlich vergeben. Die folgende Priorisierung ist eine **neue technische Empfehlung aus der Quellenprüfung**, keine behauptete frühere Vereinbarung.
 
 | Priorität | Arbeitspaket | Abhängigkeit / konkretes Abnahmekriterium |
 |---|---|---|
@@ -557,11 +556,11 @@ Die folgenden Links sind auf den überprüften Quellcommit fixiert. Eine Readme 
 - **[R5]** [bins/netcore-control-room/src/auth.rs](https://github.com/JanHG98/netcore-tetra/blob/e1a3bbcdce7c25015882126a8371642a55eb206b/bins/netcore-control-room/src/auth.rs) — gezielt Zeilen 1–165 und 180–370 gelesen; Rollen, Identitäten und Authentisierungs-/Autorisierungsfunktionen. Keine vollständige Prüfung aller Passwort-/Persistenzfunktionen.
 - **[R6]** [bins/netcore-control-room/src/main.rs](https://github.com/JanHG98/netcore-tetra/blob/e1a3bbcdce7c25015882126a8371642a55eb206b/bins/netcore-control-room/src/main.rs) — Zeilen 1–160 gelesen; CLI, Initialisierung und Open-Lab-Protokollierung.
 - **[R7]** [system-backend/control-room/Readme.md](https://github.com/JanHG98/netcore-tetra/blob/e1a3bbcdce7c25015882126a8371642a55eb206b/system-backend/control-room/Readme.md) — vollständig gelesene Betriebs-/Architekturdokumentation; Port/Endpunkte, Open-Lab und bewusste Grenzen.
-- **[R8]** [system-backend/directory/Readme.md](https://github.com/JanHG98/netcore-tetra/blob/e1a3bbcdce7c25015882126a8371642a55eb206b/system-backend/directory/Readme.md) — vollständig gelesene API-/Installationsdokumentation; mit Dateibaum auf Namensabweichung geprüft, Dienstcode nicht vollständig ausgewertet.
-- **[R9]** [Anderes Chatarchiv: Basisstations-ISSI und Eigentümer](2026-10-03_basisstation-issi-eigentuemer-und-systemidentitaet.md) — ergänzende historische Quelle; in diesem Auftrag nicht verändert. Die dortigen eigenen Tests oder main-Vergleiche werden nicht als Tests dieses Auftrags ausgegeben.
+- **[R8]** [system-backend/directory/Readme.md](https://github.com/JanHG98/netcore-tetra/blob/e1a3bbcdce7c25015882126a8371642a55eb206b/system-backend/directory/Readme.md) — vollständig gelesene API-/Installationsdokumentation; mit Dateibaum auf Namensabweichung geprüft, Dienstcode nicht vollständig geprüft.
+- **[R9]** [Anderes Projektarchiv: Basisstations-ISSI und Eigentümer](2026-10-03_basisstation-issi-eigentuemer-und-systemidentitaet.md) — ergänzende historische Quelle; bei der dokumentierten Prüfung nicht verändert. Die dortigen eigenen Tests oder main-Vergleiche werden nicht als Tests der dokumentierten Prüfung ausgegeben.
 - **[R10]** [Archivindex vor dieser Ergänzung](https://github.com/JanHG98/netcore-tetra/blob/e1a3bbcdce7c25015882126a8371642a55eb206b/Docs/archive/README.md) — vorhandene fremde Einträge als zu erhaltender Ausgangsbestand.
 
-Für diesen historischen ISSI-Chat wurden keine zugehörigen Implementierungs-PRs oder Commitnummern genannt. Solche Nummern werden nicht nachträglich erfunden. Die hier angegebene Quellcommitnummer ist ausschließlich der bei der Archivierung untersuchte Stand.
+Für diese historische ISSI-Planung wurden keine zugehörigen Implementierungs-PRs oder Commitnummern genannt. Solche Nummern werden nicht nachträglich erfunden. Die hier angegebene Quellcommitnummer ist ausschließlich der bei der Quellenprüfung untersuchte Stand.
 
 ### 15.2 Gezielt verwendete Normfundstelle
 
@@ -573,9 +572,9 @@ Es wurde keine Behauptung aufgestellt, diese bereitgestellten Fassungen seien am
 
 ### 15.3 Vollständiges Inventar der bereitgestellten PDFs
 
-`SHA-256-Präfix` bezeichnet jeweils die ersten 16 Hex-Zeichen der bei dieser Archivierung berechneten SHA-256-Prüfsumme; es ist kein vollständiger kryptografischer Integritätsnachweis. „Inventar“ bedeutet Titel-/Versions-/Dateiprüfung, nicht vollständiges Lesen jeder Seite.
+`SHA-256-Präfix` bezeichnet jeweils die ersten 16 Hex-Zeichen der bei der Quellenprüfung berechneten SHA-256-Prüfsumme; es ist kein vollständiger kryptografischer Integritätsnachweis. „Inventar“ bedeutet Titel-/Versions-/Dateiprüfung, nicht vollständiges Lesen jeder Seite.
 
-| Datei | Ausgabe / Thema | Seiten | SHA-256-Präfix | Auswertung in diesem Auftrag |
+| Datei | Ausgabe / Thema | Seiten | SHA-256-Präfix | Quellenprüfung bei der dokumentierten Prüfung |
 |---|---|---:|---|---|
 | `en_30039201v010601p.pdf` | EN 300 392-1 V1.6.1, 2020-04; General network design | 182 | `788722e566098957` | Identitätsabschnitte gezielt gelesen, Abbildung 3 visuell geprüft |
 | `en_30039202v030801p.pdf` | EN 300 392-2 V3.8.1, 2016-08; Air Interface | 1445 | `3f07b1e4ad73fabc` | Inventar; keine vollständige PDU-/RF-Prüfung |
@@ -609,7 +608,7 @@ Es wurde keine Behauptung aufgestellt, diese bereitgestellten Fassungen seien am
 
 Nicht mit einem neuen freien achtstelligen Schema beginnen und nicht erneut Rollen als zwingende Ziffer einbauen. Die Anforderungen „acht Eigentümer, getrennte HRT-/MRT-Blöcke, jede Organisation mit eigenen LST, Rolle außerhalb der ISSI“ bleiben erhalten. Zuerst müssen D und die zulässigen Kombinationen geklärt werden. Danach sind der Canvas-Text, das organisatorische Wiki und die tatsächlichen Eingabe-/Vergabewege gemeinsam zu konsolidieren.
 
-Der heutige Bestand ist kein leeres Blatt: numerische Contracts, Directory-Identität und Control-Room-Rollen existieren. Gleichzeitig ist Open-Lab nicht mit produktiver Authentisierung gleichzusetzen. Die Archivierung selbst stellt keine dieser Funktionen um.
+Der zusätzliche Bestand ist kein leeres Blatt: numerische Contracts, Directory-Identität und Control-Room-Rollen existieren. Gleichzeitig ist Open-Lab nicht mit produktiver Authentisierung gleichzusetzen. Die produktive Aktivierung bleibt gesondert zu prüfen.
 
 ### 16.2 Historische Karteikarte mit notwendigen Warnhinweisen
 
@@ -630,8 +629,8 @@ D-Wechsel in der Zahl = andere ISSI, nicht bloß anderer Modus.
 16777215 ist Rohobergrenze und als Broadcast-SSI reserviert.
 ```
 
-Diese ergänzten Warnhinweise stammen aus der Archivprüfung; sie werden nicht als bereits im historischen Canvas vorhandener Text ausgegeben. Eine wirklich druckfertige verbindliche Karteikarte sollte erst nach den P0-Entscheidungen erstellt werden.
+Diese ergänzten Warnhinweise stammen aus der Quellenprüfung; sie werden nicht als bereits im historischen Canvas vorhandener Text ausgegeben. Eine wirklich druckfertige verbindliche Karteikarte sollte erst nach den P0-Entscheidungen erstellt werden.
 
 ---
 
-**Abschluss:** Der verfügbare Chat ist als technische Entscheidungs- und Fehlerhistorie gesichert. Neue Produktivfunktionen, gültige Sonderbetriebsnummern, vollständige Mandantentrennung und eine Geräteabnahme wurden hier nicht behauptet. Die offenen Punkte sind bewusst erhalten, damit ein späterer Statuslauf aus früheren Konzeptformulierungen keine bereits ausgelieferten Funktionen ableitet.
+**Arbeitsstand:** Numerische Contracts, Directory-Identität und lokale Rollen sind vorhanden. Offen bleiben ein konsistenter Nummernplan, zulässige Sonderbetriebsnummern, netzweite Berechtigungsdurchsetzung und Geräteabnahme.

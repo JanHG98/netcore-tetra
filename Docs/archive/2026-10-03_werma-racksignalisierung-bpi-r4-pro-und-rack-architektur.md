@@ -1,62 +1,61 @@
-# Technische Abschlussdokumentation: WERMA-Racksignalisierung, Rack-Aufbau und BPI-R4 Pro
+# Brainstorming: WERMA-Racksignalisierung, Rack-Aufbau und BPI-R4 Pro
 
-> **Ergebnis des Fachchats:** Machbarkeits- und Architekturplanung, keine in diesem Chat ausgeführte Hardwareintegration. Fünf vorhandene WERMA-Farben sollen am Rack nutzbar werden. Vorgeschlagen wurde eine Trennung zwischen Zustandsauswertung in NetCore und elektrischer Ansteuerung durch einen separaten Pi. Als spätere Planungsrichtung kam ein eigenständiger Banana Pi BPI-R4 Pro für Routing/Switching hinzu; Jan ergänzte ausdrücklich einen kleinen unmanaged 5-Port-Switch als Bedarfsoption.
+**Stand der Notizen und ergänzenden Prüfungen: 2026-10-03.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
+
+> **Planungsstand:** Fünf vorhandene WERMA-Farben sollen den Rackzustand anzeigen. Der Entwurf trennt Zustandsauswertung in NetCore und elektrische Ansteuerung durch einen separaten Pi. Für Routing/Switching wird ein eigenständiger Banana Pi BPI-R4 Pro betrachtet, bei Bedarf ergänzt um einen unmanaged 5-Port-Switch. Eine Hardwareintegration ist noch nicht ausgeführt.
 >
 > **Zusätzlich geprüft am 03.10.2026:** Die damalige Repository-Adresse `JanHG98/flowstation` löst inzwischen auf `JanHG98/netcore-tetra` auf. Control-Room-Telemetrie und APIs bestehen weiterhin. Ein Hardware-Gateway für Rack-/Umgebungsdaten ist inzwischen vorhanden; ein fertiger WERMA-Ausgangstreiber ist in den geprüften Integrationsstellen nicht nachgewiesen. OpenWrt-PR #21083 für den BPI-R4 Pro 8X wurde inzwischen gemergt. Keine dieser Feststellungen ist eine Bestätigung, dass das geplante Rack oder seine Lampenansteuerung vor Ort läuft.
 
-## 1. Metadaten und Geltungsbereich
+## 1. Kontext und Geltungsbereich
 
 | Feld | Inhalt |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Fünffarbige WERMA-Signalisierung, separater Rack-Agent, kompakter Rack-Aufbau, BPI-R4 Pro als Router/Switch und unmanaged Porterweiterung |
-| Ursprünglicher Chattitel | Nicht verfügbar; der Dokumenttitel ist eine nachträgliche Sachbezeichnung. |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Chatlink konstruiert. |
-| Historische Fachabstimmung | Der gezielte Kontextabruf zu genau diesem Gespräch liefert Nachrichtenzeitstempel vom **18.07.2026**. Die frühere BPI-Antwort nennt ebenfalls diesen Stand. Das ist keine vollständige Exportmetadatenprüfung. |
+| Historische Datierung | Fachplanung ergänzend dem **18.07.2026** zugeordnet; kein vollständig datierter Originalexport vorhanden. |
 | Erstellungsdatum dieser Zusammenfassung | **2026-10-03**, Zeitzonenbezug Europe/Berlin; Laufzeitdatum zusätzlich als 2026-10-03 UTC geprüft. |
 | Ursprünglich betrachtete Repo-Adresse | `https://github.com/JanHG98/flowstation` |
-| Aktuelles Zielrepository | `JanHG98/netcore-tetra` |
-| Repository-ID | `1281497427`; sowohl der historische Repo-Abruf als auch die heutige Auflösung beider Namen liefern diese ID. |
+| Zielrepository beim Abgleich | `JanHG98/netcore-tetra` |
+| Repository-ID | `1281497427`; sowohl der historische Repo-Abruf als auch die ergänzende Auflösung beider Namen liefern diese ID. |
 | Historischer Codebezug | `main` bei `6143ed50ae23decb37eff2e3c04237b78a9ffd0b`, Merge von PR #4 „Control room“. |
-| Heute geprüfter Zielbranch | `Archiving` |
-| Eingangsstand der heutigen Codeprüfung | `465ab5350e804d00343ea23713aff601a22cba1e` |
+| Geprüfter Repository-Branch | `Archiving` |
+| Repository-Stand der Codeprüfung | `465ab5350e804d00343ea23713aff601a22cba1e` |
 | Tree des Eingangsstands | `cb11ca957f5beed5d7a288d0c5ca3bf8c8c68274` |
 | Zusätzlich erfasster Default-Branch | `main` bei `6aa9be8f74ab731f72dc133a5f8e90c5018c626d` |
 | Ablage dieser Datei | `Docs/archive/2026-10-03_werma-racksignalisierung-bpi-r4-pro-und-rack-architektur.md` |
 | Zugehöriger Index | `Docs/archive/README.md` |
-| Änderungsumfang dieses Auftrags | Nur diese Abschlussdokumentation und der Archivindex. Keine Implementierung, keine Konfigurationsänderung an Geräten, kein Branch-Merge. |
 
-Der spätere Archivcommit ist über die Git-Historie dieser Datei und die Abschlussmeldung des Archivlaufs nachvollziehbar. Der **geprüfte Codecommit** oben bleibt davon getrennt: Ein neuer Dokumentationscommit bedeutet keinen neuen Implementierungsstand.
+Der geprüfte Codecommit fixiert die technische Grundlage; ein Dokumentationscommit belegt keine zusätzliche Implementierung.
 
 ### 1.1 Quellenbasis und Auswertungslücken
 
-Ausgewertet wurde der gesamte hier sichtbare fachliche Gesprächsverlauf: die ursprüngliche Repo-/WERMA-/Rack-Frage, die Antwort mit Architekturvorschlägen und Codebefunden, die Nachfrage zum BPI-R4 Pro sowie die letzte Ergänzung zum unmanaged 5-Port-Switch. Auch die damaligen sichtbaren GitHub-Leseergebnisse wurden berücksichtigt.
+Historische Grundlage sind WERMA-/Rackentwurf, getrennte Lampenansteuerung, Repository-Codebefunde, BPI-R4-Pro-Option und unmanaged 5-Port-Ergänzung.
 
-Der gezielte zusätzliche Kontextabruf diente der Suche nach **Metadaten genau dieses Chats**. Er lieferte keinen belastbaren Originaltitel oder Chatlink. Ähnliche WERMA-, GPIO- oder Rack-Gespräche wurden nicht als Inhalt dieses Chats übernommen. Insbesondere wird aus einem anderen Gespräch kein angeblich hier beschlossener Kernel-Boot-Hook, MQTT-Treiber oder fertiges Codex-Briefing abgeleitet.
+Zusätzliche WERMA-, GPIO- und Rackkonzepte sind getrennt zu bewerten. Kernel-Boot-Hook, MQTT-Treiber und fertige Implementierungsaufträge sind für diesen Entwurf nicht beschlossen.
 
 Alle 25 bereitgestellten PDF-Dateien waren in der Arbeitsumgebung vorhanden und konnten für eine Bestandsprüfung geöffnet werden. Ihre Deckblätter und Seitenzahlen wurden geprüft; die Anhänge wurden **nicht vollständig normativ durchgearbeitet**. Sie sind TETRA-Referenzmaterial und enthalten im hier geprüften Umfang keine gerätespezifische Freigabe für die WERMA-Verdrahtung oder den BPI-Router. Das vollständige Anhangsverzeichnis steht in Abschnitt 15.
 
-Nicht verfügbar sind insbesondere: WERMA-Typenschilder/Artikelnummern und Anschlusspläne, das konkrete Relais-/Ausgangsmodul, das tatsächlich verwendete Pi-Modell, ein BPI-Kauf-/Inventarnachweis, Rackmaße, Leistungsaufnahme, echte Gerätekonfigurationen, ein vollständiger Chat-Export und Mess-/Abnahmeprotokolle. Für dieses Rack wurden keine laufenden Dienste oder Geräte direkt erreicht.
+**Fehlende Grundlagen:** WERMA-Typenschilder/Artikelnummern und Anschlusspläne, konkretes Ausgangsmodul, Pi-Modell, BPI-Bestandsnachweis, Rackmaße, Leistungsaufnahme, reale Gerätekonfigurationen sowie Mess- und Abnahmeprotokolle. Laufende Geräte wurden nicht direkt geprüft.
 
 ### 1.2 Verwendete Statusbegriffe
 
 | Status | Bedeutung in diesem Dokument |
 |---|---|
-| **Idee** | Im Gespräch vorgeschlagen oder als spätere Erweiterung genannt; keine verbindliche Umsetzung daraus ableitbar. |
-| **Beschlossen/geplant** | Ausdrücklicher Nutzerwunsch oder erkennbar aufgegriffene Planungsrichtung. Eine Empfehlung der Assistenz allein ist kein Nutzerbeschluss. |
+| **Idee** | Vorgeschlagen oder als spätere Erweiterung genannt; keine verbindliche Umsetzung. |
+| **Beschlossen/geplant** | Ausdrückliche Anforderung oder gewählte Planungsrichtung; ein Vorschlag allein genügt nicht. |
 | **Implementiert** | An einer angegebenen Repository-Version als Code, Konfiguration oder Dienst nachweisbar; noch kein Laufzeitnachweis. |
 | **Getestet** | Ein konkreter Test wurde nachweislich ausgeführt und sein Ergebnis dokumentiert. Quelltextlesen zählt nicht als Funktionstest. |
 | **Im Betrieb bestätigt** | Erfolgreicher Betrieb wurde durch belastbare Laufzeitdaten oder ausdrückliche konkrete Rückmeldung belegt. |
 
-**Für die physische WERMA-Ansteuerung, den BPI-Router und das neue Rack wurde in diesem Chat weder „getestet“ noch „im Betrieb bestätigt“ erreicht.**
+**Für die physische WERMA-Ansteuerung, den BPI-Router und das neue Rack wurde in diesem Planungsstand weder „getestet“ noch „im Betrieb bestätigt“ erreicht.**
 
 ## 2. Ziel, Ausgangslage und Themen
 
-Jan wollte wissen, ob sich vorhandene **WERMA-Lampen in Rot, Grün, Gelb, Weiß und Blau** am Rack über Relais ansteuern lassen und ob die Funktion direkt in Flowstation oder über eine API zu einem zweiten Pi mit Relaiskarte sinnvoller wäre. Das Wort „Geld“ in der ersten Nachricht wurde im Gespräch als Tippfehler für „Gelb“ verstanden, nicht als zusätzliche Farbe oder Funktion.
+Ziel ist die Ansteuerung vorhandener **WERMA-Lampen in Rot, Grün, Gelb, Weiß und Blau** über Relais. Betrachtet werden direkte Integration in Flowstation und eine API zu einem zweiten Pi mit Relaiskarte. „Geld“ im ursprünglichen Farbeintrag ist als Tippfehler für „Gelb“ eingeordnet.
 
 Parallel wurde folgender erster Rack-Entwurf eingebracht:
 
-| Nutzerseitiger Ausgangsentwurf | Platzansatz |
+| Ausgangsentwurf | Platzansatz |
 |---|---:|
 | Router beziehungsweise Proxmox mit Router-VM | 1 HE |
 | Switch | 1 HE |
@@ -81,20 +80,20 @@ Es handelte sich um Architektur- und Machbarkeitsplanung. Weder eine WERMA-Imple
 
 | Schritt | Inhalt | Einordnung |
 |---|---|---|
-| 1 | Jan nennt die fünf vorhandenen WERMA-Farben und fragt nach Relaisansteuerung direkt in Flowstation oder über einen zweiten Pi. | Nutzerseitiges Ziel; genaue Hardware offen. |
-| 2 | Jan skizziert Router/Proxmox, Switch, Basisstation, PDU, TrueNAS und AP im Rack. | Nutzerseitiger Ausgangsentwurf. |
+| 1 | Fünf WERMA-Farben; direkte Relaisansteuerung oder API zu zweitem Pi prüfen. | Ziel festgelegt; genaue Hardware offen. |
+| 2 | Router/Proxmox, Switch, Basisstation, PDU, TrueNAS und AP im Rack. | Ausgangsentwurf. |
 | 3 | Das Repository wird gelesen. Control-Room-APIs, Telemetrieereignisse und der Fanout werden als geeignete Integrationsstellen identifiziert. | Historisch belegter Quelltextbefund. |
 | 4 | Empfohlen wird zentrale Zustandsauswertung plus separater `netcore-rack-agent` auf einem zweiten Pi. | Architekturvorschlag, nicht implementiert. |
 | 5 | Ein Farb-/Prioritätsmodell, neue Indicator-APIs, Lampentest, Watchdog und Erweiterungen zur Racküberwachung werden vorgeschlagen. | Ideen beziehungsweise Entwurf. |
 | 6 | Für das Rack werden USV, Servicepanel, Kühlung, RF-/Potentialausgleich, WAN-Fallback und Reserve ergänzt. | Empfehlungen; keine Bestellung oder Montage bestätigt. |
-| 7 | Jan fragt nach einem **Banana Pi BPI-R4 Pro als eigenständigem Router/Switch**. | Spätere Planungsrichtung anstelle der zunächst erwogenen Router-VM. |
-| 8 | Die Assistenz empfiehlt den 8X mit OpenWrt, gegebenenfalls AP-Injektor und späterem größeren Switch. | Empfehlung; die Auswahl 8X und ein bestimmtes Image sind nicht ausdrücklich von Jan final freigegeben. |
-| 9 | Jan ergänzt: Bei Bedarf kommt ein kleiner unmanaged **5-Port-Switch** hinzu. | Ausdrückliche Bedarfsoption des Nutzers. |
+| 7 | **Banana Pi BPI-R4 Pro als eigenständiger Router/Switch** prüfen. | Spätere Planungsrichtung statt Router-VM. |
+| 8 | 8X mit OpenWrt, gegebenenfalls AP-Injektor und größerer Switch. | Vorschlag; 8X und konkretes Image nicht endgültig ausgewählt. |
+| 9 | Bei Bedarf kleiner unmanaged **5-Port-Switch**. | Ausdrücklich vorgesehene Bedarfsoption. |
 | 10 | Dafür wird ein einzelnes Rack-Management-Segment vorgeschlagen. | Konkreter Anschlussvorschlag; VLAN-ID und Portkonfiguration bleiben offen. |
 
 ### 3.2 Was als Ergebnis erhalten bleibt
 
-**Nutzerseitig festgehalten/geplant:** fünf vorhandene WERMA-Farben am Rack nutzbar machen; Rack mit Basisstation, Netzwerk, Storage und AP; eigenständigen BPI-R4 Pro als Router-/Switch-Option prüfen; einen kleinen unmanaged 5-Port-Switch bei Portmangel akzeptieren.
+**Geplant:** fünf WERMA-Farben am Rack nutzbar machen; Basisstation, Netzwerk, Storage und AP integrieren; BPI-R4 Pro als eigenständige Router-/Switch-Option prüfen; Portmangel bei Bedarf mit unmanaged 5-Port-Switch abfangen.
 
 **Empfohlene, noch zu bestätigende Ausgestaltung:** separater I/O-Pi statt GPIO im Funkprozess; zentrale Indicator-Logik; OpenWrt auf dem BPI; 8X statt 4E; Transistorausgänge für häufige Lichtwechsel; 2-HE-TrueNAS; USV; externer AP; 12–15 HE mit Reserve; das Management-Segment für den Kleinswitch.
 
@@ -159,7 +158,7 @@ Dazu wurden ein neuer Konfigurationstyp `CfgSignalTower`, eine Erweiterung von `
 | `bins/netcore-rack-agent/` | Eigenständiges Binary für den I/O-Pi | Vorgeschlagener Pfad; kein entsprechender Workspace-Member im geprüften Stand. |
 | `netcore-rack-agent.service` | systemd-Dienst für den I/O-Pi | Vorgeschlagener Dienstname; kein Deployment belegt. |
 | `IndicatorState` | Transportierbarer Lampenzustand | Entwurf. |
-| `UiMessage::IndicatorState` | Neue WebSocket-Nachrichtenvariante | Entwurf; im heute geprüften `UiMessage`-Enum nicht enthalten. |
+| `UiMessage::IndicatorState` | Neue WebSocket-Nachrichtenvariante | Entwurf; im am 2026-10-03 geprüften `UiMessage`-Enum nicht enthalten. |
 | `[signal_tower]` / `CfgSignalTower` | Optionale Direktansteuerung | Historischer Alternativentwurf, keine freigegebene aktuelle Konfiguration. |
 
 ### 4.4 Historischer API-Entwurf
@@ -171,7 +170,7 @@ POST /api/indicator/reset
 POST /api/indicator/ack
 ```
 
-Diese Routen waren **Vorschläge**, keine damals oder heute durch diesen Chat bereitgestellten Endpunkte. Der Stand der heutigen Control-Room-Routingfunktion ist separat in Abschnitt 9 beschrieben.
+Die Routen sind **Entwürfe**, keine bereitgestellten Endpunkte. Der geprüfte Control-Room-Routingstand ist separat in Abschnitt 9 beschrieben.
 
 Der Rack-Agent sollte für normale Statusabfragen nur lesende Rechte erhalten. Lampentest und andere Schreibaktionen sollten Operator/Admin vorbehalten bleiben. Eine maschinelle Authentifizierung für genau diesen Agenten wurde nicht spezifiziert oder getestet.
 
@@ -222,7 +221,7 @@ blue_pin = 24
 active_low = true
 ```
 
-Diese Nummern sind **keine geprüfte Pinbelegung**. Die verwendete Nummerierung wurde im Gespräch nicht ausdrücklich festgelegt. Raspberry-Pi-BCM-Nummern, physische Headerpositionen und Linux-GPIO-Line-Offsets dürfen nicht verwechselt werden. Vor einer Umsetzung müssen das konkrete Board, belegte SDR-/HAT-Pins und das Verhalten der Ausgangskarte geprüft werden. Die Werte gelten insbesondere nicht automatisch für den Banana Pi.
+Diese Nummern sind **keine geprüfte Pinbelegung**. BCM-Nummern, physische Headerpositionen und Linux-GPIO-Line-Offsets dürfen nicht verwechselt werden. Vor Umsetzung Board, belegte SDR-/HAT-Pins und Ausgangskarte prüfen. Für den Banana Pi sind die Werte nicht automatisch gültig.
 
 ## 5. Farb-, Prioritäts- und Fehlermodell
 
@@ -252,7 +251,7 @@ Blau war als zusätzliche Aktivitätsanzeige vorgesehen. Grün sollte bei Gelb o
 
 ### 5.2 Beim Archiv-Review ergänzte offene Designpunkte
 
-Die folgenden Punkte sind **heutige technische Prüfhinweise**, keine nachträglich erfundenen Beschlüsse des Fachchats:
+Zusätzliche technische Prüfpunkte; noch keine historischen Festlegungen:
 
 - **Geltungsbereich:** Ein Rack mit einer lokalen TBS darf nicht ohne Auswahlfilter den Alarm irgendeiner fremden Node des gesamten Netzes anzeigen. `rack_id`, Standort-/Node-Zuordnung und gewünschter netzweiter Notrufumfang sind festzulegen.
 - **Datenfrische:** Eine neue HTTP-Antwort oder ein aktuelles Wrapperfeld `now` beweist nicht, dass enthaltene Node-/RF-Daten frisch sind. Alter der tatsächlichen Beobachtung, Verbindung und Sensorwerte getrennt auswerten. Fehlende Werte sind nicht automatisch „OK“.
@@ -270,7 +269,7 @@ Die folgenden Punkte sind **heutige technische Prüfhinweise**, keine nachträgl
 
 ### 6.1 Ungeklärte elektrische Grundlage
 
-Im Fachchat wurde mit einer **24-V-WERMA-Säule** geplant. Tatsächlich genannt hatte Jan jedoch nur Hersteller und Farben. Artikelnummer, Lampentechnologie, AC/DC-Ausführung, Nennstrom, Einschaltstrom und gemeinsamer Anschluss sind unbekannt.
+Der elektrische Entwurf nahm eine **24-V-WERMA-Säule** an. Als Bestand sind jedoch nur Hersteller und Farben belegt. Artikelnummer, Lampentechnologie, AC/DC-Ausführung, Nenn-/Einschaltstrom und gemeinsamer Anschluss bleiben offen.
 
 Deshalb ist „24 V“ bis zur Prüfung der vorhandenen Elemente eine **Planungsannahme**. Die damals erwähnten WERMA-Serien KombiSIGN 71/72 und Beispielströme dürfen nicht als Identifikation von Jans Lampen behandelt werden. Auch ein vollständiger vorhandener Säulenfuß beziehungsweise dessen Anschlussklemmen ist nicht belegt.
 
@@ -298,13 +297,13 @@ Für dieses Archiv wurde keine Netzspannungsverdrahtung erstellt oder freigegebe
 
 ### 6.3 Relais gegenüber Halbleiterausgängen
 
-| Option | Im Chat genannter Vorteil | Einschränkung / offener Nachweis |
+| Option | Betrachteter Vorteil | Einschränkung / offener Nachweis |
 |---|---|---|
 | Relaiskarte | Für seltenes Ein/Aus anschaulich; potentialfreie Kontakte können verschiedene Lastanschaltungen bedienen. | Passende Kontaktbelastbarkeit für die reale Last und den Einschaltstrom, Steuereingänge, Spulenversorgung und Entstörung prüfen. Kontakt und Pi sind nicht allein aufgrund des Wortes „Relaiskarte“ überall sicher getrennt. |
 | Transistor-/MOSFET-Ausgänge | Geräuschlos, keine mechanischen Schaltkontakte, besser für häufige Lichtwechsel. | Nur passend zur DC-/AC-Last, gemeinsamen Anschlussführung und erforderlichen High-/Low-Side-Schaltung auswählen. |
 | Optoisoliertes 8-Kanal-Modul | Fünf Farben plus drei Reservekanäle; Trennung der Steuersignale als Ziel. | Noch kein konkretes Produkt ausgewählt. Optokoppler allein garantieren bei verbundenen Massen/Jumpern keine vollständige galvanische Trennung des Systems. |
 
-Die Assistenz bevorzugte ein 8-Kanal-24-V-Transistorausgangsmodul für häufigere Blink-/Aktivitätsmuster. Jan hatte zunächst Relais vorgeschlagen; ein endgültiger Wechsel wurde nicht ausdrücklich beschlossen.
+Für häufige Blink-/Aktivitätsmuster wurde ein 8-Kanal-24-V-Transistorausgangsmodul vorgeschlagen. Ausgangspunkt war Relaisansteuerung; ein Wechsel ist nicht endgültig beschlossen.
 
 **Präzisierung:** Relais können technisch auch blinken. Die frühere Formulierung „nicht geeignet“ ist als Empfehlung gegen häufige Schaltspiele und sehr kurze Aktivitätsimpulse zu verstehen, nicht als absolutes Funktionsverbot. Eine AC-Triac-SSR ist wiederum nicht automatisch ein geeigneter Schalter für DC-Leuchten.
 
@@ -316,13 +315,13 @@ Als physische Ergänzungen wurden genannt: Lampentest-Taster, Resetmöglichkeit 
 
 **Wichtige Korrektur zur historischen Empfehlung „Pull-downs“:** Gleichzeitig wurde im Beispiel `active_low = true` vorgeschlagen. Ein Pull-down kann bei einem aktiv-low-Eingang gerade **einschalten**. Der sichere Initialpegel ist aus der realen Schaltung abzuleiten; häufig wäre für aktiv-low ein geeigneter Pull-up zur zulässigen Logikspannung erforderlich. Ohne Schaltplan ist keine konkrete Widerstands-/Pinvorgabe freigegeben. Boot, Neustart, Treiberfreigabe, Prozessabsturz und Stromausfall benötigen getrennte Tests.
 
-Ein Software-Watchdog ersetzt außerdem keinen unabhängigen Hardware-Watchdog. Ein unversorgter Pi kann seine eigene ausgefallene Lampe nicht mehr aktiv umschalten. Soll ein Gesamtausfall sichtbar bleiben, sind Versorgungspfad, Ruhestrom-/Heartbeat-Konzept und gegebenenfalls unabhängige Ausfallanzeige gesondert zu entwickeln. Der Begriff „ausfallsicherer“ aus dem Gespräch beschreibt eine relative Entkopplung, keine nachgewiesene Sicherheitsfunktion.
+Ein Software-Watchdog ersetzt keinen unabhängigen Hardware-Watchdog. Ein unversorgter Pi kann seine eigene Lampe nicht aktiv umschalten. Für sichtbaren Gesamtausfall sind Versorgungspfad, Ruhestrom-/Heartbeat-Konzept und unabhängige Ausfallanzeige zu entwickeln. Die getrennte Architektur schafft relative Entkopplung, keine nachgewiesene Sicherheitsfunktion.
 
 ## 7. Rack-Architektur und Erweiterungswünsche
 
 ### 7.1 Zwei historische Layoutvarianten
 
-Die erste Assistenzempfehlung addierte USV, Servicefeld und Reserve zum Nutzerentwurf. **12 HE wurden als Unterkante und 15 HE als komfortablere Größe empfohlen.** Das war eine Platzabschätzung ohne konkrete Gehäuse-/Einbaumaße.
+Der erste Rackvorschlag ergänzt USV, Servicefeld und Reserve. **12 HE galten als Unterkante, 15 HE als komfortabler.** Dies ist eine Platzabschätzung ohne konkrete Gehäuse- und Einbaumaße.
 
 | HE, unten nach oben | Früher Vorschlag mit separatem Switch |
 |---|---|
@@ -335,7 +334,7 @@ Die erste Assistenzempfehlung addierte USV, Servicefeld und Reserve zum Nutzeren
 | U10 | 24-V-/I/O-/Service- oder Lüfterfeld |
 | U11–U15 | Reserve / Ausbau |
 
-Nach der BPI-Nachfrage entstand folgender kompakterer Vorschlag:
+Mit der BPI-Option entstand folgender kompakterer Entwurf:
 
 | HE, unten nach oben | Späterer Vorschlag mit eigenständigem BPI-Router |
 |---|---|
@@ -352,11 +351,11 @@ Eine vertikale rückseitige PDU und ein außen beziehungsweise oben am Rack mont
 
 **Nicht entschieden:** 12 oder 15 HE, Gehäusetiefe, Einbauzeichnungen, Schienen, Kabelbiegeradien, Gewicht, Transportanforderungen, Lüfterhöhe und maximale Innentemperatur. Das frühe „eine HE reicht“ für das BPI-Panel ist ohne Kühlkörper, Erweiterungen und Leitungsführung keine zugesicherte mechanische Passung.
 
-### 7.2 Ergänzungen aus dem Fachchat
+### 7.2 Weitere Ausbauideen
 
 **USV und Strommanagement:** Eine PDU verteilt Strom, eine USV soll Unterbrechungen überbrücken und geordnetes Herunterfahren ermöglichen. Vorgeschlagen wurde die Einbindung über USB oder Netzwerk und NUT. Anzeigen für Netzbetrieb, Batteriebetrieb, niedrigen Akkustand und Shutdown sollten später in den Rackstatus einfließen. Weder ein USV-Modell noch Leistung, Laufzeit oder Abschaltreihenfolge wurden bestimmt.
 
-**Patch-/Servicepanel:** WAN, LAN, Management, Glasfaser, TX-/RX-Antenne, GPS/GNSS, USB-Service, HDMI/Console, 24-V-Service und Erdungsanschluss wurden als herauszuführende Anschlüsse genannt. Es existieren aus diesem Chat keine verbindlichen Steckerbelegungen, Stückliste oder CAD-Dateien.
+**Patch-/Servicepanel:** WAN, LAN, Management, Glasfaser, TX-/RX-Antenne, GPS/GNSS, USB-Service, HDMI/Console, 24-V-Service und Erdungsanschluss wurden als herauszuführende Anschlüsse genannt. Es existieren aus diesem Planungsstand keine verbindlichen Steckerbelegungen, Stückliste oder CAD-Dateien.
 
 **WAN-Fallback:** Ethernet als primärer WAN-Pfad; LTE/5G als möglicher zweiter Pfad; WLAN-Client als weitere Option. Antennen sollen außerhalb ungünstiger Metallabschirmung platziert werden. Modem, SIM, Tarif, Antennen und Failoverregeln sind offen. WireGuard wurde als Routerfunktion vorgeschlagen, aber keine VPN-Migration beschlossen.
 
@@ -364,7 +363,7 @@ Eine vertikale rückseitige PDU und ein außen beziehungsweise oben am Rack mont
 
 **RF-/EMV-Konzept:** Trennung von Antennen-/RX-Leitungen und I/O-/Leistungsverkabelung, passende Filter/Ferrite, Potentialausgleich des Racks und ein standortgerechtes Überspannungs-/Antennenschutzkonzept wurden angeregt. Es liegt keine Messung vor, die Störfreiheit der Relais-/DC-Wandler-/Netzwerktechnik neben dem SDR bestätigt.
 
-**TrueNAS:** 2 HE wurden wegen Platz für Laufwerke, Kühlung und Wartung gegenüber 1 HE bevorzugt. Die Aussagen zu Lautstärke und Luftdurchsatz sind Planungsargumente, keine Eigenschaften jedes beliebigen 2-HE-Gehäuses. Storagepool, Laufwerkstyp, Redundanz und Backupziel sind offen. Vorgeschlagen wurde lokales Puffern von Aufzeichnungen/Logs mit späterer Übertragung; der Funkbetrieb soll nicht hart vom NAS abhängen. Eine solche Puffer-/Uploadlogik wurde in diesem Chat nicht implementiert oder getestet.
+**TrueNAS:** 2 HE wurden wegen Platz für Laufwerke, Kühlung und Wartung gegenüber 1 HE bevorzugt. Die Aussagen zu Lautstärke und Luftdurchsatz sind Planungsargumente, keine Eigenschaften jedes beliebigen 2-HE-Gehäuses. Storagepool, Laufwerkstyp, Redundanz und Backupziel sind offen. Vorgeschlagen wurde lokales Puffern von Aufzeichnungen/Logs mit späterer Übertragung; der Funkbetrieb soll nicht hart vom NAS abhängen. Eine solche Puffer-/Uploadlogik wurde in diesem Planungsstand nicht implementiert oder getestet.
 
 ### 7.3 Router-VM als frühere Alternative
 
@@ -380,21 +379,21 @@ Der BPI sollte Routerfunktionen und für die kleine erste Ausbaustufe auch die n
 
 Die vorgeschlagene Routerfunktionalität umfasste OpenWrt, Firewall/NAT, VLANs, DHCP/DNS, WireGuard, Multi-WAN sowie LTE/5G-Fallback. Diese Funktionsliste ist ein **Zielumfang**, nicht der Nachweis eines eingerichteten Routerimages. OPNsense wurde für dieses BPI-Konzept nicht vorgeschlagen; der zuvor genannte OPNsense-Ansatz gehörte zur x86-/VM-Variante.
 
-### 8.2 Hardwareaussagen und heutiger Nachweis
+### 8.2 Hardwareaussagen und geprüfter Nachweis
 
-Der historische Vorschlag bevorzugte **BPI-R4 Pro 8X** gegenüber 4E. Die heute abgerufenen Herstellerangaben und OpenWrt-PR #21083 stützen für den 8X folgenden Portaufbau: vier 2,5-Gbit/s-RJ45-LAN-Ports, ein 1-Gbit/s-RJ45-LAN-Port und zwei 10-Gbit/s-RJ45/SFP+-Kombinationsschnittstellen. Der PR nennt neun äußere Buchsen, von denen sieben gleichzeitig nutzbar sind. Je Combo-Paar darf RJ45/SFP+ nicht als zwei unabhängig gleichzeitig verfügbare Ports gezählt werden. [E01][E02]
+Der historische Vorschlag bevorzugte **BPI-R4 Pro 8X** gegenüber 4E. Die am 2026-10-03 abgerufenen Herstellerangaben und OpenWrt-PR #21083 stützen für den 8X folgenden Portaufbau: vier 2,5-Gbit/s-RJ45-LAN-Ports, ein 1-Gbit/s-RJ45-LAN-Port und zwei 10-Gbit/s-RJ45/SFP+-Kombinationsschnittstellen. Der PR nennt neun äußere Buchsen, von denen sieben gleichzeitig nutzbar sind. Je Combo-Paar darf RJ45/SFP+ nicht als zwei unabhängig gleichzeitig verfügbare Ports gezählt werden. [E01][E02]
 
 Bei Nutzung eines Combo-Interfaces als WAN ergibt sich als reine Portzählung: vier 2,5G-LAN, ein 1G-LAN und ein weiteres 10G-Combo-LAN. Das ist **keine Zusage**, dass jede beliebige VLAN-/Routing-/Firewall-/VPN-Kombination mit voller Portgeschwindigkeit läuft. Portgeschwindigkeit, internes Switching und CPU-/Offload-Pfade sind getrennt zu testen.
 
 Die Herstellerseite nennt zusätzlich einen 1G-LAN-FPC-Anschluss. Dieser wurde im historischen Außenportplan nicht berücksichtigt und wird hier nicht als sofort nutzbare zusätzliche RJ45-Buchse verplant. [E01]
 
-Im früheren Chat wurde die automatische Umschaltung der Combo-Ports beim 8X gegenüber teilweise U-Boot-abhängiger Auswahl beim 4E als Argument genannt. **Diese genaue revisions- und imageabhängige Aussage wurde im Archivlauf nicht vollständig neu verifiziert** und bleibt vor einer Kaufentscheidung anhand der konkreten Hardware/Software zu prüfen.
+Die automatische Combo-Port-Umschaltung des 8X gegenüber teilweise U-Boot-abhängiger Auswahl beim 4E war ein früheres Auswahlargument. **Diese revisions- und imageabhängige Aussage ist nicht vollständig neu verifiziert**; vor Kauf konkrete Hardware/Software prüfen.
 
 ### 8.3 OpenWrt: historische Warnung inzwischen teilweise überholt
 
-Die historische Antwort lautete sinngemäß: Herstellerimages vorhanden, offizieller OpenWrt-Support für den R4 Pro 8X noch in Arbeit, PR #21083 offen — Stand 18.07.2026.
+Stand 18.07.2026: Herstellerimages vorhanden; offizieller OpenWrt-Support für R4 Pro 8X noch in Arbeit, PR #21083 offen.
 
-**Heutiger separater Befund:**
+**Geprüfter separater Befund:**
 
 | Merkmal | Am 03.10.2026 per GitHub geprüft |
 |---|---|
@@ -406,21 +405,21 @@ Die historische Antwort lautete sinngemäß: Herstellerimages vorhanden, offizie
 | Zielbranch | `main` |
 | Umfang laut PR-Metadaten | 2 Commits, 23 geänderte Dateien |
 
-Die frühere Aussage „PR weiterhin offen“ darf heute nicht weitergeführt werden. Ein Merge in OpenWrts Hauptentwicklungszweig belegt jedoch **nicht automatisch**, dass ein bestimmtes Stable-Release, jedes Peripheriemodul oder das konkrete Rack bereits abgenommen ist. Eine konkrete stabile Release-/Imageauswahl wurde hier nicht überprüft. [E02]
+Die frühere Aussage „PR weiterhin offen“ darf am 2026-10-03 nicht weitergeführt werden. Ein Merge in OpenWrts Hauptentwicklungszweig belegt jedoch **nicht automatisch**, dass ein bestimmtes Stable-Release, jedes Peripheriemodul oder das konkrete Rack bereits abgenommen ist. Eine konkrete stabile Release-/Imageauswahl wurde hier nicht überprüft. [E02]
 
-Die beiden Banana-Pi-Dokumentationsseiten aus dem Fachchat waren beim heutigen Webabruf erreichbar, lieferten dem Textparser aber keinen verwertbaren Fließtext. Für bestätigte Portangaben wurden deshalb die Herstellerproduktseite und die GitHub-PR-Metadaten herangezogen. Details zu Herstellerimage, automatischer Portumschaltung und exakter Netzteilfreigabe bleiben als separate Verifikationsaufgaben gekennzeichnet. [E01][E03]
+Zwei Banana-Pi-Dokumentationsseiten waren beim Webabruf erreichbar, lieferten jedoch keinen verwertbaren Fließtext. Portangaben wurden deshalb anhand von Herstellerproduktseite und GitHub-PR-Metadaten abgeglichen. Herstellerimage, automatische Portumschaltung und Netzteilfreigabe bleiben eigene Prüfpunkte. [E01][E03]
 
 ### 8.4 Strom, Kühlung und PoE
 
 Historisch vorgeschlagen: eigenes 1-HE-Servicepanel, aktive Kühlung, saubere Netzteilversorgung, nach vorn geführte USB-C-Debug-Konsole, Reset/Status und gegebenenfalls LTE-/5G-Antennenanschlüsse.
 
-Im Chat wurden 12 V/5 A beziehungsweise USB-PD mit 20 V und mindestens 65 W sowie etwa 10 W für das nackte Board erwähnt. **Diese Werte wurden nicht am Gerät gemessen und sind keine heute bestätigte vollständige Versorgungsspezifikation.** Der aktuelle PR bestätigt die grundsätzlichen Versorgungsoptionen USB-C-PD 20 V oder DC-Buchse, aber nicht die dortige gesamte Leistungsdimensionierung. Funkkarten, Modems, SSDs, SFP+-Module und Kühlung sind in der konkreten Auslegung einzubeziehen. [E02]
+Versorgungsannahmen waren 12 V/5 A oder USB-PD mit 20 V und mindestens 65 W sowie etwa 10 W für das nackte Board. **Nicht am Gerät gemessen und am 2026-10-03 nicht als vollständige Versorgungsspezifikation bestätigt.** Der PR bestätigt grundsätzlich USB-C-PD 20 V oder DC-Buchse. Funkkarten, Modems, SSDs, SFP+-Module und Kühlung erfordern eine eigene Leistungsdimensionierung. [E02]
 
 Die historische PoE-Aussage unterschied die mögliche Versorgung des Boards von PoE-Ausgängen für andere Geräte. **PoE-Out für AP oder Rack-Agent wird für dieses Konzept nicht als vorhanden vorausgesetzt.** Ein passender Injektor für einen externen AP wurde vorgeschlagen; bei mehreren PoE-Verbrauchern bleibt ein separater PoE-Switch die Ausbauoption. Ein nur am unmanaged Switch angeschlossener Pi erhält dadurch nicht automatisch PoE.
 
-### 8.5 Letzte Nutzerergänzung: kleiner unmanaged 5-Port-Switch
+### 8.5 Unmanaged 5-Port-Switch als Bedarfsoption
 
-Die ausdrückliche Ergänzung von Jan war: Bei Bedarf genügt zunächst ein kleiner „dummer“ 5-Port-Switch. Es wurde kein konkretes Modell gekauft oder getestet.
+Bei Portmangel ist zunächst ein kleiner unmanaged 5-Port-Switch vorgesehen. Kauf und Test eines konkreten Modells sind nicht dokumentiert.
 
 Der dazu vorgeschlagene Anschlussplan:
 
@@ -439,7 +438,7 @@ Unmanaged 5-Port-Switch
 
 Damit bleiben nach dem Uplink **vier Endgeräteports**. Alternativ wurde ein NAS-Managementport als Teilnehmer genannt, sofern das tatsächliche NAS dafür einen passenden Anschluss besitzt. Es gibt keinen Anspruch, alle Beispielgeräte gleichzeitig plus Reserve an fünf Buchsen anschließen zu können.
 
-**Präzisierung gegenüber der vereinfachten Fachchat-Antwort:** Ein unmanaged Switch erzwingt nicht selbst zuverlässig „genau ein ungetaggtes VLAN“. Manche Geräte leiten Tags transparent weiter. Die beabsichtigte Trennung muss der korrekt konfigurierte BPI-Port mit VLAN-Mitgliedschaft, PVID und Filtering gewährleisten; der Kleinswitch bietet keine unabhängige Portsegmentierung. Alle dort angeschlossenen Geräte sollen im selben vorgesehenen Segment bleiben. Eine Router-Firewall trennt nicht automatisch zwei Geräte, die direkt innerhalb dieses kleinen Layer-2-Segments miteinander kommunizieren. Die OpenWrt-Dokumentation trennt entsprechend Bridge-/VLAN-Konfiguration und geroutete Firewall-Zonen. [E05]
+**Präzisierung:** Ein unmanaged Switch erzwingt nicht zuverlässig genau ein ungetaggtes VLAN; manche Geräte leiten Tags transparent weiter. Segmenttrennung muss der BPI-Port mit VLAN-Mitgliedschaft, PVID und Filtering gewährleisten. Der Kleinswitch hat keine unabhängige Portsegmentierung; alle angeschlossenen Geräte sollen im vorgesehenen Segment bleiben. Eine Router-Firewall trennt nicht automatisch Geräte innerhalb desselben Layer-2-Segments. OpenWrt unterscheidet Bridge/VLAN und geroutete Firewall-Zonen. [E05]
 
 Im vorgeschlagenen Layout bleiben WAN, Proxmox-Trunks, AP-Verbindungen mit mehreren SSID-VLANs und gegebenenfalls der NAS-Datenpfad direkt am BPI beziehungsweise späteren Managed Switch. Das war eine Empfehlung für klare Trennung und Bandbreitenplanung, kein allgemeines technisches Verbot, einen Server oder eine Basisstation hinter einen unmanaged Switch zu hängen.
 
@@ -449,7 +448,7 @@ Noch offen: physischer Uplink-Port, tatsächliche Interfacebezeichnungen des gew
 
 ### 9.1 Namensauflösung und Branchabweichung
 
-Die API-Abfragen für `JanHG98/flowstation` und `JanHG98/netcore-tetra` liefern heute denselben kanonischen Namen `JanHG98/netcore-tetra` und dieselbe Repository-ID `1281497427`. Der alte Link ist daher nicht als unabhängiges zweites aktuelles Projekt mit getrenntem Entwicklungsstand zu behandeln. Ein exaktes Umbenennungsdatum wurde nicht ermittelt.
+Die API-Abfragen für `JanHG98/flowstation` und `JanHG98/netcore-tetra` liefern am 2026-10-03 denselben kanonischen Namen `JanHG98/netcore-tetra` und dieselbe Repository-ID `1281497427`. Der alte Link ist daher nicht als unabhängiges zweites aktuelles Projekt mit getrenntem Entwicklungsstand zu behandeln. Ein exaktes Umbenennungsdatum wurde nicht ermittelt.
 
 Der historische PR #4 „Control room“ ist weiterhin nachvollziehbar: gemergt am **02.07.2026 um 13:27:32 UTC**, mit Mergecommit `6143ed50ae23decb37eff2e3c04237b78a9ffd0b` und damaligem Head `e09f84fb48ea21889d8a4afa82e2510afeef620b`. Die vorhandene Control-Room-Basis stammte also nicht aus einer hier implementierten Lampenfunktion. [R00]
 
@@ -457,7 +456,7 @@ Beim Vergleich von `main@6aa9be8...` mit `Archiving@465ab53...` war `Archiving` 
 
 ### 9.2 Control-Room-APIs und Telemetrie weiterhin vorhanden
 
-An der heutigen Routingfunktion wurden die historischen lesenden Endpunkte erneut bestätigt:
+An der geprüften Routingfunktion wurden die historischen lesenden Endpunkte erneut bestätigt:
 
 ```text
 GET /api/overview
@@ -492,11 +491,11 @@ Error
 
 Eine Variante `IndicatorState` ist dort nicht enthalten. Das UI erhält beim Registrieren einen Snapshot. Der WebSocket-Handler serialisiert JSON in **binäre WebSocket-Nachrichten**; er beantwortet Ping mit Pong und kann auf die Textanfrage `state` einen weiteren Snapshot senden. Ein neuer Client muss diese Transportdetails berücksichtigen. [R04]
 
-Ein separates WERMA-Zustandsmodell, Lampen-Test-/Quittierungsendpunkte und ein eigener `netcore-rack-agent` sind durch diese vorhandenen generischen Funktionen noch nicht implementiert. Die heutige Routingprüfung ergab keine der in Abschnitt 4.4 vorgeschlagenen `/api/indicator/*`-Routen. Der gelesene Cargo-Workspace enthält keinen `bins/netcore-rack-agent`-Member. Ergänzende Default-Branch-Codeabfragen nach `WERMA`, `signal_tower` und `rack-agent` lieferten keine Treffer. Negative Suchergebnisse gelten nur im geprüften Umfang, nicht als Beweis über jede unbesuchte Branchhistorie. [R03][R04][R06]
+Ein separates WERMA-Zustandsmodell, Lampen-Test-/Quittierungsendpunkte und ein eigener `netcore-rack-agent` sind durch diese vorhandenen generischen Funktionen noch nicht implementiert. Die ergänzende Routingprüfung ergab keine der in Abschnitt 4.4 vorgeschlagenen `/api/indicator/*`-Routen. Der gelesene Cargo-Workspace enthält keinen `bins/netcore-rack-agent`-Member. Ergänzende Default-Branch-Codeabfragen nach `WERMA`, `signal_tower` und `rack-agent` lieferten keine Treffer. Negative Suchergebnisse gelten nur im geprüften Umfang, nicht als Beweis über jede unbesuchte Branchhistorie. [R03][R04][R06]
 
 ### 9.4 Der historische Fanout ist weiter nutzbar, aber unverändert keine Lampensteuerung
 
-In `bins/bluestation-bs/src/main.rs` besteht weiterhin `telemetry-fanout` mit den bisherigen Empfängern. Die gelesene Stelle enthält keine WERMA-Ausgangsansteuerung. Sie ist eine mögliche Ereignisquelle, kein fertiger Treiber. Im heutigen Umfeld muss außerdem die neuere Node-Gateway-/Backend-Architektur berücksichtigt werden, anstatt blind eine weitere konkurrierende TBS-Steuerverbindung einzubauen. [R02][R05]
+In `bins/bluestation-bs/src/main.rs` besteht weiterhin `telemetry-fanout` mit den bisherigen Empfängern. Die gelesene Stelle enthält keine WERMA-Ausgangsansteuerung. Sie ist eine mögliche Ereignisquelle, kein fertiger Treiber. Im geprüften Umfeld muss außerdem die neuere Node-Gateway-/Backend-Architektur berücksichtigt werden, anstatt blind eine weitere konkurrierende TBS-Steuerverbindung einzubauen. [R02][R05]
 
 Die Konfiguration enthält inzwischen eine optionale **nur lesende** Node-Gateway-Telemetrieanbindung mit `ws://node-gateway:8080/ws/backend`. Ihr Kommentar stellt ausdrücklich klar, dass die TBS beim Node Gateway bleibt und der Beobachter keinen Command-Transport registriert. Das ist eine relevante Integrationsalternative für eine Fortsetzung, keine hier getestete Aktivierung. [R05]
 
@@ -521,7 +520,7 @@ Der Dienst unterstützt im gelesenen Startcode nur `open_lab`, und der Status wa
 
 ### 9.6 Konsequenz für die Fortsetzung
 
-Der historische Vorschlag „Control Room plus separater Pi“ bleibt als Trennung zwischen fachlicher Bewertung und elektrischer Ausgabe sinnvoll. Für den heutigen Stand lautet der **neue, noch zu bestätigende Integrationsvorschlag**:
+Der historische Vorschlag „Control Room plus separater Pi“ bleibt als Trennung zwischen fachlicher Bewertung und elektrischer Ausgabe sinnvoll. Für den geprüften Stand lautet der **neue, noch zu bestätigende Integrationsvorschlag**:
 
 ```text
 TBS / Node Gateway / bestehende Zustandsquellen
@@ -537,13 +536,13 @@ TBS / Node Gateway / bestehende Zustandsquellen
 I/O-Agent -- Sensor-/Gerätetelemetrie --> vorhandenes Hardware-Gateway
 ```
 
-Vor der Implementierung ist zu entscheiden, ob das Hardware-Gateway auch eine gesicherte Ausgangssteuerung erhalten soll oder ausschließlich die Telemetrie-/Registrierungsseite bedient. Der heutige Code beweist noch keine dieser beiden WERMA-End-to-End-Varianten. Eine zweite unabhängige Geräte-Registry ohne Prüfung der vorhandenen Schnittstellen wäre vermeidbare Doppelarbeit.
+Vor der Implementierung ist zu entscheiden, ob das Hardware-Gateway auch eine gesicherte Ausgangssteuerung erhalten soll oder ausschließlich die Telemetrie-/Registrierungsseite bedient. Der ergänzende Code beweist noch keine dieser beiden WERMA-End-to-End-Varianten. Eine zweite unabhängige Geräte-Registry ohne Prüfung der vorhandenen Schnittstellen wäre vermeidbare Doppelarbeit.
 
 ## 10. Technisches Nachschlageverzeichnis
 
 ### 10.1 Verifizierte Dateien und ihre Rolle
 
-Alle heutigen Angaben beziehen sich auf `Archiving@465ab5350e804d00343ea23713aff601a22cba1e`, soweit nicht ausdrücklich historisch markiert.
+Alle geprüften Angaben beziehen sich auf `Archiving@465ab5350e804d00343ea23713aff601a22cba1e`, soweit nicht ausdrücklich historisch markiert.
 
 | Pfad | Relevanz |
 |---|---|
@@ -558,7 +557,7 @@ Alle heutigen Angaben beziehen sich auf `Archiving@465ab5350e804d00343ea23713aff
 | `system-backend/hardware-gateway/src/netcore_hardware_gateway.py` | Tatsächlicher Ingress, Registry, Events, MQTT, Watchdog und HTTP-Handler. |
 | `system-backend/hardware-gateway/config/hardware-gateway.example.toml` | Geprüfte Beispielwerte für Bind, MQTT, Speicherpfade und Grenzwerte. |
 
-Ausgewählte heutige Blob-SHAs zur zusätzlichen Nachvollziehbarkeit: `http.rs` = `d05ea89c6c176a156bd55211d42a36ef010b5182`; `state.rs` = `a953823e7ba06876b57dfa77837c52efcde7f6e1`; `config.rs` = `e85bb5de2fee1210ce6a3f24d800c9ec545b4394`; Hardware-Gateway-Code = `f24d9c4d52b3960026d6e69cad937b7faa6d3694`; Hardware-Gateway-Beispielkonfiguration = `e4f894a802cc5dd897d6e960acc90cdabad02432`.
+Ausgewählte ergänzende Blob-SHAs zur zusätzlichen Nachvollziehbarkeit: `http.rs` = `d05ea89c6c176a156bd55211d42a36ef010b5182`; `state.rs` = `a953823e7ba06876b57dfa77837c52efcde7f6e1`; `config.rs` = `e85bb5de2fee1210ce6a3f24d800c9ec545b4394`; Hardware-Gateway-Code = `f24d9c4d52b3960026d6e69cad937b7faa6d3694`; Hardware-Gateway-Beispielkonfiguration = `e4f894a802cc5dd897d6e960acc90cdabad02432`.
 
 ### 10.2 Ports, Protokolle, Topics und Laufzeitpfade
 
@@ -591,11 +590,11 @@ Nicht festgelegt wurden eigene Rack-Agent-Ports, GPIO-Chip/Line-Zuordnung, BPI-I
 
 ## 11. Befehle, Installations- und Diagnoseabläufe
 
-### 11.1 Was im Fachchat tatsächlich geschah
+### 11.1 Historischer Ausführungsstand
 
 Es wurden GitHub-Metadaten, Quelltexte und PR-/Commitbezüge gelesen. Es wurden **keine** GPIO-Kommandos, Relaisprogramme, Lampentests, OpenWrt-Flashbefehle, Proxmox-Umbauten, TrueNAS-Installationen oder Rack-Deployments nachweislich ausgeführt.
 
-Die Rust-, JSON- und TOML-Blöcke waren Architekturbeispiele. Insbesondere ist `netcore-rack-agent.service` kein durch seine Erwähnung installierter Dienst. Ein fertiger Installations-, Deployment- oder Reparaturablauf für WERMA beziehungsweise BPI liegt aus diesem Chat nicht vor.
+Die Rust-, JSON- und TOML-Blöcke waren Architekturbeispiele. Insbesondere ist `netcore-rack-agent.service` kein durch seine Erwähnung installierter Dienst. Ein fertiger Installations-, Deployment- oder Reparaturablauf für WERMA beziehungsweise BPI liegt aus diesem Planungsstand nicht vor.
 
 ### 11.2 Tatsächliche Diagnose im Archivlauf
 
@@ -624,7 +623,7 @@ Für einen späteren OpenWrt-Test sind Image-/Boardrevision und Recoveryweg vor 
 
 | Punkt | Historische Aussage / Beobachtung | Einordnung bei Abschluss |
 |---|---|---|
-| WERMA-Spannung | In der Antwort als 24-V-Säule weitergeplant. | Nicht durch Artikelnummer/Typenschild belegt; vor Verdrahtung offen. |
+| WERMA-Spannung | Im Erstentwurf als 24-V-Säule angenommen. | Typenschild und Artikelnummer fehlen; vor Verdrahtung klären. |
 | Konkrete GPIO-Pins | 17/27/22/23/24 im TOML-Beispiel. | Nur Beispiel; Nummerierung und Belegung ungeprüft. |
 | Pull-down plus aktiv-low | Gleichzeitig empfohlen. | Widersprüchlich als pauschale Boot-Sicherheitsmaßnahme; sicheren Pegel aus Schaltung ableiten. |
 | Relais und Blinken | Sehr pauschal als ungeeignet bezeichnet. | Häufiges/kurzes Schalten ist eine Auswahl- und Lebensdauerfrage, kein absolutes Verbot. |
@@ -634,13 +633,13 @@ Für einen späteren OpenWrt-Test sind Image-/Boardrevision und Recoveryweg vor 
 | RBAC | Im Repository vorhanden. | Nicht automatisch aktiv; aktueller Auth-Default ist aus, Hardware-Gateway ausdrücklich OPEN LAB. |
 | BPI/OpenWrt-PR offen | Stand 18.07.2026. | Durch Merge am 24.08.2026 überholt; Stable-Image-/Geräteabnahme weiterhin offen. |
 | BPI als „Managed Switch“ | Als Ersatz eines kleinen Switches empfohlen. | VLAN-/Bridge-Funktionalität, interne Pfade, Offload und Portgeschwindigkeit müssen konkret geprüft werden. Keine pauschale Enterprise-Switch-Gleichwertigkeit. |
-| Unmanaged = automatisch ein VLAN | Vereinfachte Antwort zum Kleinswitch. | Trennung muss der korrekt konfigurierte Access-Port leisten; Tagweiterleitung nicht ausschließen. |
+| Unmanaged = automatisch ein VLAN | Zu pauschale Ausgangsannahme. | Trennung durch korrekt konfigurierten Access-Port; mögliche Tagweiterleitung berücksichtigen. |
 | 5-Port-Kapazität | Mehrere mögliche Managementgeräte genannt. | Uplink belegt einen Port, vier Endgeräteports bleiben. |
 | „Ausfallsicherer“ | Vorteil eines separaten Agenten. | Relative Entkopplung, keine garantierte Anzeige bei Pi-/Versorgungs-/Gesamtausfall. |
 | Aktuelles Hardware-Gateway | Registry und gemeldete `outputs` vorhanden. | Kein Nachweis einer physischen Ausgangssteuerung; Flag nicht mit Treiber verwechseln. |
 | Lokaler Clone | DNS-Auflösung scheiterte. | Connectorzugriff funktioniert; kein Anlass für Force-Push, Branchwechsel oder Repo-Reparatur. |
 
-Im ursprünglichen Fachchat traten keine belegten Hardware-/Betriebsstörungen auf, weil keine entsprechende Inbetriebnahme dokumentiert wurde. Die Tabelle beschreibt daher überwiegend Planungsrisiken und Präzisierungen, nicht erfolgreich behobene Anlagenfehler.
+Hardware-/Betriebsstörungen sind historisch nicht belegt, da keine Inbetriebnahme dokumentiert ist. Die Tabelle enthält Planungsrisiken und Präzisierungen, keine erfolgreichen Anlagenreparaturen.
 
 ## 13. Tests und Nachweisgrenzen
 
@@ -649,8 +648,8 @@ Im ursprünglichen Fachchat traten keine belegten Hardware-/Betriebsstörungen a
 | Prüfung | Ergebnis | Grenze |
 |---|---|---|
 | Historische GitHub-Leseprüfung | Workspace, APIs, State-Typen, Fanout und PR #4 nachvollziehbar. | Keine Kompilierung und kein Gerätebetrieb. |
-| Heutige Repo-/Branchprüfung | Kanonischer Reponame, Archiving-/main-SHAs und Unterschiede erfasst. | Nicht jeder Branch oder jede Datei vollständig auditiert. |
-| Heutige relevante Quelltextprüfung | APIs/Fanout bestätigt; keine Indicator-Variante an den geprüften Stellen; Hardware-Gateway eingeordnet. | Statische Prüfung, kein Integrationstest. |
+| Ergänzende Repo-/Branchprüfung | Kanonischer Reponame, Archiving-/main-SHAs und Unterschiede erfasst. | Nicht jeder Branch oder jede Datei vollständig auditiert. |
+| Ergänzende relevante Quelltextprüfung | APIs/Fanout bestätigt; keine Indicator-Variante an den geprüften Stellen; Hardware-Gateway eingeordnet. | Statische Prüfung, kein Integrationstest. |
 | OpenWrt-PR-Metadaten | Merge von #21083 bestätigt. | Kein lokaler Imagebau, kein Test auf BPI, kein Stable-Release-Nachweis. |
 | PDF-Bestandsprüfung | Alle 25 Dateien öffnbar; Titel-/Seitenzahlinventar erstellt. | Keine vollständige Normen-/Konformitätsprüfung. |
 | Lokaler Git-Clone | DNS-Fehler dokumentiert. | Keine lokale Arbeitskopie durch diesen Versuch. |
@@ -681,13 +680,13 @@ Alle folgenden Tests sind **offen**:
 
 ## 14. Offene Aufgaben, Roadmap-Kandidaten und nächste Schritte
 
-Es wurden im Fachchat **keine verbindlichen Termine, Aufwandszusagen oder Prioritätsnummern** vereinbart. Die folgenden Prioritäten sind Vorschläge des Archiv-Reviews, damit ein späterer Statuslauf die Aufgaben eindeutig übernehmen kann. Sie werden ausschließlich hier erfasst; keine andere Roadmap-Datei wird durch diesen Auftrag verändert.
+Verbindliche Termine und Aufwand sind nicht vereinbart. Die folgenden Prioritäten sind **Vorschläge aus dem technischen Review** für eine spätere Umsetzung.
 
 | ID | Vorgeschlagene Priorität | Aufgabe / Ergebnis | Abhängigkeiten und Status |
 |---|---|---|---|
-| RACK-01 | P0: vor Hardwareanschluss | WERMA-Artikelnummern, Spannung, AC/DC, Ströme, Anschlussführung und Montage inventarisieren. | Nutzerhardware erforderlich; offen. |
-| RACK-02 | P0: Architekturfreigabe | Separater Pi oder lokaler Prozess entscheiden; heutigen Control Room, Node Gateway und Hardware-Gateway passend einbeziehen. | RACK-01 teilweise unabhängig; Idee konkretisieren. |
-| RACK-03 | P0: Anzeigesemantik | Farben, Prioritäten, Rack-/Node-Scope, Quittierung, Override und Bedeutung von Blau festlegen. | Nutzerfreigabe; historischer Vorschlag liegt vor. |
+| RACK-01 | P0: vor Hardwareanschluss | WERMA-Artikelnummern, Spannung, AC/DC, Ströme, Anschlussführung und Montage inventarisieren. | Reale Hardware erforderlich; offen. |
+| RACK-02 | P0: Architekturfreigabe | Separater Pi oder lokaler Prozess entscheiden; geprüften Control Room, Node Gateway und Hardware-Gateway passend einbeziehen. | RACK-01 teilweise unabhängig; Idee konkretisieren. |
+| RACK-03 | P0: Anzeigesemantik | Farben, Prioritäten, Rack-/Node-Scope, Quittierung, Override und Bedeutung von Blau festlegen. | Offene Festlegung; historischer Vorschlag vorhanden. |
 | RACK-04 | P0: Fehlermodell | Frische/Lease, Heartbeat, Neustart, gespeicherte Zustände und Versorgungsausfall definieren. | RACK-02/03; 5-s-TTL nur Beispiel. |
 | RACK-05 | P1: Software-MVP | Gesicherten lesenden Statusadapter, versionierten Indicator-Vertrag und simulierte Ausgänge implementieren. | RACK-02–04; noch nicht implementiert. |
 | RACK-06 | P1: I/O-MVP | Konkrete Relais-/Transistorkarte auswählen, Pinbelegung/Initialpegel prüfen, Agent und systemd-Paket implementieren. | RACK-01/04/05; Hardwaretreiber fehlt. |
@@ -700,13 +699,13 @@ Es wurden im Fachchat **keine verbindlichen Termine, Aufwandszusagen oder Priori
 
 ### Empfohlene Reihenfolge für die Wiederaufnahme
 
-Zuerst die **vorhandenen WERMA-Elemente identifizieren** und entscheiden, was die Farben zuverlässig bedeuten sollen. Dann den heutigen Hardware-Gateway-/Control-Room-Bestand als Integrationsgrundlage festlegen und die Zustandsauswertung zunächst ohne reale Ausgänge testen. Erst danach die elektrische Karte und ihre sicheren Initialpegel anbinden.
+Zuerst die **vorhandenen WERMA-Elemente identifizieren** und entscheiden, was die Farben zuverlässig bedeuten sollen. Dann den geprüften Hardware-Gateway-/Control-Room-Bestand als Integrationsgrundlage festlegen und die Zustandsauswertung zunächst ohne reale Ausgänge testen. Erst danach die elektrische Karte und ihre sicheren Initialpegel anbinden.
 
 Parallel kann die BPI-Routervariante mit einem dokumentierten Image und Recoveryweg getestet werden. Der kleine unmanaged Switch bleibt eine einfache, ausdrücklich gewünschte Bedarfsoption; er ersetzt keine fehlende VLAN-/Firewallplanung. Die endgültige Rackhöhe und USV sollten aus realer Stückliste, Leistung und Einbautiefe abgeleitet werden, nicht allein aus der frühen HE-Skizze.
 
 ## 15. Anhänge und ihre Relevanz
 
-Alle nachfolgend genannten Dateien waren lokal zugänglich. Angegeben sind die durch Öffnen geprüfte Seitenzahl und die Identität des Deckblatts. Die Dateien werden mit diesem Archivauftrag **nicht erneut ins Repository kopiert**.
+Die Anhänge wurden lokal geöffnet; Seitenzahlen und Deckblattkennungen sind unten erfasst.
 
 | Datei | Seiten | Identität / Gegenstand des Deckblatts |
 |---|---:|---|
@@ -736,17 +735,17 @@ Alle nachfolgend genannten Dateien waren lokal zugänglich. Angegeben sind die d
 | `en_30039202v030801p.pdf` | 1445 | EN 300 392-2 V3.8.1 (2016-08), Air Interface |
 | `ETSI.pdf` | 4100 | Sammeldatei; erstes Deckblatt EN 300 812 V2.1.1 (2001-12). Die weiteren enthaltenen Dokumente wurden hier nicht vollständig inventarisiert. |
 
-Die Titel identifizieren Standards beziehungsweise Entwürfe in der **bereitgestellten Fassung**, nicht automatisch die heute jüngste veröffentlichte Version. Insbesondere werden „Draft“ und „Final draft“ nicht in verabschiedete Normen umgedeutet. Die Anhänge sind für spätere TETRA-Protokollarbeit relevant; der hier behandelte Rack-Indikator beobachtet zunächst Implementierungszustände und wurde nicht gegen eine vollständige TETRA-Konformitätsprüfreihe abgenommen.
+Die Titel identifizieren Standards beziehungsweise Entwürfe in der **bereitgestellten Fassung**, nicht automatisch die am 2026-10-03 jüngste veröffentlichte Version. Insbesondere werden „Draft“ und „Final draft“ nicht in verabschiedete Normen umgedeutet. Die Anhänge sind für spätere TETRA-Protokollarbeit relevant; der hier behandelte Rack-Indikator beobachtet zunächst Implementierungszustände und wurde nicht gegen eine vollständige TETRA-Konformitätsprüfreihe abgenommen.
 
 ## 16. Quellen, Dateien, Commits und PRs
 
-### Historischer Chat und Repositorybezug
+### Historischer Planungsstand und Repositorybezug
 
-- **[CHAT]** Sichtbarer Fachverlauf mit Jans WERMA-/Rack-Frage, BPI-R4-Pro-Nachfrage und letzter 5-Port-Switch-Ergänzung. Originaltitel und Chatlink fehlen; Abschnitt 1 beschreibt die Grenze.
+- **[PLAN]** Historische WERMA-/Rackplanung, BPI-R4-Pro-Option und 5-Port-Switch-Ergänzung; Quellenlage in Abschnitt 1.
 - **[R00]** [PR #4 „Control room“](https://github.com/JanHG98/netcore-tetra/pull/4) und [historischer Mergecommit 6143ed50](https://github.com/JanHG98/netcore-tetra/commit/6143ed50ae23decb37eff2e3c04237b78a9ffd0b). PR-Metadaten am 03.10.2026 erneut gelesen.
-- **[R01]** Historischer Stand: [TBS-main](https://github.com/JanHG98/netcore-tetra/blob/6143ed50ae23decb37eff2e3c04237b78a9ffd0b/bins/bluestation-bs/src/main.rs), [Control-Room-HTTP](https://github.com/JanHG98/netcore-tetra/blob/6143ed50ae23decb37eff2e3c04237b78a9ffd0b/bins/netcore-control-room/src/http.rs), [State](https://github.com/JanHG98/netcore-tetra/blob/6143ed50ae23decb37eff2e3c04237b78a9ffd0b/bins/netcore-control-room/src/state.rs), [WebSocket](https://github.com/JanHG98/netcore-tetra/blob/6143ed50ae23decb37eff2e3c04237b78a9ffd0b/bins/netcore-control-room/src/ws.rs), [StackConfig](https://github.com/JanHG98/netcore-tetra/blob/6143ed50ae23decb37eff2e3c04237b78a9ffd0b/crates/tetra-config/src/bluestation/config.rs). Grundlage sind die im Fachchat sichtbaren Dateiabrufe.
+- **[R01]** Historischer Stand: [TBS-main](https://github.com/JanHG98/netcore-tetra/blob/6143ed50ae23decb37eff2e3c04237b78a9ffd0b/bins/bluestation-bs/src/main.rs), [Control-Room-HTTP](https://github.com/JanHG98/netcore-tetra/blob/6143ed50ae23decb37eff2e3c04237b78a9ffd0b/bins/netcore-control-room/src/http.rs), [State](https://github.com/JanHG98/netcore-tetra/blob/6143ed50ae23decb37eff2e3c04237b78a9ffd0b/bins/netcore-control-room/src/state.rs), [WebSocket](https://github.com/JanHG98/netcore-tetra/blob/6143ed50ae23decb37eff2e3c04237b78a9ffd0b/bins/netcore-control-room/src/ws.rs), [StackConfig](https://github.com/JanHG98/netcore-tetra/blob/6143ed50ae23decb37eff2e3c04237b78a9ffd0b/crates/tetra-config/src/bluestation/config.rs). Diese Dateiabrufe bildeten die damalige technische Grundlage.
 
-### Heutige Repositoryprüfung
+### Ergänzende Repositoryprüfung
 
 - **[R02]** [TBS-main/Fanout am Prüfcommit](https://github.com/JanHG98/netcore-tetra/blob/465ab5350e804d00343ea23713aff601a22cba1e/bins/bluestation-bs/src/main.rs), insbesondere gelesener Abschnitt ab Zeile 750.
 - **[R03]** [Control-Room-HTTP am Prüfcommit](https://github.com/JanHG98/netcore-tetra/blob/465ab5350e804d00343ea23713aff601a22cba1e/bins/netcore-control-room/src/http.rs), insbesondere Routing und `required_role_for_request`.
@@ -758,11 +757,11 @@ Die Titel identifizieren Standards beziehungsweise Entwürfe in der **bereitgest
 - **[R09]** [Hardware-Gateway-Beispielkonfiguration](https://github.com/JanHG98/netcore-tetra/blob/465ab5350e804d00343ea23713aff601a22cba1e/system-backend/hardware-gateway/config/hardware-gateway.example.toml).
 - **[R10]** [Erfasster main-Stand](https://github.com/JanHG98/netcore-tetra/commit/6aa9be8f74ab731f72dc133a5f8e90c5018c626d) und [Vergleich zum Eingangsstand Archiving](https://github.com/JanHG98/netcore-tetra/compare/6aa9be8f74ab731f72dc133a5f8e90c5018c626d...465ab5350e804d00343ea23713aff601a22cba1e).
 
-### Externe Quellen und heutige Verifikation
+### Externe Quellen und ergänzende Verifikation
 
 - **[E01]** [Banana Pi: offizielle BPI-R4-Pro-Produktseite](https://www.banana-pi.com/en/bananapi-router/205.html), am 03.10.2026 für Port-/Hardwareangaben gelesen.
-- **[E02]** [OpenWrt-PR #21083](https://github.com/openwrt/openwrt/pull/21083), heute per GitHub-Connector geprüft; [gemeldeter Mergecommit](https://github.com/openwrt/openwrt/commit/554b5dcc5199d07a84f4fba9f6a56066e5871858). Quelle für Supportmerge und PR-spezifische Hardwarebeschreibung, kein eigener Funktionstest.
-- **[E03]** [Banana-Pi-Boarddokumentation](https://docs.banana-pi.org/en/BPI-R4_Pro/BananaPi_BPI-R4_Pro) und [Getting Started](https://docs.banana-pi.org/en/BPI-R4_Pro/GettingStarted_BPI-R4_Pro), historische Referenzen. Beim heutigen Abruf keine verwertbaren Textinhalte im Webparser; Detailaussagen deshalb nicht damit als frisch verifiziert ausgegeben.
+- **[E02]** [OpenWrt-PR #21083](https://github.com/openwrt/openwrt/pull/21083), am 2026-10-03 per GitHub-Connector geprüft; [gemeldeter Mergecommit](https://github.com/openwrt/openwrt/commit/554b5dcc5199d07a84f4fba9f6a56066e5871858). Quelle für Supportmerge und PR-spezifische Hardwarebeschreibung, kein eigener Funktionstest.
+- **[E03]** [Banana-Pi-Boarddokumentation](https://docs.banana-pi.org/en/BPI-R4_Pro/BananaPi_BPI-R4_Pro) und [Getting Started](https://docs.banana-pi.org/en/BPI-R4_Pro/GettingStarted_BPI-R4_Pro), historische Referenzen. Beim geprüften Abruf keine verwertbaren Textinhalte im Webparser; Detailaussagen deshalb nicht damit als frisch verifiziert ausgegeben.
 - **[E04]** [Raspberry Pi: GPIO-/Hardwaredokumentation](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html), Abschnitte GPIO Outputs/Inputs und Voltage specifications, am 03.10.2026 gelesen.
 - **[E05]** [OpenWrt DSA Mini-Tutorial](https://openwrt.org/docs/guide-user/network/dsa/dsa-mini-tutorial) und [Firewall-Zonen für VLANs](https://openwrt.org/docs/guide-user/network/dsa/dsa-mini-tutorial/dsa-common-config/5-firewall-zones-for-vlans), am 03.10.2026 zur Abgrenzung von Bridging/VLANs und geroutetem Firewallverkehr herangezogen. Beispiele sind nicht als geprüfte BPI-Konfiguration übernommen.
 - **[E06]** Historisch genannte [WERMA-KombiSIGN-71-Übersicht](https://api.werma.com/de/s_c1017/Signalsaeulen/Modulare_Signalsaeulen/KombiSIGN_71/) und [WERMA-Beispielelement 64444055](https://www.werma.com/KS71-LED-EVS-Element-24VDC-CL/64444055). **Im Archivlauf nicht als Identifikation von Jans Hardware verifiziert.**
@@ -771,6 +770,6 @@ Die Titel identifizieren Standards beziehungsweise Entwürfe in der **bereitgest
 
 Die Machbarkeit wurde auf Architektur- und Quelltextebene plausibel begründet: NetCore besitzt die erforderlichen Arten von Zustandsdaten, und ein unabhängiger I/O-Agent kann daraus eine Rackanzeige machen. Die direkte Relais-/Transistoransteuerung und ihr sicherer Fehlerzustand müssen aber erst implementiert und an den echten Lampen geprüft werden.
 
-Die letzte Planungsrichtung ist ein **eigenständiger BPI-R4 Pro für Routing/Switching**, bei Bedarf ergänzt um den von Jan genannten **unmanaged 5-Port-Switch**. Die Wahl des 8X, die Firmware, die VLAN-/Portbelegung und der endgültige Rackaufbau sind noch keine bestätigte Installation.
+Gewählte Planungsrichtung ist ein **eigenständiger BPI-R4 Pro für Routing/Switching** mit optionalem **unmanaged 5-Port-Switch**. 8X-Auswahl, Firmware, VLAN-/Portbelegung und endgültiger Rackaufbau sind noch nicht als Installation bestätigt.
 
 Für die Weiterarbeit sind zwei Aktualisierungen besonders wichtig: **OpenWrt-Support für den 8X ist inzwischen in den Hauptzweig gemergt; zentrale Hardwaretelemetrie ist in NetCore inzwischen vorhanden.** Daraus folgt weniger Neuentwicklung auf der Datenseite, aber nicht das Vorhandensein eines fertigen Lampentreibers. Dieses Archiv bewahrt die Entwürfe, ohne sie als bereits laufende Technik auszugeben.

@@ -1,47 +1,44 @@
-# NetCore-Tetra: Dual-Baseboard, 230-V-Gesamtschaltplan und PCB-Footprints
+# Entwicklungsnotizen: Dual-Baseboard, 230-V-Gesamtschaltplan und PCB-Footprints
 
-## 1. Metadaten und belastbarer Endstand
+## 1. Rahmen und belastbarer Endstand
 
 | Feld | Stand |
 |---|---|
-| Ursprünglicher Chattitel | **Dateiformate Erstellen Bewerten** |
-| Originalchat | [ChatGPT-Konversation](https://chatgpt.com/c/6aac39d4-0ae0-83eb-b096-3aaca83745be) · ID `6aac39d4-0ae0-83eb-b096-3aaca83745be` |
 | Projekt | NetCore-Tetra; Trägerplatine für zwei Raspberry-Pi-/SXceiver-Knoten mit Versorgung, Supervisor, Sensorik und Bedienung |
 | Archiv erstellt | **2026-10-06**, Projektzeitzone Europe/Berlin |
-| Historischer Zeitraum | Chat-Metadaten ab 2026-09-17; unmittelbar lesbare technische Fortsetzung 2026-09-18 bis 2026-09-22; späterer Archivierungsauftrag am 2026-10-06 |
+| Historischer Zeitraum | Entwurfsnotizen ab 2026-09-17; technische Fortsetzung 2026-09-18 bis 2026-09-22; zusätzliche Prüfung am 2026-10-06 |
 | Geprüftes Repository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
-| Ausschließlicher Zielbranch | **`Archiving`** |
+| Dokumentationsbranch | **`Archiving`** |
 | Geprüfter Repository-Basiscommit | [`d048a85f801ef2d51107a928a5326788bc35ce48`](https://github.com/JanHG98/netcore-tetra/commit/d048a85f801ef2d51107a928a5326788bc35ce48), vor Aufnahme dieses Archivs |
 | Letzter zugänglicher CAD-Stand | **v0.3.3**, je eine `.kicad_sch` und `.kicad_pcb` |
-| Ablage dieses Auftrags | Ausschließlich `Docs/archive/`; Originaldateien, Bilder und neue Prüfberichte im [zugehörigen Assetordner](assets/2026-10-06_kicad-dual-baseboard-230v/) |
-| Archivcommit | Der Commit, der diese Datei hinzufügt, ist über ihre Git-Historie eindeutig bestimmbar. Der Basiscommit oben bezeichnet den geprüften Softwarestand, nicht den nachfolgenden Archivcommit. |
+| Ablage der Dokumentation | `Docs/archive/`; Originaldateien, Bilder und neue Prüfberichte im [zugehörigen Assetordner](assets/2026-10-06_kicad-dual-baseboard-230v/) |
 
-**Ergebnis des historischen Chats:** Ein einzelner Gesamtschaltplan mit 496 Bauteilpositionen und ein dazugehöriger, ungerouteter PCB-Arbeitsstand mit 487 Footprints wurden bereitgestellt. Von ursprünglich 76 fehlenden Footprints wurden 67 ergänzt; **neun bleiben offen**. Die vorläufige Platinenkontur beträgt **280 × 180 mm**. Eine fertigbare oder für Netzspannungsbetrieb freigegebene Baugruppe entstand im belegbaren Verlauf nicht.
+**Historischer Arbeitsstand:** Ein einzelner Gesamtschaltplan mit 496 Bauteilpositionen und ein dazugehöriger, ungerouteter PCB-Arbeitsstand mit 487 Footprints wurden bereitgestellt. Von ursprünglich 76 fehlenden Footprints wurden 67 ergänzt; **neun bleiben offen**. Die vorläufige Platinenkontur beträgt **280 × 180 mm**. Eine fertigbare oder für Netzspannungsbetrieb freigegebene Baugruppe entstand im belegbaren Verlauf nicht.
 
 **Ergänzung vom 2026-10-06:** Die finalen Originaldateien wurden wiederbeschafft, strukturell ausgewertet und mit KiCad CLI **10.0.6** geladen. Ein nativer Netzlistenexport gelang. Der ERC meldete **11 Fehler und 1.404 Warnungen**. Der DRC meldete **499 unverbundene Elemente sowie 610 Warnungen**. Diese neuen Befunde sind getrennt vom historischen Prüfstand in Abschnitt 8 dokumentiert. Es wurden keine Schaltungs-, Footprint- oder Layoutreparaturen am Original vorgenommen.
 
 ## 2. Quellenumfang, Herkunft und Statusbegriffe
 
-Die Auswertung verwendet drei getrennte Quellenebenen:
+Drei Arbeitsgrundlagen werden getrennt:
 
-1. **Historischer Dialog:** Die Chat-Abfrage lieferte fünf abgeschlossene Turns mit fünf Nutzernachrichten und sechs Assistentenantworten. Sie meldete keine weitere Seite und keine Anhänge. Der Chat wurde zusätzlich in seiner Oberfläche geöffnet; dort waren die letzten Antworten, der spätere Archivauftrag und die Dateiübersicht erreichbar. Der frühe Dialog ließ sich trotzdem nicht vollständig als Nachrichtenfolge auslesen.
-2. **Historische Originalartefakte:** Über die Dateiübersicht ließen sich sieben ursprünglich gleichnamige `image.png`, drei weitere Grafiken, die Projektpakete v0.1.1 und v0.2 sowie die beiden finalen v0.3.3-Dateien herunterladen. Frühere Entscheidungen werden teilweise aus den mitgelieferten README-, Änderungs-, Pinmapping- und Review-Dateien rekonstruiert. Das ist Artefaktevidenz, keine nachträgliche Behauptung, sämtliche damaligen Nutzernachrichten gelesen zu haben.
-3. **Heutige Prüfung:** Repository-Lektüre am oben genannten Commit sowie eigene strukturelle und native KiCad-Prüfungen am 2026-10-06. Diese Belege wurden nicht rückwirkend dem historischen Chat zugerechnet.
+1. **Historische Entwurfsnotizen:** technische Fortsetzung vom 18.09.–22.09.2026; die frühe Entwicklung ist nur teilweise rekonstruierbar.
+2. **Originalartefakte:** sieben Fehlerscreenshots, drei Entwurfsgrafiken, Pakete v0.1.1/v0.2 und finales v0.3.3-Dateipaar. README-, Änderungs-, Pinmapping- und Review-Dateien liefern ergänzende Anforderungen und Befunde.
+3. **Prüfung vom 06.10.2026:** Repository-Sichtung sowie strukturelle und native KiCad-Prüfungen. Diese neuen Befunde gelten nicht rückwirkend als historische Testergebnisse.
 
 | Status | Bedeutung in diesem Dokument |
 |---|---|
 | **Idee** | Erwogenes Konzept ohne endgültige Festlegung oder Umsetzung |
-| **Beschlossen** | Im zugänglichen Dialog ausdrücklich verlangt/korrigiert oder als Entwurfsentscheidung im Paket dokumentiert; die Herkunft wird genannt |
+| **Beschlossen** | In den erhaltenen Entwurfsnotizen ausdrücklich verlangt/korrigiert oder als Entwurfsentscheidung im Paket dokumentiert; die Herkunft wird genannt |
 | **Implementiert** | In einer zugänglichen Datei oder im geprüften Quellcode vorhanden; kein Funktionsnachweis allein durch Existenz |
 | **Getestet – statisch** | Parser-, Struktur-, Dateiintegritäts- oder Quellenprüfung mit benanntem Umfang |
 | **Getestet – KiCad nativ** | Tatsächlich ausgeführter Import/Export/ERC/DRC; Befunde und Prüfumgebung werden angegeben |
 | **Im Betrieb bestätigt** | Reale Baugruppe, Versorgung, Last, RF-Pfad oder Softwareintegration mit konkretem Mess-/Betriebsbeleg; für dieses Baseboard **nicht belegt** |
 
-Fortschrittsanzeigen, Simulationserwähnungen ohne Ergebnisartefakt, generierte Vorschaugrafiken und frühere Assistenten-Zusicherungen werden nicht als Hardware- oder Simulationserfolg gewertet. Spätere ausdrückliche Korrekturen haben Vorrang. Die Quellenlücken stehen in Abschnitt 12.
+Fortschrittsanzeigen, Simulationserwähnungen ohne Ergebnisartefakt, generierte Vorschaugrafiken und frühere unbelegte Zusicherungen werden nicht als Hardware- oder Simulationserfolg gewertet. Spätere ausdrückliche Korrekturen haben Vorrang. Die Quellenlücken stehen in Abschnitt 12.
 
 ## 3. Ziel, Ausgangslage und Entwicklung der Dateiformate
 
-Ziel war eine konkret weiterbearbeitbare KiCad-Unterlage für eine gemeinsame Trägerplatine mit zwei Pi-/SXceiver-Stacks. Versorgung, Überwachung, Sensorik, Display, Lüfter und Feld-I/O sollten nachvollziehbar verbunden sein. Die frühe Ausgabe enthielt Funktionsblöcke und Platzhalter; der Nutzer verlangte danach echte Einzelbauteile, vollständige GPIO-Verbindungen und eine aus diskreten Bauteilen aufgebaute 230-V-Versorgung. Später verlangte er ausdrücklich **eine einzige Gesamtschaltplandatei ohne Unterblätter** und anschließend die fehlende PCB-Datei.
+Ziel war eine konkret weiterbearbeitbare KiCad-Unterlage für eine gemeinsame Trägerplatine mit zwei Pi-/SXceiver-Stacks. Versorgung, Überwachung, Sensorik, Display, Lüfter und Feld-I/O sollten nachvollziehbar verbunden sein. Die frühen Funktionsblöcke und Platzhalter wurden durch die Anforderungen an echte Einzelbauteile, vollständige GPIO-Verbindungen und eine diskrete 230-V-Versorgung abgelöst. Maßgeblich sind **eine Gesamtschaltplandatei ohne Unterblätter** und eine dazugehörige PCB-Datei.
 
 ### 3.1 Versionsfolge und Ablösung früherer Aussagen
 
@@ -50,16 +47,16 @@ Ziel war eine konkret weiterbearbeitbare KiCad-Unterlage für eine gemeinsame Tr
 | Frühes v0.1-Konzept | Legacy-`.sch`, Root plus fünf Funktionsblätter; zwei Pi-Stacks; RP2040-Supervisor; 12-V-Eingang; optionales/DNP-Netzteilmodul; vorläufig 280 × 100 mm; zwei als 10-A-Klasse bezeichnete 5-V-Zweige | Aus den in v0.1.1 erhaltenen ursprünglichen Dokumenten rekonstruiert. Kein vollständiger früher Dialog; keine belastbare Strom- oder Platzfreigabe. |
 | **v0.1.1** | Reparatur der Legacy-Labelsyntax, Symbolcache und Titelblöcke; 92 Bauteile/Funktionsblöcke, 49 Bibliothekssymbole, 514 globale Labels und 609 Drahtsegmente laut Paketbericht | Fehlerbilder und Originalpaket vorhanden. Statische Strukturprüfung; damals kein nativer KiCad-Ladetest. Die alte PCB war nicht mit diesem Schaltplan synchronisiert. |
 | **v0.2** | Modernes `.kicad_sch`; 17 Detailblätter plus Übersicht, 18-seitige PDF; 496 Bauteile, 1.594 Symbolpins, 2.856 Drahtsegmente; diskretes AC/DC und konkreter Supervisor; detaillierte Pi/SXceiver-Netze | Original-ZIP samt Generator, Validator, BOM und Review-Dokumenten vorhanden. PDF und Vorschauen stammen aus dem Generator und beweisen keinen KiCad-Import. |
-| **v0.3** | Zusammenführung zu einem einzelnen Gesamtschaltplan ohne Hierarchie; im damaligen Bericht 496 Bauteile, 1.594 Pins, 2.856 Drahtsegmente, 51 eingebettete Symboldefinitionen | Im lesbaren Dialog dokumentiert; elektrische Topologie gegenüber v0.2 laut Antwort nicht neu ausgelegt. |
-| **v0.3.1 / 230 V** | Ausdrückliche Nutzerkorrektur: 230 V AC mit üblicher Toleranz statt der zuvor missverstandenen 130-V-Anforderung; Anforderung auf 230 V ±10 %, 50 Hz berichtigt | Anforderungs-/Beschriftungskorrektur; kein daraus ableitbarer Neuauslegungs- oder Netzspannungsnachweis. |
-| **v0.3.2 / erste PCB** | 420 von 496 Positionen, 1.267 Pads, 349 Quellnetze; vier 40-polige Pi/SXceiver-Stecker; 280 × 180 mm vorläufige Kontur; null Leiterbahnen/Vias/Kupferflächen; 76 fehlende Footprints | Lesbare Antwort zum Projekt-ZIP `NetCore-Tetra-KiCad-mit-PCB-v0.3.2.zip` und zur PCB `NetCore-Tetra-Gesamtschaltplan-v0.3.1-230V.kicad_pcb`. Diese Zwischenstände wurden hier nicht zusätzlich heruntergeladen und nativ geprüft. |
+| **v0.3** | Zusammenführung zu einem einzelnen Gesamtschaltplan ohne Hierarchie; im damaligen Bericht 496 Bauteile, 1.594 Pins, 2.856 Drahtsegmente, 51 eingebettete Symboldefinitionen | In den Entwurfsnotizen dokumentiert; elektrische Topologie gegenüber v0.2 laut Entwicklungsnotiz nicht neu ausgelegt. |
+| **v0.3.1 / 230 V** | Ausdrückliche Korrektur: 230 V AC mit üblicher Toleranz statt der zuvor missverstandenen 130-V-Anforderung; Anforderung auf 230 V ±10 %, 50 Hz berichtigt | Anforderungs-/Beschriftungskorrektur; kein daraus ableitbarer Neuauslegungs- oder Netzspannungsnachweis. |
+| **v0.3.2 / erste PCB** | 420 von 496 Positionen, 1.267 Pads, 349 Quellnetze; vier 40-polige Pi/SXceiver-Stecker; 280 × 180 mm vorläufige Kontur; null Leiterbahnen/Vias/Kupferflächen; 76 fehlende Footprints | Entwicklungsnotiz zum Projekt-ZIP `NetCore-Tetra-KiCad-mit-PCB-v0.3.2.zip` und zur PCB `NetCore-Tetra-Gesamtschaltplan-v0.3.1-230V.kicad_pcb`. Diese Zwischenstände wurden hier nicht zusätzlich heruntergeladen und nativ geprüft. |
 | **v0.3.3 / letzter Stand** | 67 Footprints ergänzt, 487 vorhanden, neun offen; J703-Schirm ergänzt; C1306 korrigiert; weiterhin ein Gesamtschaltplan und ungeroutete PCB | Beide Originaldateien archiviert und am 2026-10-06 erneut geprüft. Abschnitt 8 enthält die tatsächlichen aktuellen Zählwerte. |
 
 ### 3.2 Verbindliche Korrekturen für eine Fortsetzung
 
 | Frühere Aussage/Variante | Maßgeblicher späterer Stand | Begründung bzw. Konsequenz |
 |---|---|---|
-| Fertige Module/Funktionskästen genügen | **Diskrete, konkret angeschlossene Bauteile**; einschließlich AC/DC, Supervisor und Pi-GPIO-Pfaden | Ausdrückliche Nutzeranforderung ab v0.2. Ein Modulkonzept darf nicht stillschweigend als Erfüllung ausgegeben werden. |
+| Fertige Module/Funktionskästen genügen | **Diskrete, konkret angeschlossene Bauteile**; einschließlich AC/DC, Supervisor und Pi-GPIO-Pfaden | Ausdrückliche Anforderung ab v0.2. Ein Modulkonzept darf nicht stillschweigend als Erfüllung ausgegeben werden. |
 | Hierarchischer Mehrblattschaltplan | **Eine Gesamtdatei ohne Unterblätter** | Ausdrücklicher Wunsch für v0.3 und spätere Fassungen. |
 | 130 V oder universeller Netzeingang als Ziel | **230 V AC ±10 %, entsprechend 207–253 V RMS bei 50 Hz** | Explizite Korrektur. 110/130 V und Universalbetrieb sind keine finalen Anforderungen. Der externe 12-V-DC-Pfad bleibt bestehen. |
 | RP2040 als Supervisor/Modul | **STM32F103CBT6** als diskreter Controller mit Nebenbeschaltung | Umsetzung im späteren Schaltplan; frühes Architektur-PNG ist überholt. |
@@ -67,7 +64,7 @@ Ziel war eine konkret weiterbearbeitbare KiCad-Unterlage für eine gemeinsame Tr
 | 280 × 100 mm als ausreichendes Board | **Maximalbreite 300 mm als Anforderung; 280 × 180 mm nur Arbeitskontur** | Kein abgeschlossener Platz-, Kühlungs-, Montage- oder Isolationsnachweis. |
 | PA-Leistung wird über diese Platine geschaltet/versorgt | **PA-Anschlüsse als Enable-/Steuersignale** | Kein belegter PA-Leistungsversorgungspfad in der finalen Abgrenzung. |
 | RF-ADC allein genügt für HF-Leistungsmessung | ADC erwartet **aufbereitete Messsignale** | Richtkoppler, Detektor und Kalibrierung sind externe offene Bestandteile. |
-| Alle 76 Footprints seien behoben | **67 ergänzt, neun weiter offen** | Letzte Assistentenantwort und tatsächliche Dateizählung stimmen in diesem Punkt überein. |
+| Alle 76 Footprints seien behoben | **67 ergänzt, neun weiter offen** | Letzte Entwurfsnotiz und tatsächliche Dateizählung stimmen in diesem Punkt überein. |
 
 Die früheren Bilder und Dateien bleiben als historische Belege erhalten, werden aber nicht als aktuelle Fertigungsunterlagen dargestellt.
 
@@ -99,7 +96,7 @@ Pro Knoten sind zwei 40-polige Anschlüsse vorgesehen: zum Raspberry Pi und zum 
 |---|---|---|
 | BCM 8–11 | SPI0 zum SXceiver | SPI-Signalführung und reale HAT-Version beachten. |
 | BCM 18–21 | I²S/PCM | Audio-/IQ-Interface; keine frei verfügbaren Zusatz-I/O. |
-| BCM 5 / physisch 29 | SXceiver-Reset über OR-/Inhibit-Logik | Aktive-High-Verhalten wurde aus SoapySX abgeleitet; heutiger Quellcodeabgleich in Abschnitt 9. |
+| BCM 5 / physisch 29 | SXceiver-Reset über OR-/Inhibit-Logik | Aktive-High-Verhalten wurde aus SoapySX abgeleitet; geprüfter Quellcodeabgleich in Abschnitt 9. |
 | BCM 22/23 | TX/RX bei neuerer Hardware | Alte Hardware benutzt 12/13; keine versionsunabhängige Freigabe dieser Pins. |
 | BCM 0/1 | HAT-ID/EEPROM | Reserviert. |
 | BCM 14/15 | UART | Mögliche Managementverbindung im Entwurf; kein abgenommenes Softwareprotokoll. |
@@ -124,9 +121,9 @@ Für Heartbeat, Shutdown, Power-Cycle, Lüftersteuerung, Sensorfehler, RF-Freiga
 
 Als historische Entwurfsquelle wurde **Power Integrations DER-993**, isolierter Flyback mit **INN4275C-H186**, nominal **12 V / 6 A / 72 W** verwendet. Die Referenz behandelt 90–265 V AC; das endgültige Projektziel wurde später ausdrücklich auf 230 V AC mit üblicher Toleranz begrenzt. Die Kenndaten der Referenz sind weder eine Prüfung des rekonstruierten Schaltplans noch eine Freigabe des kombinierten NetCore-Boards.
 
-Im damaligen Verlauf waren insbesondere Original-Schaltbild und Wicklungsdarstellung nicht vollständig visuell verifiziert. Offen blieben Primärklemme, Bias-/OVP-Pfad, Synchrongleichrichtung und SR-Snubber, Brückengleichrichter-Pinbelegung und magnetische Phasenlage. Der im Chat erwähnte Vergleich von 44 Netzteilpositionen nach Wert/Typ mit einer BOM ersetzt keinen vollständigen Topologieabgleich.
+Im damaligen Verlauf waren insbesondere Original-Schaltbild und Wicklungsdarstellung nicht vollständig visuell verifiziert. Offen blieben Primärklemme, Bias-/OVP-Pfad, Synchrongleichrichtung und SR-Snubber, Brückengleichrichter-Pinbelegung und magnetische Phasenlage. Der historische Vergleich von 44 Netzteilpositionen nach Wert/Typ mit einer BOM ersetzt keinen vollständigen Topologieabgleich.
 
-Die Primärseite `HV_NEG`/Hochvoltbus, sekundäre Controller-Masse `SEC_GND`, Last-Rückleitung über Strommesspfade und `PE_CHASSIS` sind funktional zu unterscheiden. Ein Umbenennen oder Zusammenlegen allein zur Beseitigung von ERC-Meldungen wäre keine belastbare Reparatur. Der heutige ERC enthält ausdrücklich auch einen Befund zu `PE_CHASSIS`.
+Die Primärseite `HV_NEG`/Hochvoltbus, sekundäre Controller-Masse `SEC_GND`, Last-Rückleitung über Strommesspfade und `PE_CHASSIS` sind funktional zu unterscheiden. Ein Umbenennen oder Zusammenlegen allein zur Beseitigung von ERC-Meldungen wäre keine belastbare Reparatur. Der geprüfte ERC enthält ausdrücklich auch einen Befund zu `PE_CHASSIS`.
 
 ### 5.2 Historische T101-Spezifikation – offen, nicht als Bauanweisung freigegeben
 
@@ -193,7 +190,7 @@ Die Übernahme der bereits vorhandenen 420 Footprints bestätigt nicht automatis
 | **J1301** | Molex 52271-2069, 20-poliger FFC/FPC-Stecker | Hersteller-Landpattern, Kontaktseite, Verriegelung und Orientierung zum TFT |
 | **BZ1701** | PUI AI-1223-TWT-3V-2-R | Belastbare Anschlussmaße, Polarität und Körperkontur |
 
-Diese neun Teile sind im Schaltplan vorhanden, aber **nicht als physische Bauteile im PCB**. Beim heutigen Netzlistenvergleich betreffen sie 60 Symbolpins, darunter zwei ausdrücklich unbeschaltete T101-Pins.
+Diese neun Teile sind im Schaltplan vorhanden, aber **nicht als physische Bauteile im PCB**. Beim geprüften Netzlistenvergleich betreffen sie 60 Symbolpins, darunter zwei ausdrücklich unbeschaltete T101-Pins.
 
 ### 6.3 Routing, Mechanik und Fertigungsdaten
 
@@ -216,20 +213,20 @@ Sieben originale Screenshots dokumentieren echte KiCad-Ladefehler des frühen Pr
 
 Die Verteilung über `01_POWER_INPUTS.sch`, `02_NODE_A.sch`, `03_NODE_B.sch`, `04_SUPERVISOR_SENSORS.sch` und `05_UI_FANS_IO.sch` beträgt laut Bericht 32/21/21/31/49. Zusätzlich wurden ein Cache mit 49 Symboldefinitionen und korrigierte Titelblöcke beigelegt. Netz-, Draht-, Pin-, Wert- und Positionsänderungen waren für diese Syntaxreparatur nicht vorgesehen. Die damalige PCB blieb unverändert und unsynchronisiert.
 
-Das Paket enthält `CHANGELOG.md`, `LABEL_FIXES.json`, `format_fix.patch`, ursprüngliche Dokumente und die Strukturprüfung. **Die Reparatur ist als Dateiinhaltsänderung und statischer Bericht belegt; ein historischer erfolgreicher KiCad-Ladetest von v0.1.1 ist nicht belegt.** Die heutigen nativen Prüfungen betreffen v0.3.3, nicht nachträglich das Legacy-Paket.
+Das Paket enthält `CHANGELOG.md`, `LABEL_FIXES.json`, `format_fix.patch`, ursprüngliche Dokumente und die Strukturprüfung. **Die Reparatur ist als Dateiinhaltsänderung und statischer Bericht belegt; ein historischer erfolgreicher KiCad-Ladetest von v0.1.1 ist nicht belegt.** Die geprüften nativen Prüfungen betreffen v0.3.3, nicht nachträglich das Legacy-Paket.
 
 ### 7.2 Öffnungs-, Generierungs- und Prüfanweisungen
 
-| Ablauf/Befehl | Historischer oder heutiger Status |
+| Ablauf/Befehl | Historischer oder geprüfter Status |
 |---|---|
-| v0.1.1 vollständig in einen neuen Ordner entpacken, Root-`.sch` im Schaltplaneditor öffnen; Bibliothek, Cache und Symboltabelle beibehalten; erst danach in neues Format speichern | Historisch empfohlener Reparaturablauf; kein belegter erfolgreicher Benutzer-Retest im zugänglichen Material |
-| `python validate_structure.py` im v0.1.1-Paket | Historischer statischer Prüfbericht vorhanden; im Archivauftrag nicht erneut ausgeführt |
+| v0.1.1 vollständig in einen neuen Ordner entpacken, Root-`.sch` im Schaltplaneditor öffnen; Bibliothek, Cache und Symboltabelle beibehalten; erst danach in neues Format speichern | Historisch empfohlener Reparaturablauf; kein belegter erfolgreicher Retest |
+| `python validate_structure.py` im v0.1.1-Paket | Historischer statischer Prüfbericht vorhanden; bei der Bestandsaufnahme nicht erneut ausgeführt |
 | `python tools/validate_schematic.py` im v0.2-Paket | Historischer Struktur-/Konnektivitätsbericht; keine SPICE-/ERC-/DRC- oder Hardwarefreigabe |
-| `python tools/generate_schematic.py <neuer-ausgabeordner>` | Mitgelieferter Generator, Python 3.10+ und ReportLab laut Paket; in diesem Auftrag nicht ausgeführt und nicht über die Originale laufen gelassen |
+| `python tools/generate_schematic.py <neuer-ausgabeordner>` | Mitgelieferter Generator, Python 3.10+ und ReportLab laut Paket; bei der Bestandsaufnahme nicht ausgeführt und nicht über die Originale laufen gelassen |
 | Finale `.kicad_sch` und `.kicad_pcb` gemeinsam in einen neuen Arbeitsordner legen | Historische Anweisung; eingebettete Symbole und Footprint-Geometrien erhalten die vorhandenen Objekte. Bibliothekstabellen für Bearbeitung/Verknüpfungsprüfungen sind gesondert einzurichten. |
 | Native ERC-, DRC- und Netzlistenbefehle aus Abschnitt 8 | Am 2026-10-06 tatsächlich ausgeführt; Export erfolgreich, ERC/DRC mit Befunden |
 
-Die damalige Umgebung hatte kein nutzbares KiCad; ein Installationsversuch scheiterte laut Dialog an Netzwerk-/DNS-Zugriff. Das wurde im finalen Chat ausdrücklich eingeräumt. Es wurde weder ein erfolgreiches SPICE-Modell noch ein Hardwaretestprotokoll nachgewiesen.
+Historische Prüfgrenze: KiCad war nicht nutzbar; ein Installationsversuch scheiterte laut Entwicklungsnotiz an Netzwerk-/DNS-Zugriff. Es wurde weder ein erfolgreiches SPICE-Modell noch ein Hardwaretestprotokoll nachgewiesen.
 
 ## 8. Neu ausgeführte Archivprüfungen vom 2026-10-06
 
@@ -251,7 +248,7 @@ Beide ZIPs bestanden die CRC-Integritätsprüfung. Die finalen CAD-Dateien wurde
 | Zusätzliche unbekannte PCB-Referenzen | 0 |
 | Abweichende Footprint-Bezeichner zwischen Schaltplan und vorhandenen PCB-Objekten | 0 |
 
-Die heutigen 52 Symboldefinitionen, 2.857 Drahtsegmente und 1.595 exportierten Symbolpins beziehen sich auf **v0.3.3**. Die älteren Angaben 51/2.856/1.594 gehören zum vorherigen Stand; die zusätzliche USB-Schirmverbindung ist als spätere Änderung dokumentiert.
+Die geprüften 52 Symboldefinitionen, 2.857 Drahtsegmente und 1.595 exportierten Symbolpins beziehen sich auf **v0.3.3**. Die älteren Angaben 51/2.856/1.594 gehören zum vorherigen Stand; die zusätzliche USB-Schirmverbindung ist als spätere Änderung dokumentiert.
 
 ### 8.2 Nativer KiCad-Aufruf und Prüfumfang
 
@@ -311,17 +308,17 @@ Beim Vergleich nach Referenz und Pinnummer wurden **1.535 verschiedene nummerier
 
 Dies belegt die Zuordnung zwischen vorhandenen Symbolpins und PCB-Pads in diesen Dateien. Es beweist weder die sachliche Richtigkeit des Schaltplans noch Kupferverbindungen, passende Gehäuse oder Hardwarefunktion. Der neue [Vergleichsbericht](assets/2026-10-06_kicad-dual-baseboard-230v/native-netlist-comparison-20261006.json) enthält die einzelnen Fälle einschließlich der rohen Unterschiede.
 
-## 9. Heutiger Repository-Stand – getrennt vom historischen Chat
+## 9. Geprüfter Repository-Stand – getrennt vom historischen Arbeitsstand
 
 Die folgenden Aussagen beziehen sich ausschließlich auf `Archiving` am Basiscommit `d048a85f801ef2d51107a928a5326788bc35ce48`, geprüft am 2026-10-06. Es wurden keine Dienste gestartet, keine Zielgeräte kontaktiert und keine Software deployt. Die Projektsoftware bezeichnet sich in der Root-README als v1.9.0; diese Version ist unabhängig von CAD v0.3.3.
 
 ### 9.1 CAD und Freigabestatus
 
-Vor diesem Archivauftrag enthielt der geprüfte Dateibaum keine identifizierte Dual-Baseboard-v0.3.3-Integration und kein dazugehöriges STM32-Firmwareprojekt. Native KiCad-Dateien wurden unter `PA/Little PA V2.*` gefunden. Diese gehören zu einem separaten PA-Projekt und sind kein Beleg für die Fertigstellung des hier behandelten Dual-Baseboards.
+Am geprüften Basiscommit fehlt eine identifizierte Dual-Baseboard-v0.3.3-Integration samt STM32-Firmwareprojekt. Native Dateien unter `PA/Little PA V2.*` gehören zu einem separaten PA-Projekt und belegen keine Fertigstellung des Dual-Baseboards.
 
 Das [Systemhandbuch am geprüften Commit](https://github.com/JanHG98/netcore-tetra/blob/d048a85f801ef2d51107a928a5326788bc35ce48/Docs/NetCore-Tetra-Systemhandbuch-2026-09-28.md) bezeichnet die 230-V-/GPIO-/LCD-/Watchdog-Platine ausdrücklich als nicht freigegebene Serienbaugruppe und den KiCad-Arbeitsstand als außerhalb des bisherigen Repositories liegend. Die Aufnahme der Originale **unter `Docs/archive/`** ist nun eine Quellensicherung, keine Integration in einen freigegebenen Fertigungs- oder Firmwarepfad.
 
-### 9.2 SoapySX: konkrete heute vorhandene Hardwarezugriffe
+### 9.2 SoapySX: konkrete am Prüfstand 06.10.2026 vorhandene Hardwarezugriffe
 
 Der aktuelle [SoapySX-Quellcode](https://github.com/JanHG98/netcore-tetra/blob/d048a85f801ef2d51107a928a5326788bc35ce48/sxxcvr-main/SoapySX/SoapySX.cpp) verwendet:
 
@@ -335,13 +332,13 @@ Der aktuelle [SoapySX-Quellcode](https://github.com/JanHG98/netcore-tetra/blob/d
 | ALSA Capture | `hw:CARD=SX1255,DEV=1` |
 | ALSA Playback | `hw:CARD=SX1255,DEV=0` |
 
-Das [Raspberry-Pi-Overlay](https://github.com/JanHG98/netcore-tetra/blob/d048a85f801ef2d51107a928a5326788bc35ce48/sxxcvr-main/dts/sx1255_raspberrypi.dts) enthält den dazugehörigen SPI-/I²S-Kontext. Der Code stützt die Notwendigkeit einer versionsabhängigen GPIO-Zuordnung. Er belegt weder die richtige HAT-Version im realen Rack noch die Verträglichkeit der neuen OR-/Inhibit-Schaltung. Die historische Quelle war separat auf SoapySX-Commit `9705147dd8c189625071f3f163ea56119bda4a05` im damaligen Quellenverzeichnis bezogen; dieser wird hier nicht mit dem heutigen Repository-Commit gleichgesetzt.
+Das [Raspberry-Pi-Overlay](https://github.com/JanHG98/netcore-tetra/blob/d048a85f801ef2d51107a928a5326788bc35ce48/sxxcvr-main/dts/sx1255_raspberrypi.dts) enthält den dazugehörigen SPI-/I²S-Kontext. Der Code stützt die Notwendigkeit einer versionsabhängigen GPIO-Zuordnung. Er belegt weder die richtige HAT-Version im realen Rack noch die Verträglichkeit der neuen OR-/Inhibit-Schaltung. Die historische Quelle war separat auf SoapySX-Commit `9705147dd8c189625071f3f163ea56119bda4a05` im damaligen Quellenverzeichnis bezogen; dieser wird hier nicht mit dem geprüften Repository-Commit gleichgesetzt.
 
 ### 9.3 Hardware-Gateway als bestehender Integrationspunkt
 
 Vorhanden sind [README und Dienstverzeichnis](https://github.com/JanHG98/netcore-tetra/tree/d048a85f801ef2d51107a928a5326788bc35ce48/system-backend/hardware-gateway), `src/netcore_hardware_gateway.py`, `config/hardware-gateway.example.toml` und `systemd/netcore-hardware-gateway.service`.
 
-| Vertrag/Pfad | Heute im Repository vorhanden |
+| Vertrag/Pfad | Am Prüfstand 06.10.2026 im Repository vorhanden |
 |---|---|
 | HTTP/API | Port **8250**; `/api/v1/status`, `/api/v1/devices`, `/api/v1/events`, `POST /api/v1/telemetry`, `/health/live`, `/health/ready` |
 | MQTT-Eingang | `netcore/v1/hardware/<device-id>/telemetry` |
@@ -352,13 +349,13 @@ Vorhanden sind [README und Dienstverzeichnis](https://github.com/JanHG98/netcore
 | Unit | `netcore-hardware-gateway.service` |
 | Voreinstellung | `outputs_enabled = false`; OPEN-LAB-Kontext |
 
-Im Konfigurationsbeispiel stehen Heartbeat-Timeout 30 s und Stale-Zeit 20 s sowie Temperatur-/Feuchte-/Spannungsschwellen. Diese sind **Softwarebeispiele**, keine im Hardwarechat endgültig festgelegten Schutzwerte. Das Gateway ist ein vorhandener Empfänger für einen späteren Board-/Edge-Agenten; seine Existenz liefert keine STM32-Firmware und keinen physischen I/O-Treiber für dieses Board.
+Im Konfigurationsbeispiel stehen Heartbeat-Timeout 30 s und Stale-Zeit 20 s sowie Temperatur-/Feuchte-/Spannungsschwellen. Diese sind **Softwarebeispiele**, keine für das Baseboard endgültig festgelegten Schutzwerte. Das Gateway ist ein vorhandener Empfänger für einen späteren Board-/Edge-Agenten; seine Existenz liefert keine STM32-Firmware und keinen physischen I/O-Treiber für dieses Board.
 
 ### 9.4 RF-Monitor und externe Probe
 
 Vorhanden sind [RF-Monitor und Agentenbeispiele](https://github.com/JanHG98/netcore-tetra/tree/d048a85f801ef2d51107a928a5326788bc35ce48/system-backend/rf-monitor), einschließlich `src/netcore_rf_monitor.py`, `config/rf-monitor.example.toml`, `examples/tbs-agent/netcore-rf-agent.py` und `rf-agent.example.toml`.
 
-| Vertrag/Pfad | Heute im Repository vorhanden |
+| Vertrag/Pfad | Am Prüfstand 06.10.2026 im Repository vorhanden |
 |---|---|
 | HTTP/API | Port **8260**; Status, Stationsliste/-detail, Alarme, Ereignisse, `POST /api/v1/telemetry`, `/metrics`, Health-Routen |
 | MQTT-Eingang | `netcore/v1/rf/<station-id>/telemetry` |
@@ -374,20 +371,19 @@ Zugangsdaten aus Beispielkonfigurationen wurden nicht in dieses Archiv übernomm
 
 ### 9.5 Verwandte Archive ohne Vermischung der Anforderungen
 
-Die Archive [GPIO-Breakout/Jumpersteuerung](2026-10-05_basisstation-gpio-breakout-jumper-steuerung-sxceiver.md) und [SXceiver, Sensorik und TFT](2026-10-05_sxceiver-gpio-sensorik-tft-und-modularer-hardwareausbau.md) sind ergänzende Projektkontexte. Dortige modulare Ausbauideen ersetzen nicht rückwirkend die ausdrückliche diskrete Gesamtplatinenanforderung dieses Chats. Vor einer Weiterentwicklung ist bewusst festzulegen, welcher Hardwareansatz tatsächlich fortgeführt wird.
+Die Archive [GPIO-Breakout/Jumpersteuerung](2026-10-05_basisstation-gpio-breakout-jumper-steuerung-sxceiver.md) und [SXceiver, Sensorik und TFT](2026-10-05_sxceiver-gpio-sensorik-tft-und-modularer-hardwareausbau.md) sind ergänzende Projektkontexte. Dortige modulare Ausbauideen ersetzen nicht rückwirkend die ausdrückliche diskrete Gesamtplatinenanforderung dieser Planung. Vor einer Weiterentwicklung ist bewusst festzulegen, welcher Hardwareansatz tatsächlich fortgeführt wird.
 
 ## 10. Erreichter Stand und priorisierte offene Aufgaben
 
 | Gegenstand | Idee/beschlossen | Implementiert | Getestet | Im Betrieb bestätigt |
 |---|---|---|---|---|
-| Diskretes Dual-Baseboard mit 230-V-Teil | Im zugänglichen Dialog verlangt | Als CAD-Arbeitsstand | Struktur-/Netzlistenprüfung, ERC/DRC mit Befunden | Nein |
+| Diskretes Dual-Baseboard mit 230-V-Teil | In den erhaltenen Entwurfsnotizen verlangt | Als CAD-Arbeitsstand | Struktur-/Netzlistenprüfung, ERC/DRC mit Befunden | Nein |
 | Ein Gesamtschaltplan ohne Unterblätter | Ausdrücklich beschlossen | Ja, v0.3.3 | Null Unterblätter und nativer Export bestätigt | Nicht anwendbar als eigener Hardwarebeleg |
 | Alle 496 Footprints | Ziel | **487/496** | Fehlende neun eindeutig festgestellt | Nein |
 | Fertiges Layout | Ziel | Platzierungs-/Konturstand; kein Routing | DRC bestätigt offene Verbindungen | Nein |
 | 230-V-Betrieb, 2 × Stack-Dauerlast | Anforderung/Planung | Ungeprüfter Entwurf | Keine reale Last-, Isolations-, Wärme- oder EMV-Prüfung belegt | Nein |
 | Supervisor/Watchdog/Power-Cycle | Entwurf | Schaltplan vorhanden; zugehörige Firmware nicht belegt | Kein realer Failover-/Start-/Fehlertest | Nein |
-| Hardware-/RF-Telemetrie im Gesamtsystem | Integrationsziel | Heutige Backenddienste im Repository vorhanden | Quellcode-/Konfigurationssichtung im Archivauftrag | Keine Anbindung dieses Boards bestätigt |
-| Technische Archivierung | Vom Nutzer autorisiert | Diese Dokumentation, Index, Originale und neue Berichte | Integrität, Scope und Git-Veröffentlichung gesondert kontrolliert | Kein Deploymentvorgang |
+| Hardware-/RF-Telemetrie im Gesamtsystem | Integrationsziel | Geprüfte Backenddienste im Repository vorhanden | Quellcode-/Konfigurationssichtung vom 06.10.2026 | Keine Anbindung dieses Boards bestätigt |
 
 **Priorität 1 – belastbare Schaltungsgrundlage:** Original DER-993 samt relevanten Datenblättern und Wickelzeichnungen vollständig prüfen; konkrete bestellbare Bauteilvarianten festlegen; Primär-/Sekundärtopologie, Schutz, Erd-/Schirmbezüge und Quellenumschaltung abgleichen. Reales Pi-Modell und SXceiver-Revision bestätigen. Versorgung und HF-Freigabe sind getrennte Abnahmethemen.
 
@@ -397,7 +393,7 @@ Die Archive [GPIO-Breakout/Jumpersteuerung](2026-10-05_basisstation-gpio-breakou
 
 **Priorität 4 – Firmware und Systemvertrag:** STM32-Projekt, reproduzierbaren Build, Boot-/Resetzustände, Watchdog, Heartbeat, Shutdown, Power-Cycle, lokale Bedienung und Sensorfehlerbehandlung implementieren. USB/UART-Protokoll bzw. Edge-Agent festlegen. Telemetrie mit den vorhandenen Hardware-Gateway-/RF-Monitor-Verträgen verbinden; Sicherheitsabschaltungen nicht allein von zentraler Telemetrie abhängig machen.
 
-**Priorität 5 – reale Abnahme:** Versorgung zunächst mit geeigneter abgesicherter Testumgebung und dokumentierten Lasten fachlich prüfen; Temperatur, Einschaltspitzen, Spannungsabfall und Ausfälle messen. Anschließend reale Pi-/SXceiver-Stacks, Reset-/TX-/RX-Pegel, Audio/RF, Lüfter, Sensorik und Rückwirkungen testen. Netzspannungs-, Isolations-, EMV- und Fertigungsfreigabe benötigen eigene qualifizierte Prüfbelege. In diesem Auftrag wurde nichts davon ausgeführt.
+**Priorität 5 – reale Abnahme:** Versorgung zunächst mit geeigneter abgesicherter Testumgebung und dokumentierten Lasten fachlich prüfen; Temperatur, Einschaltspitzen, Spannungsabfall und Ausfälle messen. Anschließend reale Pi-/SXceiver-Stacks, Reset-/TX-/RX-Pegel, Audio/RF, Lüfter, Sensorik und Rückwirkungen testen. Netzspannungs-, Isolations-, EMV- und Fertigungsfreigabe benötigen eigene qualifizierte Prüfbelege. Bei der Bestandsaufnahme wurde nichts davon ausgeführt.
 
 ## 11. Archivierte Dateien, Bilder und Wiederaufnahme
 
@@ -426,7 +422,7 @@ Für die Wiederaufnahme die v0.3.3-Dateien in einen neuen Arbeitsordner kopieren
 
 ### 11.2 Sieben originale Fehlerscreenshots
 
-Die ursprünglich jeweils `image.png` genannten Dateien wurden nur zur eindeutigen Archivierung nach ihrer Reihenfolge in der Chat-Dateiübersicht umbenannt. Diese Reihenfolge ist keine zusätzliche Behauptung über den exakten Nachrichtenzeitpunkt.
+Die ursprünglich jeweils `image.png` genannten Dateien wurden nur zur eindeutigen Archivierung nach ihrer Reihenfolge in der Dateiliste umbenannt. Diese Reihenfolge ist keine zusätzliche Behauptung über den exakten Nachrichtenzeitpunkt.
 
 | Bild | Inhalt |
 |---|---|
@@ -454,21 +450,18 @@ Die ursprünglich jeweils `image.png` genannten Dateien wurden nur zur eindeutig
 
 ![Pi-SXceiver-Verbindung mit Reset-Inhibit-Pfad](assets/2026-10-06_kicad-dual-baseboard-230v/Pi_SXceiver_Wiring.png)
 
-## 12. Auswertungslücken und bewusste Grenzen
+## 12. Offene Nachweise und bewusste Grenzen
 
-- **Früher Chat nicht vollständig lesbar:** Die Abfrage lieferte nur die genannte Fortsetzung und keinen weiteren Cursor. Die Oberfläche machte Dateianhänge zugänglich, aber nicht zuverlässig den vollständigen frühen Nachrichtentext. Insbesondere die ursprüngliche Frage zu Dateiformaten und sämtliche vorangehenden Nutzerpräferenzen lassen sich nicht lückenlos rekonstruieren. Frühere Fakten wurden daher als Paket-/Artefaktbefunde gekennzeichnet.
-- **Nicht jede Zwischenversion separat nachgeprüft:** v0.1.1 und v0.2 sind vollständig als ZIP gesichert; v0.3.3 als Original-Dateipaar. Das eigenständige v0.1-Originalpaket und die späteren Zwischenlieferungen v0.3/v0.3.1/v0.3.2 wurden nicht zusätzlich in allen Varianten archiviert und nativ gegengeprüft. In v0.1.1 enthaltene ursprüngliche README-/Berichtskopien helfen bei der Rekonstruktion, ersetzen aber keinen vollständigen alten Chat.
+- **Frühe Anforderungen nur teilweise erhalten:** Die verfügbare technische Fortsetzung und die Originalpakete erlauben keine lückenlose Rekonstruktion aller Ausgangsanforderungen. Frühe Festlegungen sind deshalb als Paket-/Artefaktbefunde gekennzeichnet.
+- **Nicht jede Zwischenversion separat nachgeprüft:** v0.1.1 und v0.2 sind vollständig als ZIP gesichert; v0.3.3 als Original-Dateipaar. Das eigenständige v0.1-Originalpaket und die späteren Zwischenlieferungen v0.3/v0.3.1/v0.3.2 wurden nicht zusätzlich in allen Varianten archiviert und nativ gegengeprüft. In v0.1.1 enthaltene ursprüngliche README-/Berichtskopien helfen bei der Rekonstruktion, ersetzen aber keine vollständige Entwicklungshistorie.
 - **PDF-Prüfumfang:** Die v0.2-PDF ist im unveränderten ZIP enthalten; sie wurde hier nicht seitenweise gerendert oder als eigenständiger elektrischer Nachweis geprüft. Verwendet wurden die zugänglichen CAD-, Text-, Tabellen- und Bildquellen.
-- **Keine vollständige Hersteller-Neuverifikation:** Historische Datenblatt-/DER-Verweise sind in den Originalpaketen erhalten. Dieser Archivauftrag hat keinen vollständigen aktuellen Beschaffbarkeits-, Datenblatt-, Isolations- oder Normenreview durchgeführt. Magnetik und mehrere Gehäuse bleiben ausdrücklich offen.
-- **Historische Testnachweise begrenzt:** Erhaltene Textberichte und Assistentenantworten dokumentieren damalige Parser-/Geometrieprüfungen. Die zugrunde liegenden vollständigen historischen Werkzeugprotokolle, ein SPICE-Ergebnis, ein damaliger nativer ERC/DRC und erfolgreiche reale Hardwaretests fehlen. Heutige neue Reports werden separat archiviert.
-- **Ein lokaler anderer PCB-Stand ist kein Ersatz:** Eine unabhängig vorgefundene `Schaltplan.kicad_pcb` trug einen älteren v0.3.2-/420-Footprint-Titel, enthielt aber bereits Leiterbahnen/Vias/Zonen. Ihre Bearbeitungsgeschichte und Zugehörigkeit zum finalen Chatstand waren nicht belegt. Sie blieb unangetastet und wurde nicht mit dem finalen Original verwechselt oder hochgeladen.
-- **Keine Betriebsbehauptung:** Kein Prototyp, Netzanschluss, Lastlauf, RF-Test, STM32-Flash, LXC-Deployment oder realer Backend-Empfang dieses Boards wurde in diesem Archivauftrag ausgeführt oder bestätigt.
-- **Archivierungsankündigung ist kein Publikationsbeleg:** Eine spätere Chatantwort zum Start eines Archivierungsauftrags ersetzt keinen Git-Commit-/Push-/Readback-Nachweis. Dieser Auftrag veröffentlicht die nachprüfbaren Dateien gesondert auf `Archiving`.
+- **Keine vollständige Hersteller-Neuverifikation:** Historische Datenblatt-/DER-Verweise sind in den Originalpaketen erhalten. Die Prüfung vom 06.10.2026 umfasste keinen vollständigen Beschaffbarkeits-, Datenblatt-, Isolations- oder Normenreview durchgeführt. Magnetik und mehrere Gehäuse bleiben ausdrücklich offen.
+- **Historische Testnachweise begrenzt:** Erhaltene Textberichte und Entwurfsnotizen dokumentieren damalige Parser-/Geometrieprüfungen. Die zugrunde liegenden vollständigen historischen Werkzeugprotokolle, ein SPICE-Ergebnis, ein damaliger nativer ERC/DRC und erfolgreiche reale Hardwaretests fehlen. Geprüfte neue Reports werden separat archiviert.
+- **Ein lokaler anderer PCB-Stand ist kein Ersatz:** Eine unabhängig vorgefundene `Schaltplan.kicad_pcb` trug einen älteren v0.3.2-/420-Footprint-Titel, enthielt aber bereits Leiterbahnen/Vias/Zonen. Ihre Bearbeitungsgeschichte und Zugehörigkeit zum finalen Arbeitsstand waren nicht belegt. Sie blieb unangetastet und wurde nicht mit dem finalen Original verwechselt oder hochgeladen.
+- **Keine Betriebsbehauptung:** Kein Prototyp, Netzanschluss, Lastlauf, RF-Test, STM32-Flash, LXC-Deployment oder realer Backend-Empfang dieses Boards wurde am 06.10.2026 ausgeführt oder bestätigt.
 
-## 13. Änderungsumfang, Vertraulichkeit und Veröffentlichung
+## 13. Umgang mit den Arbeitsunterlagen
 
-Dieser Archivauftrag fügt ausschließlich diese Dokumentation und ihren neuen Assetordner hinzu und ergänzt genau einen Eintrag in `Docs/archive/README.md`. Andere Archivdokumente, Software, Firmware, Deploymentdateien, die vorhandene PA-Konstruktion und synchronisierte Projektquellen werden nicht geändert. Es erfolgt kein Merge und kein Force-Push.
+Die Original-CAD-Dateien, ZIP-Pakete und Bilder bleiben historische Arbeitsunterlagen. Neue Schaltungs-, Footprint-, Layout- und Firmwareänderungen gehören in eine eigene versionierte Arbeitsfassung. Der gepinnte Basiscommit und die Prüfsummen trennen den Softwarestand, die Originaldateien und die neuen KiCad-Befunde.
 
-Die veröffentlichten historischen Originale enthalten Konstruktionsdaten, Produktbezeichnungen, öffentliche Quellenlinks und Fehlerbilder. Die Bilder wurden visuell geprüft; sichtbar sind unter anderem lokale Dateipfade, aber keine erkannten Zugangsdaten. Die Textinhalte der übernommenen ZIPs und Berichte wurden zusätzlich auf typische Schlüssel-/Token-/Passwortmuster kontrolliert. Login-, Token-, private Schlüssel- und produktive Konfigurationsdaten wurden nicht übernommen. Nicht benötigte Chat-Rohdaten, Browserzustände und lokale KiCad-Einstellungsdateien sind nicht Teil der Ablage.
-
-Zur Veröffentlichung gehören die Kontrolle des Zielbranches, die Beschränkung aller Commitpfade auf `Docs/archive/`, ein normaler Push nach `Archiving` sowie der anschließende Vergleich von Remote-Commit und Dateiinhalten. Das Ergebnis wird mit dem tatsächlichen Archivcommit zurückgemeldet. Die Prüfsummen und der gepinnte Repository-Basisstand halten historische Dateien, neue Prüfbefunde und aktuelle Softwarequellen nachvollziehbar auseinander.
+Die gesicherten Unterlagen wurden auf typische Schlüssel-/Token-/Passwortmuster geprüft. Sichtbare lokale Dateipfade in den Bildern sind Teil der Fehlernachweise; produktive Zugangsdaten und private Schlüssel wurden nicht übernommen.

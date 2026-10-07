@@ -1,38 +1,34 @@
-# Bost-FlowStation Multi-Cell/Handover: technische Abschlussdokumentation und Portierungsanalyse
+# Brainstorming: Bost-FlowStation-Handover und Portierung nach NetCore
 
-> **Archivstatus:** Dieser Text dokumentiert den gesamten für diesen Chat zugänglichen fachlichen Verlauf und trennt die damalige Analyse ausdrücklich vom am 2026-10-06 erneut geprüften Repository-Stand. Die Archivierung selbst implementiert keine Handover-Funktion in NetCore-Tetra.
+> **Arbeitsstand:** Historische Portierungsanalyse und Repository-Abgleich vom **2026-10-06** sind getrennt. Die Analyse liefert Übernahmekandidaten; eine NetCore-Handover-Implementierung entsteht daraus noch nicht.
 
-## 1. Metadaten und Quellenumfang
+## 1. Rahmen und Quellenumfang
 
 | Feld | Wert |
 |---|---|
 | Thema | Bost-FlowStation: Multi-Cell, Zellwechsel, Call Restore, Late Entry und Übertragbarkeit auf NetCore-Tetra |
-| Ursprünglicher Chattitel | Nicht verfügbar; dieser Archivtitel ist beschreibend |
-| Ursprünglicher Chatlink / Chat-ID | Nicht verfügbar |
-| Erstellungsdatum dieser Abschlussdokumentation | 2026-10-06 |
+| Notizstand | 2026-10-06 |
 | Repository | https://github.com/JanHG98/netcore-tetra |
-| Ausschließlicher Zielbranch | Archiving |
-| Geprüfter Archiving-Ausgangscommit vor diesem Archivschreibvorgang | 0f3433bcf16befea50e565f7d472478890c37610 |
+| Dokumentationsbranch | Archiving |
+| Geprüfter Archiving-Basiscommit | 0f3433bcf16befea50e565f7d472478890c37610 |
 | Zusätzlich lesend geprüfter NetCore-Hauptzweig | main@9116c15d645458f99e236712b67a1ad970432791 |
-| Ursprünglich im Chat geprüfter Bost-Snapshot | 3d476eea |
-| Heute erneut geprüfter Bost-Hauptzweig | main@96671561dfc61af6612f087305ebbed15a7ba5d1 |
+| Historisch geprüfter Bost-Snapshot | 3d476eea |
+| Am Prüfstand 06.10.2026 erneut geprüfter Bost-Hauptzweig | main@96671561dfc61af6612f087305ebbed15a7ba5d1 |
 | Externes Vergleichsrepository | https://github.com/Aitorrio/bost-flowstation |
 | Archivdatei | Docs/archive/2026-10-06_bost-flowstation-seamless-handover-mehrzellen-restore-und-portierungsanalyse.md |
 | Archivindex | Docs/archive/README.md |
-| Schreibumfang | Nur diese Archivdatei und der Archivindex; keine Produktdateien, keine Roadmap außerhalb des Archivs, kein Merge |
 
-### 1.1 Zugänglicher Chatverlauf
+### 1.1 Ausgangspunkt der Portierungsanalyse
 
-Der zugängliche Verlauf dieses Chats besteht fachlich aus zwei Schritten:
+Fragestellung: Lassen sich Mehrzellen-/Handover-Bausteine aus `Aitorrio/bost-flowstation` gezielt nach NetCore portieren?
 
-1. Der Nutzer verwies auf Aitorrio/bost-flowstation und fragte, ob die dort vermutete Seamless-Handover-Implementierung für mehrere Zellen herausgelöst und an NetCore-Tetra angepasst werden kann.
-2. Darauf folgte eine Quellcodeanalyse mit dem damaligen Ergebnis: gezielte Übernahme ja, jedoch im damals geprüften Bost-Snapshot kein hinreichend belegter vollständig integrierter Mehrzellen-Handover. Gefunden wurden Nachbarzellenausstrahlung, Late Entry, lokale Call-Restore-Logik sowie zwei wichtige Restore-Fixes.
+Am historischen Snapshot `3d476eea` waren Nachbarzellenausstrahlung, Late Entry, lokale Call-Restore-Logik und zwei Restore-Fixes erkennbar; ein vollständig integrierter Mehrzellen-Handover war dort nicht hinreichend belegt.
 
-Der heutige Repository-Abgleich zeigt, dass Bost nach dem damals geprüften Snapshot erheblich weiterentwickelt wurde. Diese spätere Entwicklung ist der wichtigste Nachtrag dieser Abschlussdokumentation.
+Der Abgleich vom **2026-10-06** zeigt wesentliche spätere Bost-Entwicklungen. Diese bilden die Grundlage des erweiterten Portierungsplans.
 
 ### 1.2 Anhänge und Bilder
 
-Im aktuellen Chat wurden keine eigenständigen Bilder, Screenshots oder Binäranhänge übermittelt. Deshalb gibt es für diesen Chat keine Chatbilder, die zusätzlich unter Docs/archive/ hätten eingecheckt werden können.
+Eigenständige Screenshots oder Binärartefakte der Portierungsanalyse liegen nicht vor. Maßgeblich sind die genannten Repository-Snapshots und Quellen.
 
 Im Projektkontext sind zahlreiche ETSI-PDFs vorhanden. Für dieses Thema sind insbesondere folgende bereits verfügbare Normen fachlich relevant:
 
@@ -47,13 +43,13 @@ Diese Normen wurden für diesen Archivlauf nur zur Einordnung der im Code verwen
 
 | Status | Bedeutung in diesem Dokument |
 |---|---|
-| **Idee** | Im Chat erwogen, aber weder beschlossen noch im Repository nachgewiesen |
+| **Idee** | Erwogen, aber weder beschlossen noch im Repository nachgewiesen |
 | **Beschlossen/geplant** | Als sinnvoller Projektweg festgelegt, aber noch nicht als Produktcode nachgewiesen |
 | **Implementiert** | Im ausdrücklich genannten Repository/Commit als Code nachgewiesen |
 | **Getestet** | Ein konkreter Test wurde ausgeführt und sein Ergebnis ist belegt |
 | **Im Betrieb bestätigt** | Verhalten wurde an realen NetCore-TETRA-Systemen bzw. Funkgeräten im laufenden Betrieb nachgewiesen |
 
-Quellcode mit Unit-Tests bedeutet in dieser Dokumentation nur, dass Tests im Repository vorhanden sind. Es bedeutet nicht automatisch, dass sie in diesem Archivlauf ausgeführt oder mit realen Funkgeräten bestätigt wurden.
+Quellcode mit Unit-Tests bedeutet in dieser Dokumentation nur, dass Tests im Repository vorhanden sind. Es bedeutet nicht automatisch, dass sie bei der Quellprüfung ausgeführt oder mit realen Funkgeräten bestätigt wurden.
 
 ---
 
@@ -70,15 +66,15 @@ Das Ziel war ausdrücklich **nicht**, den kompletten Fremdfork unbesehen zu merg
 - eine belastbare Trennung zwischen lokalem Call-Identifier und netzweiter Rufidentität,
 - Hinweise darauf, welche Teile wegen der NetCore-Architektur neu adaptiert werden müssen.
 
-Die ursprüngliche Antwort kam zu dem Schluss, dass eine gezielte Portierung sinnvoll ist. Dieser Grundsatz bleibt gültig. Die Einschätzung zum Umfang des bereits vorhandenen Bost-Handover-Codes muss jedoch durch den heutigen Stand deutlich nach oben korrigiert werden.
+Die erste Analyse empfahl eine gezielte Portierung. Das bleibt sinnvoll; der inzwischen deutlich umfangreichere Bost-Handover-Code erfordert aber einen neuen Abgleich.
 
 ---
 
-## 3. Wichtigste Korrektur gegenüber der ursprünglichen Chatantwort
+## 3. Wichtigste Korrektur gegenüber der ursprünglichen Analyse
 
 ### 3.1 Damaliger Stand: Bost bei 3d476eea
 
-Im damals geprüften Snapshot 3d476eea war die Lage tatsächlich so, wie im Chat beschrieben:
+Der historische Snapshot `3d476eea` enthielt:
 
 - crates/tetra-entities/src/net_site/mod.rs existierte dort noch nicht.
 - crates/tetra-entities/src/cmce/subentities/cc_bs/procedures/restoration.rs arbeitete mit dem lokal bekannten call_identifier.
@@ -88,19 +84,19 @@ Im damals geprüften Snapshot 3d476eea war die Lage tatsächlich so, wie im Chat
 
 Damit war die damalige Aussage, dass Nachbarzellen + Restore + Late Entry allein noch keinen vollständigen Seamless-Handover belegen, für genau diesen Snapshot sachlich nachvollziehbar.
 
-### 3.2 Heutiger Stand: Bost main@96671561dfc61af6612f087305ebbed15a7ba5d1
+### 3.2 Geprüfter Stand: Bost main@96671561dfc61af6612f087305ebbed15a7ba5d1
 
 Der aktuelle Bost-Hauptzweig enthält dagegen eine explizite Multi-Cell-Site-Architektur mit eigener Mobility- und Handover-Logik. Insbesondere wurden Ende September 2026 mehrere Phasen ergänzt.
 
-Damit ist die frühere pauschale Aussage **überholt**, Bost besitze keinen integrierten zellübergreifenden Handover-Pfad. Korrekt ist heute:
+Damit ist die frühere pauschale Aussage **überholt**, Bost besitze keinen integrierten zellübergreifenden Handover-Pfad. Korrekt ist am Prüfstand 06.10.2026:
 
 > **Bost besitzt inzwischen konkrete, zusammenhängende Multi-Cell-Mechanismen für Zellreselektion, Zielzellenvorbereitung, Registrierung, Call-Restore, gruppenweiten Medienpfad, standortweite Sprechrechtskoordination, Einzelrufe zwischen Zellen sowie SIP/Asterisk-Anbindung. Diese Mechanismen sind für NetCore sehr wertvolle Referenz- und Portierungskandidaten. Sie sind jedoch wegen der unterschiedlichen NetCore-Systemarchitektur nicht als blindes Komplett-Cherry-Pick zu behandeln.**
 
-Die Bezeichnung seamless darf für NetCore erst nach gemessenen Ende-zu-Ende-Tests mit realen Funkgeräten verwendet werden. Der Quellcode zeigt Kontinuitätsmechanismen; eine gemessene maximale Audio-Unterbrechung wurde in diesem Chat nicht festgelegt oder nachgewiesen.
+Die Bezeichnung seamless darf für NetCore erst nach gemessenen Ende-zu-Ende-Tests mit realen Funkgeräten verwendet werden. Der Quellcode zeigt Kontinuitätsmechanismen; eine gemessene maximale Audio-Unterbrechung wurde nicht festgelegt oder nachgewiesen.
 
 ---
 
-## 4. Historisches Ergebnis des Chats
+## 4. Historisches Ergebnis des Arbeitsstands
 
 ### 4.1 Nachbarzellenausstrahlung
 
@@ -110,7 +106,7 @@ Der wichtige damalige Schluss bleibt gültig: Eine Nachbarzellenliste allein ist
 
 ### 4.2 Late Entry
 
-**Implementiert im Bost-Kontext:** Late Entry ermöglicht einem Teilnehmer, in einen bereits laufenden Gruppenruf einzusteigen. Der Chat identifizierte dies als relevant für den Zellwechsel, weil ein Teilnehmer nach Ankunft in der Zielzelle wieder in einen dort bereits aktiven Gruppenruf einsteigen kann.
+**Implementiert im Bost-Kontext:** Late Entry lässt Teilnehmer in laufende Gruppenrufe einsteigen. Für Zellwechsel ist das relevant, wenn der Teilnehmer in der Zielzelle einen dort bereits aktiven Gruppenruf erreicht.
 
 Die ETSI-Systematik bestätigt die konzeptionelle Trennung: Late Entry ist ein Mechanismus zum Beitritt zu einem bestehenden Point-to-Multipoint-Ruf. Es ist nicht identisch mit der vollständigen Mobility-/Call-Restore-Prozedur eines laufenden Zellwechsels.
 
@@ -120,11 +116,11 @@ Der Commit trägt die Nachricht:
 
     fix(cmce): fix floor and timeslot leaks, add group-call late entry
 
-Er wurde im Chat als unmittelbarer Portierungskandidat identifiziert.
+Er ist ein unmittelbarer Portierungskandidat.
 
 #### Fix A: keine doppelte Sprechfreigabe beim Restore eines Einzelrufs
 
-**Implementiert in Bost, heute in NetCore main weiterhin nicht vollständig vorhanden.**
+**Implementiert in Bost, am Prüfstand 06.10.2026 in NetCore main weiterhin nicht vollständig vorhanden.**
 
 Beim Einzelruf darf ein U-CALL RESTORE nicht einfach erneut Sprechrecht vergeben, wenn der andere Teilnehmer bereits Sprecher ist. Bost prüft den bestehenden floor_holder bzw. ob derselbe Teilnehmer das Sprechrecht schon hält. Bei Simplex wird der interne Floor-Zustand passend gesetzt.
 
@@ -132,7 +128,7 @@ Ohne diese Prüfung besteht das Risiko zweier gleichzeitig als sendeberechtigt b
 
 #### Fix B: Uplink-Inaktivitätsüberwachung nach Gruppenruf-Restore
 
-**Implementiert in Bost, heute in NetCore main weiterhin nicht vollständig vorhanden.**
+**Implementiert in Bost, am Prüfstand 06.10.2026 in NetCore main weiterhin nicht vollständig vorhanden.**
 
 Wenn ein Gruppenruf-Restore dem wiederkehrenden Teilnehmer das Sprechrecht gibt, reicht D-CALL RESTORE allein nicht. Bost erzeugt zusätzlich den passenden Floor-Grant-Pfad bis in die darunterliegende Funksteuerung. Dadurch wird die Uplink-Inaktivitätsüberwachung aktiviert.
 
@@ -142,7 +138,7 @@ Ohne diese Meldung kann ein Teilnehmer nach erfolgreichem Restore schweigen, wä
 
 **Beschlossen/geplant:** Keine komplette Übernahme des Fremdforks. Stattdessen sollten einzelne semantisch klar abgegrenzte Fixes und Protokollteile in NetCore integriert werden.
 
-Diese Entscheidung bleibt auch nach dem heutigen Bost-Abgleich richtig. Neu ist lediglich, dass der Pool wiederverwendbarer Referenzlogik wesentlich größer geworden ist.
+Diese Entscheidung bleibt auch nach dem geprüften Bost-Abgleich richtig. Neu ist lediglich, dass der Pool wiederverwendbarer Referenzlogik wesentlich größer geworden ist.
 
 ---
 
@@ -226,7 +222,7 @@ Bost verwendet eine CallIdMap:
 - standortweit/netzseitig: eigener u16 Identifier
 - Rückabbildung: global -> (CellId, lokaler call_id)
 
-Damit ist genau das Problem adressiert, das im ursprünglichen Chat als Architekturvorgabe identifiziert wurde: Ein lokaler call_id darf nicht als global eindeutige Rufidentität behandelt werden.
+Damit ist genau das Problem adressiert, das im ursprünglichen Entwurf als Architekturvorgabe identifiziert wurde: Ein lokaler call_id darf nicht als global eindeutige Rufidentität behandelt werden.
 
 Für eine verteilte NetCore-Architektur sollte dieser Gedanke eher noch konsequenter umgesetzt werden, z. B. mit einer stabilen internen UUID/Session-ID und separaten lokalen Air-Interface-Call-IDs.
 
@@ -336,7 +332,7 @@ Datei:
 
 **Implementiert im aktuellen Bost.**
 
-Der heutige Bost-Code verarbeitet U-PREPARE:
+Der geprüfte Bost-Code verarbeitet U-PREPARE:
 
 1. MS benennt die gewünschte Nachbarzelle über cell_identifier_ca.
 2. Bost prüft, ob die Zelle tatsächlich als Nachbar bekannt ist.
@@ -466,7 +462,7 @@ Der aktuelle NetCore-Code:
 - erteilt beim Individual-Restore bei gesetztem Request-Flag weiterhin unmittelbar TransmissionGrant::Granted,
 - benachrichtigt nach einem Gruppen-Restore-Grant den Floor-/UMAC-Watchdog nicht über den in Bost ergänzten Pfad.
 
-Damit sind die beiden c71c9ad-Sicherheitsfixes nach heutigem Vergleich weiterhin echte Portierungskandidaten.
+Damit sind die beiden c71c9ad-Sicherheitsfixes nach geprüftem Vergleich weiterhin echte Portierungskandidaten.
 
 ### 7.3 Aktueller NetCore-Nachbarbroadcast
 
@@ -492,7 +488,7 @@ Blob:
 
     d48545a08dd3460a6588b7a8b0c502e52dfffdc4
 
-Im heute geprüften NetCore-Pfad sind die für Bost zentralen U-PREPARE-/U-RESTORE-BS-Abläufe nicht in derselben Form vorhanden. Gefundene DNewCell-, DPrepareFail- und DNwrkBroadcast-Zweige enthalten noch unimplemented_log-Marker.
+Im am Prüfstand 06.10.2026 geprüften NetCore-Pfad sind die für Bost zentralen U-PREPARE-/U-RESTORE-BS-Abläufe nicht in derselben Form vorhanden. Gefundene DNewCell-, DPrepareFail- und DNwrkBroadcast-Zweige enthalten noch unimplemented_log-Marker.
 
 ### 7.5 Fehlende Bost-Site-Module
 
@@ -505,9 +501,9 @@ Das ist ein klarer Hinweis, dass Bosts neuere Mehrzellenarchitektur noch nicht e
 
 ### 7.6 Hinweis zu früherer NetCore-Architektursprache
 
-Im ursprünglichen Chat wurde als Zielbild mit zentralen Komponenten wie Node Gateway, Call Control und Media Switch argumentiert. Beim heutigen Dateipfad-Abgleich existieren die damals sinngemäß genannten Pfade services/node-gateway, services/call-control und services/media-switch so nicht im aktuellen Repository.
+Im ursprünglichen Entwurf wurde als Zielbild mit zentralen Komponenten wie Node Gateway, Call Control und Media Switch argumentiert. Beim geprüften Dateipfad-Abgleich existieren die damals sinngemäß genannten Pfade services/node-gateway, services/call-control und services/media-switch so nicht im aktuellen Repository.
 
-Daraus folgt **nicht**, dass entsprechende Funktionen im Gesamtprojekt nicht existieren. Es bedeutet lediglich, dass die frühere Architekturformulierung nicht als Nachweis für exakt diese aktuellen Dateipfade verwendet werden darf. Vor der tatsächlichen Portierung muss die heute führende NetCore-Komponentenstruktur erneut konkret aufgelöst werden.
+Daraus folgt **nicht**, dass entsprechende Funktionen im Gesamtprojekt nicht existieren. Es bedeutet lediglich, dass die frühere Architekturformulierung nicht als Nachweis für exakt diese aktuellen Dateipfade verwendet werden darf. Vor der tatsächlichen Portierung muss die am Prüfstand 06.10.2026 führende NetCore-Komponentenstruktur erneut konkret aufgelöst werden.
 
 ---
 
@@ -527,7 +523,7 @@ Begründung:
 
 ### 8.2 Priorität 0: Restore-Sicherheitsfixes
 
-**Beschlossen/geplant, noch nicht implementiert in diesem Archivauftrag.**
+**Beschlossen/geplant; eine NetCore-Portierung ist noch nicht implementiert.**
 
 Zuerst übernehmen:
 
@@ -613,7 +609,7 @@ Bosts SiteRelay ist eine wertvolle Referenz, aber nicht automatisch NetCores end
 
 ## 9. Komponenten- und Portierungsmatrix
 
-| Bost-Datei/Komponente | Heutige Funktion | Empfehlung für NetCore |
+| Bost-Datei/Komponente | Geprüfte Funktion | Empfehlung für NetCore |
 |---|---|---|
 | cmce/.../restoration.rs | Floor-Schutz, UMAC-Benachrichtigung, sibling-call-id per GSSI | Gezielt portieren; zuerst Sicherheitsfixes, dann Multi-Cell-Mapping |
 | mle/mle_bs.rs | U-PREPARE, D-NEW-CELL, Forward Registration, U-RESTORE | Protokollnah adaptieren |
@@ -674,7 +670,7 @@ NetCore muss diese Bedingung auf seine eigene Betriebsart abbilden. Ein Ausfall 
 
 ## 11. Durchgeführte Prüfungen und Grenzen
 
-### 11.1 In diesem Archivlauf tatsächlich geprüft
+### 11.1 Bei der Quellprüfung tatsächlich geprüft
 
 **Getestet im Sinne einer Repository-Inspektion, nicht im Funkbetrieb:**
 
@@ -703,7 +699,7 @@ NetCore muss diese Bedingung auf seine eigene Betriebsart abbilden. Ein Ausfall 
 - SIP-Handover,
 - Last-, Paketverlust-, Clock-Drift- oder Backhaul-Failure-Tests.
 
-Daher ist weder der aktuelle Bost-Stand noch eine spätere NetCore-Portierung durch diesen Chat als **im Betrieb bestätigt** zu bewerten.
+Daher ist weder der aktuelle Bost-Stand noch eine spätere NetCore-Portierung durch diesen Arbeitsstand als **im Betrieb bestätigt** zu bewerten.
 
 ### 11.3 Bost-Unit-Tests als verfügbare Referenz
 
@@ -725,7 +721,7 @@ Im aktuellen Bost-SiteSwitch-/MLE-Code sind unter anderem Tests für folgende F�
 - U-PREPARE zu gültiger/ungültiger Nachbarzelle,
 - Forward Registration mit D-NEW-CELL bzw. D-PREPARE-FAIL.
 
-Diese Tests wurden in diesem Archivlauf **nicht ausgeführt**; ihre Existenz ist aber ein wichtiger Portierungs- und Regressionstest-Katalog.
+Diese Tests wurden bei der Quellprüfung **nicht ausgeführt**; ihre Existenz ist aber ein wichtiger Portierungs- und Regressionstest-Katalog.
 
 ---
 
@@ -798,13 +794,13 @@ Zu messen:
 - Core-/Backhaul-Wiederkehr,
 - wiederholtes Ping-Pong an der Zellgrenze.
 
-**Kein fester Seamless-Grenzwert wurde in diesem Chat vereinbart.** Ein solcher Grenzwert muss vor Abnahme definiert und anschließend gemessen werden.
+**Kein fester Seamless-Grenzwert wurde vereinbart.** Ein solcher Grenzwert muss vor Abnahme definiert und anschließend gemessen werden.
 
 ---
 
 ## 13. Wichtige Befehle und Arbeitsabläufe
 
-In diesem Fachchat wurden keine Build-, Installations- oder Deployment-Kommandos auf einer TBS ausgeführt.
+In dieser Ideensammlung wurden keine Build-, Installations- oder Deployment-Kommandos auf einer TBS ausgeführt.
 
 Für eine spätere kontrollierte Portierung sind folgende Arbeitsweisen sinnvoll; sie sind hier **nur vorgeschlagen und nicht ausgeführt**:
 
@@ -814,8 +810,6 @@ Für eine spätere kontrollierte Portierung sind folgende Arbeitsweisen sinnvoll
     cargo test
 
 Ein direktes git cherry-pick des kompletten Multi-Cell-Commitsets wird **nicht** als Standardweg empfohlen. Für die kleinen Restore-Fixes kann ein selektives Patchen sinnvoll sein; für SiteSwitch/Mobility soll zunächst das Zielmodell im aktuellen NetCore-Code festgelegt werden.
-
-Die einzige in diesem Auftrag tatsächlich ausgeführte Änderung ist die Archivdokumentation im Branch Archiving.
 
 ---
 
@@ -829,7 +823,7 @@ Die einzige in diesem Auftrag tatsächlich ausgeführte Änderung ist die Archiv
 
 **Bost-Lösung:** nur Grant, wenn Floor frei oder bereits beim wiederkehrenden Teilnehmer; Simplex-Floor-Zustand passend aktualisieren.
 
-**NetCore heute:** Fix im geprüften main noch nicht vollständig vorhanden.
+**NetCore am Prüfstand 06.10.2026:** Fix im geprüften main noch nicht vollständig vorhanden.
 
 ### 14.2 Hängender Traffic-Slot nach Group Restore
 
@@ -839,7 +833,7 @@ Die einzige in diesem Auftrag tatsächlich ausgeführte Änderung ist die Archiv
 
 **Bost-Lösung:** Downlink TX-granted/FACCH und interne FloorGranted-Benachrichtigung auslösen.
 
-**NetCore heute:** Fix im geprüften main noch nicht vorhanden.
+**NetCore am Prüfstand 06.10.2026:** Fix im geprüften main noch nicht vorhanden.
 
 ### 14.3 Fremder Call-Identifier auf Zielzelle
 
@@ -849,7 +843,7 @@ Die einzige in diesem Auftrag tatsächlich ausgeführte Änderung ist die Archiv
 
 **Aktuelle Bost-Lösung:** im site-linked-Modus aktiven Gruppenruf über other_party_ssi/GSSI finden und auf lokalen Call-Identifier abbilden.
 
-**NetCore heute:** dieses Mapping fehlt im geprüften restoration.rs.
+**NetCore am Prüfstand 06.10.2026:** dieses Mapping fehlt im geprüften restoration.rs.
 
 ### 14.4 Alte Registrierung überschreibt neue Registrierung
 
@@ -857,11 +851,11 @@ Die einzige in diesem Auftrag tatsächlich ausgeführte Änderung ist die Archiv
 
 **Bost-Lösung:** SiteDirectory kennt die aktuell gültige CellId; alte Deregistrierungen werden lokal verarbeitet und gegenüber dem Netz unterdrückt, wenn der Teilnehmer bereits woanders registriert ist.
 
-### 14.5 Ursprüngliche Analyse unterschätzte den heutigen Bost-Stand
+### 14.5 Ursprüngliche Analyse unterschätzte den geprüften Bost-Stand
 
-**Ursache:** Die Chatantwort prüfte den älteren Snapshot 3d476eea. Die maßgeblichen Multi-Cell-Phasen wurden später hinzugefügt.
+**Ursache:** Die erste Analyse bezog sich auf den älteren Snapshot 3d476eea. Die maßgeblichen Multi-Cell-Phasen wurden später hinzugefügt.
 
-**Korrektur:** Diese Abschlussdokumentation trennt strikt den historischen Snapshot vom aktuellen Bost main@96671561dfc61af6612f087305ebbed15a7ba5d1.
+**Korrektur:** Diese Projektnotizen trennt strikt den historischen Snapshot vom aktuellen Bost main@96671561dfc61af6612f087305ebbed15a7ba5d1.
 
 ---
 
@@ -889,7 +883,7 @@ Late Entry ist für Gruppenrufwiedereintritt wertvoll. Für echte Mobility müss
 
 **Verworfen.**
 
-Bosts heutige CallIdMap bestätigt die Notwendigkeit einer Kontext-/Global-ID-Schicht.
+Bosts geprüfte CallIdMap bestätigt die Notwendigkeit einer Kontext-/Global-ID-Schicht.
 
 ---
 
@@ -970,11 +964,11 @@ Repository:
 
     https://github.com/Aitorrio/bost-flowstation
 
-Heute geprüfter Hauptzweig:
+Am Prüfstand 06.10.2026 geprüfter Hauptzweig:
 
     96671561dfc61af6612f087305ebbed15a7ba5d1
 
-Historisch im Chat geprüfter Snapshot:
+Historisch geprüfter Snapshot:
 
     3d476eea
 
@@ -1001,7 +995,7 @@ Wichtige Dateien:
 
 ### NetCore-Tetra
 
-Heute lesend geprüfter Hauptzweig:
+Am Prüfstand 06.10.2026 lesend geprüfter Hauptzweig:
 
     main@9116c15d645458f99e236712b67a1ad970432791
 
@@ -1017,7 +1011,7 @@ Relevante Dateien:
     FAST_REALTIME_MEDIA.md
     ROADMAP.md
 
-Die letztgenannten NetCore-Dokumente wurden als vorhandene Repository-Artefakte festgestellt; ihr kompletter Inhalt wurde in diesem Archivlauf nicht als Ersatz für die direkte Quellcodeprüfung verwendet.
+Die letztgenannten NetCore-Dokumente wurden als vorhandene Repository-Artefakte festgestellt; ihr kompletter Inhalt wurde bei der Quellprüfung nicht als Ersatz für die direkte Quellcodeprüfung verwendet.
 
 ---
 
@@ -1040,15 +1034,15 @@ Die letztgenannten NetCore-Dokumente wurden als vorhandene Repository-Artefakte 
 
 **Bost:** Die aktuelle externe Implementierung enthält inzwischen einen umfangreichen Multi-Cell-SiteSwitch, Mobility-Vorbereitung, U-PREPARE/U-RESTORE, Call-ID-Mapping, Cross-Cell-Gruppen-/Einzelrufe und Asterisk-SiteRelay.
 
-**NetCore:** Nachbarzellenausstrahlung und lokaler Call-Restore sind vorhanden; die hier untersuchten neueren Bost-Multi-Cell-Komponenten und die zwei Restore-Fixes sind im heutigen main nicht vollständig nachgewiesen.
+**NetCore:** Nachbarzellenausstrahlung und lokaler Call-Restore sind vorhanden; die hier untersuchten neueren Bost-Multi-Cell-Komponenten und die zwei Restore-Fixes sind im geprüften main nicht vollständig nachgewiesen.
 
 ### Getestet
 
-In diesem Archivlauf wurde der Quellcode und die Commit-Historie geprüft. Die Bost-Repositories enthalten passende Unit-Tests, diese wurden hier jedoch nicht ausgeführt.
+Bei der Quellprüfung wurde der Quellcode und die Commit-Historie geprüft. Die Bost-Repositories enthalten passende Unit-Tests, diese wurden hier jedoch nicht ausgeführt.
 
 ### Im Betrieb bestätigt
 
-Für NetCore ist in diesem Chat kein realer Multi-Cell-Handover im Funkbetrieb bestätigt.
+Für NetCore ist kein realer Multi-Cell-Handover im Funkbetrieb bestätigt.
 
 ---
 

@@ -1,28 +1,27 @@
-# NetCore-Tetra – SXceiver: LED-Beobachtung, GPIO-Pinbelegung und ausstehende Live-Diagnose
+# Brainstorming: NetCore-Tetra – SXceiver: LED-Beobachtung, GPIO-Pinbelegung und ausstehende Live-Diagnose
 
-## 1. Metadaten und Geltungsbereich
+Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
+
+## 1. Projektstand und Geltungsbereich
 
 | Feld | Wert |
 | --- | --- |
 | Thema | Zuordnung der am SXceiver-/GPIO-Aufbau leuchtenden LEDs; Unterschied zwischen Pegelanzeige und tatsächlicher Pinbelegung; Abgleich mit SoapySX und Vorbereitung der Live-Diagnose |
-| Ursprünglicher Chattitel | Für diesen sichtbaren Verlauf nicht zuverlässig verfügbar |
-| Chatlink / eindeutige Chat-ID | Nicht verfügbar; kein Link rekonstruiert oder erfunden |
-| Sichtbarer fachlicher Verlauf | 03.10.2026; Archivauftrag vom 06.10.2026 |
+| Sichtbarer fachlicher Verlauf | 03.10.2026; Prüfdurchlauf vom 06.10.2026 |
 | Erstellungsdatum dieser Zusammenfassung | **2026-10-06**, Europe/Berlin |
 | Zielrepository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
-| Ausschließlicher Schreibbranch | **Archiving** |
-| Ausschließlicher Schreibbereich | **Docs/archive/** |
+| Ablagebranch | **Archiving** |
+| Archivpfad | **Docs/archive/** |
 | Geprüfter Archivstand bei Beginn | `000fad98419f6db1d8d3815f8c7c916375b02a41` |
 | Zusätzlich geprüfter Produktstand | `main@9116c15d645458f99e236712b67a1ad970432791` |
 | Geprüfter SXceiver-Upstream | `tejeez/sxxcvr main@9705147dd8c189625071f3f163ea56119bda4a05` |
-| Nachweisumfang | Nutzerbeobachtung, historischer Beratungsstand und heutige statische Quellprüfung; **keine neue Messung oder Abnahme am Raspberry Pi** |
-| Archivcommit | Über die Git-Historie dieser Datei und die Abschlussmeldung des Archivauftrags feststellbar; kein vorweggenommener Commit-Hash |
+| Nachweisumfang | Beobachtung am Aufbau, historischer Beratungsstand und geprüfte statische Quellprüfung; **keine neue Messung oder Abnahme am Raspberry Pi** |
 
 ### Abgrenzung zu bereits vorhandenen Archiven
 
-Die vorhandene [Dokumentation zu SXceiver-GPIO, Sensorik, TFT und modularem Hardwareausbau](2026-10-05_sxceiver-gpio-sensorik-tft-und-modularer-hardwareausbau.md) enthält dieselbe LED-Liste und einen wesentlich weitergehenden Hardware-Entwurf. Sie nennt den überlieferten Chattitel „Sxceiver Verkabelung Prüfen“, aber keinen Chatlink. Eine eindeutige gemeinsame Chat-ID mit dem hier vorliegenden Verlauf ließ sich nicht feststellen.
+Die [Dokumentation zu SXceiver-GPIO, Sensorik, TFT und modularem Hardwareausbau](2026-10-05_sxceiver-gpio-sensorik-tft-und-modularer-hardwareausbau.md) enthält dieselbe LED-Liste und einen weitergehenden Hardware-Entwurf. Die vorliegenden Notizen konzentrieren sich auf die unmittelbare Beobachtung, Pinzuordnung und ausstehende Live-Diagnose.
 
-Deshalb wird diese ältere Datei **nicht überschrieben**. Dieses Dokument archiviert den unmittelbar zugänglichen LED-/Pinbelegungs-Verlauf, ergänzt einen datierten Quellabgleich und verweist auf die bereits archivierten weitergehenden Ideen. Diese Abgrenzung verhindert, dass fremde oder nur sekundär überlieferte Festlegungen ungeprüft zu Entscheidungen dieses Chats werden.
+Der weitergehende Hardwareentwurf bleibt als eigener Planungsstand erhalten. Seine zusätzlichen Festlegungen werden nicht ohne Beleg auf die unmittelbar beobachtete Pinbelegung übertragen.
 
 Ebenfalls verwandt ist das [Archiv zum GPIO-Breakout und zur Jumpersteuerung](2026-10-05_basisstation-gpio-breakout-jumper-steuerung-sxceiver.md). Beide älteren Zusammenfassungen sind Sekundärquellen, keine Originalfotos und keine Messprotokolle.
 
@@ -38,7 +37,7 @@ Ebenfalls verwandt ist das [Archiv zum GPIO-Breakout und zur Jumpersteuerung](20
 
 ## 2. Ziel, Ausgangslage und behandelte Themen
 
-Jan meldete, an welchen beschrifteten Anschlüssen seines SXceiver-/GPIO-Aufbaus LEDs leuchten. Die Formulierung „zumindest leuchten die LED“ enthielt bereits einen Vorbehalt: Aus dem sichtbaren Zustand sollte zunächst abgeleitet werden, welche Anschlüsse der SXceiver tatsächlich benutzt.
+Beobachtet wurden leuchtende LEDs an den unten aufgeführten beschrifteten Anschlüssen des SXceiver-/GPIO-Aufbaus. Die Frage war, welche Anschlüsse der SXceiver tatsächlich verwendet. LED-Leuchten allein belegt die Pinbelegung nicht.
 
 Der konkrete Anlass war die weitere Pinplanung für eine NetCore-Tetra-Basisstation. Vor zusätzlichen GPIO-Funktionen muss zwischen Versorgung, Busleitungen, dedizierten SXceiver-Steuerleitungen, durch das Betriebssystem reservierten Anschlüssen und nur möglicherweise freien Pins unterschieden werden.
 
@@ -54,11 +53,11 @@ Behandelt wurden:
 
 Nicht Gegenstand einer nachgewiesenen Umsetzung waren ein neues PCB, eine Sensorinstallation, eine Displayanbindung, ein GPIO-Treiberumbau oder ein Deployment.
 
-## 3. Historischer Gesprächsstand
+## 3. Bisherige Beobachtung und Diagnose
 
-### 3.1 Unmittelbare Nutzerbeobachtung
+### 3.1 Unmittelbare Beobachtung am Aufbau
 
-Die Liste wird in der vom Nutzer angegebenen Reihenfolge erhalten. „Links“ und „rechts“ beziehen sich auf seine Ansicht des Boards. Die Listen sind **keine vollständige geometrische Darstellung gegenüberliegender Headerkontakte**.
+Die Liste behält die Reihenfolge der Beobachtung bei. „Links“ und „rechts“ beziehen sich auf die Ansicht des Boards. Sie bildet keine vollständige Geometrie gegenüberliegender Headerkontakte ab.
 
 **Links:**
 
@@ -85,11 +84,11 @@ IO20
 IO21
 ~~~
 
-Nachweisstufe: **im realen Aufbau vom Nutzer beobachtetes Leuchten**. Nicht mitgeliefert wurden Spannungsmesswerte, Strommesswerte, Oszillogramme, ein Schaltplan des LED-Breakouts, LED-Helligkeiten oder eine vollständige Auflistung der dunklen LEDs.
+Nachweisstufe: **im realen Aufbau am Aufbau beobachtetes Leuchten**. Nicht mitgeliefert wurden Spannungsmesswerte, Strommesswerte, Oszillogramme, ein Schaltplan des LED-Breakouts, LED-Helligkeiten oder eine vollständige Auflistung der dunklen LEDs.
 
 ### 3.2 Reaktion und fachliche Korrektur
 
-Die Antwort stellte klar:
+Fachliche Einordnung:
 
 1. Eine leuchtende LED ist kein hinreichender Beleg, dass der SXceiver diesen GPIO verwendet.
 2. Eine dunkle LED ist kein hinreichender Beleg, dass ein Anschluss frei ist.
@@ -97,7 +96,7 @@ Die Antwort stellte klar:
 4. Versorgungsspannung an einem Pin ist kein Nachweis des Stromverbrauchs des SXceivers an diesem Pin.
 5. Der offizielle Treiber benötigt weitere Anschlüsse, die in der beobachteten Liste fehlen.
 
-Die historische Antwort ordnete die Standardbelegung für Hardwareversion 1.2 ein und schlug zwei lesende Befehle vor:
+Die Standardbelegung wurde für Hardwareversion 1.2 eingeordnet. Als lesende Diagnose sind zwei Befehle vorgeschlagen:
 
 ~~~bash
 sudo pinctrl get
@@ -106,7 +105,7 @@ sudo gpioinfo
 
 ### 3.3 Endpunkt des zugänglichen Verlaufs
 
-Eine Antwort mit den Ausgaben dieser Befehle ist **nicht vorhanden**. Es gibt daher keine bestätigte Auflösung, welche GPIO auf Jans konkretem Pi durch den Kernel, SoapySX, andere Overlays oder weitere Software beansprucht werden.
+Ausgaben dieser Befehle liegen **nicht vor**. Es gibt daher keine bestätigte Auflösung, welche GPIO auf dem konkreten Pi durch den Kernel, SoapySX, andere Overlays oder weitere Software beansprucht werden.
 
 Die im Projektkontext genannte SXceiver-Version 1.2 war die Arbeitsannahme. Eine neu ausgelesene HAT-Kennung oder fotografisch belegte Boardrevision liegt in diesem sichtbaren Verlauf nicht vor.
 
@@ -140,7 +139,7 @@ Die frühere Kurzform „LED zeigt Pegel“ muss zudem auf das unbekannte Anzeig
 
 ### 5.1 Arbeitsmatrix für HW 1.2
 
-| Funktion | BCM-GPIO | Physischer Pin | In der Nutzerliste enthalten? | Konsequenz für Erweiterungen |
+| Funktion | BCM-GPIO | Physischer Pin | In der Beobachtungsliste enthalten? | Konsequenz für Erweiterungen |
 | --- | ---: | ---: | --- | --- |
 | SX Reset | 5 | 29 | Nein | Reservieren |
 | SPI0 CE0 | 8 | 24 | Ja | Reservieren |
@@ -168,7 +167,7 @@ Versorgung und Masse sind gesondert zu erfassen. Die HAT-ID-Anschlüsse GPIO0/1 
 
 Der Code prüft ausdrücklich auf `0x0100`; alle anderen Werte gelangen in den Zweig für 22/23. Das ist eine Beschreibung der implementierten Bedingung, **keine automatische Kompatibilitätszusage für unbekannte künftige Hardwareversionen**.
 
-### 5.3 Bei der heutigen Prüfung präzisiert: zwei verschiedene Versionsdefaults
+### 5.3 Bei der geprüften Prüfung präzisiert: zwei verschiedene Versionsdefaults
 
 Es sind zwei unterschiedliche Defaults zu unterscheiden:
 
@@ -177,7 +176,7 @@ Es sind zwei unterschiedliche Defaults zu unterscheiden:
 
 Beide führen in diesen Quellen zu RX23/TX22, ersetzen aber nicht die Feststellung der realen Boardrevision. Die verkürzte Aussage „Default ist 1.2“ ist nur für das Makefile korrekt.
 
-### 5.4 Bei der heutigen Prüfung präzisiert: RX/TX-Control ist keine einfache Funkaktivitätsanzeige
+### 5.4 Bei der geprüften Prüfung präzisiert: RX/TX-Control ist keine einfache Funkaktivitätsanzeige
 
 Der Treiber setzt beim Initialisieren RX-Control und TX-Control auf 1. Für die Einstellung `PA` gilt:
 
@@ -220,23 +219,23 @@ Weitere konkret im Code vorhandene Parameter:
 
 Die tatsächliche Zuordnung von `gpiochip0` zum Header muss zum verwendeten Pi und Kernel passen. Aus dem Quellpfad allein wurde keine aktuelle Zuordnung auf Jans Zielgerät nachgewiesen.
 
-Für diese lokale Pinprüfung wurden **keine TCP-/UDP-Ports, Funkfrequenzen, MCC/MNC, ISSI oder neuen systemd-Dienste festgelegt**. Solche Werte aus anderen Projektchats werden hier nicht als Ergebnis dieser Untersuchung übernommen.
+Für diese lokale Pinprüfung wurden **keine TCP-/UDP-Ports, Funkfrequenzen, MCC/MNC, ISSI oder neuen systemd-Dienste festgelegt**. Solche Werte aus anderen Projektunterlagen werden hier nicht als Ergebnis dieser Untersuchung übernommen.
 
 ## 7. Erreichter Entwicklungs- und Betriebsstand
 
 | Gegenstand | Status | Nachweis und Grenze |
 | --- | --- | --- |
-| Genannte LEDs leuchten | **Im Betrieb beobachtet** | Nutzerbericht; keine eigene Messung oder Bildprüfung |
+| Genannte LEDs leuchten | **Im Betrieb beobachtet** | Betreiberbericht; keine eigene Messung oder Bildprüfung |
 | GPIO5 als Reset | **Implementiert, statisch geprüft** | SoapySX-Quellcode; kein aktueller Live-Readback |
 | RX/TX 23/22 für HW 1.1/1.2 | **Implementiert, statisch geprüft** | SoapySX plus EEPROM-Makefile |
 | SPI0- und I²S-Pfad | **Implementiert, statisch geprüft** | Treiber und Overlay |
 | Erklärung der LED-Aussagegrenzen | **Fachliche Einordnung** | Keine elektrische Abnahme des Anzeigeboards |
-| `pinctrl`-/`gpioinfo`-Diagnose | **Geplant, vom Assistenten vorgeschlagen** | Noch keine Ausgabe im zugänglichen Verlauf |
+| `pinctrl`-/`gpioinfo`-Diagnose | **Geplant, als Diagnosevorschlag** | Noch keine Ausgabe im zugänglichen Verlauf |
 | Verbindliche Liste freier GPIO | **Offen** | Reale Konfiguration und Verdrahtung fehlen |
 | Zusätzliche Sensorik / Anzeige / Aktoren | **Idee bzw. angrenzende Planung** | Keine Umsetzung in diesem sichtbaren Verlauf |
 | Neue Hardwaretests oder On-Air-Abnahme | **Nicht getestet** | Kein Pi-/HAT-Zugriff in dieser Archivierung |
 
-Es wurde durch diesen Chat kein Firmware-/Treiberfix vorgenommen. Die Archivierung verändert ausschließlich Dokumentation und Index.
+Es wurde für diesen Entwicklungsstand kein Firmware-/Treiberfix vorgenommen. Die Archivierung verändert ausschließlich Dokumentation und Index.
 
 ## 8. Zusätzlich geprüfter Repository-Stand am 06.10.2026
 
@@ -258,7 +257,7 @@ Wichtige Fundstellen in `SoapySX.cpp` sind `read_hat_info()`, der Konstruktor `S
 
 ### 8.2 Ergebnis des historischen/aktuellen Vergleichs
 
-| Historische Aussage | Heutiger Befund |
+| Historische Aussage | Geprüfter Befund |
 | --- | --- |
 | Standard-SXceiver benötigt GPIO5 für Reset | Bestätigt |
 | HW 1.2 verwendet TX22/RX23 | Bestätigt; zusätzlich HW-1.0-Abweichung dokumentiert |
@@ -272,7 +271,7 @@ Wichtige Fundstellen in `SoapySX.cpp` sind `read_hat_info()`, der Konstruktor `S
 
 ### 8.3 Angrenzender Hardware-Gateway-Stand
 
-Auf `main@9116c15d645458f99e236712b67a1ad970432791` sind ein Hardware Gateway und ein Beispiel-Edge-Agent vorhanden. Sie sind mögliche spätere Integrationspunkte, **kein Nachweis, dass die in diesem Chat betrachteten Pins bereits für Sensorik verwendet werden**.
+Auf `main@9116c15d645458f99e236712b67a1ad970432791` sind ein Hardware Gateway und ein Beispiel-Edge-Agent vorhanden. Sie sind mögliche spätere Integrationspunkte, **kein Nachweis, dass die für diesen Entwicklungsstand betrachteten Pins bereits für Sensorik verwendet werden**.
 
 Die README nennt:
 
@@ -286,7 +285,7 @@ Der tatsächlich gelesene Beispielagent `examples/edge-agent/netcore-edge-agent.
 
 **Folge:** Die Beispieltelemetrie ist kein Messnachweis für einen externen Sensor, ein echtes Spannungsmessmodul oder freie SXceiver-GPIO. Vor einem Hardwarepilot sind reale Erfassung und Kennzeichnung der Datenqualität nötig.
 
-### 8.4 Heutige Gesamtprioritäten
+### 8.4 Geprüfte Gesamtprioritäten
 
 Die gelesene zentrale `ROADMAP.md` auf main nennt **Z01.1** als ersten Gesamtprojektschritt. Reale Rack-Sensoren und RF-Messhardware sind dem weiteren praktischen Ausbau **Z08** zugeordnet.
 
@@ -294,7 +293,7 @@ Die Pinprüfung ist eine notwendige Vorarbeit für einen solchen Hardwarepilot. 
 
 ## 9. Befehle und Diagnoseablauf
 
-### 9.1 Tatsächlich im historischen Chat vorgeschlagen, nicht nachweislich ausgeführt
+### 9.1 Tatsächlich im historischen Entwurf vorgeschlagen, nicht nachweislich ausgeführt
 
 Auf dem Raspberry Pi bei laufender Basisstation:
 
@@ -353,18 +352,18 @@ Es wurden keine GPIO-Schreibbefehle, EEPROM-Neuprogrammierungen, Installationen,
 | Kein Live-Readback | Ausgaben fehlen | Vorgeschlagene lesende Diagnose nachholen |
 | Unbekannte Anzeigeschaltung | Originalfoto/Schaltplan fehlen | LED-Polarität und elektrische Belastung nicht abschließend bewertbar |
 
-Ein tatsächlich aufgetretener Hardwarefehler, eine Pin-Kollision oder eine durch Zusatzhardware verursachte Funkstörung wurde in diesem sichtbaren Chat **nicht nachgewiesen**. Es gibt entsprechend keinen hier erfolgreich ausgeführten Reparaturablauf.
+Ein tatsächlich aufgetretener Hardwarefehler, eine Pin-Kollision oder eine durch Zusatzhardware verursachte Funkstörung wurde in dem dokumentierten Aufbau **nicht nachgewiesen**. Es gibt entsprechend keinen hier erfolgreich ausgeführten Reparaturablauf.
 
-Im älteren Sensorik-/TFT-Archiv wird zusätzlich eine frühere Verwechslung mit GPIO25 als Reset beschrieben. Diese frühere Originalaussage ist im hier sichtbaren Verlauf nicht enthalten. Unabhängig davon belegt die heutige Quellprüfung **GPIO5**; der sekundär überlieferte GPIO25-Vorschlag darf nicht als gültige SXceiver-Vorgabe übernommen werden.
+Im älteren Sensorik-/TFT-Archiv wird zusätzlich eine frühere Verwechslung mit GPIO25 als Reset beschrieben. Diese frühere Originalaussage ist im hier sichtbaren Verlauf nicht enthalten. Unabhängig davon belegt die geprüfte Quellprüfung **GPIO5**; der sekundär überlieferte GPIO25-Vorschlag darf nicht als gültige SXceiver-Vorgabe übernommen werden.
 
 ## 11. Tests, Prüfungen und ihre Grenzen
 
 | Prüfung | Tatsächliches Ergebnis | Aussagegrenze |
 | --- | --- | --- |
-| Nutzerbeobachtung der LEDs | Konkrete Liste liegt vor | Keine Messung, kein verifiziertes Bild, kein zeitlicher Signalverlauf |
+| Beobachtung am Aufbau der LEDs | Konkrete Liste liegt vor | Keine Messung, kein verifiziertes Bild, kein zeitlicher Signalverlauf |
 | Historische Prüfung offizieller Quellen | Reset/SPI/I²S/RX/TX zugeordnet | Standardhardware und Quellen, keine Live-Konfiguration |
 | Erneutes Lesen des Zielbranches | Archiving und vorhandener Index zugänglich | Belegt Repositoryzugriff, nicht TBS-Zugriff |
-| Heutige Quellprüfung der drei SX-Dateien | GPIO5, SPI0.0, RX/TX-Versionszweige und Overlay bestätigt | Kein Build und kein Hardwaretest |
+| Geprüfte Quellprüfung der drei SX-Dateien | GPIO5, SPI0.0, RX/TX-Versionszweige und Overlay bestätigt | Kein Build und kein Hardwaretest |
 | Vergleich der Git-Blob-IDs | Drei Dateien in Archiving/main/Upstream identisch | Keine Vollrepo- oder Installationsgleichheit |
 | Prüfung des Beispiel-Edge-Agenten | CPU-Temperatur plus feste/simulierte weitere Werte | Kein Nachweis externer Hardwaremessung |
 | `pinctrl` und `gpioinfo` auf der TBS | **Nicht durchgeführt / kein Ergebnis verfügbar** | Freigabe zusätzlicher Pins bleibt offen |
@@ -374,7 +373,7 @@ Für reine Archivdokumentation wurde kein neuer Software-/RF-Testlauf gestartet.
 
 ## 12. Ersetzte Annahmen und verbleibende Ideen
 
-### Im sichtbaren Chat fachlich ersetzt
+### Bei der bisherigen Diagnose fachlich ersetzt
 
 - „Leuchtend“ als Synonym für „vom SXceiver benutzt“.
 - „Nicht in der LED-Liste“ als Synonym für „frei“.
@@ -388,9 +387,9 @@ Für reine Archivdokumentation wurde kein neuer Software-/RF-Testlauf gestartet.
 | Zusätzliche Funktionen an wirklich freien GPIO | Ziel der weiteren Pinplanung; noch keine freigegebene Verdrahtung |
 | I²C-Nutzung von SDA/SCL | Möglicher Ausbaupfad nach Prüfung; keine in diesem Verlauf bestätigte Freigabe |
 | Sensorik, Aktoren, passive Beschaltung, TFT/LCD | Im verlinkten älteren Hardwarearchiv ausgearbeitet; hier als angrenzende Planung referenziert |
-| Modularer Aufbau aus Fertigmodulen statt sofortiger eigener PCB | Als spätere Nutzerentscheidung im älteren Archiv überliefert; Originalturns in diesem sichtbaren Verlauf fehlen |
-| RF-Leistungs-/Reflexionsmessung, Lüfter-/Temperatur-/Versorgungsüberwachung | Angrenzende Projektideen; keine Umsetzung durch diesen Chat |
-| Abgleich derselben LED-Liste zwischen Archiven | Dokumentationsaufgabe: bei später verfügbarem Chatlink gemeinsame Herkunft klären und Doppelungen gezielt konsolidieren |
+| Modularer Aufbau aus Fertigmodulen statt sofortiger eigener PCB | Als spätere Projektentscheidung im älteren Archiv überliefert; Originalnotizen in diesem sichtbaren Verlauf fehlen |
+| RF-Leistungs-/Reflexionsmessung, Lüfter-/Temperatur-/Versorgungsüberwachung | Angrenzende Projektideen; keine Umsetzung für diesen Entwicklungsstand |
+| Abgleich derselben LED-Liste zwischen Archiven | Dokumentationsaufgabe: bei später verfügbarem Quellenbeleg die gemeinsame Herkunft klären und Doppelungen gezielt konsolidieren |
 
 Keine dieser Ideen wird allein durch ihre Aufnahme als implementiert oder in Betrieb bestätigt markiert.
 
@@ -406,27 +405,27 @@ Die folgenden Kennungen sind **lokale Archiv-Arbeitspunkte**, keine neu eingefü
 | G04 | Dunkle und leuchtende Pins gleichermaßen bewerten | G03 | Keine Freigabe allein wegen LED-Zustand oder `unused` |
 | G05 | Erweiterungskandidaten SDA/SCL und GPIO4/6/7 gezielt klären | G03/G04 | Nutzen und Konflikte des konkreten Aufbaus belegt; keine generische freie Liste |
 | G06 | Originalfoto nachreichen und archivieren | Zugriff auf eindeutig zugehörige Originaldatei | Original unter Docs/archive/assets/ abgelegt, Quelle/Zuordnung dokumentiert |
-| G07 | Danach kleinen Sensor-/Anzeige-Pilot planen | Freigegebene Pins; heutiger Z08-Kontext beachten | Echte Messwerte, Fehlerverhalten und störungsfreier RF-Betrieb nachgewiesen |
+| G07 | Danach kleinen Sensor-/Anzeige-Pilot planen | Freigegebene Pins; geprüfter Z08-Kontext beachten | Echte Messwerte, Fehlerverhalten und störungsfreier RF-Betrieb nachgewiesen |
 
-**Unmittelbar nächster Schritt dieses Chats:** G01/G02, also Hardwarestand feststellen und die bereits angeforderten lesenden Ausgaben liefern. Ein neuer PCB-Entwurf ist dafür keine Voraussetzung.
+**Unmittelbar nächster Schritt:** G01/G02, also Hardwarestand feststellen und die bereits angeforderten lesenden Ausgaben liefern. Ein neuer PCB-Entwurf ist dafür keine Voraussetzung.
 
 Weitere Prioritäten, Termine, Bauteilbestellungen oder ein verbindliches Displayinterface wurden im sichtbaren Verlauf nicht vereinbart.
 
-## 14. Bilder, Anhänge und Auswertungslücken
+## 14. Bilder, Anhänge und offene Belege
 
 ### 14.1 Ursprüngliches Boardbild
 
-Im übergebenen Gesprächskontext steht vor der Pinliste ein **Bildplatzhalter**. Es wurde jedoch kein eindeutiger Dateiname, Download-Identifier oder originales Bild-Binary dieses Fotos mitgeliefert.
+Ein Boardbild ist in den frühen Notizen erwähnt, aber die originale Bilddatei und ein eindeutiger Dateibeleg fehlen.
 
-Für diesen Archivauftrag wurden folgende Zugänge geprüft:
+Für die Quellenprüfung vom 06.10.2026 wurden folgende Zugänge geprüft:
 
 - Die synchronisierten Projektquellen enthalten die bereitgestellten ETSI-PDFs, aber kein zugehöriges Boardfoto.
 - Die Suche nach „SXceiver“ bzw. „GPIO Breakout“ lieferte kein eindeutig zugehöriges Originalbild.
-- Die zeitlich eingegrenzte Liste hochgeladener Bilder um den sichtbaren Gesprächsbeginn enthielt keinen eindeutig zuordenbaren SXceiver-/LED-Nachweis.
-- Der Versuch, Chatmetadaten über die Chatliste abzurufen, schlug fehl. Ein vollständiger Rohchat samt Bildreferenz konnte so nicht ergänzt werden.
+- Die zeitlich eingegrenzte Liste hochgeladener Bilder um den sichtbaren Beginn der Arbeitsphase enthielt keinen eindeutig zuordenbaren SXceiver-/LED-Nachweis.
+
 - Auch das bereits vorhandene verwandte Sensorik-/TFT-Archiv dokumentiert ein fehlendes Originalbild.
 
-**Ergebnis:** In diesem Auftrag konnte kein Originalbild dieses sichtbaren Chats nach GitHub hochgeladen werden. Die schriftliche LED-Liste ist erhalten. Fremde Produktbilder, vorhandene SVG-Transkriptionen anderer Chats oder neu erzeugte Bilder wurden nicht als Ersatzoriginal ausgegeben.
+**Bildnachweis offen:** Das Originalfoto konnte nicht wiederhergestellt werden. Die schriftliche LED-Liste ist erhalten; andere Produktbilder oder Transkriptionen ersetzen das Originalfoto nicht.
 
 ### 14.2 Bereitgestellte PDFs
 
@@ -434,27 +433,25 @@ Für den Projektkontext sind 25 ETSI-/TETRA-PDF-Dateien bereitgestellt, darunter
 
 ### 14.3 Vollständigkeitsgrenze
 
-Ausgewertet wurden die unmittelbar zugänglichen Nachrichten, die schriftliche LED-Liste, die historische Assistentenantwort, damalige abrufbare Quellenbefunde und der heutige abgegrenzte Repository-Abgleich.
+Grundlagen sind die schriftliche LED-Liste, die historische Pinzuordnung, die damaligen Quellenbefunde und der abgegrenzte Repository-Abgleich vom 06.10.2026.
 
 Nicht verfügbar bzw. nicht nachgewiesen sind:
 
-- vollständige ursprüngliche Chatmetadaten und ein eindeutiger Chatlink;
 - das Originalfoto einschließlich seiner exakten Boardorientierung;
-- gegebenenfalls weitere nicht übergebene frühere oder spätere Turns;
+- gegebenenfalls zusätzliche frühere oder spätere Arbeitsnotizen;
 - die tatsächlichen Diagnoseausgaben vom Pi;
 - installierte Treiberversion, konkrete Pinmux-/Overlay-Konfiguration und bestätigte reale HAT-Revision;
 - Schaltplan/elektrische Eigenschaften des LED-Breakouts;
 - Nachweis einer Sensor-/Displayinstallation oder einer Freigabe weiterer Pins.
 
-Diese Dokumentation behauptet deshalb keine vollständige Rekonstruktion unbekannter Chatteile und keine Hardwareabnahme.
+Die Quellenlücken lassen keine vollständige Rekonstruktion des Aufbaus und keine Hardwareabnahme zu.
 
 ## 15. Quellen und Querverweise
 
 ### Unmittelbare Quellen
 
-- **Q1:** Nutzerliste der leuchtenden Boardanschlüsse vom 03.10.2026; in Abschnitt 3 wörtlich erhalten.
-- **Q2:** Assistentenantwort vom 03.10.2026 mit Pinzuordnung und Vorschlag `sudo pinctrl get` / `sudo gpioinfo`.
-- **Q3:** Archivierungsauftrag vom 06.10.2026; Schreibfreigabe ausschließlich für Archiving und Docs/archive/.
+- **Q1:** Beobachtungsliste der leuchtenden Boardanschlüsse vom 03.10.2026; in Abschnitt 3 in der ursprünglichen Reihenfolge erhalten.
+- **Q2:** Technische Pinzuordnung vom 03.10.2026 und Diagnosevorschlag `sudo pinctrl get` / `sudo gpioinfo`.
 
 ### Geprüfte Repository-Quellen
 
@@ -480,4 +477,4 @@ Diese Dokumentation behauptet deshalb keine vollständige Rekonstruktion unbekan
 - [GPIO-Pass-Through, Breakout und Jumpersteuerung](2026-10-05_basisstation-gpio-breakout-jumper-steuerung-sxceiver.md).
 - [SoapySX-/Trixie-/libgpiod-Buildreparatur](2026-10-04_sxceiver-soapysx-trixie-libgpiod-build-reparatur.md).
 
-Ein PR zur Behebung eines in diesem sichtbaren Chat nachgewiesenen GPIO-Fehlers existiert als Nachweis hier nicht. Der Archivauftrag erzeugt Dokumentation; er implementiert oder deployt keine neue Pinbelegung.
+Ein GPIO-Fehler ist für den betrachteten Aufbau nicht nachgewiesen; ein entsprechender Reparatur-PR oder eine neue Pinbelegung liegen nicht vor.

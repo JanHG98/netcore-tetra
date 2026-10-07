@@ -1,28 +1,26 @@
-# Abschlussdokumentation: Main-kompatibler RF-Pfad, Pi-Neuinstallation, SXceiver-Systemd-Fix und SWMI-Fallback
+# Brainstorming: Main-kompatibler RF-Pfad, SXceiver und SWMI-Fallback
 
-## 1. Metadaten
+**Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
+
+## 1. Arbeitsstand
 
 - **Projekt:** NetCore-Tetra
 - **Repository:** `JanHG98/netcore-tetra`
 - **Archivbranch:** `Archiving`
 - **Archivpfad:** `Docs/archive/2026-10-05_main-kompatibler-rf-pfad-pi-neuinstallation-sxceiver-und-swmi-fallback.md`
 - **Erstellungsdatum dieser Zusammenfassung:** 2026-10-05
-- **Technischer Zeitraum des ausgewerteten Chats:** hauptsächlich 2026-07-29; Archivierung am 2026-10-05
-- **Ursprünglicher Chattitel:** im zugänglichen Verlauf nicht zuverlässig verfügbar
-- **Chatlink:** im zugänglichen Verlauf nicht verfügbar
-- **Historisch bearbeiteter Branch:** `swmi` (im Chat aktiv; am 2026-10-05 nicht mehr als Branch vorhanden)
-- **Historischer, im Chat zuletzt bestätigter SWMI-Snapshot:** Commit `60cb7438d6e82f4faa9cc814a752380e3acafc5e`
-- **Historischer Main-Snapshot aus Chat-Anhang:** Commit `0b84cc0c8340b4a4ea34778fa5a2653a682f9ae7`
+- **Historischer Betriebszeitraum:** hauptsächlich 2026-07-29; Archivierung am 2026-10-05
+- **Historisch bearbeiteter Branch:** `swmi` (in der Planung aktiv; am 2026-10-05 nicht mehr als Branch vorhanden)
+- **Historischer, in der Planung zuletzt bestätigter SWMI-Snapshot:** Commit `60cb7438d6e82f4faa9cc814a752380e3acafc5e`
+- **Historischer Main-Snapshot aus Anhang:** Commit `0b84cc0c8340b4a4ea34778fa5a2653a682f9ae7`
 - **Aktuell geprüfter Repository-Stand am 2026-10-05:** Branch `main`, Commit `7137e0dd69877e1b604bf89148fd8b6b590c1a97`
 - **Archivbranch vor diesem Dokument:** `Archiving`, Commit `cabafc0b270be4d87d18615735abe3155df8da1f`
 
-### Auswertungsgrundlage und Lücken
+### Quellenbasis und offene Nachweise
 
-Ausgewertet wurden der vollständig zugängliche Chatkontext, die späteren Korrekturen im selben Chat, der hochgeladene Laufzeitlog `Eingefügter Text(15).txt`, der historische Repository-Snapshot `netcore-tetra-main(3).zip` sowie der historische SWMI-Snapshot `netcore-tetra-swmi(9).zip`. Die ZIP-Metadaten identifizieren die Stände als `0b84cc0c...` beziehungsweise `60cb7438...`. Zusätzlich wurde der am 2026-10-05 live erreichbare Repository-Stand auf `main` und `Archiving` überprüft.
+Grundlagen sind die RF-/SWMI-Korrekturen vom 29. Juli 2026, der Laufzeitlog `Eingefügter Text(15).txt` und die historischen Snapshots `netcore-tetra-main(3).zip` sowie `netcore-tetra-swmi(9).zip`. Ihre ZIP-Metadaten identifizieren `0b84cc0c...` und `60cb7438...`. Der am 5. Oktober 2026 erreichbare `main`-/`Archiving`-Stand wurde zusätzlich geprüft.
 
-Nicht zugänglich beziehungsweise nicht sicher rekonstruierbar sind der ursprüngliche Chatlink und der ursprüngliche Chattitel. Im ausgewerteten Chat waren **keine eigenständigen Bildanhänge** enthalten; daher wurden für diesen Archiveintrag keine neuen Bilddateien angelegt. Die beiden Repository-ZIPs enthalten zahlreiche Projektdateien, sind aber keine Chatbilder und wurden nicht als Bildanhänge in `Docs/archive/` dupliziert.
-
-Zugangsdaten, Passwörter, Tokens, private Schlüssel und sonstige Secrets werden in diesem Dokument bewusst nicht übernommen.
+Eigenständige Bildanhänge liegen nicht vor. Die Repository-ZIPs sind technische Analysesnapshots und werden nicht als Deploymentquelle verwendet. Betriebsbestätigungen bleiben auf die beschriebenen Funktionen begrenzt; der spätere vollständige SWMI-Onlinebetrieb ist offen.
 
 ---
 
@@ -33,10 +31,10 @@ Dieses Dokument unterscheidet konsequent:
 - **Idee:** diskutierter Ansatz ohne verbindliche Umsetzung.
 - **Beschlossen/geplant:** als Ziel festgelegt, aber nicht zwingend implementiert.
 - **Implementiert:** durch Repository-Commit oder überprüften Source-Stand belegt.
-- **Getestet:** durch Build-, Laufzeit- oder Diagnoseausgabe im Chat belegt.
-- **Im Betrieb bestätigt:** vom Nutzer nach realem Betrieb ausdrücklich bestätigt.
+- **Getestet:** durch Build-, Laufzeit- oder Diagnoseausgabe in der Planung belegt.
+- **Im Betrieb bestätigt:** nach realem Betrieb ausdrücklich zurückgemeldet.
 
-Eine Aussage im Chat allein wird nicht als Repository-Nachweis gewertet.
+Eine Aussage in der Planung allein wird nicht als Repository-Nachweis gewertet.
 
 ---
 
@@ -44,7 +42,7 @@ Eine Aussage im Chat allein wird nicht als Repository-Nachweis gewertet.
 
 ### Ziel
 
-Das zentrale Ziel des Chats war, die bereits umfangreich ausgebaute SWMI-/Core-Architektur wieder so mit der Basisstation zu verbinden, dass die **lokal bewährte Funkstrecke** nicht durch zentrale Zustandsautomaten, Policies oder Service-Statuswechsel destabilisiert wird.
+Das zentrale Ziel der Planung war, die bereits umfangreich ausgebaute SWMI-/Core-Architektur wieder so mit der Basisstation zu verbinden, dass die **lokal bewährte Funkstrecke** nicht durch zentrale Zustandsautomaten, Policies oder Service-Statuswechsel destabilisiert wird.
 
 Konkret sollte der lokale RF-Pfad wieder das Verhalten des funktionierenden historischen Main-/No-Core-Stands erhalten:
 
@@ -81,9 +79,9 @@ Vor der Korrektur traten insbesondere folgende Symptome auf:
 
 ### 4.1 Git ist die einzige Build-Quelle
 
-**Status: beschlossen und im weiteren Chat angewendet**
+**Status: beschlossen und im weiteren Aufbau angewendet**
 
-Der Nutzer stellte ausdrücklich klar, dass der Build **direkt aus Git** erfolgen muss. ZIP-basierte Overlays, manuelles Kopieren einzelner Source-Bäume oder lokale Sonderstände wurden als unerwünscht verworfen.
+Verbindlich festgelegt ist der Build **direkt aus Git**. ZIP-basierte Overlays, manuelles Kopieren einzelner Source-Bäume oder lokale Sonderstände wurden als unerwünscht verworfen.
 
 Endgültiger Arbeitsstil:
 
@@ -113,7 +111,7 @@ Der Core bleibt für zentrale Policies, Telemetrie, Mobility, SDS, Media, Multi-
 
 ### 4.3 StayAlive-Geräte bleiben auf dem normalen MCCH
 
-**Status: spätere Korrektur; implementiert und heute weiterhin im Source vorhanden**
+**Status: spätere Korrektur; implementiert und am Prüfdatum weiterhin im Source vorhanden**
 
 Die frühere v25-Hypothese war falsch. v25 hatte angenommen, bei `clch_needed || common_scch` müsse auch für `StayAlive` zwingend `Some(0x01)` für Frame-18-Common-SCCH gesetzt werden.
 
@@ -123,7 +121,7 @@ Später wurde anhand des funktionierenden Main-Pfads und des realen Funkverhalte
 - Common-SCCH auf Frame 18 wird nur bei tatsächlichen Energy-Economy-Modi zugewiesen.
 - Für StayAlive bleibt `scch_information_and_distribution_on_18th_frame = None`.
 
-Der heutige `main`-Stand enthält diese Logik weiterhin.
+Der geprüfte `main`-Stand enthält diese Logik weiterhin.
 
 ### 4.4 RF-SYSINFO darf nicht an Core-Service-Matrix-Churn hängen
 
@@ -154,7 +152,7 @@ Bei Gateway-/Core-Ausfall muss lokale Funkfunktion erhalten bleiben.
 
 **Status: verworfen**
 
-Der v25-Ansatz stellte für StayAlive-Terminals Common-SCCH auf Frame 18 / TS1 wieder her. Im Chat wurde zunächst angenommen, dies entspreche exakt dem letzten funktionierenden Stand. Diese Schlussfolgerung wurde später ausdrücklich zurückgenommen.
+Der v25-Ansatz stellte für StayAlive-Terminals Common-SCCH auf Frame 18 / TS1 wieder her. In der Planung wurde zunächst angenommen, dies entspreche exakt dem letzten funktionierenden Stand. Diese Schlussfolgerung wurde später ausdrücklich zurückgenommen.
 
 Wichtig für spätere Arbeiten: **v25 darf nicht wieder als „bekannt guter“ Funkvertrag übernommen werden.**
 
@@ -315,7 +313,7 @@ service_matrix_lease_secs = 60
 
 ### 6.4 Aktuelle Main-Service-Matrix (Repository-Beispiel, 2026-10-05)
 
-Die heutigen Beispielports auf `main` sind:
+Die geprüften Beispielports auf `main` sind:
 
 | Dienst | Beispielport |
 |---|---:|
@@ -344,7 +342,7 @@ Die heutigen Beispielports auf `main` sind:
 | SIP Switch | 8300 |
 | Control Room | 9010 |
 
-Diese Tabelle beschreibt den **heutigen Source-/Beispielstand**, nicht zwingend die realen IPs/Ports des historischen Labors.
+Diese Tabelle beschreibt den **geprüften Source-/Beispielstand**, nicht zwingend die realen IPs/Ports des historischen Labors.
 
 ---
 
@@ -493,7 +491,7 @@ source "$HOME/.cargo/env"
 
 ### 8.5 NetCore-Tetra ausschließlich über Git
 
-**Status: vom Nutzer ausdrücklich gefordert und im funktionierenden Aufbau verwendet**
+**Status: ausdrücklich als Anforderung festgelegt und im funktionierenden Aufbau verwendet**
 
 Historisch:
 
@@ -503,7 +501,7 @@ git clone   --branch swmi   --single-branch   https://github.com/JanHG98/netcore
 
 Später wurde der Branch auf den jeweils gewünschten Commit zurückgesetzt.
 
-Wichtig: Der Branch `swmi` existiert am 2026-10-05 nicht mehr; heutige Fortsetzung muss von `main` ausgehen oder einen neuen Arbeitsbranch von `main` erzeugen.
+Wichtig: Der Branch `swmi` existiert am 2026-10-05 nicht mehr; geprüfte Fortsetzung muss von `main` ausgehen oder einen neuen Arbeitsbranch von `main` erzeugen.
 
 ### 8.6 Build
 
@@ -631,7 +629,7 @@ DeviceAllow=char-alsa rw
 
 **Status: im Betrieb bestätigt**
 
-Nach dem Fix meldete der Nutzer:
+Nach dem Fix wurde folgender Betrieb zurückgemeldet:
 
 - Basisstation läuft,
 - Funkgerät verbindet sich,
@@ -640,9 +638,9 @@ Nach dem Fix meldete der Nutzer:
 - Hytera verbindet sich,
 - SIP funktioniert wieder.
 
-Damit ist der Systemd-Gerätezugriffsfix der stärkste bestätigte Betriebsmeilenstein dieses Chats.
+Damit ist der Systemd-Gerätezugriffsfix der stärkste bestätigte Betriebsmeilenstein dieser Planung.
 
-### Heutiger Repository-Stand
+### Geprüfter Repository-Stand
 
 Der Fix ist am 2026-10-05 weiterhin auf `main` vorhanden, einschließlich `spidev0.0`, `gpiochip0` und `char-alsa`.
 
@@ -676,7 +674,7 @@ StayAlive
 
 Nur echte Eg1..Eg3-Energy-Economy-Zuteilungen erhalten Common-SCCH.
 
-### Heutige Verifikation
+### Geprüfte Verifikation
 
 Der am 2026-10-05 geprüfte `main`-Code enthält weiterhin genau diese korrigierte Logik und den Debug-Hinweis:
 
@@ -741,17 +739,17 @@ Nicht eindeutig durch Langzeittest belegt:
 
 ---
 
-## 14. SWMI-/Fallback-Diagnose am Ende des Chats
+## 14. SWMI-/Fallback-Diagnose am Ende der Planung
 
-Dies ist der wichtigste **offene Punkt**, an dem der Chat endete.
+Dies ist der wichtigste **offene Punkt**, am Ende des dokumentierten Arbeitsstands.
 
-### 14.1 Nutzerbeobachtung
+### 14.1 Betriebsbeobachtung
 
 Die Basisstation meldete weiterhin lokalen Fallback, obwohl der Node Gateway eingetragen war.
 
 ### 14.2 Diagnoseausgabe der TBS
 
-Die vom Nutzer ausgeführte Diagnose zeigte:
+Die ausgeführte TBS-Diagnose zeigte:
 
 ```text
 Control Room: False
@@ -794,7 +792,7 @@ sds-router      available
 
 ### 14.3 Schlussfolgerung
 
-**Status: Diagnose belegt, Reparatur im Chat noch nicht durchgeführt**
+**Status: Diagnose belegt, Reparatur in der Planung noch nicht durchgeführt**
 
 Die Core-Infrastruktur war zu diesem Zeitpunkt gesund. Der unmittelbare Grund dafür, dass die TBS nicht online ging, war die lokale TBS-Konfiguration:
 
@@ -810,7 +808,7 @@ connected_nodes: 0
 SRV-M-TBS-01 connected=False
 ```
 
-Der Nutzer hatte den Node Gateway zwar eingetragen, aber `enabled` war im tatsächlich gelesenen `/etc/netcore/config.toml` noch `false`.
+Der Node Gateway war eingetragen, aber `enabled` war im tatsächlich gelesenen `/etc/netcore/config.toml` noch `false`.
 
 ### 14.4 Historischer Repository-Snapshot bestätigt die Ursache
 
@@ -829,7 +827,7 @@ Der Laufzeitwert `host = 10.0.1.179` war lokal bereits angepasst, `enabled` jedo
 
 ### 14.5 Was als nächster Reparaturschritt erforderlich gewesen wäre
 
-**Status: offen; nicht mehr im Chat ausgeführt**
+**Status: offen; nicht mehr in der Planung ausgeführt**
 
 Auf der TBS:
 
@@ -864,7 +862,7 @@ ControlRoom hello accepted
 ... Online / central service plane healthy ...
 ```
 
-### 14.6 Heutiger Repository-Stand
+### 14.6 Geprüfter Repository-Stand
 
 Im aktuellen `main`-Commit `7137e0dd...` steht die Beispielkonfiguration bereits auf:
 
@@ -879,7 +877,7 @@ node_id = "SRV-M-TBS-01"
 central_sds_routing = true
 ```
 
-Damit ist die **Source-Vorlage heute korrigiert**. Das beweist jedoch nicht, dass eine heute laufende TBS unter `/etc/netcore/config.toml` denselben Wert besitzt.
+Damit ist die **Source-Vorlage am Prüfdatum korrigiert**. Das beweist jedoch nicht, dass eine am Prüfdatum laufende TBS unter `/etc/netcore/config.toml` denselben Wert besitzt.
 
 ---
 
@@ -894,7 +892,7 @@ Archiving
 main
 ```
 
-Der historische Branch `swmi` ist am 2026-10-05 nicht mehr vorhanden. Deshalb ist der Nutzerlink `.../tree/swmi` heute kein gültiger Fortsetzungsbranch mehr.
+Der historische Branch `swmi` ist am 2026-10-05 nicht mehr vorhanden. Deshalb ist der damalige Link `.../tree/swmi` am Prüfdatum kein gültiger Fortsetzungsbranch mehr.
 
 ### 15.2 Aktueller Main-Commit
 
@@ -909,7 +907,7 @@ Merge pull request #59 from JanHG98/feat/netcore-dashboard-design
 NetCore-Design mit Dark Mode für Basisstation und alle Dienst-WebUIs
 ```
 
-### 15.3 Historische Fixes, die heute noch vorhanden sind
+### 15.3 Historische Fixes, die am Prüfdatum noch vorhanden sind
 
 Live verifiziert:
 
@@ -920,7 +918,7 @@ Live verifiziert:
 - Edge-Fallback mit Required-Service-Matrix ist weiterhin vorhanden.
 - Control-Room-Worker wartet nach Socket-Verbindung auf eine frische Service-Matrix und wechselt erst nach Hysterese auf `Online`.
 
-### 15.4 Gegenüber dem historischen Chat weiterentwickelte Bereiche
+### 15.4 Gegenüber dem historischen Arbeitsstand weiterentwickelte Bereiche
 
 Der aktuelle Main-Beispielstand enthält zusätzliche zentrale Dienste und Fallback-Einträge, unter anderem:
 
@@ -932,7 +930,7 @@ Der aktuelle Main-Beispielstand enthält zusätzliche zentrale Dienste und Fallb
 - Asset Management
 - SIP Switch
 
-Diese waren im historischen Chat nicht alle Bestandteil der unmittelbaren Fehlersuche und sollten nicht rückwirkend als damals getestet interpretiert werden.
+Diese waren im historischen Arbeitsstand nicht alle Bestandteil der unmittelbaren Fehlersuche und sollten nicht rückwirkend als damals getestet interpretiert werden.
 
 ---
 
@@ -968,7 +966,7 @@ ALSA SX1255
 
 ## 17. Relevante Befehle und ihr tatsächlicher Status
 
-| Befehl/Ablauf | Status im Chat |
+| Befehl/Ablauf | Status in der Planung |
 |---|---|
 | Git-Clone des SWMI-Branches | **getestet/angewendet** |
 | Cargo-Build mit `--locked` | **fehlgeschlagen**; Lockfile nicht synchron |
@@ -991,7 +989,7 @@ ALSA SX1255
 
 ### 18.1 ZIP-Overlay als Installationsweg
 
-**Verworfen**, weil der Nutzer ausdrücklich Git-basierte Builds fordert.
+**Verworfen:** Git-basierte Builds sind verbindlich festgelegt.
 
 ### 18.2 v25 Frame-18-SCCH für StayAlive
 
@@ -1091,7 +1089,7 @@ systemd effective DeviceAllow
 RF startup marker
 ```
 
-Damit ließen sich genau die in diesem Chat aufgetretenen Fehler vor dem On-Air-Test erkennen.
+Damit ließen sich genau die für diesen Arbeitsstand aufgetretenen Fehler vor dem On-Air-Test erkennen.
 
 ---
 
@@ -1149,7 +1147,7 @@ Damit ließen sich genau die in diesem Chat aufgetretenen Fehler vor dem On-Air-
 
 ## 21. Relevante Repository-Dateien
 
-Historisch und/oder heute relevant:
+Historisch und/oder am Prüfdatum relevant:
 
 ```text
 config.toml
@@ -1180,7 +1178,7 @@ system-backend/sds-router/
 
 ## 22. Relevante Commits und Quellen
 
-### Historische Chat-Commits
+### Historische Entwicklungscommits
 
 - `5fee15c276e96cd9e7b90e9ea4944c9f2662447d` — Restore exact main MM and local call setup on RF path
 - `863068a9f74877a123b2cc42468d747261450879` — Keep RF SYSINFO independent from Core service-matrix churn
@@ -1204,17 +1202,16 @@ system-backend/sds-router/
 - SoapySX/SXceiver: `tejeez/sxxcvr`, Commit `9705147dd8c189625071f3f163ea56119bda4a05`
 - native TETRA-Sprachcodec: `outerplane/tetra-codec`
 
-### Heutiger Repository-Stand
+### Geprüfter Repository-Stand
 
 - `main`: `7137e0dd69877e1b604bf89148fd8b6b590c1a97`
 - historische `swmi`-Branch-Referenz: nicht mehr vorhanden
-- Archivierung erfolgt ausschließlich in `Archiving`
 
 ---
 
 ## 23. Sicherheits- und Betriebsgrenzen
 
-Der im Chat verwendete zentrale Core lief im Open-Lab-Modus. Für einen produktionsnahen Betrieb sind zusätzliche Sicherheitsmaßnahmen erforderlich. Diese Abschlussdokumentation enthält bewusst keine Zugangsdaten.
+Der in der Planung verwendete zentrale Core lief im Open-Lab-Modus. Für einen produktionsnahen Betrieb sind zusätzliche Sicherheitsmaßnahmen erforderlich. Diese Projektnotiz enthält bewusst keine Zugangsdaten.
 
 Wichtig für spätere Fortsetzung:
 
@@ -1227,7 +1224,7 @@ Wichtig für spätere Fortsetzung:
 
 ## 24. Kompakte Abschlussbewertung
 
-Der Chat erreichte einen wichtigen stabilen Zwischenstand:
+Erreicht wurde ein wichtiger stabiler Zwischenstand:
 
 **Im Betrieb bestätigt:**
 

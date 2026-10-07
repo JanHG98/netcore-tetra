@@ -1,51 +1,49 @@
-# Technische Abschlussdokumentation: Basisstations-Funktionsroadmap von der Einzelzelle zum Multi-Site-Netz
+# Brainstorming: Basisstations-Funktionsroadmap von der Einzelzelle zum Multi-Site-Netz
 
-> **Archivstatus:** Historischer Planungsstand mit gesonderter Repository-Prüfung vom 04.10.2026. Der ursprüngliche Chat lieferte einen achtphasigen Roadmap-Entwurf, keine nachgewiesene Installation oder Funkabnahme. Dieses Dokument ist weder eine Betriebsfreigabe noch ein Nachweis, dass alle beschriebenen Funktionen vorhanden sind.
+**Stand der Notizen und ergänzenden Prüfungen: 2026-10-04.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
 
-## 1. Metadaten und eindeutige Zuordnung
+> **Zielbild:** Schrittweise vom ersten sendenden Standort mit belegter Geräteanmeldung zum Multi-Site-Netz. Der historische Entwurf enthält acht Phasen und 40 Schritte; Einzelentscheidungen und praktische Abnahmen sind noch nicht belegt. Der zusätzliche Repository-Abgleich stammt vom 04.10.2026.
+
+## 1. Kontext und Einordnung
 
 | Feld | Inhalt |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Ausschließlich Funktionen und Betriebsfähigkeit der TETRA-Basisstation samt unmittelbar benötigter Netzinfrastruktur |
-| Ursprünglicher Chattitel | Im direkt verfügbaren Verlauf nicht enthalten. Die damalige Antwort trug die Überschrift „Entwicklungs-Roadmap – NetCore-Tetra Basisstation“; das ist nicht als tatsächlicher UI-Chattitel belegt. |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link rekonstruiert oder erfunden. |
-| Identifizierender Nutzerwunsch | „ich brauche mal eine Roadmap mit ALLEN Ideen … nur alles für die Basisstation … Beginnend … die Station sendet erfolgreich aus und geräte verbinden sich“ |
-| Ursprüngliches Chatdatum | Im direkten Verlauf nicht ausgewiesen. Eine ergänzende Verlaufssuche ordnet den Austausch dem 18.10.2025 zu; ein vollständiger datierter Originalexport liegt nicht vor. |
+| Ausgangsanforderung | Vollständige Basisstationsroadmap mit erstem Meilenstein Aussendung und Geräteanmeldung. |
+| Historische Datierung | Entwurf ergänzend dem 18.10.2025 zugeordnet; vollständiger datierter Originalbestand fehlt. |
 | Erstellungsdatum dieser Zusammenfassung | **2026-10-04**, Zeitzone Europe/Berlin |
 | Repository | `JanHG98/netcore-tetra` |
 | Geprüfter Branch | **`Archiving`** |
 | Geprüfter Code-/Dokumentationsstand | **`530170d2deda13d531e5e200d0bde7ab97acbdcd`** |
 | Root-Tree des geprüften Standes | `d9fbd0ada40ad58e5ddbae7d5f60446603505dc3` |
-| Schreibbereich dieses Auftrags | Ausschließlich `Docs/archive/` |
 | Archivdatei | `Docs/archive/2026-10-04_basisstation-funktionsroadmap-einzelzelle-bis-multisite.md` |
 | Archivindex | `Docs/archive/README.md` |
-| Archiv-Commit | Über die Git-Historie dieser Datei und die Abschlussmeldung nachvollziehbar; nicht mit dem oben geprüften Ausgangscommit verwechseln. |
 
-Die Archivdatei wird durch Thema und identifizierenden Ausgangswunsch diesem Chat zugeordnet. Der bestehende Archivindex wurde gelesen; ein eindeutig diesem Roadmap-Chat zugeordneter Eintrag wurde darin nicht gefunden. Der neue Zielpfad wurde vor dem Schreiben abgefragt und war nicht vorhanden. Andere Basisstations-, Installations- und Dual-Carrier-Archive bleiben eigenständige Dokumente.
+Die Roadmap gehört zur Funktionsplanung der Basisstation. Erstinstallation und Dual-Carrier-Ausbau sind als separate Entwicklungsphasen dokumentiert.
 
 ## 2. Quellenumfang, Belegstufen und Auswertungslücken
 
 ### 2.1 Tatsächlich ausgewerteter Verlauf
 
-Der direkt verfügbare fachliche Verlauf umfasst die ursprüngliche Roadmap-Anfrage und die anschließende Antwort mit acht Phasen. Hinzu kommen der vorliegende Archivierungsauftrag und die im Arbeitskontext verfügbaren PDF-Quellen. Es gibt in diesem fachlichen Austausch keine anschließend sichtbare Nutzerfreigabe der einzelnen Technologien, keine Installationsausgaben, keinen Testbericht und keinen Funktions-Patch.
+Die Grundlage ist eine Roadmap-Anforderung mit achtphasigem Entwurf und ergänzenden PDF-Quellen. Einzelne Technologieentscheidungen, Installationsausgaben, Testberichte und Funktionspatches fehlen.
 
-Die frühere Antwort behauptete, auf **„Chat BackUp Nr. 1 & 2“** zu beruhen. Die beiden Backups konnten durch die ergänzende Suche nicht eindeutig identifiziert oder inhaltlich wiederhergestellt werden. Die damalige Behauptung einer vollständigen Zusammenführung **aller** früheren Ideen ist deshalb **nicht überprüfbar**. Bewahrt werden sämtliche im tatsächlich zugänglichen Entwurf enthaltenen Ideen, nicht eine erfundene vollständige Projektgeschichte.
+Der Entwurf wurde als Zusammenführung zweier älterer Backups beschrieben. Diese Quellen konnten nicht eindeutig wiederhergestellt werden; die Vollständigkeit gegenüber sämtlichen früheren Ideen ist deshalb **nicht überprüfbar**. Erhalten sind alle Ideen des zugänglichen Entwurfs.
 
-Andere im Projektkontext sichtbare Chats werden nicht rückwirkend zu Bestandteilen dieses Gesprächs erklärt. Aktuelle Repository-Dokumente und passende Nachbararchive sind nur ausdrücklich gekennzeichnete Fortsetzungsquellen.
+Repository-Dokumentation und thematische Nachbarn dienen als ergänzende Fortsetzungsquellen; ihr Implementierungsstand darf nicht rückwirkend auf den frühen Entwurf übertragen werden.
 
 ### 2.2 Statusbegriffe
 
 | Status | Verwendung in diesem Archiv |
 |---|---|
-| **Idee** | Im Chat vorgeschlagen, aber nicht ausdrücklich als technische Entscheidung bestätigt. |
-| **Beschlossen/geplant** | Vom Nutzer vorgegebenes Ziel oder ausdrücklich als Planung ausgewiesener Repository-Stand; keine Umsetzungsaussage. |
+| **Idee** | Vorgeschlagen, jedoch nicht als technische Entscheidung bestätigt. |
+| **Beschlossen/geplant** | Vorgegebenes Ziel oder ausdrücklich als Planung ausgewiesener Repository-Stand; keine Umsetzungsaussage. |
 | **Implementiert** | Ein konkret gelesener Codepfad beziehungsweise Build-Baustein ist im geprüften Commit vorhanden. Der jeweils nachgewiesene Umfang wird eingegrenzt. |
 | **Getestet** | Nur bei belegter Testausführung mit Ergebnis. Eine vorhandene Testdatei ist lediglich Testcode, kein bestandener Test. |
-| **Im Betrieb bestätigt** | Erfordert einen zuordenbaren Live-Nachweis an Station und Endgerät. Für die historischen Roadmap-Phasen liegt ein solcher Nachweis in diesem Chat nicht vor. |
+| **Im Betrieb bestätigt** | Erfordert einen zuordenbaren Live-Nachweis an Station und Endgerät. Für die historischen Roadmap-Phasen liegt ein solcher Nachweis in diesem Planungsstand nicht vor. |
 | **Repository-Dokumentation** | Eine Datei beschreibt eine Funktion oder bezeichnet sie als „umgesetzt“. Das allein wird nicht in „implementiert“, „getestet“ oder „im Betrieb bestätigt“ umgewandelt. |
 
-### 2.3 Grenzen der heutigen Prüfung
+### 2.3 Grenzen der geprüften Prüfung
 
 Die Repository-Prüfung erfolgte lesend über den GitHub-Connector und auf den oben festgehaltenen Commit bezogen. Suchtreffer des Default-Branches dienten zur Pfadfindung; die tatsächlich verwendeten Dateien wurden danach ausdrücklich aus dem geprüften `Archiving`-Commit geladen. Es handelt sich um eine **gezielte statische Prüfung**, nicht um einen vollständigen Audit aller Dateien und aller Branches.
 
@@ -55,20 +53,20 @@ Die 25 verfügbaren PDFs wurden anhand der vorhandenen Titelblätter, Inhaltsüb
 
 ## 3. Ziel, Ausgangslage und endgültige Anforderungen
 
-Der Nutzer wollte eine **realistische, schrittweise Funktions-Roadmap** für die Basisstation. Firmenwebseite und vergleichbare nichttechnische Firmenaufgaben sollten ausdrücklich entfallen. Die Roadmap sollte mit dem kleinsten praktischen Erfolg beginnen: **Die Station sendet erfolgreich, und Funkgeräte verbinden sich.**
+Gesucht ist eine **realistische schrittweise Funktionsroadmap für die Basisstation**. Firmenwebseite und vergleichbare Firmenaufgaben bleiben außerhalb des Umfangs. Erster praktischer Erfolg: **Die Station sendet, und Funkgeräte verbinden sich.**
 
-Diese Vorgaben sind die belastbaren Entscheidungen dieses Chats:
+Diese Vorgaben sind die belastbaren Entscheidungen dieser Planung:
 
 | Anforderung | Status | Begründung und Konsequenz |
 |---|---|---|
-| Nur basisstationsbezogene Funktionen aufnehmen | Beschlossen/geplant: ausdrücklicher Nutzerauftrag | Funkbetrieb, Verwaltung, Diagnose und notwendige Netzdienste gehören hinein; Firmenwebseite und Marketing nicht. |
-| Mit Aussendung und Geräteanmeldung beginnen | Beschlossen/geplant: ausdrücklicher Nutzerauftrag | Eine nutzbare Einzelzelle ist der erste überprüfbare Meilenstein. |
-| Funktionen nach und nach entwickeln | Beschlossen/geplant: ausdrücklicher Nutzerauftrag | Abhängigkeiten und Abnahmekriterien müssen vor komplexer Skalierung stehen. |
+| Nur basisstationsbezogene Funktionen aufnehmen | Beschlossen/geplant: ausdrücklicher Arbeitsauftrag | Funkbetrieb, Verwaltung, Diagnose und notwendige Netzdienste gehören hinein; Firmenwebseite und Marketing nicht. |
+| Mit Aussendung und Geräteanmeldung beginnen | Beschlossen/geplant: ausdrücklicher Arbeitsauftrag | Eine nutzbare Einzelzelle ist der erste überprüfbare Meilenstein. |
+| Funktionen nach und nach entwickeln | Beschlossen/geplant: ausdrücklicher Arbeitsauftrag | Abhängigkeiten und Abnahmekriterien müssen vor komplexer Skalierung stehen. |
 | Alle früheren Ideen berücksichtigen | Gewünschter Umfang; Vollständigkeit nicht belegbar | Die referenzierten Backups fehlen. Der sichtbare Entwurf kann vollständig inventarisiert werden, der gesamte damalige Ideenbestand nicht. |
-| Acht Phasen sowie bestimmte Produkt-/Architekturnamen | Idee: vom Assistenten vorgeschlagene Gliederung | Keine sichtbare anschließende Einzelbestätigung durch den Nutzer. |
+| Acht Phasen und Produkt-/Architekturnamen | Historische Gliederungs- und Lösungsansätze | Einzelbestätigungen fehlen. |
 | Verbindliche Termine, Budget, Personalbedarf oder Fertigstellungsprozente | Nicht festgelegt | Werden in diesem Archiv nicht nachträglich erfunden. |
 
-Der ursprüngliche Chat dokumentiert keinen vermessenen Hardware-Ausgangszustand. Insbesondere folgt aus dem gewünschten ersten Meilenstein nicht, dass die Station damals bereits sendete oder ein Teilnehmer bereits registriert war.
+Ein vermessener Hardware-Ausgangszustand ist nicht dokumentiert. Der gewünschte erste Meilenstein ist kein Nachweis, dass Aussendung und Teilnehmerregistrierung bereits funktionierten.
 
 ## 4. Vollständiges Inventar des historischen Acht-Phasen-Entwurfs
 
@@ -86,7 +84,7 @@ Ziel: Die Station sendet stabil; Funkgeräte können sich verbinden.
 | H1.4 | TMO-Anmeldung von Funkgeräten mit **MCC 901 / MNC 999** erreichen. |
 | H1.5 | Basis-Monitoring mit **RSSI, Logs und Terminal-Connect-Anzeige** bereitstellen. |
 
-Damals formuliertes Ergebnis: erstes funktionierendes TMO-Signal mit Verbindungsaufbau. Ein konkreter RX-Kanal, Duplexplan, Treiberstand, Funkgeräte-Codeplug oder Logbeleg wurde nicht angegeben. Die Technologie- und Frequenzangaben sind nicht als heutige Installationsanweisung zu übernehmen; siehe Abschnitt 8.
+Damals formuliertes Ergebnis: erstes funktionierendes TMO-Signal mit Verbindungsaufbau. Ein konkreter RX-Kanal, Duplexplan, Treiberstand, Funkgeräte-Codeplug oder Logbeleg wurde nicht angegeben. Die Technologie- und Frequenzangaben sind nicht als ergänzende Installationsanweisung zu übernehmen; siehe Abschnitt 8.
 
 ### H2 – Stabilisierung und Netzwerk-Backbone
 
@@ -184,30 +182,30 @@ Ziel: Dauerstabilität, Dokumentation und Veröffentlichung.
 | H8.4 | Ein **Git-Repository NetCore-Tetra** für Quellcode und Konfigurationen verwenden. |
 | H8.5 | Ein **Beta-Release beziehungsweise eine Club-Verteilung** vorbereiten. |
 
-Damals formuliertes Ergebnis: veröffentlichbarer Langzeitstand. Die 72 Stunden wurden nur als Testziel genannt; es gibt in diesem Chat keine belegte 72-Stunden-Messung.
+Damals formuliertes Ergebnis: veröffentlichbarer Langzeitstand. Die 72 Stunden wurden nur als Testziel genannt; es gibt in diesem Planungsstand keine belegte 72-Stunden-Messung.
 
 ### Übergreifende Vision und kleine Nebenidee
 
-Als Gesamtvision nannte der Assistent ein offenes, resilient arbeitendes System ohne notwendige zentrale Cloud, skalierbar von einer Einzelzelle bis zu einem landesweiten Amateurfunk-Mesh. Diese Aussage war ein **Zielbild**, keine belegte Kapazitäts-, Verfügbarkeits- oder Betriebszusage. Betriebsart und tatsächlich nutzbare Frequenzen wurden dadurch nicht freigegeben.
+Gesamtvision ist ein offenes resilientes System ohne notwendige zentrale Cloud, skalierbar von Einzelzelle bis landesweitem Amateurfunk-Mesh. Dies ist ein **Zielbild**, keine belegte Kapazitäts-, Verfügbarkeits- oder Betriebszusage. Betriebsart und nutzbare Frequenzen sind dadurch nicht freigegeben.
 
-Am Ende wurde ein **grafisches Roadmap-Diagramm als SVG/PNG**, etwa mit Zeitachse, Phasen und Icons, angeboten. Eine Beauftragung oder Erstellung ist im zugänglichen Verlauf nicht vorhanden. Es gibt daher kein historisches Diagramm, das diesem Chat als erzeugtes Artefakt zugeschrieben werden darf.
+Am Ende wurde ein **grafisches Roadmap-Diagramm als SVG/PNG**, etwa mit Zeitachse, Phasen und Icons, angeboten. Eine Beauftragung oder Erstellung ist im zugänglichen Verlauf nicht vorhanden. Es gibt daher kein historisches Diagramm, das diesem Planungsstand als erzeugtes Artefakt zugeschrieben werden darf.
 
 ## 5. Historisch erreichter Entwicklungs- und Betriebsstand
 
-| Bereich | Historischer Nachweis dieses Chats |
+| Bereich | Historischer Nachweis dieser Planung |
 |---|---|
 | Roadmap-Text | Erstellt: acht Phasen mit insgesamt 40 vorgeschlagenen Schritten sowie Gesamtvision und Grafikangebot. |
 | Auswahl einer endgültigen Hardware-/Softwareplattform | Nicht bestätigt. LimeSDR Mini, Pi 5, VM und HamTetra/OsmocomTETRA wurden vorgeschlagen. |
-| Erfolgreiche Aussendung / Registrierung | Gewünscht, aber nicht durch Messung, Logs oder Nutzerbestätigung nachgewiesen. |
+| Erfolgreiche Aussendung / Registrierung | Gewünscht; Messungen, Logs und Betreiberbestätigung fehlen. |
 | Lokale oder standortübergreifende Sprache / SDS | Nicht getestet oder im Betrieb bestätigt. |
-| VPN, Lighthouse, Watchtower, Apps, Sensorik oder KI | Kein Implementierungs- oder Installationsnachweis im Chat. |
+| VPN, Lighthouse, Watchtower, Apps, Sensorik oder KI | Kein Implementierungs- oder Installationsnachweis im Entwurf. |
 | Konkrete Codeänderung, Commit oder PR | Dem historischen Austausch nicht zuordenbar. |
 | Shell-Kommandos / Deployment / Reparatur | Keine tatsächlich ausgeführten fachlichen Abläufe dokumentiert. |
 | Bilder / Architekturzeichnung | Keine eigenständigen Bilder verfügbar; Grafik nur angeboten. |
 
-Der historische Abschluss ist damit ein **Planungsartefakt**. Heutiger Quellcode im Repository ist davon getrennt zu betrachten und darf nicht rückwirkend als damaliges Arbeitsergebnis ausgegeben werden.
+Der historische Abschluss ist damit ein **Planungsartefakt**. Geprüfter Quellcode im Repository ist davon getrennt zu betrachten und darf nicht rückwirkend als damaliges Arbeitsergebnis ausgegeben werden.
 
-## 6. Heutiger Repository-Abgleich am geprüften Commit
+## 6. Repository-Abgleich am Dokumentdatum am geprüften Commit
 
 ### 6.1 Konkrete Befunde und ihre Grenzen
 
@@ -217,7 +215,7 @@ Der historische Abschluss ist damit ein **Planungsartefakt**. Heutiger Quellcode
 | TBS-Binary | Paket und Binary heißen `bluestation-bs`. Die Default-Features sind `asterisk`, `recording` und `audio-player`. [R3] | Build-Integration im Manifest implementiert; kein Nachweis des installierten Binarys oder eines erfolgreichen Builds. |
 | RF-Konfiguration | `stack_mode = "Bs"`, Backend `SoapySdr`, TX 418.000.000 Hz und RX 408.000.000 Hz. [R4] | Eingecheckte Parameter, nicht live gemessene Frequenzen. |
 | Netz-/Zellparameter | MCC 901, MNC 1510, LA 1, Colour Code 1; Main Carrier 720, Secondary Carrier 721. [R4] | Der alte Entwurfswert MNC 999 ist keine aktuelle Sollkonfiguration. |
-| Dashboard | `CfgDashboard` enthält Port/Bind/Source-Verzeichnis, optionale lokale Zugangsfelder und `public_overview`. Defaults: Port 8080, Bind `0.0.0.0`, keine Zugangswerte. [R5] | Konfigurationslogik implementiert. Daraus folgt weder zentrale RBAC noch die genaue heutige Server-Authentifizierungsmechanik. |
+| Dashboard | `CfgDashboard` enthält Port/Bind/Source-Verzeichnis, optionale lokale Zugangsfelder und `public_overview`. Defaults: Port 8080, Bind `0.0.0.0`, keine Zugangswerte. [R5] | Konfigurationslogik implementiert. Daraus folgt weder zentrale RBAC noch die genaue ergänzende Server-Authentifizierungsmechanik. |
 | Zentrale Anmeldung/RBAC | `Docs/CENTRAL_IDENTITY_RBAC_ROADMAP.md` weist NETCORE-IAM-01 ausdrücklich als geplant aus; Identity-LXC/Keycloak sind Empfehlungen, keine endgültige Auswahl. [R11] | Planung. Der historische JWT-Stichpunkt darf nicht als bereits netzweit umgesetztes SSO/RBAC geführt werden. |
 | Media Library | `src/main.rs` lädt Konfiguration, SharedLibrary und TTS, startet Worker sowie HTTP-Server und warnt ausdrücklich vor offenem Management ohne Login/Tokens/TLS. [R6] | Dienst-Einstieg und Verdrahtung im Code vorhanden. Keine Funktionsabnahme des gesamten Playout-Pfads. |
 | Audio-/TTS-Playout | README beschreibt Asset-Verwaltung, TTS/Piper, TBS-basiertes Playout und alternativ Einspeisung in vorhandene Media-Switch-Sessions. [R7] | Konkreter dokumentierter Ausbau weit über H5 hinaus. Die dokumentierten Ende-zu-Ende-Funktionen wurden hier nicht live getestet. |
@@ -229,9 +227,9 @@ Der historische Abschluss ist damit ein **Planungsartefakt**. Heutiger Quellcode
 | Projektversion | Die Root-README trägt die Bezeichnung v1.9.0 und beschreibt unter anderem zentrale SIP-Anbindung mit lokalem Asterisk-Fallback. [R1] | Dokumentationsstand; weder installierte Version noch Nachweis des SIP-Failovers. |
 | SXceiver-/Codec-Verzeichnisse | `sxxcvr-main` und `tetra-codec-master` sind im Root-Tree vorhanden. [R14] | Verzeichnisexistenz, keine Feststellung über angeschlossene Hardware oder erfolgreich gebaute Treiber. |
 
-### 6.2 Nicht als heute umgesetzt bestätigt
+### 6.2 Nicht als am 2026-10-04 umgesetzt bestätigt
 
-Für die historischen Namen **Lighthouse, Watchtower, Terralink, Shadow-GSSI, Meta-Sync-Kanal, Shadow-Cluster und OTA-RolloutCenter** wurde in dieser gezielten Prüfung kein eindeutig passender, vollständig geprüfter Implementierungsnachweis hergestellt. Das ist keine Behauptung, dass jede entsprechende Funktion im gesamten Repository fehlt. Es verhindert lediglich, historische Namen und heutige Dienste ohne Nachweis gleichzusetzen.
+Für die historischen Namen **Lighthouse, Watchtower, Terralink, Shadow-GSSI, Meta-Sync-Kanal, Shadow-Cluster und OTA-RolloutCenter** wurde in dieser gezielten Prüfung kein eindeutig passender, vollständig geprüfter Implementierungsnachweis hergestellt. Das ist keine Behauptung, dass jede entsprechende Funktion im gesamten Repository fehlt. Es verhindert lediglich, historische Namen und ergänzende Dienste ohne Nachweis gleichzusetzen.
 
 Auch eine fertige native iOS-App, Push-Zustellung, netzweit synchronisierte Audioaussendung, KI-gestützte Wartung, KI-Lastverteilung, automatische Masterwahl und landesweite Skalierbarkeit wurden hier nicht bestätigt.
 
@@ -243,7 +241,7 @@ Der Entwurf sah eine SDR-basierte lokale TBS, eine zentrale Admin-VM, VPN-gekopp
 
 Offen blieben insbesondere Zuständigkeiten für Teilnehmerregistrierung, Gruppenzuordnung, Rufaufbau, Floor Control, Audio-Routing, Updatefreigabe und die Reaktion auf Zentralenausfall. „NTP/GPS“ und „JWT“ waren Technologie-Stichworte, keine vollständigen Architekturentscheidungen.
 
-### 7.2 Heutige Anschlussstellen statt Parallelneubau
+### 7.2 Ergänzende Anschlussstellen statt Parallelneubau
 
 Die gelesenen Quellen legen folgende Anschlussstellen für eine Fortsetzung nahe:
 
@@ -253,11 +251,11 @@ Die gelesenen Quellen legen folgende Anschlussstellen für eine Fortsetzung nahe
 - **Audio:** Mediathek/TTS vom zeitkritischen Funkpfad trennen. Der dokumentierte bevorzugte Pfad delegiert Ruf, Codec, Timeslot und Floor an die TBS. [R7]
 - **Betrieb und Automatisierung:** vorhandene Observability- und IoT-Verträge nutzen; offene Lab-Verwaltung nicht als fertig abgesicherte Remote-Steuerung darstellen. [R8][R9]
 
-Diese Liste ist eine **aus dem Repository-Abgleich abgeleitete Fortsetzungsempfehlung**, keine nachträgliche Nutzerentscheidung dieses historischen Chats.
+Diese Anschlussstellen sind eine **Fortsetzungsempfehlung aus dem Repository-Abgleich**, keine nachträgliche historische Festlegung.
 
 ### 7.3 Zentrale fachliche Trennlinien
 
-**Aussendung ist nicht Registrierung.** Der erste Nutzermeilenstein benötigt beide Nachweise. Eine sichtbare Trägerlinie, eine gestartete Unit oder eine grüne Webseite allein erfüllen ihn nicht.
+**Aussendung und Registrierung brauchen getrennte Nachweise.** Der erste Meilenstein erfordert beide. Trägerlinie, gestartete Unit und grüne Webseite allein genügen nicht.
 
 **Registrierung ist nicht Sprache oder SDS.** Die nächste Ausbauentscheidung sollte einzelne überprüfbare Kommunikationsabläufe benennen statt alle unter „Geräte verbunden“ zusammenzufassen.
 
@@ -324,16 +322,16 @@ Die Media-Library-Dokumentation beschreibt eine kanonische Vorschau als **8 kHz,
 | Problem | Diagnose / Einordnung | Behandlung im Archiv |
 |---|---|---|
 | Behauptete Vollständigkeit auf Basis zweier Backups | Die Backups sind nicht eindeutig zugänglich. | Vollständigkeitsbehauptung zurückgenommen; zugängliche Ideen vollständig inventarisiert. |
-| HamTetra/OsmocomTETRA als pauschaler TMO-Startweg | Im Chat fehlte eine passende konkrete Implementierung und ein Nachweis der bidirektionalen TMO-Anmeldung. Die offizielle osmo-tetra-README beschreibt ihr Sender-Testprogramm als Burst-Erzeuger ohne tatsächliche Modulation/Aussendung. [E1] | Keine Weitergabe als funktionierende Installationsanleitung. Der heutige NetCore-Workspace wird separat benannt. |
-| 438 MHz / MNC 999 als scheinbare Festlegung | Werte stammen aus dem Assistentenentwurf und weichen von der eingecheckten Konfiguration ab. [R4] | Historisch erhalten, als heutige Sollwerte ersetzt beziehungsweise unbestätigt markiert. |
+| HamTetra/OsmocomTETRA als pauschaler TMO-Startweg | Passende Implementierung und bidirektionale TMO-Anmeldung fehlen. Die offizielle osmo-tetra-README beschreibt das Sender-Testprogramm als Burst-Erzeuger ohne tatsächliche Modulation/Aussendung. [E1] | Keine bewährte Installationsanleitung. Der geprüfte NetCore-Workspace ist separat erfasst. |
+| 438 MHz / MNC 999 als scheinbare Festlegung | Historische Entwurfswerte; abweichend von eingecheckter Konfiguration. [R4] | Als Beispiele erhalten, keine bestätigten Sollwerte. |
 | NTP/GPS als vermeintlich ausreichendes Synchronisationskonzept | Kein Timingbudget, keine Hardware-Zeitreferenz, kein Verhalten bei Drift oder Ausfall beschrieben. | Synchronisation als eigene Spezifikations-/Messaufgabe führen, nicht als erledigten Unterpunkt. |
 | Shadow-GSSI, Meta-Sync und Shadow-Cluster | Begriffe ohne definiertes Datenmodell, Protokoll und Fehlerverhalten. | Als Ideen erhalten; keine Gleichsetzung mit DGNA, Call Restore oder ISI behaupten. |
 | „Dezentral“, „redundant“ und „selbstheilend“ | Keine belegten Ausfalltests oder Replikationsregeln. | Nur Zielbegriffe, keine Betriebsmerkmale. |
 | Langzeittest, Git und Dokumentation erst am Ende | Im ursprünglichen Ablauf nachgelagert, obwohl frühere Phasen bereits komplex sind. | Für die Fortsetzung frühe Nachweisführung empfehlen; historisches H8 unverändert dokumentieren. |
 
-Es gab in diesem Chat keine gemeldete konkrete Laufzeitstörung mit Logs und erfolgreich erprobter Reparatur. Die vorstehenden Punkte sind **Planungs-/Belegprobleme**, keine erfundenen historischen Software-Bugs.
+Es gab in diesem Planungsstand keine gemeldete konkrete Laufzeitstörung mit Logs und erfolgreich erprobter Reparatur. Die vorstehenden Punkte sind **Planungs-/Belegprobleme**, keine erfundenen historischen Software-Bugs.
 
-### 9.2 Zusätzlich heute sichtbare technische Prüfpunkte
+### 9.2 Zusätzlich am 2026-10-04 sichtbare technische Prüfpunkte
 
 **Einzelruf-Restore und Sprechrecht:** Der gelesene Handler prüft aktiven Ruf und Teilnehmerzugehörigkeit, leitet die Erteilung einer Sprechfreigabe im Einzelrufzweig anschließend aber unmittelbar aus `request_to_transmit_send_data` ab. Eine Prüfung, ob der andere Teilnehmer gerade das Sprechrecht hält, ist in diesem Zweig nicht sichtbar. Das ist ein **statisch begründeter Prüf-/Fixkandidat**, kein hier reproduzierter On-Air-Fehler. [R12]
 
@@ -347,7 +345,7 @@ Es gab in diesem Chat keine gemeldete konkrete Laufzeitstörung mit Logs und erf
 
 ## 10. Befehle und Abläufe mit Ausführungsstatus
 
-### 10.1 Historischer Chat
+### 10.1 Historischer Planungsstand
 
 Es wurden keine vollständigen Installations-, Deployment- oder Reparaturbefehle ausgeführt oder als erfolgreich bestätigt. Die Namen OpenVPN, NTP, Wiki.js und HamTetra/OsmocomTETRA waren Funktions-/Technologievorschläge. Aus ihnen wird nachträglich keine erprobte Kommandoabfolge konstruiert.
 
@@ -360,7 +358,7 @@ Es wurden keine vollständigen Installations-, Deployment- oder Reparaturbefehle
 | Neuen Archivpfad auf Existenz prüfen | HTTP 404 vor Anlage: Zielpfad war nicht vorhanden. |
 | Lokalen Clone versuchen | Fehlgeschlagen: `Could not resolve host: github.com`. Kein lokaler Quellcode-Checkout entstanden. |
 | PDF-Inventar mit PyMuPDF und SHA-256 erzeugen | Erfolgreich für 25 lokal vorhandene PDFs. Kein OCR verwendet. |
-| Eigenständige Bilddateien suchen | Keine Treffer auf der Gesprächs-/Projekt-Dateioberfläche; im ursprünglichen Mount ebenfalls ausschließlich PDFs. |
+| Eigenständige Bilddateien suchen | Keine Treffer im zugänglichen Dateienbestand; ursprünglicher Mount enthält nur PDFs. |
 | Bestehenden Index lokal gegen Git-Blob prüfen | Rekonstruierter Originalinhalt entsprach Blob `ee0ff8e0796549a90ef9d4fbda69a313bf2aaf90` bei 14.173 Byte. |
 | TBS starten, Konfiguration verändern, Funk aussenden | Nicht ausgeführt. |
 | Cargo-/Komponenten-/On-Air-Tests | Nicht ausgeführt. |
@@ -405,14 +403,14 @@ Vor Übernahme von Logs und Konfigurationen in spätere Berichte sind Zugangsdat
 
 ## 11. Tests, Ergebnisse und fehlende Abnahme
 
-Die historische Roadmap enthält **Testwünsche**, aber keine fachlichen Testergebnisse. Die heutige Prüfung ergänzt lediglich statische Befunde und die Dateiinventarisierung.
+Die historische Roadmap enthält **Testwünsche**, aber keine fachlichen Testergebnisse. Die ergänzende Prüfung ergänzt lediglich statische Befunde und die Dateiinventarisierung.
 
 | Test-/Nachweisebene | Belegter Stand |
 |---|---|
 | Code-/Konfigurationssichtung | Ausgeführt, auf die angegebenen Dateien und Bereiche begrenzt. |
 | Testcode vorhanden | Zwei-Zellen-Restore-Komponentengerüst eingesehen. [R13] |
 | Tests tatsächlich bestanden | Nicht nachgewiesen; keine Testausführung in dieser Archivierung. |
-| Träger / MCCH empfangen und dekodiert | Kein Messbericht im Chat. |
+| Träger / MCCH empfangen und dekodiert | Kein Messbericht im Entwurf. |
 | Geräteanmeldung / Wiederanmeldung | Keine zuordenbaren Funkgeräte-/TBS-Logs. |
 | Sprache / SDS lokal und über zwei Standorte | Kein Ende-zu-Ende-Test. |
 | Restore bei konkurrierendem Sprecher / stummem Uplink | Offener gezielter Regressionstest. |
@@ -425,7 +423,7 @@ Für künftige Nachweise sollten mindestens Commit, Binary-/Buildzuordnung, Konf
 
 ## 12. Realistisch geordnete Roadmap-Kandidaten zur Fortsetzung
 
-Die folgende Reihenfolge ist eine **heute abgeleitete Empfehlung innerhalb des Archivs**. Sie ersetzt keine verbindliche Projekt-Roadmap und verändert keine Datei außerhalb `Docs/archive/`. Vorhandene Funktionen sollen jeweils zuerst abgenommen und nur bei einer belegten Lücke weiterentwickelt werden.
+Die folgende Reihenfolge ist eine **am 2026-10-04 abgeleitete Empfehlung innerhalb des Archivs**. Sie ersetzt keine verbindliche Projekt-Roadmap und verändert keine Datei außerhalb `Docs/archive/`. Vorhandene Funktionen sollen jeweils zuerst abgenommen und nur bei einer belegten Lücke weiterentwickelt werden.
 
 ### M0 – Eine Station sendet, ein Gerät registriert sich
 
@@ -437,11 +435,11 @@ Die folgende Reihenfolge ist eine **heute abgeleitete Empfehlung innerhalb des A
 
 ### M1 – Lokale Kommunikation und Recovery
 
-**Priorität P0; abhängig von M0.** Lokale Sprache und SDS als eigene Abläufe prüfen. Gruppen-/Einzelrufumfang bewusst festlegen, PTT/Floor, Freigabe, Abbruch und erneuten Ruf testen. Die heutigen Restore-Risiken früh bearbeiten, bevor sie in einen Zwei-Standort-Test übernommen werden.
+**Priorität P0; abhängig von M0.** Lokale Sprache und SDS als eigene Abläufe prüfen. Gruppen-/Einzelrufumfang bewusst festlegen, PTT/Floor, Freigabe, Abbruch und erneuten Ruf testen. Die geprüften Restore-Risiken früh bearbeiten, bevor sie in einen Zwei-Standort-Test übernommen werden.
 
 **Abnahme:** Die vereinbarten lokalen Kommunikationsfälle funktionieren mit zugeordneten Logs und realen Endgeräten. Ein wiederhergestellter Einzelruf erzeugt keine ungewollte zweite Sprechfreigabe; ausbleibender Uplink wird entsprechend dem festgelegten Timeout-Verhalten behandelt. Falls ein Test scheitert, konkrete Regression statt pauschaler „Multi-Site noch offen“-Markierung dokumentieren.
 
-**Herkunft:** Im alten Entwurf nur unzureichend als lokales Gate ausgeführt; aus H3.2, H5 und den heutigen Befunden abgeleiteter zusätzlicher Zwischenschritt. [R12][R13]
+**Herkunft:** Im alten Entwurf nur unzureichend als lokales Gate ausgeführt; aus H3.2, H5 und den geprüften Befunden abgeleiteter zusätzlicher Zwischenschritt. [R12][R13]
 
 ### M2 – Stabile Einzelzelle und sichere Betriebsgrundlage
 
@@ -535,7 +533,7 @@ Alle R-Verweise beziehen sich auf **denselben geprüften Commit**. Angegebene Ze
 
 Die direkte Osmocom-Wikiseite war bei der externen Abfrage durch eine Zugriffsschutzseite blockiert; für E1 wurde die offizielle GitHub-README verwendet. Nicht passende öffentliche Suchtreffer wurden nicht als technische Belege übernommen.
 
-Dem ursprünglichen Chat ist **kein konkreter Implementierungscommit und keine PR sicher zugeordnet**. Der jetzt entstehende Archivcommit dokumentiert das Gespräch und die Prüfung, implementiert aber keine der Roadmap-Funktionen. Der Default-Branch wurde nicht beschrieben, als sei er identisch mit `Archiving`; die Quellen sind ausdrücklich gepinnt.
+Für den frühen Roadmap-Entwurf sind **kein Implementierungscommit und keine PR** sicher zugeordnet. Der Abgleich verwendet gepinnte Quellen; `main` und `Archiving` sind nicht als identisch behandelt.
 
 ### Passende Nachbararchive zur späteren Fortsetzung
 
@@ -552,7 +550,7 @@ Die folgenden Dateien waren im geprüften Archivindex bereits eingetragen. Sie w
 
 Es stehen **24 Einzel-PDFs mit zusammen 3.961 Seiten** sowie **`ETSI.pdf` mit 4.100 Seiten** zur Verfügung. Der Anfang der Sammeldatei trägt denselben Titel wie EN 300 812 V2.1.1. Eine vollständige Abschnitts-/Duplikatzuordnung der Sammeldatei wurde nicht erstellt; insbesondere wird aus der ähnlichen Anfangsseite keine Byteidentität aller Inhalte abgeleitet.
 
-Die PDFs sind technische Referenzen, **keine Belege dafür, dass NetCore die jeweiligen Funktionen implementiert**. Auch ihre Bereitstellung im heutigen Projektkontext beweist nicht, dass sie alle bereits beim ursprünglichen Roadmap-Austausch vorlagen. Die Dateien mit 2026-Draft-Titel werden nicht rückwirkend als endgültige historische Grundlage behandelt.
+Die PDFs sind technische Referenzen, **keine Belege dafür, dass NetCore die jeweiligen Funktionen implementiert**. Auch ihre Bereitstellung im geprüften Projektkontext beweist nicht, dass sie alle bereits beim ursprünglichen Roadmap-Austausch vorlagen. Die Dateien mit 2026-Draft-Titel werden nicht rückwirkend als endgültige historische Grundlage behandelt.
 
 Die Original-PDFs wurden in diesem Auftrag nicht erneut als Binärdateien ins Repository kopiert. Bewahrt werden Dateinamen, Titel-/Versionszuordnung, Umfang und Prüfsummen. Die folgende thematische Zuordnung ist eine Archivierungshilfe, keine nachträgliche Beauftragung sämtlicher in den Normen genannten Dienste.
 
@@ -584,7 +582,7 @@ Die Original-PDFs wurden in diesem Auftrag nicht erneut als Binärdateien ins Re
 | A24 | `ts_10081201v020205p.pdf` | TS 100 812-1 V2.2.5, 2003-10: UICC physical and logical characteristics | 8 | Von A21 getrennte Dokumentart/-datierung. |
 | A25 | `ETSI.pdf` | Sammeldatei; erstes Titelblatt EN 300 812 V2.1.1, 2001-12 | 4100 | Größerer Referenzbestand; vollständige Zusammensetzung nicht kartiert. |
 
-Insbesondere werden **Call Authorized by Dispatcher, BOC, Call Identification, Late Entry, Include Call, PPC, TSIM und OTAR** nicht allein wegen vorhandener Normen als neue historische Nutzerwünsche in die Roadmap hineingeschrieben. Eine spätere Entscheidung über deren Umfang muss separat dokumentiert werden.
+**Call Authorized by Dispatcher, BOC, Call Identification, Late Entry, Include Call, PPC, TSIM und OTAR** sind durch Normanhänge allein keine zusätzlichen historischen Anforderungen. Umfang und Priorität müssen separat entschieden werden.
 
 ### 15.2 SHA-256-Manifest der zugänglichen Originaldateien
 
@@ -616,19 +614,19 @@ ac716ca18082cc0fd2ee768a14f03deb48fa78a77e83751b1a6b319c7fc2106a  en_30039502v01
 9434dad1e7bc80ca39b0edadd8e3b9995fda5ae5f5c3dd565af05708d5059e38  ETSI.pdf
 ```
 
-### 15.3 Bilder des Chats
+### 15.3 Bildbestand
 
-**Keine eigenständigen historischen Chatbilder verfügbar.** Die Bilddatei-Abfrage lieferte keine Treffer; der ursprüngliche lokale Dateibestand enthielt nur die 25 PDFs. Sichtbare Titelblatt-/Seitenbilder sind Renderansichten dieser PDF-Dokumente und keine eigenständigen hochgeladenen Stationsfotos oder Roadmap-Grafiken.
+**Keine eigenständigen historischen Bilder verfügbar.** Die Bilddatei-Abfrage lieferte keine Treffer; der ursprüngliche lokale Dateibestand enthielt nur die 25 PDFs. Sichtbare Titelblatt-/Seitenbilder sind Renderansichten dieser PDF-Dokumente und keine eigenständigen hochgeladenen Stationsfotos oder Roadmap-Grafiken.
 
-Deshalb wurden keine fremden Bilder, keine neu erzeugte Ersatzgrafik und keine massenhaft extrahierten Normseiten als angebliche Chatbilder hochgeladen. Das frühere SVG-/PNG-Angebot bleibt als nicht umgesetzte Nebenidee erhalten. Falls später ein Originalbild eindeutig diesem Chat zugeordnet werden kann, ist es unter `Docs/archive/` nachzuarchivieren und mit Herkunft sowie Bezug im Dokument zu verlinken.
+Originalbilder fehlen. Das SVG-/PNG-Angebot bleibt eine nicht umgesetzte Nebenidee. Später verfügbare Bilder können mit Herkunft und eindeutigem Themenbezug ergänzt werden.
 
 ## 16. Abschluss und Übergabe
 
-Bewahrt sind sämtliche 40 Schritte des sichtbaren historischen Entwurfs, dessen Gesamtvision und das Grafikangebot. Als endgültige Nutzeranforderung bleibt: **mit einer tatsächlich sendenden Station und einer belegten Geräteanmeldung beginnen; nur basisstationsbezogene Funktionen schrittweise ausbauen.**
+Erhalten sind sämtliche 40 Schritte des historischen Entwurfs, Gesamtvision und Grafikidee. Verbindliche Ausgangsrichtung: **mit einer tatsächlich sendenden Station und belegter Geräteanmeldung beginnen; anschließend Basisstationsfunktionen schrittweise ausbauen.**
 
-Die heutige Prüfung zeigt vorhandene konkrete NetCore-Bausteine, ohne sie pauschal als betriebsfertig zu bestätigen. Hauptaufgaben sind die Live-Baseline, lokale Kommunikations-/Restore-Abnahme, abgesicherte Verwaltung und anschließend die kontrollierte Nutzung vorhandener Audio-, IoT- und Multi-Site-Pfade. Historische Namen, alte Funkparameter, fehlende Backups und noch nicht geprüfte Funktionen bleiben erkennbar von nachgewiesenem Code getrennt.
+Die ergänzende Prüfung zeigt vorhandene konkrete NetCore-Bausteine, ohne sie pauschal als betriebsfertig zu bestätigen. Hauptaufgaben sind die Live-Baseline, lokale Kommunikations-/Restore-Abnahme, abgesicherte Verwaltung und anschließend die kontrollierte Nutzung vorhandener Audio-, IoT- und Multi-Site-Pfade. Historische Namen, alte Funkparameter, fehlende Backups und noch nicht geprüfte Funktionen bleiben erkennbar von nachgewiesenem Code getrennt.
 
-Diese Archivierung ist eine Dokumentationsänderung. Der Chat selbst wird dadurch nicht archiviert; das übernimmt der Nutzer nach Prüfung.
+Für die Umsetzung zuerst Betriebsziel, vorhandene Hardware, tatsächliche Revision und Kriterien des ersten Meilensteins festlegen.
 
 [R1]: https://github.com/JanHG98/netcore-tetra/blob/530170d2deda13d531e5e200d0bde7ab97acbdcd/README.md
 [R2]: https://github.com/JanHG98/netcore-tetra/blob/530170d2deda13d531e5e200d0bde7ab97acbdcd/Cargo.toml#L1-L170

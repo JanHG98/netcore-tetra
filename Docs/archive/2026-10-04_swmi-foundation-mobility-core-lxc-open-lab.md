@@ -1,40 +1,36 @@
-# Abschlussdokumentation: SWMI Foundation, Mobility, Core-LXC und Open-Lab-Ausbau
+# Brainstorming: SWMI Foundation, Mobility, Core-LXC und Open-Lab-Ausbau
 
-## 1. Metadaten
+## Zielbild und Festlegungen
+
+- Ausbaufolge: Foundation → lokale Mobility-/Restore-Runtimes → zentrale Core-Dienste.
+- Zeitkritische Funklogik bleibt in der TBS; TLMC/TLPD sind lokale Komponenten. Deploybare Dienste erhalten eigene WebUIs.
+- Die frühe Phase verwendet `open_lab` ohne Tokens/TLS. Diese Festlegung gilt für die damaligen Dienste und nicht für später hinzugekommene Komponenten.
+- Der Abgleich vom **06.10.2026** zeigt vorhandene Backends, aber Lücken der aktiven TBS-Policy-/Restore-Integration. Hardware-/On-Air-Abnahme bleibt offen.
+
+## 1. Arbeitsstand
 
 - **Thema:** Ausbau von NetCore-Tetra von typisierten TLMC/TLPD-Grundlagen über lokale Mobility-/Call-Restore-Runtimes bis zu den ersten zentralen LXC-Diensten `node-gateway`, `mobility-core`, `subscriber-core`, `group-core`, `call-control` und `media-switch`.
-- **Ursprünglicher Chattitel:** „SwMI Funktionen Tetra Netz“.
-- **Chatlink:** [SwMI Funktionen Tetra Netz](https://chatgpt.com/c/6a5fceed-3400-83ed-bce9-28f377ef4746).
-- **Chat-ID:** `6a5fceed-3400-83ed-bce9-28f377ef4746`.
-- **Erstellungsdatum dieser Abschlussdokumentation:** 2026-10-04.
-- **Datum der erneuten Quellen- und Implementierungsprüfung:** 2026-10-06, Europe/Berlin. Der vorhandene Dateiname mit Erstellungsdatum bleibt erhalten; es wird kein zweiter Eintrag dieses Chats angelegt.
+- **Erstellungsdatum dieser Notizen:** 2026-10-04.
+- **Datum der erneuten Quellen- und Implementierungsprüfung:** 2026-10-06, Europe/Berlin. Der vorhandene Dateiname mit Erstellungsdatum bleibt erhalten; es wird kein zweiter Eintrag dieser Planung angelegt.
 - **Repository:** `JanHG98/netcore-tetra`.
 - **Zielbranch für dieses Archiv:** `Archiving`.
-- **Aktuell geprüfter Branch-HEAD vor dieser Ergänzung:** [`dac5f0063e9fe06b62157c6b11a351a2ce476fdb`](https://github.com/JanHG98/netcore-tetra/commit/dac5f0063e9fe06b62157c6b11a351a2ce476fdb).
+- **Am Prüfdatum untersuchter Branch-HEAD vor dieser Ergänzung:** [`dac5f0063e9fe06b62157c6b11a351a2ce476fdb`](https://github.com/JanHG98/netcore-tetra/commit/dac5f0063e9fe06b62157c6b11a351a2ce476fdb).
 - **Erster Checkout dieser Fortsetzung:** `a76f0f5ae264e42aac2a244f3c2e32c09e7886bb`. Die anschließend übernommenen 40 Commits bis `dac5f00` ändern ausschließlich `Docs/archive/`; die hier geprüften Implementierungsdateien sind zwischen diesen beiden Ständen unverändert.
 - **Provenienz der vorhandenen Archivfassung:** [`b2b4e5dcad4824597b403c2a397e46bbd7108a12`](https://github.com/JanHG98/netcore-tetra/commit/b2b4e5dcad4824597b403c2a397e46bbd7108a12). Sie nannte `875380e729ee45aa7cc89f48ccd0a32b4be0c770` als damaligen Prüfstand. Diese frühere Fassung bleibt in Git nachvollziehbar.
-- **Abgrenzung:** kein Merge mit `main`, keine Implementierungsänderung und kein Deployment im Rahmen dieser Archivfortsetzung.
-- **Zulässiger Schreibbereich dieses Auftrags:** ausschließlich `Docs/archive/`.
 
-### 1.1 Auswertungsumfang und Grenzen
+### 1.1 Quellenumfang und Grenzen
 
-Diese fortgeschriebene Dokumentation unterscheidet drei Quellenebenen:
+Die Entwicklungsnotizen unterscheiden drei Quellenebenen:
 
-| Kürzel | Tatsächlich zugängliche Quelle | Aussagekraft und Grenze |
+| Kürzel | Grundlage | Aussagegrenze |
 |---|---|---|
-| **C – Chattext** | Abruf des verknüpften Chats: fünf Turns mit fünf Nutzernachrichten und vier vollständigen Assistentenantworten zu Core 1 A–D | Der Abruf mit `turnLimit=10` endete mit `hasMore=false`, `nextCursor=null`, `attachments=[]`. Frühere Foundation-/Mobility-Turns wurden nicht geliefert. Paketbeschreibungen und Testberichte sind historische Aussagen des Assistenten, keine heute neu ausgeführten Tests. |
-| **H – historische Archivfassung** | Bereits vorhandene Fassung dieser Datei aus Commit `b2b4e5d` | Sekundärquelle für Foundation/Mobility, frühere Nutzerentscheidungen, Verpackungsfehler und ZIP-Hashes. Ihre damalige Aussage, ZIPs seien lokal vorhanden und nachgehasht worden, ist in dieser Fortsetzung nicht erneut belegbar. |
-| **R – Repositoryprüfung** | Quellcode, Konfigurationen, Installer, Workflow-Dateien und ausgeführte Strukturprüfungen auf `Archiving` bei `dac5f00` | Belegt vorhandene Implementierung und konkret dokumentierte Prüfergebnisse. Belegt weder historische ZIP-Inhalte noch reale Funk-/LXC-Funktion. |
+| **C – Paketberichte** | Verfügbare Beschreibungen zu Core 1 A–D | Beschreiben den historischen Paketumfang, keine neu ausgeführten Tests. Frühe Foundation-/Mobility-Berichte fehlen. |
+| **H – historische Dokumentation** | Vorfassung bei `b2b4e5d` | Sekundärquelle für Foundation/Mobility, Festlegungen, Verpackungsfehler und ZIP-Hashes; ZIP-Dateien wurden am 06.10.2026 nicht erneut geprüft. |
+| **R – Repositoryprüfung** | Code, Konfiguration, Installer, Workflows und Strukturchecks bei `dac5f00` | Belegt vorhandene Implementierung und dokumentierte Prüfergebnisse, keine realen Funk-/LXC-Tests. |
 
-Chronologisch enthält C die Nutzertexte „nächste :D“ → Subscriber Core, „go“ → Group Core, „dann das nächste :D“ → Call Control, „weiter geht es :D“ → Media Switch sowie „und weiter geht es :D“ ohne nachfolgende Implementierungsantwort. Die mit der Fortsetzung gelieferte Chatvorschau enthält zusätzlich einen abgeschnittenen früheren Archivierungsauftrag. Maßgeblich für die jetzige Ablage, Branchwahl und Veröffentlichung ist der vollständig vorliegende aktuelle Nutzerauftrag.
+C beschreibt die Paketfolge Subscriber Core → Group Core → Call Control → Media Switch. Der nachfolgend vorgesehene Recorder ist dort noch nicht geliefert. Die vier verlinkten Core-ZIPs und elf älteren Foundation-/Mobility-Artefakte waren für den Abgleich nicht lokal verfügbar. Überlieferte Hashwerte in Abschnitt 13 sind keine am 06.10.2026 neu berechneten Werte; Repository-Pfade belegen keine Bytegleichheit mit den ZIPs.
 
-**Auswertungslücken:** Es gibt keinen vollständigen Rohverlauf der älteren Entwicklungsphasen, keine historischen Tool-/Buildlogs im aktuellen Chatabruf und keinen Zugriff auf die vier dort verlinkten `sandbox:/mnt/data/...zip`-Dateien. Auch die Suche nach SWMI-ZIPs im lokalen Projektarbeitsbereich lieferte keine Treffer. Die Hashwerte in Abschnitt 13 werden deshalb als überlieferte Angaben erhalten, nicht als aktuell berechnet bezeichnet. Die elf älteren Foundation-/Mobility-Artefakte sind ausschließlich durch H überliefert. Ein vorhandener Repository-Pfad beweist keine Bytegleichheit mit diesen ZIPs.
-
-Die 25 Dateien unter dem synchronisierten Projektverzeichnis `sources/` sind als PDF-Referenzen sichtbar und wurden unverändert belassen. Eine neue Normen-/Konformitätsprüfung ihres Inhalts wurde nicht durchgeführt. Die frühere Archivfassung nennt vor allem `en_30039202v030801p.pdf` als Grundlage; das ist ihre historische Quellenzuordnung.
-
-**Bilder:** Im zugänglichen Chattext gibt es keine Bildinhalte und die zurückgegebene Anhangsliste ist leer. Es wurden daher keine Bilder hochgeladen, aus anderen Chats übernommen oder ersetzt. Ob im nicht zugänglichen älteren Verlauf weitere Bilder existierten, bleibt offen.
-
-**Secrets:** Diese Dokumentation übernimmt keine Zugangsdaten, Tokenwerte, Schlüssel oder produktiven Konfigurationsdateien. Beispielkennungen aus C sind Beispiele; die beschriebenen Betriebsdateien werden nur mit ihren Pfaden genannt.
+Die 25 PDF-Referenzen unter `sources/` wurden unverändert belassen. Eine neue Normenprüfung fand nicht statt; H nennt vor allem `en_30039202v030801p.pdf` als Grundlage. Eigenständige historische Bilder sind nicht verfügbar.
 
 ## 2. Statusbegriffe
 
@@ -42,19 +38,19 @@ Diese Dokumentation trennt bewusst fünf Ebenen:
 
 | Status | Bedeutung |
 |---|---|
-| **Idee** | im Chat vorgeschlagen, ohne verbindliche Umsetzung |
-| **beschlossen/geplant** | vom Nutzer ausdrücklich gewünscht oder als nächster Schritt vereinbart |
+| **Idee** | in der Planung vorgeschlagen, ohne verbindliche Umsetzung |
+| **beschlossen/geplant** | ausdrücklich gewünscht oder als nächster Schritt vereinbart |
 | **implementiert** | Quellcode ist am genannten Prüfcommit vorhanden; historische Paketbehauptungen werden zusätzlich mit C/H als Quelle eingeordnet. Vorhandene Runtime-Dateien sind kein Beleg für ihre Einbindung in den aktiven Funkpfad. |
 | **getestet** | ein konkreter Test/Checker wurde tatsächlich ausgeführt und sein Ergebnis liegt vor; historische Testberichte und neue Strukturprüfungen werden getrennt geführt |
 | **im Betrieb bestätigt** | auf realer TBS/LXC/Endgerät/Funkstrecke erfolgreich beobachtet |
 
-Historisch wurden die Pakete als implementiert und statisch geprüft gemeldet. Der aktuelle Abgleich bestätigt viele Dateien und Backend-Funktionen, zeigt aber ausdrücklich fehlende aktive TBS-Integrationen. Ein erfolgreicher Rust-Build der historischen Pakete sowie reale TBS-/LXC-/On-Air-Abnahmen sind durch die zugänglichen Quellen nicht belegt. Die neuen tatsächlichen Prüfergebnisse stehen in Abschnitt 9.8.
+Historisch wurden die Pakete als implementiert und statisch geprüft gemeldet. Der am Prüfdatum vorliegende Abgleich bestätigt viele Dateien und Backend-Funktionen, zeigt aber ausdrücklich fehlende aktive TBS-Integrationen. Ein erfolgreicher Rust-Build der historischen Pakete sowie reale TBS-/LXC-/On-Air-Abnahmen sind durch die zugänglichen Quellen nicht belegt. Die neuen tatsächlichen Prüfergebnisse stehen in Abschnitt 9.8.
 
 ## 3. Ziel und Ausgangslage
 
-Der Chat setzte auf einem bereits weit fortgeschrittenen NetCore-Tetra-Codebestand auf. Zunächst fehlten belastbare, typisierte lokale SAP-Grundlagen für TLMC/TLPD und vollständige State Machines für Mobility- und Call-Restore-Pfade. Danach wurde der Fokus schrittweise auf einen Multi-Site-SWMI-Ausbau verschoben.
+Der Ausbau setzte auf einem bereits weit fortgeschrittenen NetCore-Tetra-Codebestand auf. Zunächst fehlten belastbare, typisierte lokale SAP-Grundlagen für TLMC/TLPD und vollständige State Machines für Mobility- und Call-Restore-Pfade. Danach wurde der Fokus schrittweise auf einen Multi-Site-SWMI-Ausbau verschoben.
 
-H überliefert folgende Nutzerfestlegungen. Die ursprünglichen Nutzerturns dazu sind heute nicht abrufbar; C bestätigt die Fortsetzung der Paketfolge und die wiederholt als vereinbart beschriebene Open-Lab-Ausrichtung:
+H überliefert folgende Festlegungen; C bestätigt die anschließende Paketfolge und die Open-Lab-Ausrichtung:
 
 - vollständige Repository-ZIPs statt kleiner Patches;
 - die lokale zeitkritische Funklogik in der TBS belassen;
@@ -63,13 +59,13 @@ H überliefert folgende Nutzerfestlegungen. Die ursprünglichen Nutzerturns dazu
 - zunächst eine **offene Testumgebung ohne Tokens, Login oder TLS** verwenden;
 - den Ausbau schrittweise von Foundation → Mobility → zentrale Core-Dienste fortsetzen.
 
-Die spätere Sicherheitsentscheidung „erstmal nicht mit Tokens arbeiten“ hatte Vorrang vor früheren allgemeinen RBAC-/Security-Ideen. Für die in diesem Chat eingeführten Backend-Dienste wurde deshalb `security.mode = "open_lab"`, `token_auth = false` und `tls = false` vorgesehen. Das war ausdrücklich ein **Labormodus**, keine Empfehlung für Produktion.
+Die spätere Sicherheitsentscheidung „erstmal nicht mit Tokens arbeiten“ hatte Vorrang vor früheren allgemeinen RBAC-/Security-Ideen. Für die in dieser Entwicklungsphase eingeführten Backend-Dienste wurde deshalb `security.mode = "open_lab"`, `token_auth = false` und `tls = false` vorgesehen. Das war ausdrücklich ein **Labormodus**, keine Empfehlung für Produktion.
 
-## 4. Architekturentscheidungen dieses Chats
+## 4. Architekturentscheidungen dieser Planung
 
 ### 4.1 Trennung Edge/TBS und zentraler Core
 
-**Historisches Zielbild aus H und C; heutige Integrationsgrenzen siehe Abschnitt 9.7:**
+**Historisches Zielbild aus H und C; zusätzliche Integrationsgrenzen siehe Abschnitt 9.7:**
 
 - PHY/UMAC/LLC/MLE/MM/CMCE-nahe Echtzeitpfade bleiben lokal in der TBS.
 - TLMC und TLPD sind lokale Service-Access-Point-/Runtime-Komponenten und **keine eigenen LXC-Dienste**.
@@ -77,7 +73,7 @@ Die spätere Sicherheitsentscheidung „erstmal nicht mit Tokens arbeiten“ hat
 - `node-gateway` bildet den zentralen Transport zwischen TBS und Backend.
 - Jeder deploybare Systemdienst besitzt eine eigene WebUI; `system-backend/shared` bleibt eine Bibliotheksstruktur und ist kein eigener Runtime-Container.
 
-### 4.2 Geplanter bzw. im Chat implementierter Core-Datenpfad
+### 4.2 Geplanter bzw. in der Planung implementierter Core-Datenpfad
 
 ```text
 TBS
@@ -95,7 +91,7 @@ Node Gateway
 
 ### 4.3 Sicherheitsmodus der Testphase
 
-Für die im Chat aufgebauten LXC-Dienste galt:
+Für die in der Planung aufgebauten LXC-Dienste galt:
 
 ```text
 open_lab
@@ -110,9 +106,9 @@ isoliertes Testnetz erforderlich
 
 Andere Security-Modi sollten in diesen frühen Diensten bewusst abgewiesen werden, statt nicht implementierte Sicherheit vorzutäuschen.
 
-## 5. Chronologischer Entwicklungsstand dieses Chats
+## 5. Chronologischer Entwicklungsstand dieser Planung
 
-**Leseregel für diesen Abschnitt:** 5.1–5.10 werden aus H erhalten, weil die zugehörigen Originalturns fehlen. 5.11–5.14 sind zusätzlich durch die heute zugänglichen Paketantworten C belegt. „Implementiert“ und „getestet“ in dieser historischen Chronologie beschreiben die damaligen Paketberichte, nicht automatisch den heute aktiven TBS-Code. Abweichende aktuelle Befunde in Abschnitt 9 haben für die Fortsetzung Vorrang. Insbesondere werden die alten ZIP-Hashes hier nicht erneut verifiziert.
+**Leseregel für diesen Abschnitt:** 5.1–5.10 werden aus H erhalten, weil die zugehörigen Originalberichte fehlen. 5.11–5.14 sind zusätzlich durch die zum Prüfdatum zugänglichen Paketberichte C belegt. „Implementiert“ und „getestet“ in dieser historischen Chronologie beschreiben die damaligen Paketberichte, nicht automatisch den zum Prüfdatum aktiven TBS-Code. Abweichende am Prüfdatum vorliegende Befunde in Abschnitt 9 haben für die Fortsetzung Vorrang. Insbesondere werden die alten ZIP-Hashes hier nicht erneut verifiziert.
 
 ### 5.1 SWMI Foundation 1 – Paket A: Inventur und WebUI-/Backend-Grundstruktur
 
@@ -164,7 +160,7 @@ Dieser Stand liegt im verfügbaren Verlauf nur als vorausgehender Projektkontext
 - defensives BS-Routing;
 - read-only Diagnose-Snapshot für spätere WebUI/Node-Gateway-Nutzung.
 
-**Bewusste Grenze im Chat:** Der allgemeine physische SDR-Retune-Pfad war noch nicht vollständig hardwareunabhängig. Die Runtime konnte die benötigte `TmvConfigureReq` erzeugen, aber der Adapter bis zum realen SDR blieb ein klar benannter Integrationspunkt.
+**Bewusste Grenze in der Planung:** Der allgemeine physische SDR-Retune-Pfad war noch nicht vollständig hardwareunabhängig. Die Runtime konnte die benötigte `TmvConfigureReq` erzeugen, aber der Adapter bis zum realen SDR blieb ein klar benannter Integrationspunkt.
 
 **Testgrenze:** Bei der sichtbaren finalen Paket-C-Prüfung wurde ein Python-Validierungslauf nach 60 Sekunden automatisch mit `KeyboardInterrupt` beendet. Das ZIP wurde dennoch erzeugt. Spätere Paketprüfungen führten den Paket-C-Static-Checker erfolgreich erneut aus. Daher gilt: statische C-Invarianten wurden später bestätigt; die damalige Behauptung einer vollständig erfolgreichen unabhängigen Endprüfung war in genau diesem einen sichtbaren Lauf zu stark formuliert.
 
@@ -220,7 +216,7 @@ Dieser Stand liegt im verfügbaren Verlauf nur als vorausgehender Projektkontext
 
 ### 5.7 SWMI Mobility 1 – Paket B: vollständige CMCE Call-Restore-State-Machine
 
-Der Nutzer verlangte ausdrücklich, dass die Wiederherstellung laufender Gruppen- **und** Einzelrufe nicht weiter auf später verschoben wird.
+Wiederherstellung laufender Gruppen- **und** Einzelrufe ist als unmittelbar erforderlicher Ausbau festgelegt.
 
 **Implementiert:**
 
@@ -256,7 +252,7 @@ Der Nutzer verlangte ausdrücklich, dass die Wiederherstellung laufender Gruppen
 
 ### 5.9 SWMI Mobility 1 – Paket D: Node Gateway, erster echter LXC
 
-Hier änderte der Nutzer die Sicherheitspriorität ausdrücklich: **in der Testumgebung vorerst keine Tokens**.
+Für die weitere Testphase wurde festgelegt: **in der Testumgebung vorerst keine Tokens**.
 
 **Implementiert:**
 
@@ -368,15 +364,15 @@ Hier änderte der Nutzer die Sicherheitspriorität ausdrücklich: **in der Testu
 
 **Artefakt:** `netcore-tetra-swmi-core1-package-d-media-switch-open-lab.zip` – SHA-256 `4721caf2aa29ade70cc865cc6b362fc64fcaea1b776ce359fc58f82d434b93b7`.
 
-### 5.15 Recorder: im Chat nur als nächster Schritt begonnen
+### 5.15 Recorder: in der Planung nur als nächster Schritt begonnen
 
 Nach dem Media Switch wurde als nächster LXC der **Recorder** angekündigt: Übernahme von Media-Taps/Sprachframes, Zusammensetzen netzweiter Calls, Metadaten und eigene offene WebUI.
 
-Nach der letzten Fortsetzungsnachricht liegt in C keine Recorder-Implementierungsantwort und kein Recorder-ZIP vor. H berichtet ebenfalls, dass die Archivierung vor einem solchen Paket erfolgte. Belastbarer Chatstatus: **als nächster Schritt geplant; Abschluss im zugänglichen Verlauf nicht belegt**. Eine Aussage über eventuelle nicht gelieferte Turns wird damit nicht getroffen.
+Für den Recorder enthalten C und H noch keinen Implementierungsbericht oder ein geprüftes ZIP. **Historischer Entwicklungsstatus: als nächster Schritt geplant.** Spätere Repository-Implementierung wird in Abschnitt 9 getrennt bewertet.
 
-Dieser Punkt ist wichtig, weil der heute geprüfte Repository-Stand inzwischen bereits einen Recorder enthält; siehe Abschnitt 9. Das ist eine spätere/anderweitige Repository-Weiterentwicklung und darf nicht rückwirkend als Ergebnis des hier sichtbaren Recorder-Schritts ausgegeben werden.
+Dieser Punkt ist wichtig, weil der am Prüfdatum geprüfte Repository-Stand inzwischen bereits einen Recorder enthält; siehe Abschnitt 9. Das ist eine spätere/anderweitige Repository-Weiterentwicklung und darf nicht rückwirkend als Ergebnis des hier sichtbaren Recorder-Schritts ausgegeben werden.
 
-## 6. Relevante Dateien und technische Schnittstellen aus dem Chat
+## 6. Relevante Dateien und technische Schnittstellen aus den Arbeitsnotizen
 
 ### 6.1 Lokale TBS-Runtimes
 
@@ -391,7 +387,7 @@ Dieser Punkt ist wichtig, weil der heute geprüfte Repository-Stand inzwischen b
 
 ### 6.2 Backend-LXC und Ports
 
-| Dienst | Historischer Port | Hauptschnittstelle | Sicherheitsmodus im Chat |
+| Dienst | Historischer Port | Hauptschnittstelle | Sicherheitsmodus in der Planung |
 |---|---:|---|---|
 | Node Gateway | 8080 | `/ws/node`, `/ws/backend`, `/api/v1` | open_lab |
 | Mobility Core | 8090 | Node-Gateway-Backend-WS, REST | open_lab |
@@ -399,7 +395,7 @@ Dieser Punkt ist wichtig, weil der heute geprüfte Repository-Stand inzwischen b
 | Group Core | 8110 | REST + Node-Gateway-Backend-WS | open_lab |
 | Call Control | 8120 | REST + Node-Gateway-Backend-WS | open_lab |
 | Media Switch | 8130 | REST + Node-Gateway-Backend-WS | open_lab |
-| Recorder | 8140 | im Chat nur geplant | open_lab geplant |
+| Recorder | 8140 | in der Planung nur geplant | open_lab geplant |
 
 ### 6.3 Wichtige Protokoll-/Datenparameter
 
@@ -420,23 +416,23 @@ Die Datenbank liegt unter `/var/lib/netcore-subscriber-core/subscribers.json`, d
 |---|---|
 | `allow_list` | Nur Profile mit `enabled=true` und `registration_allowed=true`; leere freigegebene Liste bedeutet **deny all**. |
 | `open_network` | Alle ISSIs dürfen sich registrieren; Stammdaten bleiben erhalten. |
-| `disconnect_unauthorized=true` | Laut Paketbericht sollten bereits registrierte, neu unberechtigte Geräte getrennt und zur erneuten Registrierung gezwungen werden. Die aktuelle TBS-Integration bestätigt dies nicht, siehe 9.7. |
+| `disconnect_unauthorized=true` | Laut Paketbericht sollten bereits registrierte, neu unberechtigte Geräte getrennt und zur erneuten Registrierung gezwungen werden. Die am Prüfdatum vorliegende TBS-Integration bestätigt dies nicht, siehe 9.7. |
 
 Der historische Datenweg war Subscriber Core → `WS /ws/backend` → Node Gateway → `WS /ws/node` → MM. Vertrag: `SubscriberAccessPolicyApply` / `SubscriberAccessPolicyApplied`, mit Revision, Handle, erlaubten Home-ISSIs, Policy-Modus und Disconnect-Vorgabe. Sync-Zustände: `Pending`, `Requested`, `Applied`, `Failed`, `TimedOut`, `Offline`, `Unsupported`; dazu gewünschte/bestätigte Revision, Request-ID, Command-ID, Zeit und Timeout.
 
 Die Home-ISSI bleibt bei Migration maßgeblich. Beispiel aus C: Home-ISSI `2260575`, lokale VASSI `0xE00000`. `home_issi_by_local_issi` überlebt im Runtime-Modell das Entfernen kurzlebiger Migrationstransaktionen; Detach/Context-Entfernung sollen sie bereinigen. Das bedeutet Langlebigkeit innerhalb dieses Modells, keinen hier nachgewiesenen Erhalt über einen Prozessneustart. C berichtet außerdem die Korrektur eines Gruppenaffiliationszugriffs auf einen nur beim Location Update vorhandenen Migration Context. Die historische fehlerhafte Codeversion ist nicht zugänglich.
 
-**Aktuelle Abgrenzung:** Backend-Datenmodell, Persistenz und Policy-Erzeugung sind vorhanden. Die TBS meldet `subscriber_policy=false`; deshalb erzeugt der Core für diese TBS einen `Unsupported`-Status. Die historische Zusage eines vollständig gesicherten Umgangs mit verspäteten Antworten ist für den aktuellen Handler zu weitgehend, siehe 9.7.
+**Am Prüfdatum vorliegende Abgrenzung:** Backend-Datenmodell, Persistenz und Policy-Erzeugung sind vorhanden. Die TBS meldet `subscriber_policy=false`; deshalb erzeugt der Core für diese TBS einen `Unsupported`-Status. Die historische Zusage eines vollständig gesicherten Umgangs mit verspäteten Antworten ist für den am Prüfdatum vorliegenden Handler zu weitgehend, siehe 9.7.
 
 ### 6.5 Group Core: im zugänglichen Paket B festgehaltene Details
 
-Gruppenprofile enthalten GSSI, Name/Beschreibung, `enabled`, `attach_allowed`, `dgna_allowed`, `call_allowed`, `sds_allowed`, `emergency_allowed`, `call_priority`, `class_of_usage`, `area_nodes` und Notizen. Die im Chat beispielhaft genannte GSSI `15501` („Hintergrundgruppe“) sollte SDS zulassen, Sprache und Notruf sperren, mit Priorität `0` und Class of Usage `4`. Das ist ein Chatbeispiel, keine verifizierte aktuelle Gruppenkonfiguration.
+Gruppenprofile enthalten GSSI, Name/Beschreibung, `enabled`, `attach_allowed`, `dgna_allowed`, `call_allowed`, `sds_allowed`, `emergency_allowed`, `call_priority`, `class_of_usage`, `area_nodes` und Notizen. Die in der Planung beispielhaft genannte GSSI `15501` („Hintergrundgruppe“) sollte SDS zulassen, Sprache und Notruf sperren, mit Priorität `0` und Class of Usage `4`. Das ist ein Planungsbeispiel, keine verifizierte am Prüfdatum vorliegende Gruppenkonfiguration.
 
 Mitgliedschaften verknüpfen ISSI/GSSI mit `allowed`, `auto_attach`, `locked` und Notizen. Bei erzwungenen Mitgliedschaften ist ein freigegebener Datensatz erforderlich. Auto-Attach sollte registrierten Geräten bei der Policy-Synchronisation Gruppen per DGNA zuweisen. **`locked` wurde historisch nur gespeichert/transportiert; die dazugehörige Rollen-/Operatorlogik war geplant.** Eine weitergehende Sperrwirkung ist damit nicht belegt.
 
-`area_nodes=[]` bezeichnet globale Gruppen; ansonsten liefert die Policy-Erzeugung einer TBS nur Gruppen ihres Bereichs. Datenbank: `/var/lib/netcore-group-core/groups.json` und `.bak`, mit Schema-/Datenbank-/Datensatzrevisionen und Zeiten. Wie beim Subscriber Core sind temporäre Datei und Rename vorhanden; ein fehlgeschlagenes Backup-Copy wird im aktuellen Persistenzpfad nicht weitergereicht.
+`area_nodes=[]` bezeichnet globale Gruppen; ansonsten liefert die Policy-Erzeugung einer TBS nur Gruppen ihres Bereichs. Datenbank: `/var/lib/netcore-group-core/groups.json` und `.bak`, mit Schema-/Datenbank-/Datensatzrevisionen und Zeiten. Wie beim Subscriber Core sind temporäre Datei und Rename vorhanden; ein fehlgeschlagenes Backup-Copy wird im am Prüfdatum vorliegenden Persistenzpfad nicht weitergereicht.
 
-Verträge: `GroupAccessPolicyApply` / `GroupAccessPolicyApplied` und `GroupDgnaApply` / `GroupDgnaApplied`. DGNA-Zustände: `Pending`, `Requested`, `Applied`, `Failed`, `TimedOut`, `Cancelled`. Ein Vorgang führt Vorgangs-ID, Node-ID, ISSI, GSSI, Attach/Detach, Force, Request-/Command-ID und Ergebnis. Der aktuelle Group-Core-Handler prüft sowohl Command-Zuordnung als auch `desired_revision == revision` und protokolliert verwaiste Antworten.
+Verträge: `GroupAccessPolicyApply` / `GroupAccessPolicyApplied` und `GroupDgnaApply` / `GroupDgnaApplied`. DGNA-Zustände: `Pending`, `Requested`, `Applied`, `Failed`, `TimedOut`, `Cancelled`. Ein Vorgang führt Vorgangs-ID, Node-ID, ISSI, GSSI, Attach/Detach, Force, Request-/Command-ID und Ergebnis. Der am Prüfdatum vorliegende Group-Core-Handler prüft sowohl Command-Zuordnung als auch `desired_revision == revision` und protokolliert verwaiste Antworten.
 
 Historisch beschriebene lokale Prüfungen:
 
@@ -445,7 +441,7 @@ Historisch beschriebene lokale Prüfungen:
 - Gruppenruf: `call_allowed`, lokale Affiliation, Notruferlaubnis und Mindestpriorität. Beispiel: angefordert `3`, Mindestwert `7` → effektive Priorität `7`; bei daraus resultierender Notrufpriorität trotzdem Notrufberechtigung prüfen.
 - `force=true` sollte Gruppen-/Mitgliedschaftspolicy umgehen; Registrierung, gültige GSSI und DGNA-Unterstützung bleiben erforderlich. Dies war ein Operator-Override im offenen Labormodus, kein RBAC-geschütztes Recht.
 
-**Aktuelle Abgrenzung:** Die Backend-Verwaltung und Policy-Erzeugung sind vorhanden. Der aktive TBS-Konstruktor setzt `group_policy=false`, und MM behandelt die zentralen `GroupAccessPolicyApply`-/`GroupDgnaApply`-Kommandos nicht. Der vorhandene lokale `Dgna`-Pfad ist davon zu unterscheiden. Die historischen Aussagen über lokale Policy-Durchsetzung dürfen nicht als aktueller End-to-End-Nachweis fortgeschrieben werden.
+**Am Prüfdatum vorliegende Abgrenzung:** Die Backend-Verwaltung und Policy-Erzeugung sind vorhanden. Der aktive TBS-Konstruktor setzt `group_policy=false`, und MM behandelt die zentralen `GroupAccessPolicyApply`-/`GroupDgnaApply`-Kommandos nicht. Der vorhandene lokale `Dgna`-Pfad ist davon zu unterscheiden. Die historischen Aussagen über lokale Policy-Durchsetzung dürfen nicht als am Prüfdatum vorliegender End-to-End-Nachweis fortgeschrieben werden.
 
 ### 6.6 Call Control: Call-Legs, Floor und Restore
 
@@ -457,15 +453,15 @@ Call Control ist Eigentümer des **logischen netzweiten Calls**. Ein lokales TBS
 | TBS-Leg | `Requested`, `Starting`, `Active`, `Releasing`, `Ended`, `Failed`, `TimedOut`, `Offline` |
 | Restore | `ExportQueued`, `ExportRequested`, `ImportQueued`, `ImportRequested`, `Ready`, `Completed`, `Cancelled`, `Failed`, `TimedOut` |
 
-Historische Zielauswahl: explizite TBS-Liste, anschließend beobachtete Teilnehmer mit passender GSSI-Affiliation, danach geeignete online Call-Control-Nodes als Fallback. Individualrufe führen Calling/Called ISSI, Simplex-/Duplex-Auswahl und Priorität. Der aktuelle Stand enthält zusätzlich eine Mobility-Core-Konfiguration; in der Beispielkonfiguration sind `allow_local_fallback=false` und `accept_stale_route=false`. Die alte Fallback-Beschreibung ist daher keine uneingeschränkte aktuelle Routinggarantie.
+Historische Zielauswahl: explizite TBS-Liste, anschließend beobachtete Teilnehmer mit passender GSSI-Affiliation, danach geeignete online Call-Control-Nodes als Fallback. Individualrufe führen Calling/Called ISSI, Simplex-/Duplex-Auswahl und Priorität. Der am Prüfdatum vorliegende Stand enthält zusätzlich eine Mobility-Core-Konfiguration; in der Beispielkonfiguration sind `allow_local_fallback=false` und `accept_stale_route=false`. Die alte Fallback-Beschreibung ist daher keine uneingeschränkte am Prüfdatum vorliegende Routinggarantie.
 
-Floor Control umfasst Anforderung, Warteschlange, Freigabe und Übertragung auf aktive Legs. `force=true` erfordert zusätzlich `[calls].allow_operator_force_floor=true`. Auf dem aktuellen Stand kommen Media-Route-Ready und Revisionsprüfung hinzu; der historische HTTP-Polling-Stand allein beschreibt diesen Ablauf nicht mehr vollständig.
+Floor Control umfasst Anforderung, Warteschlange, Freigabe und Übertragung auf aktive Legs. `force=true` erfordert zusätzlich `[calls].allow_operator_force_floor=true`. Auf dem am Prüfdatum vorliegenden Stand kommen Media-Route-Ready und Revisionsprüfung hinzu; der historische HTTP-Polling-Stand allein beschreibt diesen Ablauf nicht mehr vollständig.
 
 Historischer Restore-Ablauf: Quelle exportiert Context → Ziel importiert Context → Call Control erzeugt Ziel-Platzhalter → echte Zieltelemetrie liefert das restaurierte Leg → Call-ID/Funkressourcen werden übernommen → temporärer Ziel-Context wird mit separat korreliertem Kommando entfernt. Eine reine Importbestätigung sollte den Restore **nicht** als abgeschlossen markieren. Scheitert nur das Cleanup, bleibt der bereits restaurierte Ruf bestehen; Timeout/Cancel/Fehler sollen Pending Commands und Platzhalter bereinigen. R enthält diese zentrale Zustandslogik, bestätigt aber keine aktive TBS-Restore-Unterstützung.
 
 Zentrale Kommandos aus C: `CallControlGroupStart`, `CallControlIndividualStart`, `CallControlRelease`, `CallControlFloorRequest`, `CallControlFloorRelease`, `CallControlExportRestoreContext`, `CallControlImportRestoreContext`, `CallControlRemoveRestoreContext`. Antworten: `CallControlLegStarted`, `CallControlLegReleased`, `CallControlFloorChanged`, `CallControlRestoreContextExported`, `CallControlRestoreContextImported`, `CallControlRestoreContextRemoved`.
 
-Persistenz: `/var/lib/netcore-call-control/calls.json` und `.bak`. Calls, Legs, Floor und Restore werden gespeichert. Beim Neustart werden zuvor laufende Calls im aktuellen Ladepfad als `Interrupted` markiert; damit wird unbekannter Funkzustand nicht als sicher weiter aktiv ausgegeben. In der Beispielkonfiguration stehen 30 s Command-Timeout, 45 s Restore-Timeout und 2 s Reconcile-Intervall. Diese Werte sind Vorgaben im Repository, keine aus einem LXC gelesene Laufzeitkonfiguration.
+Persistenz: `/var/lib/netcore-call-control/calls.json` und `.bak`. Calls, Legs, Floor und Restore werden gespeichert. Beim Neustart werden zuvor laufende Calls im am Prüfdatum vorliegenden Ladepfad als `Interrupted` markiert; damit wird unbekannter Funkzustand nicht als sicher weiter aktiv ausgegeben. In der Beispielkonfiguration stehen 30 s Command-Timeout, 45 s Restore-Timeout und 2 s Reconcile-Intervall. Diese Werte sind Vorgaben im Repository, keine aus einem LXC gelesene Laufzeitkonfiguration.
 
 ### 6.7 Media Switch: Frameformat, Puffer und spätere Änderungen
 
@@ -492,7 +488,7 @@ Historische Verwaltungsaktionen: `POST /api/v1/sessions/{session_id}/mute` mit `
 
 ### 6.8 REST-Oberflächen, Betriebsdateien und Abhängigkeiten
 
-Alle vier Core-Dienste aus C besitzen `/`, `/health/live`, `/health/ready`, `/api/v1/status`, `/api/v1/nodes`, `/api/v1/events`, `/api/v1/config`, `/metrics` und `/openapi.json`. Die aktuellen HTTP-Handler bestätigen diese Grundflächen. Health/Readiness sind Dienstprüfungen; ein erfolgreicher HTTP-Status ersetzt keine Multi-TBS-/Funkabnahme.
+Alle vier Core-Dienste aus C besitzen `/`, `/health/live`, `/health/ready`, `/api/v1/status`, `/api/v1/nodes`, `/api/v1/events`, `/api/v1/config`, `/metrics` und `/openapi.json`. Die am Prüfdatum vorliegenden HTTP-Handler bestätigen diese Grundflächen. Health/Readiness sind Dienstprüfungen; ein erfolgreicher HTTP-Status ersetzt keine Multi-TBS-/Funkabnahme.
 
 | Dienst | Weitere relevante REST-Routen aus C |
 |---|---|
@@ -529,7 +525,7 @@ Die Paketdokumentationen und H sahen wiederholt den folgenden Clean-Deploy-Ablau
 9. Dienst starten und Logs/Health-Endpunkte kontrollieren;
 10. bei Fehlern auf gesicherten Stand zurückrollen.
 
-Historische Prüfbefehle aus dem Chat bzw. den Paketdokumenten. Die 13 Strukturchecker und die Inventur wurden bei der erneuten Prüfung ausgeführt, mit den in Abschnitt 9.8 aufgeführten, überwiegend negativen Ergebnissen:
+Historische Prüfbefehle aus den Arbeitsnotizen bzw. den Paketdokumenten. Die 13 Strukturchecker und die Inventur wurden bei der erneuten Prüfung ausgeführt, mit den in Abschnitt 9.8 aufgeführten, überwiegend negativen Ergebnissen:
 
 ```bash
 python3 -S tools/check_swmi_foundation_types.py
@@ -548,7 +544,7 @@ python3 -S tools/check_media_switch.py
 python3 -S tools/protocol_inventory.py --check
 ```
 
-Vorgesehene Rust-Prüfungen, im Chat-Artefaktcontainer **nicht lokal ausgeführt**:
+Vorgesehene Rust-Prüfungen, im damaligen Artefaktcontainer **nicht lokal ausgeführt**:
 
 ```bash
 cargo fmt --all -- --check
@@ -565,11 +561,11 @@ cargo clippy --all-targets -- -D warnings
 
 Die GitHub-Actions-Workflows wurden deshalb als eigentliche Rust-Kompilations-/CI-Stufe vorgesehen. Ein vorhandener Workflow im Repository ist kein Nachweis, dass genau der zugehörige Commit erfolgreich auf GitHub Actions lief, sofern kein Run geprüft wurde.
 
-### 7.1 Historische Installation und aktueller Prüfbedarf
+### 7.1 Historische Installation und am Prüfdatum vorliegender Prüfbedarf
 
-C schlug für Subscriber Core direkt `sudo system-backend/subscriber-core/install/install.sh` vor, für Group Core, Call Control und Media Switch zunächst das Kopieren der jeweiligen Beispielkonfiguration nach `/etc/netcore/`, deren Bearbeitung und anschließend denselben Installerpfad. Danach sollten `systemctl status`, `journalctl` und lokale `curl`-Abfragen Erfolg prüfen. **Für keinen dieser Befehle liegt im zugänglichen Chat ein erfolgreicher Zielsystemlauf vor.**
+C schlug für Subscriber Core direkt `sudo system-backend/subscriber-core/install/install.sh` vor, für Group Core, Call Control und Media Switch zunächst das Kopieren der jeweiligen Beispielkonfiguration nach `/etc/netcore/`, deren Bearbeitung und anschließend denselben Installerpfad. Danach sollten `systemctl status`, `journalctl` und lokale `curl`-Abfragen Erfolg prüfen. **Für keinen dieser Befehle liegt in den verfügbaren Entwicklungsnotizen ein erfolgreicher Zielsystemlauf vor.**
 
-Beispiel für die im Chat vorgesehenen Diagnosebefehle, hier nur dokumentiert:
+Beispiel für die in der Planung vorgesehenen Diagnosebefehle, hier nur dokumentiert:
 
 ```bash
 systemctl status netcore-media-switch --no-pager
@@ -588,7 +584,7 @@ Die historischen vollständigen Abläufe bleiben unter `Docs/SWMI_CORE_1_PACKAGE
 
 ## 8. Fehler, Diagnose und daraus resultierende Regeln
 
-Die historischen Fehler in 8.2–8.4 stammen aus H; die vollständigen damaligen Toollogs sind heute nicht zugänglich. Sie werden als damaliger Bericht erhalten, nicht als in dieser Fortsetzung neu beobachtete Fehler. Die aktuellen Checkerbefunde stehen in 9.8.
+Die historischen Fehler in 8.2–8.4 stammen aus H; die vollständigen damaligen Toollogs sind zum Prüfdatum nicht zugänglich. Sie werden als damaliger Bericht erhalten, nicht als in dieser Fortsetzung neu beobachtete Fehler. Die am Prüfdatum vorliegenden Checkerbefunde stehen in 9.8.
 
 ### 8.1 Keine Rust-Toolchain in der Artefaktumgebung
 
@@ -616,7 +612,7 @@ Die fehlende Authentisierung ist kein Bug, sondern eine ausdrückliche Testphase
 
 ## 9. Erneut geprüfter Repository-Stand am 2026-10-06
 
-Dieser Abschnitt beschreibt **nicht den historischen Chatstand**, sondern R auf `Archiving` bei `dac5f0063e9fe06b62157c6b11a351a2ce476fdb`. Die früheren Readme-/Existenzbefunde wurden durch die unten angegebenen Codepfade und tatsächlich ausgeführten Strukturprüfungen präzisiert.
+Dieser Abschnitt beschreibt **nicht den historischen Planungsstand**, sondern R auf `Archiving` bei `dac5f0063e9fe06b62157c6b11a351a2ce476fdb`. Die früheren Readme-/Existenzbefunde wurden durch die unten angegebenen Codepfade und tatsächlich ausgeführten Strukturprüfungen präzisiert.
 
 ### 9.1 Quellcode der zentralen Runtimes ist vorhanden
 
@@ -628,9 +624,9 @@ Folgende Dateien wurden direkt im Branch `Archiving` gefunden:
 - `crates/tetra-entities/src/cmce/call_restore_runtime.rs`;
 - `crates/tetra-entities/src/mm/mobility_runtime.rs`.
 
-Damit sind die Runtime-Quelldateien **im Repository vorhanden**. Ihre Integration in aktive MM-/MLE-/CMCE-/UMAC-Instanzen ist separat zu prüfen; mehrere historische Adapter fehlen im aktuellen Stand (Abschnitt 9.7). Dies ist kein vollständiger Funktions- oder Betriebsnachweis.
+Damit sind die Runtime-Quelldateien **im Repository vorhanden**. Ihre Integration in aktive MM-/MLE-/CMCE-/UMAC-Instanzen ist separat zu prüfen; mehrere historische Adapter fehlen im am Prüfdatum vorliegenden Stand (Abschnitt 9.7). Dies ist kein vollständiger Funktions- oder Betriebsnachweis.
 
-### 9.2 LXC-Crates sind heute im Workspace vorhanden
+### 9.2 LXC-Crates sind zum Prüfdatum im Workspace vorhanden
 
 `Cargo.toml` des geprüften Branches führt unter anderem als Workspace-Member:
 
@@ -645,21 +641,21 @@ Damit sind die Runtime-Quelldateien **im Repository vorhanden**. Ihre Integratio
 
 Die `Cargo.toml`-Dateien dieser sieben Dienste wurden im Branch direkt gefunden.
 
-### 9.3 Open-Lab-Konfiguration heute
+### 9.3 Open-Lab-Konfiguration zum Prüfdatum
 
 `system-backend/services.toml` enthält weiterhin für Node Gateway, Mobility Core, Subscriber Core, Group Core, Call Control, Media Switch und Recorder die offenen Laborparameter mit HTTP, ohne TLS und ohne Token-Authentisierung. Außerdem ist `webui_defaults.required = true` gesetzt.
 
-Wichtig: Der **heutige gesamte Repository-Stand ist nicht mehr vollständig tokenfrei**. Beispielsweise enthält `services.toml` inzwischen einen späteren `alert-service` mit `security_mode = "token"` und `token_auth = true`. Die Nutzerentscheidung dieses Chats „erstmal alles offen“ bezog sich auf die damalige Testphase und die hier eingeführten Dienste; sie darf nicht pauschal auf alle später hinzugekommenen Services übertragen werden.
+Wichtig: Der **zusätzliche gesamte Repository-Stand ist nicht mehr vollständig tokenfrei**. Beispielsweise enthält `services.toml` inzwischen einen späteren `alert-service` mit `security_mode = "token"` und `token_auth = true`. Die Open-Lab-Festlegung bezog sich auf die damalige Testphase und die hier eingeführten Dienste; sie darf nicht pauschal auf alle später hinzugekommenen Services übertragen werden.
 
-### 9.4 Media Switch ist heute weiterentwickelt
+### 9.4 Media Switch ist zum Prüfdatum weiterentwickelt
 
-Historischer Chatstand: Call Control wurde vom Media Switch zunächst zyklisch über `/api/v1/calls` abgeglichen.
+Historischer Planungsstand: Call Control wurde vom Media Switch zunächst zyklisch über `/api/v1/calls` abgeglichen.
 
-Heutiger Branchstand: `system-backend/media-switch/src/call_control.rs` verarbeitet den ereignisgesteuerten Call-Control-WebSocket; `system-backend/call-control/src/http.rs` stellt `/ws/media` sowie `POST /api/v1/media/route-ready` bereit. Die README nennt das Subprotokoll `netcore-call-control-media-v1`. Zusätzlich existieren revisionsgebundene Route-Ready-ACKs und ein Kaltstart-Vorpuffer. Call Control prüft die Media-Bereitschaft vor der Floor-Vergabe. Das ist Quellcodebefund, keine gemessene Echtzeitgarantie.
+Geprüfter Branchstand: `system-backend/media-switch/src/call_control.rs` verarbeitet den ereignisgesteuerten Call-Control-WebSocket; `system-backend/call-control/src/http.rs` stellt `/ws/media` sowie `POST /api/v1/media/route-ready` bereit. Die README nennt das Subprotokoll `netcore-call-control-media-v1`. Zusätzlich existieren revisionsgebundene Route-Ready-ACKs und ein Kaltstart-Vorpuffer. Call Control prüft die Media-Bereitschaft vor der Floor-Vergabe. Das ist Quellcodebefund, keine gemessene Echtzeitgarantie.
 
-Das ist eine **spätere Weiterentwicklung** und ersetzt den älteren Polling-Schwerpunkt des Chatpakets.
+Das ist eine **spätere Weiterentwicklung** und ersetzt den älteren Polling-Schwerpunkt des Entwicklungspakets.
 
-### 9.5 Recorder ist heute implementiert, obwohl er im Chat noch offen war
+### 9.5 Recorder ist zum Prüfdatum implementiert, obwohl er in der Planung noch offen war
 
 Im Branch existiert inzwischen `system-backend/recorder/` als Workspace-Crate. Die gelesene README beschreibt:
 
@@ -671,15 +667,15 @@ Im Branch existiert inzwischen `system-backend/recorder/` als Workspace-Crate. D
 - eigene WebUI auf Port `8140`;
 - weiterhin `open_lab`.
 
-Dieser heutige Repository-Befund ist **nicht** als in diesem Chat fertiggestellter Recorder zu kennzeichnen. Im Chat wurde der Recorder nur als nächster Schritt angekündigt; die Archivierungsanweisung kam vor einer entsprechenden Implementierungsantwort.
+Dieser zusätzliche Repository-Befund ist **nicht** als in dieser Entwicklungsphase fertiggestellter Recorder zu kennzeichnen. In der Planung wurde der Recorder nur als nächster Schritt angekündigt; ein entsprechender Implementierungsbericht liegt für diese Phase nicht vor.
 
 ### 9.6 Branchbezug und überholte Vergleichswerte
 
-Die Erstfassung nannte `main` bei `7137e0dd69877e1b604bf89148fd8b6b590c1a97` und einen Abstand von 47 Commits vor/1 hinter `main`. Das sind **historische Vergleichswerte aus H**, keine aktuellen Zahlen. Die erneute Prüfung und Veröffentlichung beziehen sich ausschließlich auf `Archiving`; `main` wurde weder angeglichen noch gemergt.
+Die Erstfassung nannte `main` bei `7137e0dd69877e1b604bf89148fd8b6b590c1a97` und einen Abstand von 47 Commits vor/1 hinter `main`. Das sind **historische Vergleichswerte aus H**, keine am Prüfdatum vorliegenden Zahlen. Der Abgleich vom 06.10.2026 bezieht sich auf `Archiving`; ein neuer Vergleich mit `main` liegt nicht vor.
 
 ### 9.7 Wichtige Implementierungsbehauptungen gegen aktiven Code geprüft
 
-**Der stärkste aktuelle Unterschied zum historischen Paketstand liegt an der TBS-Grenze.** Der tatsächlich verwendete Capability-Konstruktor `ControlRoomNodeCapabilities::from_stack_config` setzt:
+**Der stärkste am Prüfdatum vorliegende Unterschied zum historischen Paketstand liegt an der TBS-Grenze.** Der tatsächlich verwendete Capability-Konstruktor `ControlRoomNodeCapabilities::from_stack_config` setzt:
 
 ```rust
 subscriber_policy: false,
@@ -694,7 +690,7 @@ Nachweis am Prüfcommit: [TBS-Capabilities, `protocol.rs`](https://github.com/Ja
 | Historische Behauptung C/H | Befund R | Konsequenz für die Fortsetzung |
 |---|---|---|
 | Subscriber-Policy wird bis MM angewendet, leere Liste sperrt alle | Backend erzeugt Policy und `Unsupported` bei fehlender Fähigkeit. `MmBs::tick_start` behandelt auf dem Kontrollkanal nur `Dgna`; Subscriber-Policy-/Mobility-Kommandos fallen in den Unsupported-Zweig. | Zentrale Datenverwaltung ist vorhanden; lokale Durchsetzung der zentralen Policy ist für diese TBS nicht bestätigt. |
-| Group Core setzt Affiliation, DGNA und Gruppenrufrechte auf der TBS durch | `group_policy=false`; MM hat keine Handler für `GroupAccessPolicyApply`/`GroupDgnaApply`. Die historischen Policy-Prüfmarker fehlen auch im aktuellen Gruppenruf-Setup. | Gruppenprofile/Revisionen und zentrale Vorgänge sind vorhanden; aktive Durchsetzung separat implementieren und testen. Lokale DGNA-Unterstützung ist kein Beleg für den zentralen Gruppenpolicy-Vertrag. |
+| Group Core setzt Affiliation, DGNA und Gruppenrufrechte auf der TBS durch | `group_policy=false`; MM hat keine Handler für `GroupAccessPolicyApply`/`GroupDgnaApply`. Die historischen Policy-Prüfmarker fehlen auch im am Prüfdatum vorliegenden Gruppenruf-Setup. | Gruppenprofile/Revisionen und zentrale Vorgänge sind vorhanden; aktive Durchsetzung separat implementieren und testen. Lokale DGNA-Unterstützung ist kein Beleg für den zentralen Gruppenpolicy-Vertrag. |
 | Vollständige Mobility-/TLMC-/TLPD-Integration | Die separaten Runtime-Dateien sind vorhanden; historische Adapterfelder und Aufrufe fehlen in aktiven `umac_bs.rs`, `mle_bs.rs` und `mm_bs.rs`. | Architektur-/Modellstand nicht mit angeschlossenem RF-Pfad gleichsetzen. |
 | Mehrzelliger Call Restore vollständig | Zentrale Restore-State-Machine, Platzhalter und Cleanup sind vorhanden. TBS meldet `call_restore_context=false`; CMCE behandelt die Export-/Import-/Remove-Restore-Kommandos nicht. Call Control prüft die Fähigkeit bei der Zielvalidierung. | Aktiver TBS-Restore ist nicht belegt; Backend-Code und ein nomineller Restore-Endpunkt genügen nicht. |
 | Zentrale Call-/Floor-Steuerung | `call_control=true`; CMCE behandelt Group/Individual Start, Release, Floor Request/Release und antwortet mit den passenden Responses. | Diese Handler sind tatsächlich eingebunden. Sie dürfen wegen des Startbanners `MAIN-COMPAT` nicht pauschal als bloße Telemetrie bezeichnet werden. Funk-/Buildnachweis bleibt offen. |
@@ -707,7 +703,7 @@ Konkrete Codebelege am selben Prüfcommit:
 - [Aktive CMCE-Call-/Floor-Kommandos](https://github.com/JanHG98/netcore-tetra/blob/dac5f0063e9fe06b62157c6b11a351a2ce476fdb/crates/tetra-entities/src/cmce/cmce_bs.rs#L62) und [Call-Control-Zielvalidierung](https://github.com/JanHG98/netcore-tetra/blob/dac5f0063e9fe06b62157c6b11a351a2ce476fdb/system-backend/call-control/src/state.rs#L1512).
 - [Subscriber-Core-Sync-Erzeugung](https://github.com/JanHG98/netcore-tetra/blob/dac5f0063e9fe06b62157c6b11a351a2ce476fdb/system-backend/subscriber-core/src/state.rs#L711) und [Response-Verarbeitung](https://github.com/JanHG98/netcore-tetra/blob/dac5f0063e9fe06b62157c6b11a351a2ce476fdb/system-backend/subscriber-core/src/state.rs#L797).
 - [Media-Bridge-Format und Kanäle](https://github.com/JanHG98/netcore-tetra/blob/dac5f0063e9fe06b62157c6b11a351a2ce476fdb/crates/tetra-entities/src/net_media/mod.rs) sowie [UMAC-Bridge-Einbindung](https://github.com/JanHG98/netcore-tetra/blob/dac5f0063e9fe06b62157c6b11a351a2ce476fdb/crates/tetra-entities/src/umac/umac_bs.rs#L93).
-- [Aktuelle Media-Switch-Konfiguration](https://github.com/JanHG98/netcore-tetra/blob/dac5f0063e9fe06b62157c6b11a351a2ce476fdb/system-backend/media-switch/config/media-switch.example.toml) und [Call-Control-Anbindung](https://github.com/JanHG98/netcore-tetra/blob/dac5f0063e9fe06b62157c6b11a351a2ce476fdb/system-backend/media-switch/src/call_control.rs).
+- [Am Prüfdatum vorliegende Media-Switch-Konfiguration](https://github.com/JanHG98/netcore-tetra/blob/dac5f0063e9fe06b62157c6b11a351a2ce476fdb/system-backend/media-switch/config/media-switch.example.toml) und [Call-Control-Anbindung](https://github.com/JanHG98/netcore-tetra/blob/dac5f0063e9fe06b62157c6b11a351a2ce476fdb/system-backend/media-switch/src/call_control.rs).
 
 ### 9.8 Tatsächlich ausgeführte Prüfungen dieser Fortsetzung
 
@@ -735,13 +731,13 @@ Ausführung am 2026-10-06 im separaten Windows-Checkout auf `Archiving` bei `dac
 
 Die als veraltet gemeldeten Dateien sind `Docs/SWMI_FOUNDATION_1_INVENTORY.md`, `Docs/ETSI_CONFORMANCE_MATRIX.md`, `Docs/SAP_PRIMITIVE_MATRIX.md`, `Docs/IMPLEMENTATION_GAPS.md`, `Docs/STATE_MACHINE_INVENTORY.md` sowie `Docs/generated/{protocol_inventory.json,pdu_inventory.csv,sap_inventory.csv,gap_inventory.csv,state_inventory.csv}`. Sie liegen außerhalb des autorisierten Änderungsbereichs und wurden nicht geändert.
 
-Im aktuellen `.github/workflows/` existieren andere Workflows: unter anderem referenziert `phy-slotter-tests.yml` Tests für Call Control, Media Switch, `central_control` und `central_media`; `alert-service-tests.yml` enthält Call-Control-Tests. Daraus folgt weder, dass CI vollständig fehlt, noch dass ein bestimmter Run erfolgreich war. Ein aktueller Lauf wurde in dieser Archivfortsetzung nicht verifiziert.
+Im am Prüfdatum vorliegenden `.github/workflows/` existieren andere Workflows: unter anderem referenziert `phy-slotter-tests.yml` Tests für Call Control, Media Switch, `central_control` und `central_media`; `alert-service-tests.yml` enthält Call-Control-Tests. Daraus folgt weder, dass CI vollständig fehlt, noch dass ein bestimmter Run erfolgreich war. Ein am Prüfdatum vorliegender Lauf wurde in dieser Archivfortsetzung nicht verifiziert.
 
-### 9.9 Historische Prüfberichte aus den vier zugänglichen Paketantworten
+### 9.9 Historische Prüfberichte aus den vier zugänglichen Paketberichte
 
-Diese Zahlen sind Aussagen aus C und dienen der Wiederauffindbarkeit der damaligen Übergabestände. Original-ZIPs und vollständige Prüflogs fehlen; sie wurden nicht als aktuelle Erfolgsmeldungen übernommen.
+Diese Zahlen sind Aussagen aus C und dienen der Wiederauffindbarkeit der damaligen Übergabestände. Original-ZIPs und vollständige Prüflogs fehlen; sie wurden nicht als am Prüfdatum vorliegende Erfolgsmeldungen übernommen.
 
-| Paket | Im Chat genannter Umfang | Im Chat genannte Prüfungen / Grenze |
+| Paket | In der Planung genannter Umfang | In der Planung genannte Prüfungen / Grenze |
 |---|---|---|
 | Core A / Subscriber | 795 Dateien, 26 TOML-Dateien | ZIP-Integrität, erneutes Entpacken, Foundation-/Mobility-Checker, Deny-All, Home-ISSI/VASSI, Open Lab und WebUI-Vorgaben als bestanden gemeldet; kein Cargo-Build. |
 | Core B / Group | 816 Dateien, 28 TOML-, 16 Python-, 15 Shell- und 14 relevante Rust-Dateien | Syntax bzw. lexikalische Prüfung, WebUI-JavaScript mit Node, ZIP-/Inventurprüfung als bestanden gemeldet; kein Cargo-Build. |
@@ -766,7 +762,7 @@ Paket D nannte als zusätzliche CI-Befehle `cargo fmt --all -- --check`, `cargo 
 - Group Core;
 - Call Control;
 - Media Switch;
-- im heutigen Repo zusätzlich Recorder.
+- im geprüften Repo zusätzlich Recorder.
 
 Diese Aufzählung belegt Dateien, Modelle und Dienste. Sie bestätigt ausdrücklich nicht, dass die zentrale Subscriber-/Group-Policy oder der mehrzellige Mobility-/Restore-Pfad derzeit bis zum aktiven TBS-Stack durchgängig funktioniert. Die Capability-Werte und fehlenden Handler in Abschnitt 9.7 schränken die historischen Implementierungsbehauptungen wesentlich ein.
 
@@ -779,9 +775,9 @@ Diese Aufzählung belegt Dateien, Modelle und Dienste. Sie bestätigt ausdrückl
 
 ### Nicht im Betrieb bestätigt
 
-- kein realer Proxmox-LXC-Start dieser neuen Dienste in diesem Chat;
+- kein realer Proxmox-LXC-Start dieser neuen Dienste in dieser Entwicklungsphase;
 - kein erfolgreicher `cargo build` im Artefaktcontainer;
-- kein nachgewiesener GitHub-Actions-Run für die einzelnen Chatpakete;
+- kein nachgewiesener GitHub-Actions-Run für die einzelnen Entwicklungspakete;
 - kein echter Zwei-TBS-On-Air-Handover mit Funkgeräten;
 - kein realer Gruppen-/Individualruf-Restore über zwei physische TBS;
 - kein echter Sprachframe-Dauertest zwischen mehreren TBS;
@@ -795,15 +791,15 @@ Diese Aufzählung belegt Dateien, Modelle und Dienste. Sie bestätigt ausdrückl
 | TLPD-Erfolg bereits nach LLC-Queue | `TxReporter`-gestützter Abschluss in Foundation E | Queue-Übernahme ist kein belastbarer Sende-/ACK-Nachweis |
 | Call Restore bei Mobility A konservativ mit `D-RESTORE-FAIL` | vollständige lokale CMCE-Restore-State-Machine in Mobility B | laufende Gruppen-/Einzelrufe sollten tatsächlich wiederhergestellt werden |
 | nur lokale Restore-Logik | Mobility Core + Call Control koordinieren Context Transfer | physische Multi-TBS-Wiederherstellung benötigt zentrale Koordination |
-| Call-Control-Abgleich im Media Switch primär per Polling | heutiger Branch: ereignisgesteuerter `/ws/media`-Pfad, HTTP nur Fallback | geringere Latenz und konsistenter Routinggraph |
-| zukünftige Token-/RBAC-Idee für erste LXCs | ausdrücklicher `open_lab` ohne Tokens/TLS | Nutzer wollte Testumgebung zunächst vollständig offen |
-| Recorder als nächster Chatbaustein | im zugänglichen Chat keine Fertigstellung; heutiges Repo enthält ihn | spätere Repository-Entwicklung ist separat zu bewerten |
-| historische TBS-Fähigkeiten `subscriber_policy`, `group_policy`, `call_restore_context` aktiv | aktueller Konstruktor setzt alle drei auf `false` | vorhandene Backend- und Runtime-Dateien belegen keine aktive Integration |
-| sämtliche historischen Checker bestanden | aktuelle Wiederholung: 3/13 bestanden, Inventur veraltet | geänderter Code, fehlende Workflow-Dateien und mindestens ein fragiler Textchecker |
+| Call-Control-Abgleich im Media Switch primär per Polling | geprüfter Branch: ereignisgesteuerter `/ws/media`-Pfad, HTTP nur Fallback | geringere Latenz und konsistenter Routinggraph |
+| zukünftige Token-/RBAC-Idee für erste LXCs | ausdrücklicher `open_lab` ohne Tokens/TLS | Testphase zunächst vollständig offen |
+| Recorder als nächster Entwicklungspaket | in den verfügbaren Entwicklungsnotizen keine Fertigstellung; geprüftes Repo enthält ihn | spätere Repository-Entwicklung ist separat zu bewerten |
+| historische TBS-Fähigkeiten `subscriber_policy`, `group_policy`, `call_restore_context` aktiv | am Prüfdatum vorliegender Konstruktor setzt alle drei auf `false` | vorhandene Backend- und Runtime-Dateien belegen keine aktive Integration |
+| sämtliche historischen Checker bestanden | am Prüfdatum vorliegende Wiederholung: 3/13 bestanden, Inventur veraltet | geänderter Code, fehlende Workflow-Dateien und mindestens ein fragiler Textchecker |
 
 ## 12. Offene Aufgaben und Roadmap-Kandidaten
 
-### 12.1 Aus diesem Chat unmittelbar offen
+### 12.1 Aus dieser Entwicklungsphase unmittelbar offen
 
 1. **Aktive TBS-Integration klären und herstellen:** Subscriber-/Group-Policy, Mobility und Restore gegen Capability-Werte, Handler und tatsächlichen Funkpfad prüfen. Ein bloßes Umschalten der Fähigkeiten auf `true` ist keine Implementierung. Subscriber-Response-Korrelation und Revisionen absichern.
 2. **Reale Rust-Kompilation und CI-Abnahme:** historische Strukturchecker reparieren, relevante Adaptertests ergänzen, Inventur in einem gesonderten Implementierungsauftrag aktualisieren und alle betroffenen Crates auf Linux/ARM64 bauen und testen. Die 11 negativen Struktur-/Inventurprüfungen sind zunächst zuzuordnen.
@@ -815,17 +811,17 @@ Diese Aufzählung belegt Dateien, Modelle und Dienste. Sie bestätigt ausdrückl
 8. **Persistenz/Recovery der zentralen Dienste auf echtem LXC testen**, insbesondere nach Prozess- und Host-Neustart.
 9. **Security später nachziehen:** TLS/mTLS, zentrale Authentisierung, RBAC, Audit; offene Laborpfade nicht als Produktionsmodus übernehmen.
 
-### 12.2 Durch heutigen Repo-Stand neu einzuordnen
+### 12.2 Durch geprüften Repo-Stand neu einzuordnen
 
 - Recorder ist nicht mehr nur Roadmap-Kandidat, sondern repository-seitig implementiert; jetzt fehlen Build-, Deployment- und echte Aufzeichnungsabnahme.
-- Media Switch verwendet heute eine modernere eventgetriebene Call-Control-Kopplung; historische Polling-Dokumentation sollte bei zukünftigen Betriebsanleitungen nicht mehr als Primärpfad verwendet werden.
-- Das Repository enthält inzwischen weitere Backend-Dienste außerhalb dieses Chats. Deren Security-Modi und Abhängigkeiten müssen jeweils separat bewertet werden; die Open-Lab-Entscheidung dieses Chats ist kein globaler Dauerstandard.
+- Media Switch verwendet zum Prüfdatum eine modernere eventgetriebene Call-Control-Kopplung; historische Polling-Dokumentation sollte bei zukünftigen Betriebsanleitungen nicht mehr als Primärpfad verwendet werden.
+- Das Repository enthält inzwischen weitere Backend-Dienste außerhalb dieser Planung. Deren Security-Modi und Abhängigkeiten müssen jeweils separat bewertet werden; die Open-Lab-Entscheidung dieser Planung ist kein globaler Dauerstandard.
 
-### 12.3 Sinnvolle nächste technische Priorität nach diesem Chat
+### 12.3 Sinnvolle nächste technische Priorität nach dieser Entwicklungsphase
 
 Die technische Priorität sollte nicht sofort auf noch mehr neue Dienste springen, sondern zunächst auf eine **echte Integrationsabnahme des bereits gebauten Multi-Site-Kerns**:
 
-1. aktueller Branch/Commit auswählen und vollständigen Workspace bauen;
+1. am Prüfdatum vorliegender Branch/Commit auswählen und vollständigen Workspace bauen;
 2. Node Gateway + zwei TBS verbinden;
 3. fehlende Mobility-/Policy-/Restore-Adapter mit gezielten Tests integrieren, anschließend Mobility/Subscribers/Groups synchronisieren;
 4. Gruppenruf über beide TBS aufbauen;
@@ -834,9 +830,9 @@ Die technische Priorität sollte nicht sofort auf noch mehr neue Dienste springe
 7. Recorder parallel passiv mitschneiden lassen;
 8. Fehlerpfade, Restart und Recovery reproduzierbar dokumentieren.
 
-## 13. Artefakte aus dem Chat
+## 13. Artefakte aus den Arbeitsnotizen
 
-Die folgenden ZIP-Namen und SHA-256-Werte sind **historisch überliefert**. Für Core A–D stimmen H und die vollständig gelesenen Paketantworten C überein. Foundation/Mobility stammen allein aus H. **Keines dieser ZIPs war in dieser Fortsetzung als Binärdatei zugänglich; kein Hash wurde erneut berechnet.** Die gegenteilige Präsens-Aussage der Erstfassung wird hiermit ausdrücklich korrigiert, ohne ihren damaligen Prüfbericht rückwirkend zu widerlegen.
+Die folgenden ZIP-Namen und SHA-256-Werte sind **historisch überliefert**. Für Core A–D stimmen H und die vollständig gelesenen Paketberichte C überein. Foundation/Mobility stammen allein aus H. **Keines dieser ZIPs war in dieser Fortsetzung als Binärdatei zugänglich; kein Hash wurde erneut berechnet.** Die gegenteilige Präsens-Aussage der Erstfassung wird hiermit ausdrücklich korrigiert, ohne ihren damaligen Prüfbericht rückwirkend zu widerlegen.
 
 | Artefakt | SHA-256 |
 |---|---|
@@ -856,7 +852,7 @@ Die folgenden ZIP-Namen und SHA-256-Werte sind **historisch überliefert**. Für
 | `netcore-tetra-swmi-core1-package-c-call-control-open-lab.zip` | `037726fc224725db7c5bac6dee28ad46382ff511c9329c7b0e13e97e7da4bff1` |
 | `netcore-tetra-swmi-core1-package-d-media-switch-open-lab.zip` | `4721caf2aa29ade70cc865cc6b362fc64fcaea1b776ce359fc58f82d434b93b7` |
 
-Diese Artefakte wurden **nicht** neu hochgeladen. Die Chatlinks verwenden historische `sandbox:/mnt/data/`-Pfade und sind hier keine abrufbaren Downloadquellen. Eine spätere Nacharchivierung muss Originaldateien eindeutig diesem Chat zuordnen und ihre Bytes gegen die überlieferten Hashwerte prüfen.
+Diese Artefakte wurden **nicht** neu hochgeladen. Die Dateiverweise verwenden historische `sandbox:/mnt/data/`-Pfade und sind hier keine abrufbaren Downloadquellen. Eine spätere Nacharchivierung muss Originaldateien eindeutig dieser Entwicklungsphase zuordnen und ihre Bytes gegen die überlieferten Hashwerte prüfen.
 
 ## 14. Relevante Repository-Dateien und Dokumente
 
@@ -892,22 +888,16 @@ H führte die folgende Dateiliste für ihren damaligen Abgleich an. Bei R wurden
 
 ## 15. Normquellen und Anhänge
 
-H nennt 25 ETSI-PDFs und ordnet den TLMC/TLPD/MLE/MM/CMCE-Pfaden vor allem `en_30039202v030801p.pdf` (ETSI EN 300 392-2 V3.8.1) zu. Die 25 lokalen PDF-Dateien unter `sources/` sind weiterhin sichtbar. Ihre Inhalte und Versionsangaben wurden in dieser Fortsetzung nicht neu fachlich ausgewertet. Weitere Dateinamen betreffen unter anderem EN 300 392-1, mehrere Teile von EN 300 392-3, EN 300 392-5/-7/-9/-10/-11/-12, EN 300 394-1 und EN 300 395-2 sowie ES-/TS-100812/200812/300812-Dokumente.
+H nennt 25 ETSI-PDFs und ordnet den TLMC/TLPD/MLE/MM/CMCE-Pfaden vor allem `en_30039202v030801p.pdf` (ETSI EN 300 392-2 V3.8.1) zu. Die 25 lokalen PDF-Dateien unter `sources/` sind weiterhin sichtbar. Ihre Inhalte und Versionsangaben wurden in dieser Fortsetzung nicht neu fachlich geprüft. Weitere Dateinamen betreffen unter anderem EN 300 392-1, mehrere Teile von EN 300 392-3, EN 300 392-5/-7/-9/-10/-11/-12, EN 300 394-1 und EN 300 395-2 sowie ES-/TS-100812/200812/300812-Dokumente.
 
-Die PDF-Anhänge sind Normquellen; sie beweisen keine konkrete Implementierung oder erfolgreiche Funkabnahme. Wo im Chat auf Normen Bezug genommen wurde, wurde dies als Grundlage für Datenmodelle und Prozeduren verwendet, nicht als alleiniger Implementierungsnachweis.
+Die PDF-Anhänge sind Normquellen; sie beweisen keine konkrete Implementierung oder erfolgreiche Funkabnahme. Wo in der Planung auf Normen Bezug genommen wurde, wurde dies als Grundlage für Datenmodelle und Prozeduren verwendet, nicht als alleiniger Implementierungsnachweis.
 
 ## 16. Bilder
 
-Im für diesen Chat verfügbaren Verlauf wurden keine eigenständigen Bilder oder Screenshots gefunden. Es wurde deshalb kein Bild nach `Docs/archive/` hochgeladen und kein Bild aus anderen Projektchats übernommen. Sollte der ursprüngliche Chat außerhalb des zugänglichen Verlaufs doch Bilder enthalten haben, fehlt dafür hier die eindeutige Quelle.
+In den verfügbaren Planungsunterlagen wurden keine eigenständigen Bilder oder Screenshots gefunden. Es wurde deshalb kein Bild nach `Docs/archive/` hochgeladen und kein Bild aus anderen Projektphasen übernommen. Sollten weitere historische Bilddateien existieren, fehlt dafür hier die eindeutige Quelle.
 
 ## 17. Schlussstand
 
-Die zugänglichen Paketantworten und die erhaltene historische Archivfassung beschreiben den Aufbau eines Multi-Site-Modells: zeitkritische Funklogik bleibt auf der TBS, zentrale Dienste koordinieren Teilnehmer, Gruppen, Calls und Medien. Die Backend-Dienste und viele Runtime-Modelle sind am Prüfcommit vorhanden; Recorder und Media-Kopplung wurden später erweitert.
+Die zugänglichen Paketberichte und die erhaltene historische Archivfassung beschreiben den Aufbau eines Multi-Site-Modells: zeitkritische Funklogik bleibt auf der TBS, zentrale Dienste koordinieren Teilnehmer, Gruppen, Calls und Medien. Die Backend-Dienste und viele Runtime-Modelle sind am Prüfcommit vorhanden; Recorder und Media-Kopplung wurden später erweitert.
 
-Der aktuelle TBS-Stand belegt jedoch wesentliche Grenzen bei zentraler Teilnehmer-/Gruppenpolicy, Mobility und Restore. Deshalb müssen zuerst aktive Adapter, Capability-Ankündigungen und Tests konsistent werden. Darauf folgen ein belegter Rust-/Linux-/ARM64-Build sowie eine reproduzierbare Abnahme mit realen LXC-Instanzen, zwei TBS und Funkgeräten. Erst solche Nachweise rechtfertigen „im Betrieb bestätigt“.
-
-## 18. Archivierungsnachweis
-
-Die vorhandene Datei wird unter ihrem ursprünglichen Namen fortgeschrieben. In `Docs/archive/README.md` wird ausschließlich ihr vorhandener Indexeintrag aktualisiert; die übrigen Einträge bleiben erhalten. Der Commit dieser Fortsetzung enthält nur diese zwei Dateien unter `Docs/archive/`. Die Veröffentlichung erfolgt auf dem bestehenden Branch `Archiving` ohne Force-Push und ohne Merge.
-
-Der oben genannte Prüfcommit ist die Basis der Implementierungsaussagen, nicht der erst danach erzeugte Dokumentationscommit. Dessen tatsächliche SHA ist über die Git-Historie dieser Datei und den Abschlussbericht der Fortsetzung feststellbar; eine selbstreferenzielle Commit-SHA wird nicht in ihren eigenen Inhalt geschrieben. Im Archivierungsauftrag wurden keine Dienste installiert, neugestartet oder über Funk geprüft.
+Der am Prüfdatum vorliegende TBS-Stand belegt jedoch wesentliche Grenzen bei zentraler Teilnehmer-/Gruppenpolicy, Mobility und Restore. Deshalb müssen zuerst aktive Adapter, Capability-Ankündigungen und Tests konsistent werden. Darauf folgen ein belegter Rust-/Linux-/ARM64-Build sowie eine reproduzierbare Abnahme mit realen LXC-Instanzen, zwei TBS und Funkgeräten. Erst solche Nachweise rechtfertigen „im Betrieb bestätigt“.

@@ -1,48 +1,45 @@
-# Technische Abschlussdokumentation: FlowStation-DualCarrier, Bearer-Zuordnung, ACK, Release und Secondary-Control
+# Brainstorming: FlowStation-DualCarrier, Bearer-Zuordnung, ACK, Release und Secondary-Control
 
-> **Historischer Entwicklungsverlauf mit gesonderter Repository-Prüfung, keine Freigabe eines Betriebsstands.** Dieser Chat behandelt die Weiterentwicklung von zunächst drei Traffic-Ressourcen zu optionalem DualCarrier-Betrieb, die Fehlerfolge der Pakete v1 bis v2.8 und die zugehörige WebUI. Die letzte ausdrückliche Benutzerentscheidung reserviert Carrier 2 / Air-TS1 wieder für einen Steuerkanal. Das ausgelieferte Paket v2.8 setzt dafür `SecondaryBcchNoMcch` und sechs logische Traffic-Bearer ein. Ein anschließender erfolgreicher Funk- oder Lasttest dieses letzten Pakets ist nicht dokumentiert. Der am 03.10.2026 geprüfte Repository-Code enthält wichtige spätere Änderungen und darf nicht durch diese historischen Ersatzdateien überschrieben werden.
+> **Historischer Entwicklungsverlauf mit gesonderter Repository-Prüfung, keine Freigabe eines Betriebsstands.** Gegenstand ist die Weiterentwicklung von zunächst drei Traffic-Ressourcen zu optionalem DualCarrier-Betrieb, die Fehlerfolge der Pakete v1 bis v2.8 und die zugehörige WebUI. Die letzte ausdrückliche Projektentscheidung reserviert Carrier 2 / Air-TS1 wieder für einen Steuerkanal. Das ausgelieferte Paket v2.8 setzt dafür `SecondaryBcchNoMcch` und sechs logische Traffic-Bearer ein. Ein anschließender erfolgreicher Funk- oder Lasttest dieses letzten Pakets ist nicht dokumentiert. Der am 03.10.2026 geprüfte Repository-Code enthält wichtige spätere Änderungen und darf nicht durch diese historischen Ersatzdateien überschrieben werden.
 
-## 1. Metadaten und Abgrenzung
+## 1. Rahmen und Quellenstand
 
 | Merkmal | Festgestellter Stand |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Optionale Nutzung beider Carrier; Ressourcenverwaltung; Asterisk/Brew-Kompatibilität; logische versus physische Timeslots; Absturz beim vierten Ruf; ACK-Routing; Gruppenruf-Release; Hangtime; Dashboard; Reservierung von Secondary-TS1 |
-| Ursprünglicher Chattitel | Nicht eindeutig zugänglich. Der Titel dieses Dokuments ist eine redaktionelle Themenbeschreibung. |
-| Ursprünglicher Chatlink / Chat-ID | Nicht verfügbar; nicht rekonstruiert oder erfunden. |
-| Historische Zeitangaben | Die bereitgestellten Betriebslogs tragen `Jun 29` und `Jun 30`. Ein zugehöriger Commit ist auf den 29.06.2026 datiert. Das stützt den Zusammenhang mit Juni 2026, ersetzt aber keine vollständigen Zeitstempel sämtlicher Chatnachrichten. |
+| Historische Zeitangaben | Die bereitgestellten Betriebslogs tragen `Jun 29` und `Jun 30`. Ein zugehöriger Commit ist auf den 29.06.2026 datiert. Das stützt den Zusammenhang mit Juni 2026, ersetzt aber keine vollständigen Zeitstempel sämtlicher Entwicklungsschritte. |
 | Erstellungs- und Prüftag | **03.10.2026** |
-| Historisch vom Benutzer verlinktes Repository | `JanHG98/flowstation` |
-| Heute aufgelöstes Repository | Die GitHub-Abfrage für `JanHG98/flowstation` liefert `JanHG98/netcore-tetra`, Repository-ID `1281497427`. Die Namen werden nicht als zwei unabhängig geprüfte heutige Repositories behandelt. |
-| Ausschließlicher Schreibbranch | **`Archiving`** |
+| Historisch ausdrücklich verlinktes Repository | `JanHG98/flowstation` |
+| Am 03.10.2026 aufgelöstes Repository | Die GitHub-Abfrage für `JanHG98/flowstation` liefert `JanHG98/netcore-tetra`, Repository-ID `1281497427`. Die Namen werden nicht als zwei unabhängig geprüfte geprüfte Repositories behandelt. |
+| Geprüfter Branch | **`Archiving`** |
 | Für die Quellcodeprüfung eingefrorener Archiving-Commit | **`311462808d6ebe49b0b426bec11f381d6867f676`** |
 | Tree dieses Prüfstands | `fcc52a09bec493da059f26e04efcf42566ab0f33` |
 | Zusätzlich aufgelöster main-Commit | **`6aa9be8f74ab731f72dc133a5f8e90c5018c626d`** |
 | Vor dem Schreiben erneut geladener Archiving-Stand | `f8f1e001779cf564982c83abad4f5fa6b7637cd5`, Tree `3d0e2b1f328f602964712375dc323e716ccdf22b` |
 | Zwischenzeitliche Änderung | Gegenüber dem eingefrorenen Prüfstand wurde ausschließlich `Docs/Control_Room/Readme.md` ergänzt. Diese fremde Änderung wird unverändert bewahrt. |
 | Archivdatei | `Docs/archive/2026-10-03_flowstation-dualcarrier-bearer-ack-release-und-secondary-control.md` |
-| Umfang dieses Archivauftrags | Diese Dokumentation und ein zusätzlicher Indexeintrag in `Docs/archive/README.md`; keine Änderung von Produktivcode, Konfiguration, Wiki, Releases oder anderen Branches. |
 
-Der ursprüngliche Repo-Upload `flowstation-beta.zip` enthält den ZIP-Kommentar `86648c2a766bcc5298d1eeb158606e131192a5ac`. Dieser Commit wurde heute tatsächlich aufgelöst: Nachricht `netcore`, Commitdatum 28.06.2026, 21:30:20 UTC. Ein ZIP-Kommentar allein beweist nicht die bytegenaue Übereinstimmung jeder enthaltenen Datei mit diesem Commit. [H1]
+Der ursprüngliche Repo-Upload `flowstation-beta.zip` enthält den ZIP-Kommentar `86648c2a766bcc5298d1eeb158606e131192a5ac`. Dieser Commit wurde am 03.10.2026 tatsächlich aufgelöst: Nachricht `netcore`, Commitdatum 28.06.2026, 21:30:20 UTC. Ein ZIP-Kommentar allein beweist nicht die bytegenaue Übereinstimmung jeder enthaltenen Datei mit diesem Commit. [H1]
 
-Im späteren Startlog steht `Version: v1.3.0-d00c4e03`. Der Kurzbezeichner wurde heute zu **`d00c4e03849898aa137e0f1de09a2897cc76d695`** aufgelöst: `Update llc_bs_ms.rs`, 29.06.2026, 23:35:02 UTC. Der Commit enthält die hier diskutierte Erweiterung des ACK-Routings um den logischen `link_id`. Damit ist diese konkrete historische Quellcodeänderung auch im Git nachgewiesen. Ein Startbanner schließt zusätzliche lokale, nicht committete Änderungen am Build nicht aus. [H2, L42]
+Im späteren Startlog steht `Version: v1.3.0-d00c4e03`. Der Kurzbezeichner wurde am 03.10.2026 zu **`d00c4e03849898aa137e0f1de09a2897cc76d695`** aufgelöst: `Update llc_bs_ms.rs`, 29.06.2026, 23:35:02 UTC. Der Commit enthält die hier diskutierte Erweiterung des ACK-Routings um den logischen `link_id`. Damit ist diese konkrete historische Quellcodeänderung auch im Git nachgewiesen. Ein Startbanner schließt zusätzliche lokale, nicht committete Änderungen am Build nicht aus. [H2, L42]
 
-Die Paketbezeichnungen **v2, v2.1 bis v2.8 sind Bezeichnungen dieser Chat-Auslieferungen**, nicht automatisch Git-Tags, Produktversionen oder vollständige Release-Stände. Für die übrigen Pakete wird keine exakte historische Commit- oder PR-Zuordnung behauptet.
+Die Paketbezeichnungen **v2, v2.1 bis v2.8 sind Bezeichnungen dieser Entwicklungspakete**, nicht automatisch Git-Tags, Produktversionen oder vollständige Release-Stände. Für die übrigen Pakete wird keine exakte historische Commit- oder PR-Zuordnung behauptet.
 
 ### 1.1 Verhältnis zu einem bereits vorhandenen Archiv
 
-Die Datei [FlowStation-DualCarrier-Portierung, SXceiver und Hotfixes 001–009](2026-10-03_flowstation-dualcarrier-portierung-sxceiver-hotfixes.md) dokumentiert einen **anderen, vorgelagerten Chat**: erste Portierung, SDR-Konfiguration und Hotfixes vom 28.06. Dieser Eintrag wurde vor dem Schreiben geprüft und nicht überschrieben. Die vorliegende Dokumentation setzt thematisch bei der anschließenden Ressourcen-, ACK-, Release- und Belegungsproblematik an. Aussagen aus dem anderen Archiv werden nicht als zusätzliche Benutzerbestätigung dieses Chats umgedeutet.
+Die Datei [FlowStation-DualCarrier-Portierung, SXceiver und Hotfixes 001–009](2026-10-03_flowstation-dualcarrier-portierung-sxceiver-hotfixes.md) beschreibt die vorgelagerte Entwicklung vom 28.06.2026. Die vorliegenden Notizen setzen bei den anschließenden Ressourcen-, ACK-, Release- und Belegungsproblemen an. Frühere Festlegungen bleiben auf ihren jeweiligen Entwicklungsstand bezogen.
 
 ### 1.2 Belegstufen
 
 | Kennzeichnung | Bedeutung |
 |---|---|
 | **Idee** | Diskutierter Ansatz ohne verbindliche Beauftragung oder Implementierungsnachweis. |
-| **Beschlossen/geplant** | Ausdrücklicher Benutzerwunsch beziehungsweise festgelegtes Ziel; noch kein Umsetzungsbeweis. |
-| **Implementiert – Artefakt** | In den heute zugänglichen Ersatzdateien oder ZIP-Bytes vorhanden. Kein Beweis für Einspielen, Kompilieren oder Betrieb. |
+| **Beschlossen/geplant** | Ausdrückliche Anforderung beziehungsweise festgelegtes Ziel; noch kein Umsetzungsbeweis. |
+| **Implementiert – Artefakt** | In den am 03.10.2026 zugänglichen Ersatzdateien oder ZIP-Bytes vorhanden. Kein Beweis für Einspielen, Kompilieren oder Betrieb. |
 | **Implementiert – Repository** | Im angegebenen, unveränderlich referenzierten Git-Commit im Code nachgewiesen. |
 | **Getestet** | Tatsächlich ausgeführte Prüfung mit nachvollziehbarem Ergebnis. Art und Reichweite des Tests werden genannt. |
-| **Im Betrieb bestätigt** | Konkrete Benutzerbeobachtung oder Laufzeitlog für genau das beobachtete Verhalten. Kein pauschales Gütesiegel für andere Funktionen. |
+| **Im Betrieb bestätigt** | Konkrete Betriebsbeobachtung oder Laufzeitlog für genau das beobachtete Verhalten. Kein pauschales Gütesiegel für andere Funktionen. |
 | **Hypothese / offen** | Technisch begründeter Prüfpunkt ohne reproduzierten Nachweis als Ursache des beobachteten Fehlers. |
 
 Die acht bereitgestellten Logdateien und zwölf ZIP-Dateien waren bei dieser Auswertung als vollständige Dateien zugänglich. Die Logtexte wurden durchsucht und relevante Ereignisfolgen im Zusammenhang geprüft; die vielen wiederholten PHY-Burst-Zeilen sind keine jeweils eigenständigen Funktionstests. Manche Dateien beginnen oder enden bereits mitten in einer Nachricht; eine vollständige Datei ist deshalb nicht automatisch ein vollständiges Journal des Testlaufs.
@@ -51,7 +48,7 @@ Die acht bereitgestellten Logdateien und zwölf ZIP-Dateien waren bei dieser Aus
 
 ## 2. Ziel und Ausgangslage
 
-Jan meldete zu Beginn, dass die Geräte im verlinkten Fork nur Carrier 1 verwendeten und Carrier 2 ignorierten. Gefordert war keine Ablösung vorhandener Integrationen, sondern eine durchgängige Kenntnis der verfügbaren Carrier:
+Ausgangsbefund: Die Geräte im verlinkten Fork verwendeten nur Carrier 1 und ignorierten Carrier 2. Gefordert war keine Ablösung vorhandener Integrationen, sondern eine durchgängige Kenntnis der verfügbaren Carrier:
 
 - Carrier 2 darf nur verwendet werden, wenn er im WebUI beziehungsweise in der effektiven Konfiguration aktiviert ist.
 - Bei deaktiviertem Carrier 2 muss der bisherige Einträgerbetrieb erhalten bleiben.
@@ -62,7 +59,7 @@ Jan meldete zu Beginn, dass die Geräte im verlinkten Fork nur Carrier 1 verwend
 
 Die erste Lösung griff nur in UMAC ein. Das reichte nicht: Eine andere RF-Frequenz für einen bereits vorhandenen Timeslot schafft noch keine zusätzlichen unabhängig verwalteten Traffic-Ressourcen. Der historische Allocator, die oberen Rufzustände und die unteren physischen Timeslot-Arrays mussten gemeinsam angepasst werden. [A0–A4, L34, L37]
 
-**Zentrale Lehre dieses Chats:** Der Schlüssel einer Funkressource muss über alle beteiligten Komponenten eindeutig bleiben. `Air-TS2` auf Carrier 720 ist nicht dieselbe Ressource wie `Air-TS2` auf Carrier 721. Ein teilweiser Umbau, bei dem eine Schicht logische TS5–TS7 liefert und eine andere nur physische TS1–TS4 erwartet, führt nicht nur zu Anzeigeproblemen, sondern zu Fehlrouting und im dokumentierten Fall zu einem Prozessabsturz.
+**Zentrale Lehre dieses Vorhabens:** Der Schlüssel einer Funkressource muss über alle beteiligten Komponenten eindeutig bleiben. `Air-TS2` auf Carrier 720 ist nicht dieselbe Ressource wie `Air-TS2` auf Carrier 721. Ein teilweiser Umbau, bei dem eine Schicht logische TS5–TS7 liefert und eine andere nur physische TS1–TS4 erwartet, führt nicht nur zu Anzeigeproblemen, sondern zu Fehlrouting und im dokumentierten Fall zu einem Prozessabsturz.
 
 ## 3. Endgültige Anforderungen und letzte ausdrückliche Entscheidung
 
@@ -70,7 +67,7 @@ Die erste Lösung griff nur in UMAC ein. Das reichte nicht: Eine andere RF-Frequ
 
 Der Benutzer nahm den zwischenzeitlichen Wunsch nach vier Traffic-Timeslots auf Carrier 2 ausdrücklich zurück und verlangte zuletzt auch dort auf **Air-TS1 einen Control Channel**. Seine Begründung war die Vermutung, dass Funkgeräte und Basisstation bei voller Auslastung nicht mehr hinterherkämen.
 
-Diese Begründung ist als **Benutzerhypothese zur Stabilisierung**, nicht als bewiesene Kapazitätsgrenze der Geräte, festzuhalten. Die Entscheidung für die Reservierung ist dagegen verbindlich für den Abschluss dieses Chats.
+Diese Begründung ist als **Benutzerhypothese zur Stabilisierung**, nicht als bewiesene Kapazitätsgrenze der Geräte, festzuhalten. Die Entscheidung für die Reservierung ist dagegen verbindlich für den Abschluss dieses Vorhabens.
 
 Das letzte ausgelieferte Paket **v2.8** setzt folgendes Modell um:
 
@@ -93,11 +90,11 @@ Der Wortlaut „Carrier 2 TS1 Control Channel“ beschreibt die Benutzeranforder
 
 Für eine behauptete Entlastung des allgemeinen Steuerverkehrs müssten unter anderem die angekündigte Kanalrolle, Auswahl durch das Endgerät, zulässiger Uplink-Zugang, Grants, Paging, ACK und Rückkehr zum Hauptsteuerkanal zusammenpassen. Nur einen Timeslot nicht mehr für Sprache zu vergeben oder ihn mit SYNC/SYSINFO zu füllen, belegt diese vollständige Funktion nicht.
 
-Die heutige begrenzte Sichtung der angehängten Air-Interface-Spezifikation bestätigt die notwendige begriffliche Trennung: EN 300 392-2 V3.8.1, Abschnitt 19.3.2.1.1, beschreibt verschiedene Kombinationen aus MCCH, Common-SCCH und Assigned-SCCH. Abschnitt 16.10.45 beschreibt den SCCH-Informationsparameter zur Auswahl eines Common-Control-Kanals. Daraus wird hier **keine vollständige Konformitätsbewertung** des Codes abgeleitet. [N1]
+Die geprüfte begrenzte Sichtung der angehängten Air-Interface-Spezifikation bestätigt die notwendige begriffliche Trennung: EN 300 392-2 V3.8.1, Abschnitt 19.3.2.1.1, beschreibt verschiedene Kombinationen aus MCCH, Common-SCCH und Assigned-SCCH. Abschnitt 16.10.45 beschreibt den SCCH-Informationsparameter zur Auswahl eines Common-Control-Kanals. Daraus wird hier **keine vollständige Konformitätsbewertung** des Codes abgeleitet. [N1]
 
 ### 3.3 Kapazität bedeutet nicht automatisch Anzahl etablierter Gespräche
 
-Die sechs Ressourcen können auch durch Rufaufbau-Reservierungen belegt sein. Ein lokaler Einzelruf mit getrennten Funkstrecken ist außerdem nicht zwingend mit einer einzelnen Ressource gleichzusetzen. Im heutigen Repository konkurriert zusätzlich SNDCP um denselben Allocator. Deshalb müssen die Begriffe **frei, reserviert, RF-Circuit offen, Sprache aktiv, Hangtime und Release ausstehend** getrennt werden. [L42, R1, R3]
+Die sechs Ressourcen können auch durch Rufaufbau-Reservierungen belegt sein. Ein lokaler Einzelruf mit getrennten Funkstrecken ist außerdem nicht zwingend mit einer einzelnen Ressource gleichzusetzen. Im am 03.10.2026 geprüften Repository konkurriert zusätzlich SNDCP um denselben Allocator. Deshalb müssen die Begriffe **frei, reserviert, RF-Circuit offen, Sprache aktiv, Hangtime und Release ausstehend** getrennt werden. [L42, R1, R3]
 
 ### 3.4 Verbindlicher Erhalt bestehender Funktionen
 
@@ -120,19 +117,19 @@ Die Reihenfolge ist die Reihenfolge des zugänglichen Dialogs. Die Artefaktkürz
 | Releaseproblem / L39 | Benutzer meldet auf Carrier 2 festhängendes Funkgerät. Gruppenruf wird serverseitig geschlossen. | Ein reiner MCCH-Release erreicht einen noch auf C2 zugeteilten Teilnehmer möglicherweise nicht. Außerdem zeigt der Log bereits ACKs mit verlorenem Carrierkontext. |
 | v2.3 / A6 | Normaler Gruppen-Release: zwei FACCH/STCH-Sendungen auf dem zugeteilten Bearer plus MCCH-Fallback, danach verzögerter physischer Close. | Änderung im PDU-Artefakt vorhanden. Keine abschließende Geräteabnahme. |
 | Lastproblem / L40 | Benutzer meldet erneut Geräteverluste bei nahezu voller Belegung. | RX `link_id=7`, LLC-ACK aber `ts=4`, Carrier 720: konkreter Routingfehler nachgewiesen. |
-| v2.4 / A7 | LLC speichert und verwendet den logischen `link_id`; für TS5–TS7 Air-TS minus 3 und Carrier-Hint `-2`. | Artefakt geprüft; zugehörige Änderung heute im historischen Commit `d00c4e03849898aa137e0f1de09a2897cc76d695` nachgewiesen. |
+| v2.4 / A7 | LLC speichert und verwendet den logischen `link_id`; für TS5–TS7 Air-TS minus 3 und Carrier-Hint `-2`. | Artefakt geprüft; zugehörige Änderung am 03.10.2026 im historischen Commit `d00c4e03849898aa137e0f1de09a2897cc76d695` nachgewiesen. |
 | Releasefolge / L41 | Zwei STCH-Blöcke werden vor dem Schließen abgearbeitet. | Der Log belegt Drain und Close, nicht eine durch diese Wiederholungen verursachte Überlastung. |
-| v2.5 / A8 | Konservativer normaler Gruppen-Release: auf C2 einmal FACCH/STCH ohne MCCH-Fallback; auf C1 nur MCCH. | Im Artefakt vorhanden. Die damalige Überlastungsbegründung war nicht bewiesen. Dieser Stand bleibt im letzten ZIP v2.8 enthalten, ist aber nicht der heutige Repository-Stand. |
+| v2.5 / A8 | Konservativer normaler Gruppen-Release: auf C2 einmal FACCH/STCH ohne MCCH-Fallback; auf C1 nur MCCH. | Im Artefakt vorhanden. Die damalige Überlastungsbegründung war nicht bewiesen. Dieser Stand bleibt im letzten ZIP v2.8 enthalten, ist aber nicht der Repository-Stand. |
 | Letzter TS / L42 | Benutzer sieht scheinbar ungenutzten letzten Slot. | Log zeigt TS2–TS7 als Rufaufbau-Reservierungen; danach Congestion. Nicht als sechs etablierte Sprachrufe belegt. |
 | v2.6 / A9 | Phantom-/Spare-TS8 aus UI entfernen; nur logische TS1–TS7 zeigen. | Reine Anzeigeanpassung, keine neue RF-Kapazität. |
 | v2.7 / A10 | Nach Benutzerhinweis alle vier Air-Slots auf Secondary für Traffic freigeben; `TrafficOnly`, Kapazität sieben. | Logische TS5–TS8 entsprechen nun Air-TS1–TS4. Im Paket umgesetzt, kein nachfolgender bestätigter Test dieses Modells. |
-| v2.8 / A11 | Letzte ausdrückliche Benutzerkorrektur: C2 Air-TS1 ebenfalls für Steuerung vorsehen. | Rückkehr zu sechs Ressourcen und Mapping minus 3; `SecondaryBcchNoMcch`. Paket vorhanden, keine anschließende Funk-/Lastabnahme im Chat. |
+| v2.8 / A11 | Letzte ausdrückliche Benutzerkorrektur: C2 Air-TS1 ebenfalls für Steuerung vorsehen. | Rückkehr zu sechs Ressourcen und Mapping minus 3; `SecondaryBcchNoMcch`. Paket vorhanden, keine anschließende Funk-/Lastabnahme in den Arbeitsnotizen. |
 
 ### 4.1 Warum v2/v2.1 und der Panic-Log nicht als identischer Stand gelten dürfen
 
-Die heute untersuchten ZIPs v2 und v2.1 enthalten bereits den neuen logischen Mapper. Der beim vierten Ruf laufende Prozess in L37 loggt dagegen noch die aus v1 stammenden Funktionen `remember_traffic_carrier` beziehungsweise `selected carrier ... ts 5`. Der Quelltext des laufenden Builds und die ausgegebenen Ersatzdateien waren somit nicht durchgängig deckungsgleich.
+Die am 03.10.2026 untersuchten ZIPs v2 und v2.1 enthalten bereits den neuen logischen Mapper. Der beim vierten Ruf laufende Prozess in L37 loggt dagegen noch die aus v1 stammenden Funktionen `remember_traffic_carrier` beziehungsweise `selected carrier ... ts 5`. Der Quelltext des laufenden Builds und die ausgegebenen Ersatzdateien waren somit nicht durchgängig deckungsgleich.
 
-Das stützt die Diagnose **gemischter oder nicht aktualisierter Build-/Deployment-Stand**. Ob ein ZIP nur teilweise kopiert, ein anderes Binary gestartet oder ein älterer Build installiert wurde, lässt sich aus dem Verlauf nicht entscheiden. Es wäre falsch, einen bestimmten Bedienfehler des Benutzers als erwiesen darzustellen. Der spätere Marker war ein Diagnosehilfsmittel, aber kein Ersatz für eine überprüfte Build- und Dateiversion.
+Das stützt die Diagnose **gemischter oder nicht aktualisierter Build-/Deployment-Stand**. Ob ein ZIP nur teilweise kopiert, ein anderes Binary gestartet oder ein älterer Build installiert wurde, lässt sich aus dem Verlauf nicht entscheiden. Es wäre falsch, einen bestimmten Bedienfehler der Projektplanung als erwiesen darzustellen. Der spätere Marker war ein Diagnosehilfsmittel, aber kein Ersatz für eine überprüfte Build- und Dateiversion.
 
 ### 4.2 Geänderte Dateien beim letzten Mappingwechsel
 
@@ -196,7 +193,7 @@ Carrier-2-Air-TS1 ist im letzten Modell **kein logischer Traffic-TS5**. Im Dashb
 
 `Some(-2)` ist ein **interner Sentinel zwischen CMCE und UMAC** für den aktiv konfigurierten Secondary. Auf dem Air Interface muss daraus eine reale Carrier-Nummer werden. L40 zeigt die Auflösung in `ChanAllocElement { carrier_num: 721, ... }`. Das vier Elemente umfassende Timeslot-Feld enthält weiterhin physische Air-Slots; logische TS5–TS7 werden nicht als fünftes bis siebtes Bit gesendet. [A0, A2, A3, L40, R3]
 
-Eine spätere Verbesserung wäre ein expliziter Carrier-/Bearer-Datentyp statt mehrfach verteilter Sentinel- und Bereichslogik. Das ist ein **Roadmap-Kandidat**, kein bereits im Chat beauftragter Komplettumbau.
+Eine spätere Verbesserung wäre ein expliziter Carrier-/Bearer-Datentyp statt mehrfach verteilter Sentinel- und Bereichslogik. Das ist ein **Roadmap-Kandidat**, kein bereits in den Arbeitsnotizen beauftragter Komplettumbau.
 
 ### 5.4 Signalisierungs- und Kontrollnachrichten
 
@@ -225,15 +222,15 @@ Der entscheidende Fehler in L40 ist nicht allein ein unterschiedlicher Zeitstemp
 
 **Nachgewiesener Architekturfehler:** Die reine UMAC-Carrierauswahl erweitert nicht den oberen Ressourcenpool. Ein pro physischem Timeslot gespeicherter Carrier kann auch nicht gleichzeitig beide Carrier auf demselben Air-Slot repräsentieren.
 
-**Umgesetzter Ansatz:** Ab v2 eindeutige logische Bearer-IDs, kapazitätsabhängiger Allocator und Umrechnung erst an der Grenze zu den Carrier-Schedulern. Der Ansatz ist im letzten Paket und im heutigen Repository vorhanden. Die erste Ein-Datei-Lösung ist überholt. [A1–A4, R1–R3]
+**Umgesetzter Ansatz:** Ab v2 eindeutige logische Bearer-IDs, kapazitätsabhängiger Allocator und Umrechnung erst an der Grenze zu den Carrier-Schedulern. Der Ansatz ist im letzten Paket und im am 03.10.2026 geprüften Repository vorhanden. Die erste Ein-Datei-Lösung ist überholt. [A1–A4, R1–R3]
 
 ### 6.2 Compilerfehler `E0425: cannot find type Todo`
 
-Der vom Benutzer vollständig angegebene Fehler betrifft `pdu.rs`, damals Zeilen 64 und 79: Konstante `SECONDARY_CARRIER_HINT: Todo` und Rückgabetyp `Option<Todo>`.
+Der ausdrücklich vollständig angegebene Fehler betrifft `pdu.rs`, damals Zeilen 64 und 79: Konstante `SECONDARY_CARRIER_HINT: Todo` und Rückgabetyp `Option<Todo>`.
 
 **Korrektur v2.1:** `use tetra_core::Todo;`. Der ZIP-Vergleich bestätigt die Änderung. Ein vom Compiler vorgeschlagenes `impl<Todo>` wäre hier nicht die beabsichtigte Lösung, weil ein existierender konkreter Alias importiert werden sollte.
 
-**Testgrenze:** Keine vollständige erfolgreiche Cargo-Ausgabe nach diesem Import im Chat. Spätere gestartete Prozesse zeigen, dass nachfolgende Stände auf der Anlage ausführbar waren; die genaue Zusammenstellung ist wegen des anschließend beobachteten Mischstands separat zu prüfen. [A0, A2, A3, L35, L37]
+**Testgrenze:** Keine vollständige erfolgreiche Cargo-Ausgabe nach diesem Import in den Arbeitsnotizen. Spätere gestartete Prozesse zeigen, dass nachfolgende Stände auf der Anlage ausführbar waren; die genaue Zusammenstellung ist wegen des anschließend beobachteten Mischstands separat zu prüfen. [A0, A2, A3, L35, L37]
 
 ### 6.3 Vierter Ruf wirft alle Teilnehmer ab
 
@@ -272,7 +269,7 @@ Parallel wird die eigentliche `DTxCeased`-Meldung korrekt auf logischem TS7 / Ca
 
 **Nachgewiesen:** Der Carrierkontext geht im ACK-Rückweg verloren. **Nicht nachgewiesen:** Dass genau dieser Fehler jedes gemeldete „Kicken“ aller Geräte verursachte oder dass die BS dabei erneut abstürzte.
 
-**v2.4:** `schedule_outgoing_ack` bekommt den logischen `link_id`; ACK-TS5–TS7 werden auf Air-TS2–TS4 zurückgerechnet und mit Secondary-Hint weitergegeben. Diese Änderung ist im ZIP, im historischen Commit H2 und weiterhin im heutigen Code vorhanden. [L40, A7, H2, R4]
+**v2.4:** `schedule_outgoing_ack` bekommt den logischen `link_id`; ACK-TS5–TS7 werden auf Air-TS2–TS4 zurückgerechnet und mit Secondary-Hint weitergegeben. Diese Änderung ist im ZIP, im historischen Commit H2 und weiterhin im geprüften Code vorhanden. [L40, A7, H2, R4]
 
 ### 6.6 Die frühere Aussage „zu viele Release-Wiederholungen“ war nicht belegt
 
@@ -287,7 +284,7 @@ L41 zeigt einen normalen Ablauf eines verzögerten Close:
 
 Vom Deferred-Close bis zum physischen Close liegen in diesem Ausschnitt **114 ms**. Die wiederholten `waiting for FACCH/STCH drain`-Zeilen sind während dieses Ablaufs erwartbare Zustandsbeobachtungen. Der Ausschnitt enthält keinen Nachweis einer dadurch verursachten CPU-, Queue- oder Funküberlastung und keinen Nachweis, dass ein fremdes Gerät durch diese drei Nachrichten entfernt wurde.
 
-Die anschließende Reduktion auf einen Release in v2.5 war ein **implementierter Versuch**, dessen behauptete Ursache und erfolgreiche Wirkung nicht belegt wurden. Sie wird deshalb nicht als bewiesener Stabilitätsfix archiviert. Das heutige Repository verwendet beim normalen Gruppenrelease wieder zwei FACCH-Sendungen plus MCCH-Fallback. Auch daraus folgt nicht automatisch eine neue Fehlfunktion. [L41, A6, A8, A11, R3]
+Die anschließende Reduktion auf einen Release in v2.5 war ein **implementierter Versuch**, dessen behauptete Ursache und erfolgreiche Wirkung nicht belegt wurden. Sie wird deshalb nicht als bewiesener Stabilitätsfix archiviert. Das Repository verwendet beim normalen Gruppenrelease wieder zwei FACCH-Sendungen plus MCCH-Fallback. Auch daraus folgt nicht automatisch eine neue Fehlfunktion. [L41, A6, A8, A11, R3]
 
 ### 6.7 Scheinbar ungenutzter letzter TS: UI-Artefakt und Reservierung unterscheiden
 
@@ -327,7 +324,7 @@ Im Startlog L42 stehen ALSA-Probe-Fehler, ein anfänglicher Sample-Verlust und e
 | ACK-Carrierkorrektur | Quellcode A7/H2/R4 vorhanden. | Vollständige Nachher-Lastserie mit allen Slots und ACK-Verlustszenarien. |
 | Kapazitätsgrenze | TS2–TS7-Reservierungen und Congestion in L42. | Sechs gleichzeitig etablierte Sprachverbindungen in genau diesem Test. |
 | TS8-Modell v2.7 | Quellcodepaket vorhanden. | Erfolgreicher siebter Traffic-Ruf; kein passender Nachtest im Verlauf. |
-| Secondary-Control v2.8 | Letzte Benutzerentscheidung und entsprechendes 13-Dateien-Paket. | Vollständiger Common-SCCH-Betrieb oder bestätigte Entlastung der Endgeräte. |
+| Secondary-Control v2.8 | Letzte Projektentscheidung und entsprechendes 13-Dateien-Paket. | Vollständiger Common-SCCH-Betrieb oder bestätigte Entlastung der Endgeräte. |
 | Deaktivierter Carrier 2 | Implementierte Kapazitäts-/Konfigurationspfade. | Dokumentierte Aus-/Ein-Umschaltmatrix unter Last. |
 | EchoLink und sonstige Integrationen | Bestehende Komponenten erwähnt; EchoLink im späteren Startlog deaktiviert. | Erfolgreiche Regression dieser Integrationen. |
 
@@ -337,7 +334,7 @@ Um **00:29:02.167** wird Asterisk-Call 9 mit `ts=5` weitergeleitet; anschließen
 
 Das ist stärker als ein bloßer PHY-Empfang auf 721 und belegt, dass die erweiterte Rufsteuerung tatsächlich Secondary-Ressourcen öffnete. Es bleibt schwächer als eine durch den Benutzer bestätigte verständliche Sprachverbindung in beiden Richtungen über eine längere Lastserie.
 
-### 7.2 Heute zur Archivierung tatsächlich ausgeführte Prüfungen
+### 7.2 Am 03.10.2026 zur Quellenprüfung tatsächlich ausgeführte Prüfungen
 
 - Die **zwölf ZIP-Dateien** wurden geöffnet, ihre Dateilisten und SHA-256-Werte erfasst und mit `ZipFile.testzip()` auf CRC-Fehler geprüft: **kein CRC-Fehler**.
 - Relevante Quelltextstände wurden verglichen, insbesondere v1/v2/v2.1/v2.2 sowie v2.7/v2.8 und das letzte Release-Verhalten in v2.8.
@@ -345,11 +342,11 @@ Das ist stärker als ein bloßer PHY-Empfang auf 721 und belegt, dass die erweit
 - Die acht Logdateien wurden auf Rufaufbau, Zuweisung, ACK-Routing, Panic, Freigabe und Kapazitätsfehler untersucht.
 - Aktuelle GitHub-Dateien wurden an einem festen Commit gelesen; alter Repository-Name und zwei historische Commitanker wurden aufgelöst.
 
-**Nicht ausgeführt:** Rust-/Cargo-Compile, Rust-Unit-Tests, Browser-Interaktion, SDR-/Endgerätetest, Asterisk-/Brew-Audiotest, Last- oder Langzeittest. In der verfügbaren lokalen Umgebung war keine Rust-Toolchain vorhanden. Ein lokaler Git-Clone scheiterte am DNS-Zugriff auf GitHub; der GitHub-Connector funktionierte für die Repository-Prüfung. Die JavaScript-Syntaxprüfung ist kein Browser- oder Belegungstest.
+**Nicht ausgeführt:** Rust-/Cargo-Compile, Rust-Unit-Tests, Browser-Interaktion, SDR-/Endgerätetest, Asterisk-/Brew-Audiotest, Last- oder Langzeittest. In der verfügbaren lokalen Umgebung war keine Rust-Toolchain vorhanden. Ein lokaler Git-Clone scheiterte am DNS-Zugriff auf GitHub; die Repository-Lesezugriffe funktionierten. Die JavaScript-Syntaxprüfung ist kein Browser- oder Belegungstest.
 
 ## 8. Dienste, Konfiguration und technische Betriebsparameter
 
-Die Werte dieses Abschnitts sind **historisch beobachtete Testparameter**, keine heute remote ausgelesene Live-Konfiguration. [L42]
+Die Werte dieses Abschnitts sind **historisch beobachtete Testparameter**, keine am 03.10.2026 remote ausgelesene Live-Konfiguration. [L42]
 
 ### 8.1 Funk und SDR
 
@@ -399,7 +396,7 @@ Testidentitäten im Verlauf: ISSI 5102, 2010002 und 2020001–2020006; Gruppen G
 
 ### 8.3 DualCarrier-Konfigurationssemantik
 
-Das heute geprüfte Dashboard-Modul beschreibt die Trennung zwischen gespeicherter Carrier-Nummer und Betriebsfreigabe:
+Das am 03.10.2026 geprüfte Dashboard-Modul beschreibt die Trennung zwischen gespeicherter Carrier-Nummer und Betriebsfreigabe:
 
 ```toml
 [cell_info]
@@ -432,7 +429,7 @@ crates/tetra-entities/src/umac/subcomp/bs_sched.rs
 crates/tetra-entities/src/net_dashboard/html.rs
 ```
 
-| Datei / Gruppe | Bedeutung für diesen Chat |
+| Datei / Gruppe | Bedeutung für das Vorhaben |
 |---|---|
 | `timeslot_alloc.rs` | Eindeutiges Eigentum der logischen Bearer, Kapazität drei oder sechs; zwischenzeitlich sieben in v2.7. |
 | CMCE `components/circuit_mgr.rs` | Logische Rufressourcen, größere Arrays, kapazitätsabhängige Vergabe. Nicht mit dem gleichnamigen unteren UMAC-Modul verwechseln. |
@@ -450,7 +447,7 @@ crates/tetra-entities/src/net_dashboard/html.rs
 
 Relevante weitere Pfade im Repository beziehungsweise ursprünglichen Upload sind `crates/tetra-core/src/tetra_common.rs`, `crates/tetra-config/src/bluestation/sec_cell.rs`, `crates/tetra-config/src/bluestation/sec_phy_soapy.rs`, `crates/tetra-saps/src/lcmc/fields/chan_alloc_req.rs`, `crates/tetra-saps/src/control/call_control.rs`, die PHY-/LMAC-Komponenten und die Medienintegrationen `net_asterisk`, `net_brew`, `net_echolink`.
 
-Im heutigen Archiving-Stand liegen UI-Inhalte zusätzlich unter:
+Im geprüften Archiving-Stand liegen UI-Inhalte zusätzlich unter:
 
 ```text
 crates/tetra-entities/src/net_dashboard/ui/dashboard.html
@@ -461,7 +458,7 @@ crates/tetra-entities/src/net_dashboard/ui/netcore.css
 crates/tetra-entities/src/net_dashboard/dual_carrier.rs
 ```
 
-Nicht jede dieser Anschlussstellen wurde in diesem Archivauftrag vollständig auditiert. Die tatsächlich gelesenen aktuellen Kerndateien und ihre Git-Blobs sind in Abschnitt 11 aufgeführt.
+Nicht jede dieser Anschlussstellen wurde in der Quellenprüfung vollständig auditiert. Die tatsächlich gelesenen aktuellen Kerndateien und ihre Git-Blobs sind in Abschnitt 11 aufgeführt.
 
 ## 10. Befehle, Deployment und Reparatur: ausgeführt oder nur vorgeschlagen?
 
@@ -485,9 +482,9 @@ cargo clean -p tetra-entities
 cargo build --release
 ```
 
-**Status:** Dies waren Anweisungen des Assistenten, keine von ihm auf Jans Anlage ausgeführten Befehle. Die E0425-Ausgabe belegt einen fehlgeschlagenen Compileversuch. Laufzeitlogs belegen gestartete Folgestände, aber nicht lückenlos, mit welchem Buildbefehl und welcher installierten Dateikombination jeder Prozess erstellt wurde. Eine komplette erfolgreiche Cargo-Ausgabe und ein verifiziertes Installationsziel fehlen.
+**Status:** Die Befehle waren vorgeschlagene Abläufe, kein belegter vollständiger Installationslauf. Die E0425-Ausgabe belegt einen fehlgeschlagenen Compileversuch. Laufzeitlogs belegen gestartete Folgestände, aber nicht lückenlos, mit welchem Buildbefehl und welcher installierten Dateikombination jeder Prozess erstellt wurde. Eine komplette erfolgreiche Cargo-Ausgabe und ein verifiziertes Installationsziel fehlen.
 
-**Heutige Einordnung:** Die obigen ZIP-Befehle sind historische Reproduktionsinformationen. **Nicht als Empfehlung verstehen, v2.8 über den heutigen Branch zu entpacken.** Aktuelle Quelltexte sind weiterentwickelt; insbesondere die UI-Dateistruktur wurde geändert. `cargo clean` stellt außerdem nicht sicher, dass ein Service anschließend genau das neu erzeugte Binary startet.
+**Am 03.10.2026 geprüfte Einordnung:** Die obigen ZIP-Befehle sind historische Reproduktionsinformationen. **Nicht als Empfehlung verstehen, v2.8 über den geprüften Branch zu entpacken.** Aktuelle Quelltexte sind weiterentwickelt; insbesondere die UI-Dateistruktur wurde geändert. `cargo clean` stellt außerdem nicht sicher, dass ein Service anschließend genau das neu erzeugte Binary startet.
 
 ### 10.2 Tatsächlich sichtbarer Diagnosebefehl
 
@@ -498,13 +495,13 @@ journalctl -u tetra.service -f | \
   grep -E 'carrier=721|carrier=720|U-SETUP|D-SETUP|accepting|rejecting|NoCircuitFree|channel|traffic|circuit|CMCE|UMAC'
 ```
 
-**Status:** Benutzerseitiger Aufruf und Ausgabe sind dokumentiert. Die früher vom Assistenten vorgeschlagenen Varianten mit `-u bluestation-bs` waren nicht als korrekter Unitname belegt. Für diesen historischen Host ist `tetra.service` der beobachtete Dienstname.
+**Status:** Benutzerseitiger Aufruf und Ausgabe sind dokumentiert. Die früher vorgeschlagenen Varianten mit `-u bluestation-bs` waren nicht als korrekter Unitname belegt. Für diesen historischen Host ist `tetra.service` der beobachtete Dienstname.
 
 Der Filter kann entscheidende Fehlermeldungen ausschließen, wenn sie kein passendes Wort enthalten. Für einen neuen Reproduktionstest sollte deshalb zunächst ein **ungefilterter** Ausschnitt gesichert und erst die Kopie gefiltert werden.
 
 ### 10.3 Neue, nicht ausgeführte Prüfbefehle für die Fortsetzung
 
-Die folgenden Befehle sind **Vorschläge aus dieser Abschlussprüfung**, keine in diesem Chat bereits ausgeführten Anlagenaktionen:
+Die folgenden Befehle sind **Vorschläge aus dieser Quellenprüfung**, keine in dieser Entwicklungsphase bereits ausgeführten Anlagenaktionen:
 
 ```bash
 # Auf der betroffenen Basisstation: Source- und Dienstidentität aufnehmen.
@@ -537,17 +534,17 @@ UMAC dual-carrier logical-timeslot mapper v2.2 active
 UMAC dual-carrier logical-timeslot mapper v2.8 active (C2 TS1 control/guard, traffic TS5-TS7)
 ```
 
-Der heutige Code enthält weiterhin den v2.8-Marker, obwohl zahlreiche spätere Änderungen vorhanden sind. Die Zeile ist damit ein Hinweis auf die Mapper-Familie, **kein belastbarer vollständiger Versionsnachweis**. [L42, R2]
+Der geprüfte Code enthält weiterhin den v2.8-Marker, obwohl zahlreiche spätere Änderungen vorhanden sind. Die Zeile ist damit ein Hinweis auf die Mapper-Familie, **kein belastbarer vollständiger Versionsnachweis**. [L42, R2]
 
 ## 11. Gesondert überprüfter Repository-Stand vom 03.10.2026
 
-Die folgenden Befunde stammen aus der **heutigen statischen Quellcodeprüfung**, nicht aus nachträglich erfundenen historischen Tests. Referenz ist `Archiving@311462808d6ebe49b0b426bec11f381d6867f676`. Der unmittelbar vor dem Schreiben nachgeladene Commit `f8f1e001779cf564982c83abad4f5fa6b7637cd5` änderte an diesen Dateien nichts.
+Die folgenden Befunde stammen aus der **geprüften statischen Quellcodeprüfung**, nicht aus nachträglich erfundenen historischen Tests. Referenz ist `Archiving@311462808d6ebe49b0b426bec11f381d6867f676`. Der unmittelbar vor dem Schreiben nachgeladene Commit `f8f1e001779cf564982c83abad4f5fa6b7637cd5` änderte an diesen Dateien nichts.
 
 Der Vergleich mit `main@6aa9be8f74ab731f72dc133a5f8e90c5018c626d` zeigte beim anfänglichen Archiving-Prüfstand zehn zusätzliche Commits. Dazu gehören **auch UI- und Serviceänderungen**, nicht nur Archive. Die hier relevanten RF-/CMCE-/LLC-Kerndateien waren in dieser Differenz nicht als geändert aufgeführt; die Dashboard-Dateistruktur dagegen schon. Die Branches dürfen daher nicht pauschal als identisch behandelt werden. [R0]
 
 ### 11.1 Ergebnisübersicht
 
-| Bereich | Heute im Repository nachgewiesen | Verhältnis zum historischen Abschluss |
+| Bereich | Am 03.10.2026 im Repository nachgewiesen | Verhältnis zum historischen Abschluss |
 |---|---|---|
 | Allocator | TS2–TS7, Kapazität drei/sechs, C2-Air-TS1 nicht als Traffic; zusätzlicher Eigentümer SNDCP. | Grundmodell v2.8 erhalten, zusätzliche gemeinsame Nutzung. |
 | CMCE-Hilfsfunktionen | `SECONDARY_CARRIER_HINT=-2`, Air-TS-Umrechnung minus 3, Kapazität nach effektiv vorhandenem Secondary. | Entspricht dem finalen Mapping. |
@@ -558,7 +555,7 @@ Der Vergleich mit `main@6aa9be8f74ab731f72dc133a5f8e90c5018c626d` zeigte beim an
 | Secondary-Hangtime/Broadcast | Idle-Unterdrückung berücksichtigt tatsächliche Allocation und obligatorische BSCH-/BNCH-Zeitpunkte. | Wichtige spätere Änderung gegenüber v2.8-ZIP. |
 | Scheduler-Prioritäten | Grants und in Resource integrierte Grants vor Hintergrundsignalisierung; Behandlung von Fragmenten und ACKs. | Weiterentwickelter Last-/Signalisierungspfad. |
 | UI | `html.rs` bindet externe Build-Assets ein; RF-Ansicht spiegelt die Carrier-/Air-TS-Daten der Belegungskacheln. | Alte monolithische Ersatzdatei ist nicht mehr kompatibler Zielstand. |
-| Betriebsabnahme | Kein Zugriff auf Jans laufendes SDR-/MS-System in diesem Auftrag. | Nicht durch Repository-Lektüre ersetzt. |
+| Betriebsabnahme | Kein Zugriff auf das laufende SDR-/MS-System bei der Quellenprüfung. | Nicht durch Repository-Lektüre ersetzt. |
 
 ### 11.2 Konkreter später geänderter Fehlerpfad: Secondary wird fälschlich still
 
@@ -571,9 +568,9 @@ AND !ul_is_traffic
 → leerer Slot, keine DL-Blöcke
 ```
 
-Dadurch unterscheidet dieser Zweig nicht ausreichend zwischen **unbelegt** und **zugeteilt, aber gerade Signalisierung/Broadcast statt Sprache erforderlich**. Das ist ein im alten Artefakt nachvollziehbarer problematischer Codepfad. Seine Rolle als alleinige Ursache eines bestimmten Geräteverlusts wurde in diesem Archivauftrag nicht durch einen RF-Test reproduziert.
+Dadurch unterscheidet dieser Zweig nicht ausreichend zwischen **unbelegt** und **zugeteilt, aber gerade Signalisierung/Broadcast statt Sprache erforderlich**. Das ist ein im alten Artefakt nachvollziehbarer problematischer Codepfad. Seine Rolle als alleinige Ursache eines bestimmten Geräteverlusts wurde in der Quellenprüfung nicht durch einen RF-Test reproduziert.
 
-Im **heutigen Code** verwendet derselbe Bereich dagegen Allocation-Flags und schützt obligatorische Broadcast-Zeitpunkte:
+Im **geprüften Code** verwendet derselbe Bereich dagegen Allocation-Flags und schützt obligatorische Broadcast-Zeitpunkte:
 
 ```text
 !dl_allocated && !ul_allocated
@@ -581,41 +578,41 @@ Im **heutigen Code** verwendet derselbe Bereich dagegen Allocation-Flags und sch
 && !ts.is_mandatory_bnch()
 ```
 
-Damit wird der frühe Silence-Zweig für bereits zugeteilte Bearer und die genannten obligatorischen Broadcast-Zeitpunkte vermieden. Zusätzlich wird für AACH/BBK dieselbe Hangtime-/Traffic-Entscheidung verwendet, die vor dem Entnehmen des letzten FACCH-Elements getroffen wurde. Das verhindert in diesem Pfad eine widersprüchliche Klassifikation von Nutzblock und Access-Assignment. **Status: statisch geändert; keine heutige Funkabnahme.** [A11, R5]
+Damit wird der frühe Silence-Zweig für bereits zugeteilte Bearer und die genannten obligatorischen Broadcast-Zeitpunkte vermieden. Zusätzlich wird für AACH/BBK dieselbe Hangtime-/Traffic-Entscheidung verwendet, die vor dem Entnehmen des letzten FACCH-Elements getroffen wurde. Das verhindert in diesem Pfad eine widersprüchliche Klassifikation von Nutzblock und Access-Assignment. **Status: statisch geändert; keine geprüfte Funkabnahme.** [A11, R5]
 
-### 11.3 Heutiger Release-Pfad
+### 11.3 Am 03.10.2026 geprüfter Release-Pfad
 
 `release_group_call()` sendet im aktuellen PDU-Modul bei vorhandenem aktivem Call zwei Release-PDUs mittels `build_sapmsg_stealing`, danach einen normalen MCCH-Fallback. Diese Logik gilt nicht nur für C2. Weitere Sonderfälle wie das explizite Aufheben eines Emergency-Originator-Zustands besitzen eigene Nachrichtenfolgen.
 
-Der aktuelle Einzelruf-Release ist ebenfalls nicht mit dem normalen Gruppenrelease identisch: Für aktive lokale Beine sind wiederholte FACCH-Releases vorgesehen; im Rufaufbau erfolgt MCCH-Signalisierung. Die alte v2.5-Regel darf deshalb nicht pauschal als allgemeine Vorgabe für alle heutigen Disconnects angewandt werden. [R3]
+Der aktuelle Einzelruf-Release ist ebenfalls nicht mit dem normalen Gruppenrelease identisch: Für aktive lokale Beine sind wiederholte FACCH-Releases vorgesehen; im Rufaufbau erfolgt MCCH-Signalisierung. Die alte v2.5-Regel darf deshalb nicht pauschal als allgemeine Vorgabe für alle geprüften Disconnects angewandt werden. [R3]
 
 ### 11.4 Offener Lifecycle-Prüfpunkt: verzögerter Close und schnelle Wiederverwendung
 
-Der heutige CMCE-Gruppenrelease gibt die logische Ressource frei, während UMAC den physischen Close noch bis zum STCH-Drain verzögern kann. Die gelesene UMAC-Struktur `PendingCircuitClose` enthält DL-/UL-Flags je logischem Slot, aber keinen sichtbaren Generationsbezug zu der alten Belegung.
+Der geprüfte CMCE-Gruppenrelease gibt die logische Ressource frei, während UMAC den physischen Close noch bis zum STCH-Drain verzögern kann. Die gelesene UMAC-Struktur `PendingCircuitClose` enthält DL-/UL-Flags je logischem Slot, aber keinen sichtbaren Generationsbezug zu der alten Belegung.
 
-Daraus ergibt sich ein **Prüfkandidat**: Kann eine schnelle Neuvergabe desselben logischen Slots erfolgen, bevor der alte Close abgeschlossen ist, und könnte dieser dann die neue Belegung beeinflussen? Der Archivauftrag hat diesen Ablauf nicht reproduziert und erklärt ihn nicht nachträglich zur bewiesenen Ursache des historischen Lastfehlers.
+Daraus ergibt sich ein **Prüfkandidat**: Kann eine schnelle Neuvergabe desselben logischen Slots erfolgen, bevor der alte Close abgeschlossen ist, und könnte dieser dann die neue Belegung beeinflussen? Der Dokumentation hat diesen Ablauf nicht reproduziert und erklärt ihn nicht nachträglich zur bewiesenen Ursache des historischen Lastfehlers.
 
 Ein geeigneter Entwurf wäre eine explizite Freigabebestätigung oder eine mit Call-/Usage-/Generationskennung verknüpfte Ressourcenfreigabe. Die konkrete Lösung muss mit der bestehenden Queue- und Zustandsmaschinenlogik entwickelt werden. [R2, R3]
 
-### 11.5 Weitere heutige Anschlussstellen
+### 11.5 Weitere geprüfte Anschlussstellen
 
-**UL-Inaktivität:** Ein UL-fähiger Circuit allein aktiviert im heutigen UMAC nicht mehr automatisch den Stuck-Transmitter-Timer. Lokales `FloorGranted` startet die Erwartung von Uplink-Sprache; Remote-Floor und Hangtime behandeln sie anders. Dies ist wichtig, damit Netz-/Shared-Calls ohne lokalen Sprecher nicht fälschlich auslaufen. Der hier betrachtete Code ist weiterentwickelt gegenüber den frühen pauschalen Aussagen im Chat. [R2]
+**UL-Inaktivität:** Ein UL-fähiger Circuit allein aktiviert im geprüften UMAC nicht mehr automatisch den Stuck-Transmitter-Timer. Lokales `FloorGranted` startet die Erwartung von Uplink-Sprache; Remote-Floor und Hangtime behandeln sie anders. Dies ist wichtig, damit Netz-/Shared-Calls ohne lokalen Sprecher nicht fälschlich auslaufen. Der hier betrachtete Code ist weiterentwickelt gegenüber den frühen pauschalen Aussagen in den Arbeitsnotizen. [R2]
 
-**Gemeinsamer Allocator:** SNDCP kann über eine Präferenzreihenfolge Secondary-Ressourcen bevorzugen und teilt das Eigentumsmodell mit Voice. Drei Tests sind im Source vorhanden: `sndcp_reservation_blocks_voice_until_release`, `preferred_allocation_can_keep_main_carrier_free` und `multiple_sndcp_bearers_share_allocator_with_voice`. **Vorhandene Testfunktionen sind nicht in diesem Auftrag ausgeführte Tests.** [R1]
+**Gemeinsamer Allocator:** SNDCP kann über eine Präferenzreihenfolge Secondary-Ressourcen bevorzugen und teilt das Eigentumsmodell mit Voice. Drei Tests sind im Source vorhanden: `sndcp_reservation_blocks_voice_until_release`, `preferred_allocation_can_keep_main_carrier_free` und `multiple_sndcp_bearers_share_allocator_with_voice`. **Vorhandene Testfunktionen sind nicht bei der Quellenprüfung ausgeführte Tests.** [R1]
 
-**Legacy-Vergabe:** Der CMCE-CircuitMgr enthält neben kapazitätsabhängigen Aufrufen weiterhin Legacy-Helfer, deren freie Suche nur TS2–TS4 umfasst. Das Vorhandensein dieser Helfer beweist nicht, dass der heutige Haupt-Rufpfad falsch ist; bei neuen Aufrufern muss aber die korrekte Variante gewählt werden. [R9]
+**Legacy-Vergabe:** Der CMCE-CircuitMgr enthält neben kapazitätsabhängigen Aufrufen weiterhin Legacy-Helfer, deren freie Suche nur TS2–TS4 umfasst. Das Vorhandensein dieser Helfer beweist nicht, dass der geprüfte Haupt-Rufpfad falsch ist; bei neuen Aufrufern muss aber die korrekte Variante gewählt werden. [R9]
 
 **Carrier-Fallbacks:** Einige UMAC-Helfer fallen bei unbekanntem Carrier oder nicht vorhandenem Secondary auf den Primary zurück. Ob dies für jeden Eingangsweg erwünscht ist, sollte geprüft werden. Eine fehlgeschlagene Secondary-Anforderung darf nicht still eine bereits belegte Primary-Ressource treffen. Dies ist ein Hardening-Kandidat, kein hier reproduzierter Fehler im normalen Deaktivierungspfad. [R2]
 
 **LLC-Zustandsidentität:** Der aktuelle Kommentar zur ACK-Integration weist darauf hin, dass Teile des Basic-Link-Zustands weiterhin nach SSI statt nach dem Paar aus Teilnehmer und Link geführt werden. Für parallele Signalisierungskontexte desselben Teilnehmers wäre zu prüfen, ob eine feinere Zuordnung erforderlich ist. [R4]
 
-**Medien:** Der aktuelle UMAC besitzt zusätzlich eine zentrale Medienanbindung mit Session-Bindung an die logische Ressource, Prüfung auf aktiven DL-Circuit und ausstehenden Close sowie einem begrenzten Drain-Budget von 16 Frames pro Tick. Diese heutige Ergänzung gehörte nicht zur historischen Asterisk-Abnahme dieses Chats. [R2]
+**Medien:** Der aktuelle UMAC besitzt zusätzlich eine zentrale Medienanbindung mit Session-Bindung an die logische Ressource, Prüfung auf aktiven DL-Circuit und ausstehenden Close sowie einem begrenzten Drain-Budget von 16 Frames pro Tick. Diese geprüfte Ergänzung gehörte nicht zur historischen Asterisk-Abnahme dieses Vorhabens. [R2]
 
-### 11.6 Heutige WebUI: keine alten Komplettdateien darüberkopieren
+### 11.6 Am 03.10.2026 geprüfte WebUI: keine alten Komplettdateien darüberkopieren
 
 Im geprüften Archiving-Stand besteht `crates/tetra-entities/src/net_dashboard/html.rs` nur noch aus Build-Asset-Einbindungen, beispielsweise `include_str!("ui/dashboard.html")`. Die neue RF-Ansicht in `ui/netcore-rf.js` liest `data-carrier`, `data-ts` und `data-air-ts` der existierenden Timeslot-Kacheln und gruppiert diese nach Carrier. Sie verändert dadurch nicht die Ressourcenvergabe.
 
-Die historische vollständige `html.rs` aus v2.8 würde diese Architektur zurücksetzen. Ein heutiger Anzeigefix muss an der aktuellen Telemetrie und den getrennten UI-Assets ansetzen. **Keine der historischen UI-Dateien wurde in diesem Archivauftrag in Produktivcode übernommen.** [R7]
+Die historische vollständige `html.rs` aus v2.8 würde diese Architektur zurücksetzen. Ein geprüfter Anzeigefix muss an der aktuellen Telemetrie und den getrennten UI-Assets ansetzen. **Keine der historischen UI-Dateien wurde in der Quellenprüfung in Produktivcode übernommen.** [R7]
 
 ### 11.7 Identifikatoren der tatsächlich geprüften aktuellen Kerndateien
 
@@ -634,7 +631,7 @@ Alle folgenden Blob-SHAs gehören zum eingefrorenen Archiving-Prüfstand:
 | `crates/tetra-entities/src/net_dashboard/ui/netcore-rf.js` | `deb39f2d637ed5dc7b0701c9ab34e836398b3a5f` |
 | `crates/tetra-entities/src/net_dashboard/dual_carrier.rs` | `765f3c3ef8da26a9e1e51b60ec2364a161bf80aa` |
 
-Dies ist eine gezielte Prüfung der wichtigen Aussagen dieses Chats, kein vollständiger Audit aller Dateien des Repositories, aller Nebenbranches oder der `ms-mode`-Kopie des Stacks.
+Dies ist eine gezielte Prüfung der wichtigen Aussagen dieses Vorhabens, kein vollständiger Audit aller Dateien des Repositories, aller Nebenbranches oder der `ms-mode`-Kopie des Stacks.
 
 ## 12. Verworfene, ersetzte und nicht bewiesene Ansätze
 
@@ -643,14 +640,14 @@ Dies ist eine gezielte Prüfung der wichtigen Aussagen dieses Chats, kein vollst
 | Ein-Datei-UMAC-Remapping schafft vollständigen DualCarrier-Betrieb. | Durch die folgenden Ressourcen- und Indexfehler widerlegt; überholt. |
 | Nach Beheben des `Todo`-Imports bleiben wahrscheinlich nur noch kleine Typfehler, kein Konzeptproblem. | Zu selbstsichere damalige Einschätzung. Die späteren Laufzeitfehler zeigen weitere Schicht- und Deploymentprobleme. |
 | Registrierung und Affiliation beweisen Asterisk-/Brew-Kompatibilität. | Nicht ausreichend; nur die beobachteten Registrierungs-/Affiliate-Pfade sind bestätigt. |
-| Sechs logische Ressourcen bedeuten sechs gleichzeitig etablierte Gespräche. | Zu pauschal; Setup-Reservierungen, mehrere Funkbeine und heute Paketdaten berücksichtigen. |
+| Sechs logische Ressourcen bedeuten sechs gleichzeitig etablierte Gespräche. | Zu pauschal; Setup-Reservierungen, mehrere Funkbeine und am 03.10.2026 Paketdaten berücksichtigen. |
 | C2-Air-TS1 müsse grundsätzlich immer unbenutzt beziehungsweise Control sein. | Keine allgemeingültig nachgewiesene TETRA-Grenze. Hier ist die Reservierung eine konkrete letzte Projektentscheidung. |
 | Phantom-TS8 als freier Spare-Slot in einem Sechs-Bearer-Modell. | Als irreführende Anzeige ersetzt. |
-| Sieben Traffic-Bearer durch `TrafficOnly` auf C2 inklusive Air-TS1. | Als v2.7-Artefakt vorhanden, aber durch die letzte Benutzerentscheidung und v2.8 ersetzt. |
+| Sieben Traffic-Bearer durch `TrafficOnly` auf C2 inklusive Air-TS1. | Als v2.7-Artefakt vorhanden, aber durch die letzte Projektentscheidung und v2.8 ersetzt. |
 | Zwei FACCH-Releases plus MCCH seien nachweislich ein Überlastungsgewitter. | Durch L41 nicht belegt; nicht als gesicherte Fehlerursache übernehmen. |
-| Ein Release ist stets stabiler als wiederholte Zustellung. | Nicht nachgewiesen; v2.5 war ein Versuch. Heutiger Code verwendet wieder Wiederholungen. |
+| Ein Release ist stets stabiler als wiederholte Zustellung. | Nicht nachgewiesen; v2.5 war ein Versuch. Am 03.10.2026 geprüfter Code verwendet wieder Wiederholungen. |
 | Ein reservierter, als CTRL beschrifteter TS1 ist automatisch ein vollständig genutzter zusätzlicher Steuerkanal. | Nicht nachgewiesen; Broadcast, reservierte Ressource und SCCH-Prozeduren getrennt prüfen. |
-| Ein Startmarker identifiziert das gesamte installierte Release. | Unzureichend; der Marker v2.8 ist auch im heutigen weiterentwickelten Code vorhanden. |
+| Ein Startmarker identifiziert das gesamte installierte Release. | Unzureichend; der Marker v2.8 ist auch im geprüften weiterentwickelten Code vorhanden. |
 
 ## 13. Offene Aufgaben und Roadmap-Kandidaten
 
@@ -658,7 +655,7 @@ Die folgende Priorisierung ist eine **aus dieser Archivprüfung abgeleitete Empf
 
 ### P0 – Verifizierbaren Ausgangspunkt und belastbare Reproduktion herstellen
 
-**DC-01: Source, Build und laufendes Binary zusammenführen.** Den heute tatsächlich eingesetzten Commit, lokale Änderungen, den Installationspfad, effektive Konfiguration und die Service-Startzeit erfassen. Abhängigkeit für alle weiteren Tests. Abnahmekriterium: Ein Testlog lässt sich eindeutig einer Dateikombination zuordnen; keine Mischung aus v2.7- und v2.8-Mapping.
+**DC-01: Source, Build und laufendes Binary zusammenführen.** Den am 03.10.2026 tatsächlich eingesetzten Commit, lokale Änderungen, den Installationspfad, effektive Konfiguration und die Service-Startzeit erfassen. Abhängigkeit für alle weiteren Tests. Abnahmekriterium: Ein Testlog lässt sich eindeutig einer Dateikombination zuordnen; keine Mischung aus v2.7- und v2.8-Mapping.
 
 **DC-02: Secondary-Control präzise spezifizieren.** Festlegen, ob die abschließende Benutzeranforderung durch BCCH/SYNC plus reserviertem Slot erfüllt werden soll oder ob zusätzlicher, wirklich von MS verwendeter Steuerverkehr vorgesehen ist. Bei letzterem Rolle, Ankündigung, Auswahl, Uplink-Zugang und Rückkehr anhand des Air-Interface-Protokolls ausarbeiten. Abnahmekriterium: Nicht nur eine CTRL-Kachel, sondern eine nachvollziehbare, spezifizierte Nachrichtenfolge und passender Endgerätetest.
 
@@ -674,7 +671,7 @@ Die folgende Priorisierung ist eine **aus dieser Archivprüfung abgeleitete Empf
 
 **DC-07: Disabled-Pfad und ungültige Bearer.** UI aus/ein mit dokumentiertem Neustartverhalten; ohne Secondary keine TS5–TS7-Zuteilung. Ungültige IDs dürfen keinen Panic auslösen und keine andere Carrier-Ressource verändern. Fehlende oder unbekannte Carrier nicht unbemerkt auf einen belegten Main-Slot umleiten.
 
-**DC-08: Volllast und Ressourcenknappheit.** Belegung von einer bis sechs Ressourcen, danach weitere Anforderung. Erwartung: kontrollierte Ablehnung oder spezifizierte Prioritätsentscheidung, kein Prozessneustart und kein Eingriff in unabhängige Calls. Reservierungen und offene RF-Circuits dabei getrennt zählen; heutige SNDCP-Belegung mit berücksichtigen.
+**DC-08: Volllast und Ressourcenknappheit.** Belegung von einer bis sechs Ressourcen, danach weitere Anforderung. Erwartung: kontrollierte Ablehnung oder spezifizierte Prioritätsentscheidung, kein Prozessneustart und kein Eingriff in unabhängige Calls. Reservierungen und offene RF-Circuits dabei getrennt zählen; geprüfte SNDCP-Belegung mit berücksichtigen.
 
 ### P2 – Wartbarkeit, Diagnose und Anzeige
 
@@ -688,7 +685,7 @@ Die folgende Priorisierung ist eine **aus dieser Archivprüfung abgeleitete Empf
 
 ### Historische Nebenidee ohne Freigabe
 
-Es wurde vorgeschlagen, einen Traffic-Bearer für Gruppenruf/Emergency/Priorität zu reservieren, damit Asterisk-/Einzelrufe nicht alle Ressourcen belegen. Beispiel war eine Reserve auf dem letzten Secondary-Traffic-Bearer. **Status: Idee**, nicht als beschlossene Policy und nicht als in diesem Chat implementierte Prioritätslogik behandeln. Eine Umsetzung müsste mit dem heutigen gemeinsamen Allocator und vorhandener Pre-emption abgestimmt werden; konkrete Klassen, Ausnahmen und Kapazitätskosten sind noch festzulegen.
+Es wurde vorgeschlagen, einen Traffic-Bearer für Gruppenruf/Emergency/Priorität zu reservieren, damit Asterisk-/Einzelrufe nicht alle Ressourcen belegen. Beispiel war eine Reserve auf dem letzten Secondary-Traffic-Bearer. **Status: Idee**, nicht als beschlossene Policy und nicht als in dieser Entwicklungsphase implementierte Prioritätslogik behandeln. Eine Umsetzung müsste mit dem geprüften gemeinsamen Allocator und vorhandener Pre-emption abgestimmt werden; konkrete Klassen, Ausnahmen und Kapazitätskosten sind noch festzulegen.
 
 ### Empfohlene Abnahmematrix für die nächste Fortsetzung
 
@@ -710,15 +707,15 @@ Diese Matrix wurde hier **nicht ausgeführt**.
 
 ## 14. Quellen- und Anhangsmanifest
 
-Die Originalanhänge werden durch diesen Auftrag **nicht zusätzlich in Git hochgeladen**. Das Archiv enthält deren Namen, Prüfsummen, relevante Beobachtungen und Auszüge. Für eine spätere bitgenaue Reproduktion müssen die Original-ZIPs beziehungsweise Journalausschnitte weiterhin verfügbar sein. Das Archivieren des Chats wird hier nicht mit einer gesicherten dauerhaften Ablage aller Originalbytes gleichgesetzt.
+Namen, Prüfsummen, Beobachtungen und Auszüge sind dokumentiert. Für eine bitgenaue Reproduktion müssen die Original-ZIPs und Journalausschnitte erhalten bleiben; eine vollständige Ablage aller Originalbytes ist nicht nachgewiesen.
 
 ### 14.1 ZIP-Artefakte
 
-Alle Größen beziehen sich auf die heute zugänglichen Dateien. Dateizahl zählt reguläre ZIP-Einträge ohne Verzeichnisse. Zwölf Archive wurden geprüft; A11 enthält 13 Quellcodedateien.
+Alle Größen beziehen sich auf die am 03.10.2026 zugänglichen Dateien. Dateizahl zählt reguläre ZIP-Einträge ohne Verzeichnisse. Zwölf Archive wurden geprüft; A11 enthält 13 Quellcodedateien.
 
 | Kürzel | Dateiname | Bytes | Dateien | Einordnung |
 |---|---|---:|---:|---|
-| A0 | `flowstation-beta.zip` | 1228359 | 433 | Ursprünglicher Source-Upload; nicht als heutiges Deployment verwenden. |
+| A0 | `flowstation-beta.zip` | 1228359 | 433 | Ursprünglicher Source-Upload; nicht als geprüftes Deployment verwenden. |
 | A1 | `flowstation-dual-carrier-fix-complete-files.zip` | 20615 | 1 | Erster UMAC-only-Versuch. |
 | A2 | `flowstation-dual-carrier-fix-v2-complete-files.zip` | 91925 | 9 | Sechs logische Bearer, vor Importkorrektur. |
 | A3 | `flowstation-dual-carrier-fix-v2_1-complete-files.zip` | 91949 | 9 | Importkorrektur. |
@@ -748,7 +745,7 @@ A10 b2d436f1980f3cc23d4b3335f3af3381a0022333015fbc36075e791b0fda0577
 A11 a12062cfeff87b8a421d77ef79d62f6204e176cf85e90141e1f526623bec7947
 ```
 
-Zusätzlich waren zahlreiche der vollständigen Rust-Dateien einzeln im Chat bereitgestellt. Teilweise wurden dabei Pfade früherer Versionen erneut verwendet. Für die Versionsrekonstruktion wurden deshalb vorzugsweise die klar bezeichneten ZIP-Inhalte verwendet, nicht allein eine frühere Downloadbeschriftung. Ein im Chat ausgegebener Dateilink belegt für sich weder einen Git-Commit noch ein Deployment.
+Zusätzlich waren zahlreiche der vollständigen Rust-Dateien einzeln in den Arbeitsnotizen bereitgestellt. Teilweise wurden dabei Pfade früherer Versionen erneut verwendet. Für die Versionsrekonstruktion wurden deshalb vorzugsweise die klar bezeichneten ZIP-Inhalte verwendet, nicht allein eine frühere Downloadbeschriftung. Ein in den Arbeitsnotizen ausgegebener Dateilink belegt für sich weder einen Git-Commit noch ein Deployment.
 
 ### 14.2 Betriebslogs
 
@@ -778,11 +775,11 @@ L41 7dbac9d4140decb523c05a70b53b5fa9d33ec459e605473bcd66df2dfdab0335
 L42 d3d8a5a54b1d28f9e551aa81f3b024c11d08704e7a9eebf8a8c26ffeaf528013
 ```
 
-Die Nummerierung der Anhänge ist nicht fortlaufend. Daraus wird nicht auf zusätzliche, tatsächlich im Chat vorhandene, aber fehlende Tests geschlossen.
+Die Nummerierung der Anhänge ist nicht fortlaufend. Daraus wird nicht auf zusätzliche, tatsächlich in den Arbeitsnotizen vorhandene, aber fehlende Tests geschlossen.
 
 ### 14.3 Verfügbare ETSI-Unterlagen
 
-Die nachstehenden PDFs waren im Projekt-/Gesprächskontext verfügbar. Ihre bloße Anwesenheit bedeutet nicht, dass sie während der historischen Fixfolge bereits geprüft oder die Implementierung gegen sie abgenommen wurde. **Für dieses Archiv wurden Titel/Versionen beziehungsweise Dokumentidentitäten erfasst und nur die ausdrücklich genannten Air-Interface-Fundstellen gezielt inhaltlich geprüft.** Die Sammlung wurde nicht vollständig neu gelesen. Entwürfe werden nicht als verabschiedete Endfassung bezeichnet; ein aktueller ETSI-Statusabgleich war nicht Gegenstand dieser Archivierung.
+Die nachstehenden PDFs waren im Projektkontext verfügbar. Ihre bloße Anwesenheit bedeutet nicht, dass sie während der historischen Fixfolge bereits geprüft oder die Implementierung gegen sie abgenommen wurde. **Für diese Entwicklungsnotizen wurden Titel/Versionen beziehungsweise Dokumentidentitäten erfasst und nur die ausdrücklich genannten Air-Interface-Fundstellen gezielt inhaltlich geprüft.** Die Sammlung wurde nicht vollständig neu gelesen. Entwürfe werden nicht als verabschiedete Endfassung bezeichnet; ein aktueller ETSI-Statusabgleich war nicht Gegenstand der Quellenprüfung vom 03.10.2026.
 
 | Datei | Dokument / Rolle |
 |---|---|
@@ -831,20 +828,18 @@ Die folgenden Links referenzieren bewusst den geprüften Commit und nicht einen 
 - **H1 – ZIP-Kommentar aufgelöst:** [86648c2a766bcc5298d1eeb158606e131192a5ac](https://github.com/JanHG98/netcore-tetra/commit/86648c2a766bcc5298d1eeb158606e131192a5ac).
 - **H2 – Historischer ACK-Fix:** [d00c4e03849898aa137e0f1de09a2897cc76d695](https://github.com/JanHG98/netcore-tetra/commit/d00c4e03849898aa137e0f1de09a2897cc76d695).
 
-Für die übrigen Chat-Pakete wurden keine exakten Commit-/PR-Zuordnungen nachgewiesen. Auch wenn ähnliche Funktionen im heutigen Code vorhanden sind, ist das keine nachträgliche Bestätigung, wann genau jedes ZIP eingecheckt oder auf dem Funkrechner installiert wurde.
+Für die übrigen Entwicklungspakete wurden keine exakten Commit-/PR-Zuordnungen nachgewiesen. Auch wenn ähnliche Funktionen im geprüften Code vorhanden sind, ist das keine nachträgliche Bestätigung, wann genau jedes ZIP eingecheckt oder auf dem Funkrechner installiert wurde.
 
-## 16. Auswertungslücken und Übergabe
+## 16. Offene Nachweise und Übergabe
 
 **Zugänglich und ausgewertet:** Der hier verfügbare Dialog einschließlich späterer ausdrücklicher Korrekturen; die acht zugehörigen Logdateien; der ursprüngliche Source-ZIP und elf Fix-/UI-ZIPs; relevante aktuelle Repository-Dateien; begrenzte einschlägige ETSI-Fundstellen. Die Prüfsummen ermöglichen eine spätere Zuordnung der konkret verwendeten Anhänge.
 
-**Nicht verfügbar beziehungsweise nicht belegt:** Ursprünglicher Chattitel und Chatlink; vollständige Zeitstempel jeder Nachricht; genaue Source-/Binary-Zuordnung jedes historischen Testprozesses; vollständige Build- und Installationsprotokolle; Ende-zu-Ende-Audio- und Dauerlastabnahme; Nachtest der letzten Pakete v2.7/v2.8; vollständige MS-Modell-/Firmwareliste; vollständiges ungefiltertes Anlagenjournal außerhalb der eingesandten Ausschnitte; eine komplette SCCH-/ETSI-Konformitätsprüfung.
+**Nicht verfügbar beziehungsweise nicht belegt:** Vollständige Zeitstempel jedes Entwicklungsschritts; genaue Source-/Binary-Zuordnung jedes historischen Testprozesses; vollständige Build- und Installationsprotokolle; Ende-zu-Ende-Audio- und Dauerlastabnahme; Nachtest der letzten Pakete v2.7/v2.8; vollständige MS-Modell-/Firmwareliste; vollständiges ungefiltertes Anlagenjournal außerhalb der eingesandten Ausschnitte; eine komplette SCCH-/ETSI-Konformitätsprüfung.
 
-Ein Teil der frühen Assistentenantworten verwendete zu weitgehende Erfolgsaussagen. Für die Fortsetzung gilt daher folgende belastbare Zusammenfassung:
+Für die Fortsetzung ist der belegte Umfang maßgeblich:
 
 1. **Die Ressourcen- und Carrier-Awareness wurde tatsächlich erweitert.** Secondary-Circuit-Open und Asterisk-Media-Ready sind historisch für logische TS5–TS7 sichtbar.
-2. **Der TS5-Panic und das ACK-Routing ohne Carrierkontext sind konkrete, belegte Fehler.** Ihre jeweiligen Korrekturen sind in Artefakten und heute im relevanten Code nachweisbar; der ACK-Fix zusätzlich in einem historischen Commit.
+2. **Der TS5-Panic und das ACK-Routing ohne Carrierkontext sind konkrete, belegte Fehler.** Ihre jeweiligen Korrekturen sind in Artefakten und am 03.10.2026 im relevanten Code nachweisbar; der ACK-Fix zusätzlich in einem historischen Commit.
 3. **Die letzte gewünschte Kapazität ist sechs Traffic-Bearer, mit reserviertem C2-Air-TS1.** Der vorangegangene Sieben-Bearer-Versuch ist überholt. Ein vollständig genutzter zusätzlicher Steuerkanal ist dadurch noch nicht abgenommen.
 4. **Release-Zuverlässigkeit und Laststabilität sind nicht abschließend bestätigt.** Die Behauptung, drei Release-Sendungen hätten die Überlastung bewiesen, darf nicht übernommen werden.
-5. **Der heutige Repository-Stand ist der Ausgangspunkt weiterer Arbeiten.** Er enthält relevante Hangtime-/Broadcast-Verbesserungen, wiederholte Release-Zustellung und eine neue UI-Struktur. Historische Komplettdateien sind Vergleichsmaterial, keine aktuelle Einspielanleitung.
-
-Der Chat selbst wird durch diesen Auftrag nicht archiviert; das übernimmt der Benutzer nach Prüfung der gespeicherten Dokumentation.
+5. **Der Repository-Stand ist der Ausgangspunkt weiterer Arbeiten.** Er enthält relevante Hangtime-/Broadcast-Verbesserungen, wiederholte Release-Zustellung und eine neue UI-Struktur. Historische Komplettdateien sind Vergleichsmaterial, keine aktuelle Einspielanleitung.

@@ -1,28 +1,25 @@
-# Sepura SCG2229 Import aus Australien – Zoll, BNetzA, Konformität und erfolgreiche Freigabe
+# Projektnotizen: Sepura SCG2229 – Import, Konformität und Zollfreigabe
 
-## Metadaten
+## Rahmen
 
 - **Thema:** Import eines Sepura SCG2229 TETRA-Mobilfunkgeräts aus Australien; DHL-/Zollprozess; Marktüberwachung durch die Bundesnetzagentur; EU-Konformitätsnachweis; deutschsprachige Dokumentation; Einspruch/Neubewertung; erneute Internetzollanmeldung (IZA); erfolgreiche Abfertigung und Abholung.
-- **Ursprünglicher Chattitel:** im zugänglichen Verlauf nicht zuverlässig verfügbar.
-- **Chatlink:** im zugänglichen Verlauf nicht verfügbar.
-- **Zusammenfassung erstellt:** 2026-10-05.
+- **Notizstand:** 2026-10-05.
 - **Zielbranch des Archivs:** `Archiving`.
-- **Beim Repository-Abgleich geprüfter `Archiving`-Stand vor dieser Archivierung:** `013244c5d8c29a0fefc665f3f50897340e9d0d90` (muss unmittelbar vor dem Schreiben wegen möglicher paralleler Archivierungen nochmals geprüft werden).
-- **Beim heutigen Code-/Dokumentationsabgleich geprüfter `main`-Stand:** `9116c15d645458f99e236712b67a1ad970432791`.
+- **Geprüfter `Archiving`-Stand vom 05.10.2026:** `013244c5d8c29a0fefc665f3f50897340e9d0d90`.
+- **Beim Code-/Dokumentationsabgleich geprüfter `main`-Stand:** `9116c15d645458f99e236712b67a1ad970432791`.
 - **Repository:** `JanHG98/netcore-tetra`.
-- **Archivumfang:** gesamter in diesem Chat zugänglicher Verlauf, die hier verfügbaren Anhänge/Scans sowie später ausdrücklich korrigierte Festlegungen. Frühere Aussagen werden bei Widersprüchen durch spätere explizite Angaben ersetzt.
 
-> **Statuslegende:** **Idee** = noch unverbindlich; **beschlossen/geplant** = ausdrücklich vorgesehen, aber nicht nachgewiesen umgesetzt; **implementiert** = im beschriebenen Ablauf tatsächlich durchgeführt; **getestet** = Ergebnis durch konkrete Prüfung/Abnahme belegt; **im Betrieb bestätigt** = im realen NetCore-Tetra-Betrieb nachgewiesen. Eine Chat-Aussage allein gilt nicht als Implementierungsnachweis.
+> **Statuslegende:** **Idee** = noch unverbindlich; **beschlossen/geplant** = ausdrücklich vorgesehen, aber nicht nachgewiesen umgesetzt; **implementiert** = im beschriebenen Ablauf tatsächlich durchgeführt; **getestet** = Ergebnis durch konkrete Prüfung/Abnahme belegt; **im Betrieb bestätigt** = im realen NetCore-Tetra-Betrieb nachgewiesen. Eine Entwurfsbehauptung allein gilt nicht als Implementierungsnachweis.
 
 ---
 
 ## 1. Ziel, Ausgangslage und behandelte Themen
 
-Der Chat begann als Kosten- und Importabschätzung für ein in Australien gekauftes professionelles TETRA-Mobilfunkgerät und entwickelte sich zu einer vollständigen Fallstudie für die Einfuhr professioneller Funktechnik nach Deutschland.
+Die Importnotizen verfolgen den Weg eines in Australien gekauften SCG2229 von der Kostenabschätzung über die Marktüberwachung bis zur erfolgreichen Zollfreigabe in Deutschland.
 
 Gegenstand war ein **Sepura SCG2229** als umfangreiches Installations-/Zubehörset. Im Verlauf wurden Kaufpreis, Versand, Zolltarifierung, CE-/UKCA-Konformitätsunterlagen, deutschsprachige Dokumentation, DHL-/Zollstatus, die Marktüberwachungsentscheidung der Bundesnetzagentur, der Einspruch gegen den Zollbescheid, die erneute Prüfung durch die BNetzA, die zweite IZA und die tatsächliche Abholung dokumentiert.
 
-Für NetCore-Tetra ist der Chat aus zwei Gründen relevant:
+Für NetCore-Tetra sind zwei Ergebnisse relevant:
 
 1. Das SCG2229 ist als reales TETRA-Endgerät/Testgerät für spätere NetCore-Tetra-Versuche vorgesehen.
 2. Der Fall liefert einen wiederverwendbaren **Import-/Compliance-Runbook-Entwurf** für professionelle Funkgeräte aus Nicht-EU-Ländern.
@@ -33,7 +30,7 @@ Für NetCore-Tetra ist der Chat aus zwei Gründen relevant:
 
 ### 2.1 Kaufdaten
 
-Im Chat wurden folgende Beträge genannt:
+Dokumentierte Kauf- und Versandbeträge:
 
 - Warenwert: **842,60 AUD**
 - Versand: **115,02 AUD**
@@ -49,19 +46,19 @@ Die erste grobe Kostenabschätzung lag bei etwa 645–670 EUR all-in. Diese war 
 - Modell: **Sepura SCG2229**
 - Gerätetyp: professionelles TETRA-Mobilfunkgerät / Mobile TETRA Terminal
 - vollständiges Installationsset mit umfangreichem Zubehör
-- mindestens Bedienteil(e), Kabelbäume, Halterungen und weitere Sepura-/RFi-Komponenten sind auf den Chatbildern erkennbar
+- mindestens Bedienteil(e), Kabelbäume, Halterungen und weitere Sepura-/RFi-Komponenten sind auf den Referenzbildern erkennbar
 
-Im Chat wurden als erwartete bzw. vermutete Lizenzmerkmale genannt:
+Erwartete beziehungsweise vermutete Lizenzmerkmale:
 
 - DMO Gateway
 - DMO Repeater
 - 10 W RF
 
-**Wichtig:** Diese Lizenzmerkmale wurden in diesem Chat **nicht per Radio Manager oder am Gerät ausgelesen und damit nicht technisch verifiziert**. Sie bleiben ein offener Prüfschritt.
+**Wichtig:** Diese Lizenzmerkmale wurden **nicht per Radio Manager oder am Gerät ausgelesen und damit nicht technisch verifiziert**. Sie bleiben ein offener Prüfschritt.
 
 ### 2.3 Sichtbare Kennzeichnung
 
-Auf einem im Chat archivierten Produktetikett sind am Karton/Gerät unter anderem **CE** und **UKCA** sichtbar. Die zuständige Zollbeamtin erinnerte sich beim späteren Abholtermin ausdrücklich daran, dass am Gerät das CE-Zeichen vorhanden war.
+Auf einem gesicherten Produktetikett sind am Karton/Gerät unter anderem **CE** und **UKCA** sichtbar. Die zuständige Zollbeamtin erinnerte sich beim späteren Abholtermin ausdrücklich daran, dass am Gerät das CE-Zeichen vorhanden war.
 
 Gerätebezogene Serien-/TEI-/Bluetooth-IDs werden in dieser Markdown-Datei bewusst nicht noch einmal textuell vervielfältigt. Sie sind, soweit im Bild sichtbar, nur im archivierten Originalbild enthalten.
 
@@ -89,7 +86,7 @@ Die archivierten DHL-Screenshots zeigen unter anderem:
 
 **Implementiert / real erfolgt:**
 
-Der Nutzer erschien persönlich beim Zoll und legte umfangreiche Kauf-/Zahlungsunterlagen vor, darunter:
+Bei der persönlichen Vorführung beim Zoll wurden Kauf-/Zahlungsunterlagen vorgelegt, darunter:
 
 - eBay-Angebot/Kaufbestätigung
 - PayPal-Nachweis
@@ -97,9 +94,9 @@ Der Nutzer erschien persönlich beim Zoll und legte umfangreiche Kauf-/Zahlungsu
 - Kontoauszug
 - DHL-Unterlagen
 
-Die Sendung wurde vor Ort geöffnet. Später bestätigte der Nutzer, dass der Inhalt vollständig war.
+Die Sendung wurde vor Ort geöffnet. Die Vollständigkeit des Inhalts wurde später bestätigt.
 
-Eine Zollunterlage beschrieb die Ware zeitweise als **„Tetrapol-Funkgerät (Digitalfunk)“**. Diese Bezeichnung war sachlich falsch: das SCG2229 ist ein **TETRA**-Gerät, kein Tetrapol-Gerät. Die fehlerhafte Bezeichnung wurde im Chat als redaktionelle/administrative Fehlklassifizierung erkannt.
+Eine Zollunterlage beschrieb die Ware zeitweise als **„Tetrapol-Funkgerät (Digitalfunk)“**. Diese Bezeichnung war sachlich falsch: das SCG2229 ist ein **TETRA**-Gerät, kein Tetrapol-Gerät. Die fehlerhafte Bezeichnung wurde als Fehlklassifizierung erkannt.
 
 ### 3.3 Erste Marktüberwachungsentscheidung: Einfuhr abgelehnt
 
@@ -123,11 +120,11 @@ Zunächst wurde eine Sepura-Erklärung mit der Kennung **`249176-01_UKCA`** gepr
 - Bezug: britische `Radio Equipment Regulations 2017` und weitere UK-Regelungen
 - Kennzeichnung: UKCA
 
-**Bewertung im Chat:** Das Dokument ist eine echte Hersteller-Konformitätserklärung, aber eine **UKCA Declaration of Conformity**. Für die EU-/RED-Fragestellung war sie nicht die entscheidende Unterlage.
+**Bewertung der Unterlage:** Das Dokument ist eine echte Hersteller-Konformitätserklärung, aber eine **UKCA Declaration of Conformity**. Für die EU-/RED-Fragestellung war sie nicht die entscheidende Unterlage.
 
 ### 3.5 EU-Konformitätserklärung gefunden
 
-Anschließend wurde die öffentlich verfügbare Sepura-EU-Erklärung gefunden und im Chat als zentraler Nachweis verwendet:
+Anschließend wurde die öffentlich verfügbare Sepura-EU-Erklärung gefunden und als zentraler Nachweis verwendet:
 
 - **EU Declaration of Conformity**
 - DoC-Nr. **`25176-07_EN`**
@@ -138,13 +135,13 @@ Anschließend wurde die öffentlich verfügbare Sepura-EU-Erklärung gefunden un
 - Richtlinie **2011/65/EU (RoHS)**
 - diverse harmonisierte EN-Normen, unter anderem EN 301 489-Reihe, EN 303 758, EN 303 413, EN 300 328 (bei Wi-Fi/Bluetooth), EN IEC 62311 und EN IEC 63000
 
-Öffentliche Fundstelle, die der Nutzer selbst recherchiert hat:
+Öffentliche Fundstelle, die der Importeur selbst recherchiert hat:
 
 - https://sepura.com/wp-content/uploads/2025/04/5-07-scg2221-series-radio-eu-doc.pdf
 
 #### Modellbezeichnungs-Hinweis
 
-Das importierte Gerät ist **SCG2229**, während die EU-DoC in der vorliegenden Fassung **SCG2221** als Produktnamen trägt. Im Chat wurde dies als Erklärung für die SCG22-Serie behandelt; eine formale Hersteller-Mapping-Tabelle `SCG2221 ↔ SCG2229` wurde jedoch **nicht separat nachgewiesen**. Praktisch ist relevant, dass die BNetzA nach Vorlage der Unterlagen ihre Einfuhrbewertung später änderte. Für künftige Fälle wäre eine explizite Herstellerbestätigung der Variantenabdeckung dennoch die sauberste Dokumentation.
+Das importierte Gerät ist **SCG2229**, während die EU-DoC in der vorliegenden Fassung **SCG2221** als Produktnamen trägt. Zunächst wurde dies als Erklärung für die SCG22-Serie behandelt; eine formale Hersteller-Mapping-Tabelle `SCG2221 ↔ SCG2229` wurde jedoch **nicht separat nachgewiesen**. Praktisch ist relevant, dass die BNetzA nach Vorlage der Unterlagen ihre Einfuhrbewertung später änderte. Für künftige Fälle wäre eine explizite Herstellerbestätigung der Variantenabdeckung dennoch die sauberste Dokumentation.
 
 ### 3.6 Deutschsprachiges SCG2229-Installationshandbuch gefunden
 
@@ -154,7 +151,7 @@ Als zweite zentrale Unterlage wurde das deutschsprachige **SELECTRIC-Installatio
 
 - https://digitalfunk.rlp.de/fileadmin/digitalfunk/Downloads/SCG2229_Installationshandbuch.pdf
 
-Der im Chat geladene Stand umfasst 124 Seiten und behandelt unter anderem:
+Die vorliegende Fassung umfasst 124 Seiten und behandelt unter anderem:
 
 - Modellvarianten Dual-/Single-Console
 - SCC3/HBC3
@@ -174,16 +171,16 @@ Damit lag eine gerätespezifische deutschsprachige Produkt-/Installationsdokumen
 
 ### 3.7 Einspruch beim Zoll und Zuständigkeitsklärung
 
-Der Nutzer hatte gegen die Rücknahme der Annahme der Zollanmeldung Einspruch eingelegt.
+Gegen die Rücknahme der Annahme der Zollanmeldung wurde Einspruch eingelegt.
 
 Ein Schreiben des Hauptzollamtes Hannover vom **10.08.2026** stellte klar:
 
 - die BNetzA Nürnberg hatte am **15.07.2026** die fehlende Einfuhrfähigkeit bestätigt
 - die Zollbehörde ist nicht befugt, die produktsicherheitsrechtliche Fachentscheidung der BNetzA inhaltlich zu ersetzen
-- für eine Änderung sollte sich der Nutzer direkt an die BNetzA wenden
+- für eine Änderung sollte sich der Importeur direkt an die BNetzA wenden
 - genannte BNetzA-Vorgangsnummer: **`VI 57086`**
 - Kontaktweg im Schreiben: `poststelle@bnetza.de`
-- der Nutzer sollte dem Zoll bis **15.09.2026** mitteilen, ob er den Einspruch aufrechterhält bzw. wie er weiter verfahren will
+- der Importeur sollte dem Zoll bis **15.09.2026** mitteilen, ob er den Einspruch aufrechterhält bzw. wie er weiter verfahren will
 
 Das Zoll-Rechtsbehelfsverfahren hatte zusätzlich ein eigenes GZ (`S 0624 B - RL 446/26 - B 1006` im Scan).
 
@@ -197,10 +194,10 @@ An die Bundesnetzagentur wurde unter Bezug auf **VI 57086** ein strukturiertes S
 - Berücksichtigung der EU-Konformitätserklärung
 - Berücksichtigung des deutschsprachigen SCG2229-Handbuchs
 - Eingangsbestätigung
-- Mitteilung der neuen Entscheidung an den Nutzer **und** an das Hauptzollamt Hannover
+- Mitteilung der neuen Entscheidung an den Importeur **und** an das Hauptzollamt Hannover
 - konkrete Benennung etwaiger verbleibender Mängel, falls die BNetzA bei Nichtkonformität bleiben sollte
 
-Der Nutzer versendete die E-Mail tatsächlich.
+Die E-Mail wurde versendet.
 
 ### 3.9 Neubewertung durch die BNetzA: Einfuhrhindernis entfällt
 
@@ -210,11 +207,11 @@ Im späteren Zollschreiben wurde mitgeteilt, dass seitens der Bundesnetzagentur 
 
 Damit war die ursprüngliche Negativbewertung materiell überholt.
 
-Das neue Zollschreiben trug das vom Nutzer im Schriftverkehr verwendete GZ:
+Das neue Zollschreiben trug das im Schriftverkehr verwendete GZ:
 
 - **`SV0626 B-VVV65-HA110301`**
 
-Der Scan ist typografisch nicht in jeder Stelle gleich gut lesbar; für das Archiv gilt die vom Nutzer mehrfach explizit eingegebene Schreibweise mit `VVV` als maßgeblich.
+Der Scan ist nicht überall eindeutig lesbar. Maßgeblich ist die mehrfach ausdrücklich dokumentierte Schreibweise mit `VVV`.
 
 ### 3.10 Neue IZA verlangt
 
@@ -230,7 +227,7 @@ Hinweis im Schreiben zu Lagerkosten:
 - bestimmte Zeiträume, insbesondere Dauer der Prüfung der Einfuhrfähigkeit durch die Marktüberwachungsbehörde und Teile des Rechtsbehelfsverfahrens, sind ausgenommen
 - Beträge unter 5 EUR werden nicht erhoben
 
-Im Chat wurde daraus nur eine grobe theoretische Obergrenze abgeleitet; die tatsächlichen Lagerkosten wurden später **nicht separat ausgewiesen**.
+Aus den Angaben wurde nur eine grobe theoretische Obergrenze abgeleitet; die tatsächlichen Lagerkosten wurden später **nicht separat ausgewiesen**.
 
 ---
 
@@ -366,7 +363,7 @@ Am **27.08.2026** antwortete die Zollstelle sinngemäß:
 - Rechnung liegt bereits vor
 - Paket kann innerhalb der Öffnungszeiten im Zollamt abgefertigt werden
 
-Damit war klar, dass der Nutzer ohne zusätzlichen Papierstapel zur Abfertigung erscheinen konnte.
+Damit war klar, dass der Importeur ohne zusätzlichen Papierstapel zur Abfertigung erscheinen konnte.
 
 **Im Betrieb des Zollverfahrens bestätigt:** Die Behörde akzeptierte die neue IZA als ausreichende Grundlage für die abschließende Abfertigung.
 
@@ -378,11 +375,11 @@ Damit war klar, dass der Nutzer ohne zusätzlichen Papierstapel zur Abfertigung 
 
 Bei der finalen Abfertigung wurden **112,40 EUR** gezahlt.
 
-Der Chat nennt diesen Betrag als finalen an der Zollstelle gezahlten Betrag. Eine Trennung in EUSt, eventuellen Zoll und Lagerkosten wurde im Chat nicht weiter dokumentiert.
+Dieser Betrag ist als finale Zahlung an der Zollstelle dokumentiert. Eine Trennung in EUSt, eventuellen Zoll und Lagerkosten wurde nicht separat dokumentiert.
 
-### 6.2 Korrektur einer früheren Chat-Aussage zum Gesamtpreis
+### 6.2 Korrektur einer früheren Entwurfsbehauptung zum Gesamtpreis
 
-Eine frühere Assistenzantwort addierte **565 EUR** (statistischer Wert der IZA) und **112,40 EUR** und nannte daraus **677,40 EUR** Gesamtpreis.
+Eine frühe Rechnung addierte **565 EUR** statistischen IZA-Wert und **112,40 EUR** Abgaben zu **677,40 EUR**. Diese All-in-Rechnung war nicht belastbar.
 
 **Diese Rechnung ist nicht belastbar und wird hier ausdrücklich verworfen.**
 
@@ -390,7 +387,7 @@ Grund:
 
 - `565` ist der **statistische Wert** der neuen IZA und nicht nachgewiesenermaßen der tatsächlich vom Konto abgebuchte EUR-Kaufpreis.
 - Der reale Kauf wurde mit **965,02 AUD** bezahlt.
-- Der tatsächlich verwendete PayPal-/Bank-Euro-Wechselkurs bzw. der reale EUR-Abbuchungsbetrag wurde im Chat nicht abschließend genannt.
+- Der tatsächlich verwendete PayPal-/Bank-Euro-Wechselkurs bzw. der reale EUR-Abbuchungsbetrag wurde nicht abschließend dokumentiert.
 
 Daher gilt als korrekter Abschlussstand:
 
@@ -403,8 +400,8 @@ Der exakte All-in-EUR-Betrag bleibt offen, bis der damalige EUR-Abbuchungsbetrag
 **Implementiert / real bestätigt:**
 
 - Paket wurde abgefertigt und ausgehändigt.
-- Ein Chatfoto zeigt den Zollkarton im Fahrzeug mit Markierungen wie `Produktsicherheit`, `Einspruch` und `Freigabe!`.
-- Der Nutzer bestätigte, dass die Ware bereits bei der ersten Prüfung geöffnet worden war und vollständig war.
+- Ein Foto zeigt den Zollkarton im Fahrzeug mit Markierungen wie `Produktsicherheit`, `Einspruch` und `Freigabe!`.
+- Die Ware war bereits bei der ersten Prüfung geöffnet worden; ihre Vollständigkeit wurde bestätigt.
 - Ein späteres Foto zeigt den geöffneten Karton, dicht gefüllt mit SCG2229 und Zubehör.
 
 ---
@@ -422,7 +419,7 @@ Der exakte All-in-EUR-Betrag bleibt offen, bis der damalige EUR-Abbuchungsbetrag
 
 ### 7.2 Noch nicht technisch getestet
 
-Nicht Bestandteil dieses Chats waren:
+Nicht Bestandteil dieser Planung waren:
 
 - Einschalten und vollständiger Funktionstest des SCG2229 nach Abholung
 - Radio-Manager-Auslesung
@@ -444,7 +441,7 @@ Diese Punkte sind **offen**.
 
 ## 8. Bezug zum aktuellen NetCore-Tetra-Repository
 
-### 8.1 Heutiger `main`-Stand
+### 8.1 Geprüfter `main`-Stand
 
 Geprüft wurde `main` bei Commit:
 
@@ -457,11 +454,11 @@ Für `Sepura` existieren dagegen mehrere aktuelle Repository-Dokumente und Testb
 
 - `Docs/SEPURA_REREG_FRAME18_BNCH.md`
 
-Dieses Dokument beschreibt reale Sepura-REREG-Beobachtungen an `SRV-M-TBS-01`, zwei Carriern und eine Frame-18/BNCH-Korrektur. Damit ist **Sepura als Endgerätefamilie im aktuellen NetCore-Tetra-Testkontext klar relevant**, aber das in diesem Chat importierte SCG2229 ist im geprüften Repository noch nicht als eigenes inventarisiertes/abgenommenes Gerät dokumentiert.
+Dieses Dokument beschreibt reale Sepura-REREG-Beobachtungen an `SRV-M-TBS-01`, zwei Carriern und eine Frame-18/BNCH-Korrektur. Damit ist **Sepura als Endgerätefamilie im aktuellen NetCore-Tetra-Testkontext klar relevant**, aber das hier importierte SCG2229 ist im geprüften Repository noch nicht als eigenes inventarisiertes/abgenommenes Gerät dokumentiert.
 
-### 8.2 Kein Code-Implementierungsnachweis aus diesem Chat
+### 8.2 Kein Code-Implementierungsnachweis aus diesem Arbeitsstand
 
-Dieser Chat implementierte **keinen neuen NetCore-Tetra-Code**. Der erfolgreiche Import ist Hardware-/Compliance-/Betriebslogistik, kein Software-Feature.
+Der Import brachte **keine neue NetCore-Tetra-Codeimplementierung** hervor. Der erfolgreiche Import ist Hardware-/Compliance-/Betriebslogistik, kein Software-Feature.
 
 Daher sind folgende Aussagen strikt zu trennen:
 
@@ -473,7 +470,7 @@ Daher sind folgende Aussagen strikt zu trennen:
 
 ## 9. Funktionsfähiger Import-/Compliance-Ablauf für zukünftige Geräte
 
-Der wichtigste wiederverwendbare Prozess aus diesem Chat ist:
+Wiederverwendbarer Ablauf für vergleichbare Importfälle:
 
 1. **Korrekte Warenbezeichnung** verwenden, z. B. `Professionelles TETRA-Mobilfunkgerät (Sepura SCG2229), gebraucht, mit Zubehör`.
 2. Kaufbelege und Zahlungsnachweise bereithalten.
@@ -485,7 +482,7 @@ Der wichtigste wiederverwendbare Prozess aus diesem Chat ist:
 5. Wenn Marktüberwachung eingeschaltet wird, deren Vorgangsnummer separat dokumentieren.
 6. Behörden-Geschäftszeichen nicht als ATLAS-Vorpapiernummer missbrauchen.
 7. Bei zurückgenommener erster Zollanmeldung eine **neue IZA** erstellen; kaufbezogene Daten bleiben gleich, verfahrens-/kursbezogene Daten sind neu zu prüfen.
-8. Vorpapier der konkreten Postsendung beibehalten, wenn es weiterhin dieselbe Gestellung/Sendung ist; im Fall dieses Chats war das `PUEB 03/139`.
+8. Vorpapier der konkreten Postsendung beibehalten, wenn es weiterhin dieselbe Gestellung/Sendung ist; im Fall dieser Planung war das `PUEB 03/139`.
 9. Im Positionszusatz den Zusammenhang zur erneuten Prüfung knapp erläutern.
 10. Neue IZA vorab per E-Mail an die zuständige Postabfertigung schicken und Rückmeldung abwarten.
 
@@ -521,7 +518,7 @@ Das ist die wichtigste operative Lehre des gesamten Falls.
 ### Fehler 4: Zoll kann BNetzA-Fachentscheidung nicht selbst ändern
 
 - **Status:** Zuständigkeit geklärt
-- **Lösung:** direkte Neubewertung bei der BNetzA unter `VI 57086` beantragen; Ergebnis an Nutzer und Zoll verlangen
+- **Lösung:** direkte Neubewertung bei der BNetzA unter `VI 57086` beantragen; Ergebnis an Importeur und Zoll verlangen
 
 ### Fehler 5: erste IZA konnte nach Fachentscheidung nicht weiterverwendet werden
 
@@ -545,17 +542,17 @@ Das ist die wichtigste operative Lehre des gesamten Falls.
 
 ### Durchgeführt und bestätigt
 
-- **Sichtprüfung/Vollständigkeit:** Ware beim Zoll geöffnet; Inhalt laut Nutzer vollständig.
+- **Sichtprüfung/Vollständigkeit:** Ware beim Zoll geöffnet; Inhalt laut Praxisbericht vollständig.
 - **Dokumentenprüfung praktisch erfolgreich:** Nach Einreichung von EU-DoC und deutschem Handbuch änderte die BNetzA die Bewertung; kein ausreichender Anhaltspunkt für ein Einfuhrverbot mehr.
 - **IZA-Neuanmeldung:** erfolgreich erstellt.
 - **Zoll-Kommunikation:** Zoll bestätigte, dass keine weiteren Unterlagen benötigt werden.
 - **Abfertigung:** erfolgreich.
 - **Zahlung:** 112,40 EUR.
-- **Abholung:** erfolgreich; Paket physisch beim Nutzer.
+- **Abholung:** erfolgreich; Paket physisch beim Importeur.
 
 ### Grenzen der Tests
 
-- Keine technische Funkprüfung des importierten Geräts in diesem Chat.
+- Keine dokumentierte technische Funkprüfung des importierten Geräts.
 - Keine Lizenz-/Firmwareauslesung.
 - Keine Netzregistrierung oder RF-Abnahme.
 - Keine formale Hersteller-Mapping-Unterlage SCG2221-DoC zu SCG2229 separat dokumentiert.
@@ -632,7 +629,7 @@ Das ist die wichtigste operative Lehre des gesamten Falls.
 - Sepura EU Declaration of Conformity: https://sepura.com/wp-content/uploads/2025/04/5-07-scg2221-series-radio-eu-doc.pdf
 - SELECTRIC SCG2229 Installationshandbuch: https://digitalfunk.rlp.de/fileadmin/digitalfunk/Downloads/SCG2229_Installationshandbuch.pdf
 
-### Im Chat verfügbare PDF-Anhänge
+### Verfügbare PDF-Anhänge
 
 - `6-01-SCG2221-series-radio-UKCA.pdf`
 - `Eu.pdf`
@@ -640,20 +637,20 @@ Das ist die wichtigste operative Lehre des gesamten Falls.
 - `Scanned-image08-17-2026-155153.pdf`
 - `Auftragsnummer (1).pdf` – alte IZA
 - `Auftragsnummer.pdf` – neue IZA
-- zusätzlich im lokalen Chat-Arbeitsbereich vorhandene frühere Zollscan-PDFs `Scanned-image07-18-2026-161644*.pdf`
+- zusätzlich in den Arbeitsunterlagen vorhandene frühere Zollscan-PDFs `Scanned-image07-18-2026-161644*.pdf`
 
-Diese PDFs wurden für die Zusammenfassung ausgewertet bzw. im Chat diskutiert, aber in diesem Archivauftrag **nicht als Binärkopien in Git dupliziert**, weil die öffentlichen Herstellerunterlagen über stabile Fundstellen erreichbar sind und die Behördenunterlagen personenbezogene Korrespondenz darstellen. Die eigenständigen Chatbilder werden dagegen auf ausdrücklichen Wunsch unter `Docs/archive/assets/` archiviert.
+Die Hersteller-PDFs sind über die öffentlichen Fundstellen zugänglich. Personenbezogene Behördenunterlagen wurden nicht als Git-Binärkopien dupliziert. Die eigenständigen Referenzbilder sind unter `Docs/archive/assets/` gesichert.
 
-### Relevante Repository-Dateien / heutiger Abgleich
+### Relevante Repository-Dateien / geprüfter Abgleich
 
 - `Docs/SEPURA_REREG_FRAME18_BNCH.md` (`main`)
 - weitere Sepura-bezogene Dokumente wurden über die Repository-Code-Suche gefunden; ein direkter `SCG2229`-Treffer war am geprüften Stand nicht vorhanden.
 
 ---
 
-## 15. Archivierte Chatbilder
+## 15. Archivierte Referenzbilder
 
-Im zugänglichen Verlauf wurden **15 eigenständige Chatbilder** identifiziert. Um sämtliche Bilder des Chats innerhalb des reinen Dokumentationsbereichs zu erhalten und die Repository-Größe handhabbar zu halten, werden sie verlustbehaftet optimiert und in **fünf hochauflösenden Kontaktbögen** unter `Docs/archive/assets/2026-10-05_scg2229-import/` archiviert. Jeder Kontaktbogen enthält drei Original-Chatbilder mit eingeblendeten Quelldateinamen. Damit bleibt der komplette visuelle Verlauf erhalten, ohne 15 große Einzeldateien zu duplizieren.
+**15 Bilder** dokumentieren Gerät, Kennzeichnung, Unterlagen und Abholung. Sie sind verlustbehaftet optimiert in **fünf Kontaktbögen** unter `Docs/archive/assets/2026-10-05_scg2229-import/` gesichert. Jeder Bogen enthält drei Bilder mit eingeblendeten Quelldateinamen.
 
 Enthaltene Motive in ursprünglicher Reihenfolge:
 
@@ -683,25 +680,24 @@ Archivdateien:
 
 ### Bildvorschau
 
-![Chatbilder 01 bis 03](assets/2026-10-05_scg2229-import/01_chatbilder_01-03.webp)
+![Referenzbilder 01 bis 03](assets/2026-10-05_scg2229-import/01_chatbilder_01-03.webp)
 
-![Chatbilder 04 bis 06](assets/2026-10-05_scg2229-import/02_chatbilder_04-06.webp)
+![Referenzbilder 04 bis 06](assets/2026-10-05_scg2229-import/02_chatbilder_04-06.webp)
 
-![Chatbilder 07 bis 09](assets/2026-10-05_scg2229-import/03_chatbilder_07-09.webp)
+![Referenzbilder 07 bis 09](assets/2026-10-05_scg2229-import/03_chatbilder_07-09.webp)
 
-![Chatbilder 10 bis 12](assets/2026-10-05_scg2229-import/04_chatbilder_10-12.webp)
+![Referenzbilder 10 bis 12](assets/2026-10-05_scg2229-import/04_chatbilder_10-12.webp)
 
-![Chatbilder 13 bis 15](assets/2026-10-05_scg2229-import/05_chatbilder_13-15.webp)
+![Referenzbilder 13 bis 15](assets/2026-10-05_scg2229-import/05_chatbilder_13-15.webp)
 
 ---
 
-## 16. Auswertungslücken
+## 16. Offene Nachweise
 
-- Der ursprüngliche Chattitel und ein direkter Chatlink stehen im zugänglichen Kontext nicht zur Verfügung.
 - Der exakte reale EUR-Abbuchungsbetrag für die 965,02 AUD wurde nicht genannt; deshalb ist kein centgenauer All-in-EUR-Preis ableitbar.
-- Eine formale Herstellerbestätigung der Abdeckung `SCG2221`-DoC für die konkrete `SCG2229`-Variante liegt im Chat nicht separat vor.
+- Eine formale Herstellerbestätigung der Abdeckung `SCG2221`-DoC für die konkrete `SCG2229`-Variante liegt nicht separat vor.
 - Der finale BNetzA-interne Bescheid/Datensatz selbst liegt nicht als eigenes BNetzA-Schreiben vor; die geänderte BNetzA-Bewertung ist über das spätere Zollschreiben dokumentiert.
-- Der Lizenz-/Firmwarestand des Geräts wurde im Chat nicht ausgelesen.
+- Der Lizenz-/Firmwarestand des Geräts wurde nicht ausgelesen.
 - Es wurde kein vollständiger technischer NetCore-Tetra-On-Air-Test mit dem importierten SCG2229 durchgeführt.
 
 ---

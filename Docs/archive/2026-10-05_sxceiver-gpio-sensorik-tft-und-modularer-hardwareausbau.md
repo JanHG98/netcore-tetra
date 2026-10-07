@@ -1,29 +1,27 @@
-# NetCore-Tetra – SXceiver-GPIO, Sensorik, TFT und modularer Hardwareausbau
+# Brainstorming: SXceiver-GPIO, Sensorik, TFT und modularer Hardwareausbau
 
-## 1. Metadaten
+## 1. Rahmen
 
 | Feld | Wert |
 | --- | --- |
 | Thema | Reale GPIO-Belegung des SXceiver-HAT, sinnvolle Nutzung freier Raspberry-Pi-Pins, Sensorik/Aktoren/Passivelemente, lokales TFT/LCD und Entscheidung gegen eine frühe Eigen-PCB |
-| Ursprünglicher Chattitel | Sxceiver Verkabelung Prüfen (im zugänglichen Projektkontext überliefert) |
-| Chatlink | Im verfügbaren Kontext nicht vorhanden |
-| Sichtbarer Gesprächsbeginn | 2026-10-03 |
-| Zusammenfassung erstellt | 2026-10-05 |
+| Beginn der Entwicklungsnotizen | 2026-10-03 |
+| Notizstand | 2026-10-05 |
 | Zielrepository | JanHG98/netcore-tetra |
 | Zielbranch | Archiving |
-| Archivbranch vor diesem Auftrag | Archiving@ded2c14a713f65196e3f28a4640b4e317f84b59e |
+| Archivbranch vor der ursprünglichen Dokumentation | Archiving@ded2c14a713f65196e3f28a4640b4e317f84b59e |
 | Zusätzlich geprüfter aktueller Produktstand | main@9116c15d645458f99e236712b67a1ad970432791 |
 | Branchvergleich vor dem Schreiben | main...Archiving: divergiert; Archiving 71 Commits vor und 5 Commits hinter main |
 | Ablage | ausschließlich Docs/archive/ |
-| Nachweischarakter | Chatabschluss + statische Repository-Prüfung; keine elektrische, thermische, EMV- oder On-Air-Abnahme |
+| Nachweischarakter | Entwurfsstand + statische Repository-Prüfung; keine elektrische, thermische, EMV- oder On-Air-Abnahme |
 
-**Wichtige Nachweisgrenze:** Aussagen aus dem Chat sind nicht automatisch implementiert. Diese Dokumentation trennt konsequent zwischen **Idee**, **beschlossen/geplant**, **implementiert**, **getestet** und **im Betrieb bestätigt**.
+**Wichtige Nachweisgrenze:** Aussagen aus den Entwicklungsnotizen sind nicht automatisch implementiert. Diese Dokumentation trennt konsequent zwischen **Idee**, **beschlossen/geplant**, **implementiert**, **getestet** und **im Betrieb bestätigt**.
 
 ## 2. Ziel, Ausgangslage und behandelte Themen
 
-Der Chat begann mit der praktischen Frage, welche GPIO des Raspberry Pi durch den SXceiver tatsächlich benutzt werden und was mit den übrigen Pins sinnvoll gemacht werden kann. Der Nutzer wollte ausdrücklich nicht nur Jumper oder Konfigurationsschalter betrachten, sondern die freie I/O-Kapazität für **Sensorik, Aktoren, passive Schutz-/Beschaltungselemente und lokale Anzeige** nutzen.
+Ausgangspunkt ist die reale GPIO-Belegung des SXceiver und die sinnvolle Nutzung freier Raspberry-Pi-I/O. Priorität haben **Sensorik, Aktoren, passive Schutz-/Beschaltungselemente und lokale Anzeige**; Jumper und Konfigurationsschalter sind nur ein Teil des möglichen Ausbaus.
 
-Aus dem Gespräch entwickelte sich damit ein Hardware-Management-Konzept für eine NetCore-Tetra-Basisstation:
+Daraus ergibt sich ein Hardware-Management-Konzept für die Basisstation:
 
 - SXceiver bleibt primärer RF-/SDR-Baustein.
 - Freie Pi-I/O sollen nach belastbarer Pinprüfung für lokale Hardwarefunktionen genutzt werden.
@@ -36,7 +34,7 @@ Damit verschob sich die Priorität im Verlauf deutlich: von „welche Jumper leg
 
 ## 3. Relevante Beobachtungen am realen Aufbau
 
-Der Nutzer hatte am realen SXceiver-/Breakout-Aufbau beobachtet, dass auf dem Board bei folgenden Beschriftungen Aktivität beziehungsweise LED-Anzeigen sichtbar waren:
+Am realen SXceiver-/Breakout-Aufbau wurde beobachtet, dass auf dem Board bei folgenden Beschriftungen Aktivität beziehungsweise LED-Anzeigen sichtbar waren:
 
 ### Linke Seite
 - +3V3
@@ -63,11 +61,11 @@ Diese Liste ist ein **Praxis-Hinweis**, aber kein elektrischer Beleg dafür, das
 
 ### 4.1 Frühere, inzwischen überholte Annahme
 
-Im früheren Gesprächsverlauf wurde zunächst eine generische SX1255-/M17-Referenzbelegung herangezogen und dabei unter anderem **GPIO25 als Reset** behandelt.
+Die frühe generische SX1255-/M17-Belegung behandelte **GPIO25 als Reset**. Diese Annahme ist für den geprüften SXceiver-/SoapySX-Pfad überholt.
 
-Das ist für den aktuell im NetCore-Repository enthaltenen SXceiver-/SoapySX-Stand **nicht korrekt** und gilt für diese Dokumentation als überholt.
+Das ist für den am 05.10.2026 geprüften SXceiver-/SoapySX-Stand **nicht korrekt** und gilt für diese Dokumentation als überholt.
 
-### 4.2 Heute im Repository statisch belegter Stand
+### 4.2 Am Prüfstand 05.10.2026 im Repository statisch belegter Stand
 
 main@9116c15d645458f99e236712b67a1ad970432791 enthält unter sxxcvr-main/ den relevanten SoapySX- und HAT-Code.
 
@@ -133,11 +131,11 @@ Unter der Annahme des aktuellen HAT-Standes 1.2 und nach realer elektrischer Bes
 
 Das ist eine **Planungsmatrix**, keine bestätigte Freigabeliste. Der konkrete SXceiver-HAT, das Pass-Through-Board und die reale Pi-Version bleiben maßgeblich.
 
-## 6. Endgültige Hardware-Richtung des Chats
+## 6. Endgültige Hardware-Richtung des Arbeitsstands
 
 ### 6.1 Beschlossen/geplant: Sensorik statt GPIO nur für Jumper zu „verbrauchen“
 
-Der Nutzer stellte klar, dass freie GPIO nicht überwiegend für Jumper oder Betriebsmodi gedacht sind. Der bevorzugte Nutzen ist lokale Zustands- und Hardwareüberwachung.
+Festlegung: freie GPIO nicht überwiegend für Jumper oder Betriebsmodi verwenden. Der bevorzugte Nutzen ist lokale Zustands- und Hardwareüberwachung.
 
 Als sinnvolle Sensorik wurden festgehalten:
 
@@ -190,11 +188,11 @@ Sinnvolle Aktoren beziehungsweise lokale Ausgänge:
 - MOSFET-/Relaisausgänge für spätere externe Funktionen.
 - unabhängiger Hardware-Watchdog beziehungsweise Powercontroller erst dann, wenn dafür ein klarer Betriebsbedarf definiert ist.
 
-**Wichtig:** Die aktuelle Architektur von hardware-gateway schaltet laut Repository-Dokumentation in Phase 6 absichtlich noch **keine echten Ausgänge**. Aktorsteuerung ist dort erst nach Hardware-Treiber- und Policy-Abnahme vorgesehen. Eine Chatidee ist daher kein Nachweis einer bereits freigeschalteten Aktor-API.
+**Wichtig:** Die aktuelle Architektur von hardware-gateway schaltet laut Repository-Dokumentation in Phase 6 absichtlich noch **keine echten Ausgänge**. Aktorsteuerung ist dort erst nach Hardware-Treiber- und Policy-Abnahme vorgesehen. Eine Ausbauidee ist daher kein Nachweis einer bereits freigeschalteten Aktor-API.
 
 ### 6.4 Beschlossen/geplant: passive Schutz- und Serviceelemente mitdenken
 
-Der Nutzer fragte ausdrücklich auch nach passiven Elementen. Relevante Bausteine sind:
+Passive Elemente gehören ausdrücklich zum Ausbauumfang. Relevante Bausteine sind:
 
 - externe Pull-ups/Pull-downs für definierte Boot-/Fehlerzustände;
 - Serienwiderstände an exponierten digitalen Leitungen;
@@ -212,7 +210,7 @@ Der Nutzer fragte ausdrücklich auch nach passiven Elementen. Relevante Baustein
 
 ### 7.1 Idee/geplant
 
-Ein kleines lokales Display wurde vom Nutzer ausdrücklich als sinnvolle Erweiterung eingebracht.
+Ein kleines lokales Display wurde ausdrücklich als sinnvolle Erweiterung eingebracht.
 
 Diskutierte Größenordnung:
 
@@ -245,7 +243,7 @@ Der entscheidende Gedanke ist: Die lokale Anzeige soll den RF-Pfad möglichst we
 
 Zwischenzeitlich wurde vorgeschlagen, Display, Sensorik, Lüfter und Watchdog über einen kleinen separaten Mikrocontroller zu führen. Das hätte den Vorteil, dass Hardwarezustand und Display auch bei abgestürztem Linux weiterlaufen.
 
-Diese Richtung bleibt technisch attraktiv, wurde aber durch die spätere Nutzerentscheidung **nicht als kurzfristiger Standardweg übernommen**, weil sie schnell in eine eigene Controller-/PCB-Entwicklung führt.
+Diese Richtung bleibt technisch attraktiv, wurde aber durch die spätere Festlegung **nicht als kurzfristiger Standardweg übernommen**, weil sie schnell in eine eigene Controller-/PCB-Entwicklung führt.
 
 ## 8. RF-Telemetrie: besonders wertvoller Ausbaupfad
 
@@ -273,7 +271,7 @@ Der aktuelle rf-monitor passt bereits sehr gut zu dieser Idee:
 - der Dienst kann VSWR/Return Loss ableiten, Alarmtransitionen/Heartbeat verwalten und Zustände per WebUI/API/Prometheus/MQTT bereitstellen.
 - die Repository-Dokumentation weist ausdrücklich darauf hin, dass TBS-DSP-Werte **vor** dem PA liegen und reale Forward-/Reflected-/Antennenmessungen eine kalibrierte externe Messquelle benötigen.
 
-Damit ist die Sensor-/RF-Idee dieses Chats **architektonisch bereits anschlussfähig**, aber die konkrete physische Sensorhardware aus diesem Chat ist nicht implementiert.
+Damit ist die Sensor-/RF-Idee dieser Planung **architektonisch bereits anschlussfähig**, aber die konkrete physische Sensorhardware aus diesem Arbeitsstand ist nicht implementiert.
 
 ## 9. Abgleich mit hardware-gateway
 
@@ -308,7 +306,7 @@ Das ist ein geeigneter Integrationspunkt für Temperatur, Gehäusekontakte, Vers
 
 ## 10. Wichtigste endgültige Entscheidung: keine eigene PCB als Voraussetzung
 
-Der Nutzer benannte als praktisches Problem, dass ein vollständiges eigenes PCB-Design kein Arbeitspaket ist, auf das er sich kurzfristig freut.
+Eine vollständige Eigen-PCB würde den kurzfristigen Prototyp unnötig aufwendig machen. Vorrang hat daher ein modularer Aufbau mit Fertigmodulen.
 
 Daraufhin wurde der Architekturvorschlag bewusst vereinfacht.
 
@@ -336,29 +334,29 @@ Eine eigene Platine wird erst wieder attraktiv, wenn:
 3. sich wiederkehrende identische TBS-Hardware abzeichnet;
 4. Modulzahl/Verdrahtungsaufwand den Integrationsaufwand rechtfertigen.
 
-Damit gilt eine frühere, im Gespräch kurz skizzierte „NetCore TBS Management Controller Board“-PCB als **nicht verworfenes Langfristziel, aber ausdrücklich nicht als nächster Schritt**.
+Damit gilt eine frühere, früh skizzierte „NetCore TBS Management Controller Board“-PCB als **nicht verworfenes Langfristziel, aber ausdrücklich nicht als nächster Schritt**.
 
 ## 11. Erreichter Entwicklungs- und Betriebsstand
 
 | Punkt | Status | Nachweis |
 | --- | --- | --- |
-| Reale SXceiver-Beobachtung am Breakout | beobachtet, aber nicht elektrisch verifiziert | Nutzerangaben zu sichtbaren Pins/LEDs |
-| GPIO25 als Reset | **überholt/falsch für aktuellen Repo-Stand** | heutige SoapySX-Prüfung zeigt GPIO5 |
+| Reale SXceiver-Beobachtung am Breakout | beobachtet, aber nicht elektrisch verifiziert | Praxisangaben zu sichtbaren Pins/LEDs |
+| GPIO25 als Reset | **überholt/falsch für aktuellen Repo-Stand** | geprüfte SoapySX-Prüfung zeigt GPIO5 |
 | GPIO5 als SX reset | implementiert im aktuellen Code | SoapySX.cpp |
 | GPIO22/23 als TX/RX bei aktuellem HAT-Default | implementiert im aktuellen Code/HAT-Setup | SoapySX.cpp, dts/Makefile |
 | SPI0 + I²S für SXceiver | implementiert | Device Tree/SoapySX |
 | vollständige reale Pinmatrix | noch offen | keine Durchgangs-/Logic-Analyzer-Abnahme |
-| I²C-Sensorbus | beschlossen/geplant | Chat |
-| Temperatur-/Feuchte-/Power-Sensoren | Idee/geplant | Chat |
-| ADS1115-/ADC-Schicht | Idee/geplant | Chat |
-| Lüfterregelung/Tacho | Idee/geplant | Chat |
-| TFT/LCD | Idee/geplant | Chat |
-| externe RF-Power-/VSWR-Messung | Idee/geplant; Softwareziel bereits vorhanden | Chat + rf-monitor |
+| I²C-Sensorbus | beschlossen/geplant | Ausbauplanung |
+| Temperatur-/Feuchte-/Power-Sensoren | Idee/geplant | Ausbauplanung |
+| ADS1115-/ADC-Schicht | Idee/geplant | Ausbauplanung |
+| Lüfterregelung/Tacho | Idee/geplant | Ausbauplanung |
+| TFT/LCD | Idee/geplant | Ausbauplanung |
+| externe RF-Power-/VSWR-Messung | Idee/geplant; Softwareziel bereits vorhanden | Ausbauidee + rf-monitor |
 | hardware-gateway | implementiert im Repository | main |
 | rf-monitor | implementiert im Repository | main |
-| konkrete Chat-Sensorhardware | nicht implementiert | kein entsprechender Treiber-/BOM-Commit |
-| eigene Management-PCB | **vorerst nicht gewünscht** | spätere Nutzerentscheidung |
-| modularer Aufbau mit Fertigmodulen | beschlossen/geplant | finaler Chatstand |
+| konkrete geplante Sensorhardware | nicht implementiert | kein entsprechender Treiber-/BOM-Commit |
+| eigene Management-PCB | **vorerst nicht gewünscht** | spätere Festlegung |
+| modularer Aufbau mit Fertigmodulen | beschlossen/geplant | finaler Arbeitsstand |
 | elektrische/thermische/EMV-Abnahme | nicht getestet | kein Messprotokoll |
 | On-Air-Einfluss der Zusatzhardware | nicht getestet | kein RF-Test |
 
@@ -387,9 +385,9 @@ Damit gilt eine frühere, im Gespräch kurz skizzierte „NetCore TBS Management
 
 ## 13. Wichtige Befehle und Abläufe
 
-### 13.1 Im Chat nicht ausgeführt
+### 13.1 Noch nicht praktisch erprobt
 
-Es wurde in diesem Chat kein Sensor installiert, kein TFT angeschlossen, kein GPIO elektrisch geschaltet und kein Hardwaretreiber deployed. Entsprechend gibt es **keinen erfolgreich ausgeführten Installationsablauf** für die neu vorgeschlagene Sensor-/Displayhardware.
+Noch nicht praktisch erprobt sind Sensorinstallation, TFT-Anschluss, GPIO-Schaltung und Hardwaretreiber-Deployment. Ein erfolgreicher Installationsablauf für die neue Sensor-/Displayhardware fehlt.
 
 ### 13.2 Repository-seitig vorhandener HAT-/EEPROM-Ablauf
 
@@ -421,7 +419,7 @@ aplay -L | grep SX1255
 arecord -L | grep SX1255
 ~~~
 
-Diese Befehle sind **Repository-Dokumentation**, nicht als in diesem Chat erfolgreich ausgeführt nachgewiesen.
+Diese Befehle sind **Repository-Dokumentation**, ohne dokumentierte erfolgreiche Ausführung.
 
 ## 14. Fehler, Diagnose, Ursachen und Korrekturen
 
@@ -429,7 +427,7 @@ Diese Befehle sind **Repository-Dokumentation**, nicht als in diesem Chat erfolg
 
 **Problem:** Die erste Beratung verwendete viele freie GPIO gedanklich für Betriebsarten/Jumper.
 
-**Korrektur durch Nutzer:** Sensorik, Aktoren und passive Elemente sind mindestens ebenso wichtig beziehungsweise sinnvoller.
+**Korrektur der Anforderung:** Sensorik, Aktoren und passive Elemente sind mindestens ebenso wichtig beziehungsweise sinnvoller.
 
 **Finale Folge:** GPIO-Knappheit nicht durch viele Modusleitungen erzeugen; langsame Hardwarefunktionen bündeln, insbesondere über I²C.
 
@@ -445,7 +443,7 @@ Diese Befehle sind **Repository-Dokumentation**, nicht als in diesem Chat erfolg
 
 **Problem:** Aus Sensorik + TFT + Watchdog entstand schnell die Idee einer eigenen Controllerplatine.
 
-**Nutzerkorrektur:** Eine komplette PCB-Entwicklung soll für den aktuellen Prototyp vermieden werden.
+**Korrektur:** Eine komplette PCB-Entwicklung soll für den aktuellen Prototyp vermieden werden.
 
 **Finale Lösung:** Fertigmodule + Pass-Through-Breakout + saubere modulare Verdrahtung; eigene PCB erst später bei bewiesenem Nutzen.
 
@@ -457,9 +455,9 @@ Diese Befehle sind **Repository-Dokumentation**, nicht als in diesem Chat erfolg
 
 ## 15. Tests und Ergebnisse
 
-### Tatsächlich im Chat
+### Historische Beobachtungen
 
-- Nutzerbeobachtung am realen Board/Breakout wurde aufgenommen.
+- Praxisbeobachtung am realen Board/Breakout wurde aufgenommen.
 - Es erfolgte **keine** elektrische Freimessung der Pins.
 - Es erfolgte **kein** GPIO-Readback-Test.
 - Es erfolgte **kein** I²C-Scan mit angeschlossenen neuen Modulen.
@@ -467,7 +465,7 @@ Diese Befehle sind **Repository-Dokumentation**, nicht als in diesem Chat erfolg
 - Es erfolgte **kein** Displaytest.
 - Es erfolgte **kein** RF-Stör-/Desensibilisierungstest mit Zusatzhardware.
 
-### Zusätzlich für diese Archivierung statisch geprüft
+### Zusätzlich bei der Bestandsaufnahme statisch geprüft
 
 Am 2026-10-05 gegen main@9116c15d645458f99e236712b67a1ad970432791:
 
@@ -498,21 +496,15 @@ Zu hoher Entwicklungsaufwand für den aktuellen Nutzen. Fertigmodule sind die be
 ### Nicht empfohlen: ungeprüftes SPI-TFT am SXceiver-SPI0
 Erst nach klarer Bus-/Treiber-/EMV-Prüfung denkbar.
 
-## 17. Bilder und Anhänge dieses Chats
+## 17. Bilder und ergänzende Unterlagen
 
-Im zugänglichen Projektkontext ist zu diesem Chat mindestens ein Bild des SXceiver-/GPIO-Aufbaus referenziert. Über die in dieser Sitzung verfügbaren Dateiwerkzeuge wird jedoch **kein ursprüngliches Bild-Binary dieses Chats als Conversation File bereitgestellt**; die Bildliste lieferte 0 Dateien.
+Zum SXceiver-/GPIO-Aufbau ist ein Bild referenziert, dessen ursprüngliche Binärdatei nicht verfügbar ist. Die Pin-/LED-Beobachtung bleibt deshalb ein Praxisbericht, kein erneut visuell oder elektrisch geprüfter Nachweis. Bilder verwandter Archive sind nur ergänzende Referenzen und ersetzen das Original nicht.
 
-Deshalb wurde für dieses Archiv **kein erfundenes oder nachgeneriertes Bild als Original ausgegeben**. Das Bild kann inhaltlich nur über die im Chat überlieferte Pin-/LED-Beobachtung dokumentiert werden.
+Verwandte Bild- und Hardwareunterlagen finden sich in den unten verlinkten GPIO-, Baseboard- und SXceiver-Notizen.
 
-Ein separates älteres Archivdokument zum GPIO-Pass-Through/Jumper-Thema enthält bereits drei SVG-Archivtranskriptionen anderer, dort ausgewerteter Produktbilder:
+## 18. Roadmap-Kandidaten aus diesem Arbeitsstand
 
-Docs/archive/2026-10-05_basisstation-gpio-breakout-jumper-steuerung-sxceiver.md
-
-Diese Bilder gehören nicht automatisch zu diesem Chat und werden deshalb hier nicht dupliziert.
-
-## 18. Roadmap-Kandidaten aus diesem Chat
-
-Diese Punkte sind Kandidaten für spätere Roadmap-Arbeit. Der vorliegende Auftrag ändert absichtlich nichts außerhalb Docs/archive/.
+Diese Punkte sind Kandidaten für spätere Roadmap-Arbeit. Eine Umsetzung außerhalb der Notizen ist daraus noch nicht entstanden.
 
 ### P0 – Pinbelegung sauber abschließen
 
@@ -576,7 +568,7 @@ Damit entsteht Fortschritt ohne den Zwang, zuerst eine komplette Platine zu desi
 Geprüft am 2026-10-05:
 
 - main@9116c15d645458f99e236712b67a1ad970432791
-- Archiving@ded2c14a713f65196e3f28a4640b4e317f84b59e vor diesem Auftrag
+- Archiving@ded2c14a713f65196e3f28a4640b4e317f84b59e vor der ursprünglichen Dokumentation
 - sxxcvr-main/SoapySX/SoapySX.cpp
 - sxxcvr-main/dts/Makefile
 - sxxcvr-main/dts/sx1255_raspberrypi.dts
@@ -592,12 +584,10 @@ Geprüft am 2026-10-05:
 
 Es wurde kein PR und kein Commit als Nachweis dafür gefunden oder behauptet, dass die hier diskutierten neuen Sensor-, Lüfter- oder TFT-Module bereits auf einer TBS installiert seien.
 
-## 21. Auswertungslücken
+## 21. Offene Nachweise
 
-- Ein direkter Chatlink ist nicht verfügbar.
-- Der zugängliche Projektkontext enthält den Chattitel und den technischen Verlauf, aber keinen vollständigen exportierten Rohchat mit allen UI-Metadaten.
-- Das im Chat referenzierte SXceiver-/GPIO-Bild ist im aktuellen Dateiwerkzeug nicht als ursprüngliches Binary verfügbar und konnte deshalb nicht bitidentisch nach GitHub übertragen werden.
-- Die konkrete reale HAT-Version wurde im sichtbaren Verlauf nicht abschließend bestätigt; das Repository verwendet 0x0102 als Default.
+- Die Originaldatei des referenzierten SXceiver-/GPIO-Bildes fehlt. Ein erneut visuell geprüfter oder bitidentisch gesicherter Bildnachweis liegt deshalb nicht vor.
+- Die konkrete reale HAT-Version wurde in den Entwicklungsnotizen nicht abschließend bestätigt; das Repository verwendet 0x0102 als Default.
 - Die Pinbelegung ist statisch aus Code/Device-Tree abgeleitet, aber nicht mit Durchgangsmessung oder Logic Analyzer am realen Board bestätigt.
-- Keine neue Sensorik, kein Display und kein Aktor aus diesem Chat wurde praktisch getestet.
+- Keine neue Sensorik, kein Display und kein Aktor aus diesem Arbeitsstand wurde praktisch getestet.
 - Keine EMV-, Temperatur-, Dauerlast- oder On-Air-Abnahme der geplanten Zusatzhardware liegt vor.

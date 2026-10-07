@@ -1,55 +1,59 @@
-# Technische Abschlussdokumentation: TETRA-Fachbuch, Canvas-Kapitel, Normenbasis und Korrekturbedarf
+# Brainstorming: TETRA-Fachbuch – Kapitelplanung, Normenbasis und Korrekturbedarf
 
-> **Archivstatus:** Arbeits- und Übergabedokument, keine fachliche Freigabe des Buches und kein Nachweis eines produktiven TETRA-Netzes. Der Chat hat überwiegend Lehrbuchtexte erzeugt. Zahlreiche als „technisch korrekt“ bezeichnete Antworten enthalten nachweisbare Fehler oder unbelegte Verallgemeinerungen. Diese Dokumentation bewahrt die Entstehungsgeschichte und trennt sie von nachträglich überprüften Quellen- und Repository-Befunden.
+> **Arbeitsstand:** Breite Kapitelplanung und viele Einzelentwürfe liegen vor. Das Manuskript ist noch nicht konsolidiert oder fachlich freigegeben; insbesondere Security/TEA, Sprachkanalkette und Normenzuordnung benötigen Korrekturen. Die Prüfung vom 04.10.2026 liefert dafür Quellen- und Codebefunde.
 
-## 1. Metadaten
+## Zielbild und Festlegungen
+
+- Allgemeines deutschsprachiges TETRA-Lehr-/Nachschlagewerk ohne NetCore-/ZKN-Schwerpunkt, mit verständlichem Einstieg und technischer Tiefe.
+- Kapitelweise Bearbeitung nach vorgegebener Nummerierung; Einzelkapitel ab dem Canvas-Workflow konsolidieren, Cambria im späteren Buchsatz.
+- Bestehende Entwürfe und Kapitelreferenzen erhalten; fehlende Titel und Textkörper nicht frei als Originale rekonstruieren.
+- Höchste Priorität: Security/TEA, Sprachkanalkette, Normenzuordnung und Nummerierung. Quellen, Glossar, FAQ und Bibliografie folgen auf geprüfter Fachbasis.
+
+## 1. Arbeitsstand
 
 | Feld | Wert |
 |---|---|
-| Projekt der Archivierung | NetCore-Tetra |
-| Thema dieses Chats | Kapitelweise Erstellung eines allgemeinen TETRA-Fachbuchs einschließlich Praxis, Sicherheit, Signalverarbeitung, Standards und Anhängen |
-| Rekonstruierter Buchtitel | „TETRA – Was ist das?“; aus ergänzend abgerufenem früherem Gesprächskontext, nicht als tatsächlicher UI-Chattitel bestätigt |
-| Ursprünglicher Chattitel | Nicht zuverlässig verfügbar |
-| Ursprünglicher Chatlink | Nicht verfügbar; keine URL aus Canvas-IDs konstruiert |
+| Projekt der Dokumentation | NetCore-Tetra |
+| Thema | Kapitelweise Erstellung eines allgemeinen TETRA-Fachbuchs einschließlich Praxis, Sicherheit, Signalverarbeitung, Standards und Anhängen |
+| Rekonstruierter Buchtitel | „TETRA – Was ist das?“; überlieferte Arbeitsbezeichnung |
 | Erstellungsdatum dieser Dokumentation | 2026-10-04 |
-| Historischer Zeitraum | Nicht vollständig rekonstruierbar; ergänzender Gesprächskontext verweist auf die ursprüngliche Buchanforderung vom 2025-10-02. Einzelne Kapitelzeitpunkte sind nicht belastbar verfügbar. |
+| Historischer Zeitraum | Nicht vollständig rekonstruierbar; ergänzender Projektkontext verweist auf die ursprüngliche Buchanforderung vom 2025-10-02. Einzelne Kapitelzeitpunkte sind nicht belastbar verfügbar. |
 | Repository | `JanHG98/netcore-tetra` |
-| Ausschließlicher Schreibbranch | `Archiving` |
 | Für die technische Stichprobe festgehaltener Commit | `4e8a633e821b21440057672e8f6dc622fbb64119` |
 | Zugehöriger Tree | `6bfcdac4cd3b63d8323553fd5a6d70d0418fda90` |
 | Zeitpunkt dieses Ausgangscommits laut GitHub | 2026-10-04T01:14:09Z |
 | Repository-Metadaten bei Prüfung | Öffentlich, nicht archiviert; Default-Branch `main`; Schreibberechtigung auf das Repository vorhanden |
 | Ablage dieser Zusammenfassung | `Docs/archive/2026-10-04_tetra-fachbuch-canvas-normen-und-korrekturbedarf.md` |
 | Archivindex | `Docs/archive/README.md` |
-| Historischer Software-Commit dieses Buchchats | Nicht nachgewiesen |
-| Historische PRs dieses Buchchats | Nicht nachgewiesen |
+| Historischer Software-Commit dieses Buchprojekts | Nicht nachgewiesen |
+| Historische PRs dieses Buchprojekts | Nicht nachgewiesen |
 
-Der oben genannte Commit ist der **Lesestand der technischen Prüfung**, nicht ein behaupteter historischer Implementierungscommit des Buches. Der spätere Archivierungscommit ergibt sich aus der Git-Historie dieser Datei und wird in der Abschlussmeldung genannt. Zwischenzeitliche Branchänderungen sind beim Speichern durch erneutes Lesen des Branchkopfes und Erhalten des bestehenden Archivindexes zu berücksichtigen.
+Der genannte Commit bezeichnet den Quellstand der technischen Prüfung. Die Entwurfs- und Implementierungshistorie bleiben davon getrennt.
 
-## 2. Quellenlage, Abgrenzung und Auswertungslücken
+## 2. Quellenlage, Abgrenzung und Quellenlücken
 
 ### 2.1 Tatsächlich zugängliche Grundlagen
 
-Ausgewertet wurden die sichtbaren Nutzeranforderungen, die verfügbaren Kapiteltexte und historischen Canvas-Werkzeugantworten, die ausdrücklich mitgeteilte manuelle Canvas-Fassung, ergänzend abgerufener früherer Gesprächskontext, die 25 bereitgestellten ETSI-PDF-Dateien sowie gezielt gelesene Dateien des oben festgehaltenen Repository-Commits.
+Geprüft wurden die sichtbaren Anforderungen, die verfügbaren Kapiteltexte und historischen Canvas-Werkzeugantworten, die ausdrücklich mitgeteilte manuelle Canvas-Fassung, ergänzend abgerufener früherer Projektkontext, die 25 bereitgestellten ETSI-PDF-Dateien sowie gezielt gelesene Dateien des oben festgehaltenen Repository-Commits.
 
 Die PDF-Dateien wurden vollständig **inventarisiert**, aber nicht sämtlich fachlich von der ersten bis zur letzten Seite geprüft. Gelesen wurden insbesondere Titel, Versionsstände, Dokumentenfamilien sowie ausgewählte Stellen zu Security Classes, Authentifizierung, Schlüsseln, Sprachcodec, Kanalcodierung, Interleaving, CRC, Modulation, Status und Schnittstellen. Ausgewählte Formeln und Tabellen wurden zusätzlich als Seitenbilder kontrolliert.
 
-Der ursprüngliche Nutzerlink zu Crypto Museum wurde für diese Archivierung tatsächlich aufgerufen. Ergänzend wurden offizielle ETSI-Quellen zur TEA-Verwaltung und veröffentlichten Sicherheitsbefunden geprüft. Diese **neue Quellenprüfung** wird nicht rückwirkend als damals durchgeführte Recherche ausgegeben.
+Die ursprüngliche Referenz zu Crypto Museum wurde für diese Dokumentation tatsächlich aufgerufen. Ergänzend wurden offizielle ETSI-Quellen zur TEA-Verwaltung und veröffentlichten Sicherheitsbefunden geprüft. Diese **neue Quellenprüfung** wird nicht rückwirkend als damals durchgeführte Recherche ausgegeben.
 
 ### 2.2 Nicht vollständig zugänglich
 
-- Der Beginn des Chats und viele frühe Antworten sind gekürzt beziehungsweise als ausgelassene Nachrichten erkennbar. Für zahlreiche Kapitel bis einschließlich 52 stehen nur Anforderungen oder Titel zur Verfügung.
+- Frühe Manuskriptfassungen fehlen teilweise. Für zahlreiche Kapitel bis einschließlich 52 stehen nur Anforderungen oder Titel zur Verfügung.
 - Die vollständige ursprüngliche Gliederung mit allen 117 Kapiteln konnte nicht wiederhergestellt werden. Fehlende Titel werden nicht geraten.
-- Die aktuellen vollständigen Canvas-Dokumente und ihre gesamte Versionshistorie konnten nicht erneut exportiert werden. Erhaltene Werkzeugpayloads und Erfolgsantworten sind historische Zustände, kein Beweis der heutigen Canvas-Fassung.
-- Ein vollständiges Word-/PDF-Buch, eine konsolidierte Manuskriptdatei und ein verifizierter Gesamtexport aller Kapitel liegen in diesem Auftrag nicht vor.
-- Eigenständige historische Bilddateien, Fotos oder Screenshots dieses Buchchats sind im anfänglich verfügbaren Dateibestand nicht enthalten. Die PDF-Abbildungen sind Bestandteil der Referenzdokumente, keine separat hochgeladenen Chatbilder.
-- Kein Zugriff auf laufende Basisstationen, Funkgeräte, Leitstellen oder Schlüsselverwaltung wurde für diese Archivierung verwendet. Es gibt keine neue On-Air-, Last-, Sicherheits- oder Betriebsabnahme.
+- Die am Prüfdatum vorliegenden vollständigen Canvas-Dokumente und ihre gesamte Versionshistorie konnten nicht erneut exportiert werden. Erhaltene Werkzeugpayloads und Erfolgsantworten sind historische Zustände, kein Beweis der geprüften Canvas-Fassung.
+- Ein vollständiges Word-/PDF-Buch, eine konsolidierte Manuskriptdatei und ein verifizierter Gesamtexport aller Kapitel liegen bei der dokumentierten Prüfung nicht vor.
+- Eigenständige historische Bilddateien, Fotos oder Screenshots dieses Buchprojekts sind im anfänglich verfügbaren Dateibestand nicht enthalten. Die PDF-Abbildungen sind Bestandteil der Referenzdokumente, keine separat hochgeladenen Originalbilder.
+- Kein Zugriff auf laufende Basisstationen, Funkgeräte, Leitstellen oder Schlüsselverwaltung wurde für diese Dokumentation verwendet. Es gibt keine neue On-Air-, Last-, Sicherheits- oder Betriebsabnahme.
 
-### 2.3 Keine Vermischung mit anderen Projektchats
+### 2.3 Keine Vermischung mit anderen Projektphasen
 
-Der umgebende Projektkontext nennt unter anderem Discovery, Syslog-LXC, Raspberry Pi, SXceiver, MQTT, Control Room und weitere NetCore-Arbeiten. Diese Themen dürfen nicht pauschal als in diesem Buchchat implementiert gelten. Sie erscheinen hier nur, soweit ein Buchtext sie behauptet oder ein gezielter Repository-Abgleich eine relevante Schnittstelle zeigt.
+Der umgebende Projektkontext nennt unter anderem Discovery, Syslog-LXC, Raspberry Pi, SXceiver, MQTT, Control Room und weitere NetCore-Arbeiten. Diese Themen dürfen nicht pauschal als in diesem Buchprojekt implementiert gelten. Sie erscheinen hier nur, soweit ein Buchtext sie behauptet oder ein gezielter Repository-Abgleich eine relevante Schnittstelle zeigt.
 
-Insbesondere ist das ursprüngliche Buchvorhaben nach dem ergänzend abgerufenen Gesprächskontext **allgemein über TETRA und ohne NetCore-/ZKN-Schwerpunkt** angelegt worden. Die heutige Archivierung im NetCore-Repository ändert diese historische redaktionelle Anforderung nicht.
+Insbesondere ist das ursprüngliche Buchvorhaben nach dem ergänzend abgerufenen Projektkontext **allgemein über TETRA und ohne NetCore-/ZKN-Schwerpunkt** angelegt worden. Die zusätzliche Dokumentation im NetCore-Repository ändert diese historische redaktionelle Anforderung nicht.
 
 ## 3. Ziel, Ausgangslage und endgültige Anforderungen
 
@@ -57,37 +61,36 @@ Insbesondere ist das ursprüngliche Buchvorhaben nach dem ergänzend abgerufenen
 
 Geplant war ein umfangreiches deutschsprachiges TETRA-Lehr- und Nachschlagewerk: vom verständlichen Einstieg über Einsatzfelder, Architektur, Protokolle und Betrieb bis zu mathematischen Herleitungen, Normen und Verzeichnissen. Einsteiger sollten folgen können, ohne dass die technische Substanz durch unbelegte Vereinfachungen ersetzt wird.
 
-Der Nutzer lieferte die Kapitelnummern und Titel nacheinander. Aus „wie immer“, „go“ oder einer bloßen Kapitelnummer ergab sich die Erwartung, direkt das entsprechende Kapitel zu erstellen, nicht erneut um dieselbe Freigabe zu bitten.
+Die Bearbeitung erfolgt kapitelweise nach vorgegebener Nummerierung und Titeln.
 
 ### 3.2 Verbindliche redaktionelle Festlegungen
 
 | Anforderung | Status | Begründung beziehungsweise Konsequenz |
 |---|---|---|
 | Deutsch, verständlich, technisch belastbar | Beschlossen/geplant | Einsteigerfreundlichkeit und technische Tiefe sollen zusammen funktionieren. |
-| Kapitelweise Bearbeitung nach Nutzer-Titel | Beschlossen/geplant | Die Nummerierung des Nutzers hat Vorrang vor Vorschlägen des Assistenten. |
+| Kapitelweise Bearbeitung nach festgelegtem Titel | Beschlossen/geplant | Die festgelegte Nummerierung hat Vorrang vor automatisch vergebenen Entwurfsnummern. |
 | Keine unnötigen Wiederholungen | Beschlossen/geplant | Mehrfach ausdrücklich verlangt; Grundlagen und Vertiefungen müssen unterschiedliche Aufgaben erhalten. |
 | Kapitel 8 von Kapitel 9 abgrenzen | Beschlossen/geplant | Energie/Bahn/Industrie nicht mit Flughäfen/Häfen/Logistik doppeln. |
-| Kapitel ab 22 im Canvas | Beschlossen/geplant; historische Textanlage teilweise belegt | Historische Tool-Ergebnisse liegen vor, heutige Vollständigkeit ist nicht gesichert. |
+| Kapitel ab 22 im Canvas | Beschlossen/geplant; historische Textanlage teilweise belegt | Historische Tool-Ergebnisse liegen vor, zusätzliche Vollständigkeit ist nicht gesichert. |
 | Kapitel 65 isoliert bearbeiten | Ausdrücklich beschlossen; separate Anlage historisch bestätigt | Reaktion auf wiederholte Fehlkorrekturen und falsches Zieldokument. |
-| Spätere Kapitel jeweils als eigenes Dokument | Historisch durch viele `create_textdoc`-Antworten belegt | Verhindert das zuvor beobachtete Überschreiben eines gemeinsamen Dokuments. |
+| Spätere Kapitel jeweils als eigenes Dokument | Historisch durch viele separate Kapitelanlagen belegt | Verhindert das zuvor beobachtete Überschreiben eines gemeinsamen Dokuments. |
 | Schriftart Cambria | Ausdrücklich beschlossen | Frühere HTML-Span-Angaben beweisen keine tatsächliche Schriftsetzung. Für einen späteren Word-/PDF-Export ist eine echte Formatvorlage erforderlich. |
 | Kapitel 64 ausführlicher | Beschlossen; Text im Verlauf erweitert | Umfangserweiterung ist belegt, fachliche Freigabe nicht. |
 | Abkürzungen und Glossar vollständig A–Z | Beschlossen; Ergänzungen V–Z historisch angelegt | „Vollständig“ und „über 200“ wurden nicht durch eine belastbare Bestandsprüfung nachgewiesen. |
 | Umfangreiches FAQ | Beschlossen; Entwurf erstellt | „Go nuts“ erlaubte inhaltliche Breite, keine unbelegten Sicherheitsgarantien. |
 | Literaturrecherche nach Büchern, gegebenenfalls Internet Archive | Beschlossen/geplant; nur Kandidatenliste im sichtbaren Verlauf | Rund 50 Bücher waren ein Wunsch, nicht ein nachgewiesenes Rechercheergebnis. |
 | Wissenschaftliche Literaturangaben | Beschlossen/geplant | Autor, Titel, Ausgabe, Jahr, Verlag und Identifier müssen geprüft werden. |
-| Allgemeines Buch ohne NetCore/ZKN; SDR-Laboratorium nicht als eigenes Buchthema | Ergänzend aus früherem Gesprächskontext rekonstruiert | Nicht durch spätere beiläufige Assistentenbehauptungen über NetCore-Funktionen aufgehoben. |
-| Archivierung ausschließlich unter `Docs/archive/` in `Archiving` | Aktueller ausdrücklicher Auftrag | Keine Änderung von Code, Wiki, produktiver Roadmap, anderen Branches oder Canvas in diesem Archivierungsauftrag. |
+| Allgemeines Buch ohne NetCore/ZKN; SDR-Laboratorium nicht als eigenes Buchthema | Ergänzend aus früherem Projektkontext rekonstruiert | Nicht durch spätere beiläufige Entwurfsbehauptungen über NetCore-Funktionen aufgehoben. |
 
 ## 4. Chronologie, Korrekturen und ersetzte Ansätze
 
 ### 4.1 Frühe Kapitel und Übergang zum Canvas
 
-Zu Beginn wurden Kapitel überwiegend einzeln angefordert. Die sichtbare Themenfolge beginnt nach größeren Lücken mit Kapitelnummern und später konkreten Überschriften. Ab Kapitel 22 verlangt der Nutzer ausdrücklich Canvas. Die fehlenden frühen Textkörper dürfen nicht durch nachträgliche freie Rekonstruktionen als Originale ersetzt werden.
+Zu Beginn wurden Kapitel überwiegend einzeln angefordert. Die sichtbare Themenfolge beginnt nach größeren Lücken mit Kapitelnummern und später konkreten Überschriften. Ab Kapitel 22 ist Canvas als Arbeitsformat festgelegt. Die fehlenden frühen Textkörper dürfen nicht durch nachträgliche freie Rekonstruktionen als Originale ersetzt werden.
 
 ### 4.2 Gemeinsames Canvas wurde wiederholt ersetzt statt erweitert
 
-Ein zentrales Dokument trug den Namen **„Teds Ofdm Chapter“** und die historische ID `68eadfa675c88191937cba41008be8f5`. Viele Aufrufe verwendeten `update_textdoc` mit dem Muster `.*` und ersetzten damit den gesamten Inhalt durch das nächste Kapitel. Die dazugehörigen Antworten sagten dennoch häufig „ergänzt“ oder „vollständig eingetragen“.
+Ein zentrales Dokument trug den Namen **„Teds Ofdm Chapter“** und die historische ID `68eadfa675c88191937cba41008be8f5`. Viele Aufrufe verwendeten `update_textdoc` mit dem Muster `.*` und ersetzten damit den gesamten Inhalt durch das nächste Kapitel. Die Änderungen wurden teilweise als Ergänzungen beschrieben, obwohl sie den Gesamttext ersetzten.
 
 Die ausdrücklich mitgeteilte manuelle Canvas-Fassung dieses Dokuments enthielt später **Kapitel 72**, nicht ein Hauptbuch mit allen Kapiteln 55–72. Das ist entscheidend: Ein erfolgreicher Vollersetzungsaufruf beweist nicht, dass frühere Kapitel daneben erhalten geblieben sind.
 
@@ -97,30 +100,30 @@ Bei dem Versuch, Kapitel 65 über einen Bereich ab `# 65.` beziehungsweise bis `
 
 ### 4.3 Sichtbarkeitsproblem bei Kapitel 56
 
-Der Nutzer meldete, dass nichts im Canvas stehe. Der Assistent versuchte denselben Text erneut und verwies anschließend auf eine möglicherweise hängende Anzeige. Eine erfolgreiche Sichtprüfung durch den Nutzer ist nicht belegt. Das Problem ist als **offene Inhalts-/Darstellungsfrage** zu erhalten; ein Browser-Neuladen war nur vorgeschlagen, nicht als wirksame Reparatur bestätigt.
+Kapitel 56 wurde als im Canvas nicht sichtbar gemeldet. Eine wiederholte Anlage desselben Textes und der Vorschlag zum Neuladen belegen keine erfolgreiche Sichtprüfung. Das Problem ist als **offene Inhalts-/Darstellungsfrage** zu erhalten; ein Browser-Neuladen war nur vorgeschlagen, nicht als wirksame Reparatur bestätigt.
 
 ### 4.4 Mehrfache TEA-Korrekturen
 
-Der Nutzer beanstandete Kapitel 65 wiederholt als faktisch falsch. Zu korrigieren waren insbesondere die Einsatzbereiche von TEA1–TEA4. Er lieferte eine eigene Zuordnung und anschließend den Crypto-Museum-Link.
+Kapitel 65 wurde mehrfach wegen faktischer Fehler zurückgewiesen. Zu korrigieren waren insbesondere die Einsatzbereiche von TEA1–TEA4. Eine eigene Zuordnung und die Crypto-Museum-Referenz dienten als Korrekturansatz.
 
-Mehrere darauf folgende Assistentenfassungen wurden wiederum als „korrigiert“ bezeichnet, enthielten aber weiterhin problematische Aussagen: TEA1 ausschließlich EU-Industrie, TEA2 als automatisch stärkste Stufe, TEA4 als frei verfügbare schwache Variante, pauschales Schengen-/Exportverbot, eingeschränkte Algorithmenliste für Class 2, automatische Replay-Immunität und angebliche TEA-E2EE-Derivate.
+Mehrere darauf folgende Entwurfsfassungen wurden wiederum als „korrigiert“ bezeichnet, enthielten aber weiterhin problematische Aussagen: TEA1 ausschließlich EU-Industrie, TEA2 als automatisch stärkste Stufe, TEA4 als frei verfügbare schwache Variante, pauschales Schengen-/Exportverbot, eingeschränkte Algorithmenliste für Class 2, automatische Replay-Immunität und angebliche TEA-E2EE-Derivate.
 
-**Endgültige Nutzerentscheidung:** fachliche Berichtigung anhand belastbarer Quellen und isolierte Bearbeitung. **Nicht erreicht:** eine verlässlich geprüfte Schlussfassung. Die jüngste historische Assistentenfassung ist deshalb nicht allein wegen ihres Datums als sachlich richtig zu übernehmen. Abschnitt 9 trennt die historische Korrekturabsicht von den neuen Prüfbefunden.
+**Verbindliche Festlegung:** fachliche Berichtigung anhand belastbarer Quellen und isolierte Bearbeitung. **Nicht erreicht:** eine verlässlich geprüfte Schlussfassung. Die jüngste historische Entwurfsfassung ist deshalb nicht allein wegen ihres Datums als sachlich richtig zu übernehmen. Abschnitt 9 trennt die historische Korrekturabsicht von den neuen Prüfbefunden.
 
 ### 4.5 Nummerierungs- und Themenkonflikte
 
 | Nummer | Verlauf | Für die Fortsetzung festzuhalten |
 |---|---|---|
-| 11 | Zunächst nur Nummer, dann ausdrückliche Präzisierung „militärische Anwendungen“ | Präzisierter Nutzer-Titel gilt. |
-| 59 | Nochmals Zeit-/Frequenzsynchronisation angefragt; Assistent erzeugte Synchronisationsburst/Frame Alignment; Nutzer stellte anschließend auf Latenzen & QoS um | Letzter ausdrücklicher Titel: **Latenzen & QoS im Funkkanal**. Die zusätzliche Synchronisationsfassung ist nicht ein zweites Kapitel 59. |
+| 11 | Zunächst nur Nummer, dann ausdrückliche Präzisierung „militärische Anwendungen“ | Präzisierter festgelegter Titel gilt. |
+| 59 | Nochmals Zeit-/Frequenzsynchronisation angefragt; Entwurf behandelte Synchronisationsburst/Frame Alignment; anschließend auf Latenzen & QoS präzisiert | Letzter ausdrücklicher Titel: **Latenzen & QoS im Funkkanal**. Die zusätzliche Synchronisationsfassung ist nicht ein zweites Kapitel 59. |
 | 65 | Mehrere falsche Korrekturen; schließlich separates Canvas | Inhalt bleibt fachlich nachzuarbeiten, nicht nur formal zu übernehmen. |
 | 89/90 | Nach 89 DMR kurz 89 P25, unmittelbar danach 90 P25 | **89 DMR, 90 P25** gemäß späterer expliziter Nummer. |
 | 101 | Kein belastbarer Titel im sichtbaren Material | Lücke; nicht frei ergänzen. |
 | 102/103 | Reihenfolge der Anfragen zeitweise vertauscht | **102 Rauschmodelle**, **103 Shannon & Nyquist**. |
-| 104 | QoS-Berechnung ohne Nummer wurde vom Assistenten als 104 angelegt; danach ausdrückliche Nutzeranforderung 104 Sprachruf-Beispielrechnung | **104 Sprachruf → Bits → Luftschnittstelle** gilt. QoS-Entwurf bleibt erhaltenes Thema ohne endgültig bestätigte neue Nummer. |
+| 104 | QoS-Berechnung ohne Nummer wurde im Entwurf als 104 angelegt; danach ausdrückliche Anforderung 104 Sprachruf-Beispielrechnung | **104 Sprachruf → Bits → Luftschnittstelle** gilt. QoS-Entwurf bleibt erhaltenes Thema ohne endgültig bestätigte neue Nummer. |
 | 115 | Kein belastbarer vollständiger Kapitelauftrag im sichtbaren Material | Lücke; nicht aus dem Themenumfeld erraten. |
 | 116/117 | Zunächst 116 Quellen & Literaturverzeichnis; später 116 Weiterführende Links. Ergänzender ursprünglicher Plan nennt 117 für Links. | Beide Inhalte bewahren. Die letzte ausdrückliche Link-Anforderung lautet 116, der Gesamtnummernplan bleibt zu bereinigen. Keine stille Umnummerierung. |
-| 111/112 | Als A–Z bezeichnet, erste Anlage endete jeweils bei U; Nutzer forderte V–Z nach | Nachträge sind vorhanden, Vollständigkeit und Begriffsqualität dennoch offen. |
+| 111/112 | Als A–Z bezeichnet, erste Anlage endete jeweils bei U; V–Z wurde nachgefordert | Nachträge sind vorhanden, Vollständigkeit und Begriffsqualität dennoch offen. |
 
 ## 5. Kapitelbestand und thematische Abdeckung
 
@@ -128,11 +131,11 @@ Die Tabelle ist eine **Bestands- und Übergabematrix**, keine Aussage, dass alle
 
 | Kapitel | Gegenstand | Zugänglicher Zustand / wichtiger Anschluss |
 |---|---|---|
-| 1–7 | Einstiegskapitel | Frühe Nachrichten fehlen; einzelne Nummern sichtbar, Titel und Inhalte nicht vollständig. |
+| 1–7 | Einstiegskapitel | Frühe Fassungen fehlen; einzelne Nummern sichtbar, Titel und Inhalte nicht vollständig. |
 | 8 | Energie, Bahn & Industrie | Titel und ausdrückliche Abgrenzung zu 9. |
 | 9 | Flughäfen, Häfen & Logistik | Titel; nicht mit 8 doppeln. |
 | 10 | Nicht sicher rekonstruierbar | Keine Titelergänzung aus Vermutung. |
-| 11 | Militärische Anwendungen | Präzisierter Nutzer-Titel. |
+| 11 | Militärische Anwendungen | Präzisierter festgelegter Titel. |
 | 12 | Internationale Netze: Airwave, C2000, Nødnett, Rakel, Virve, BOSNet | Titel/Themenliste. |
 | 13–20 | Grundaufbau; Basisstation; SwMI; Leitstellenintegration; Topologien; Redundanz; GPS/NTP; Energie/Fallback | Titel sichtbar; frühe Kapiteltexte teilweise ausgelassen. |
 | 21–28 | Sprachdienste; Prioritätslogik; PSTN/ISDN/SIP; SDS; Status; IP/TEDS; GPS/LIP; Logging/Recording/Dispatcher | Titel sichtbar; ab 22 Canvas ausdrücklich gewünscht. |
@@ -175,7 +178,7 @@ Die Tabelle ist eine **Bestands- und Übergabematrix**, keine Aussage, dass alle
 | 101 | Unbekannt | Lücke. |
 | 102 | AWGN, Rayleigh, Fading | Entwurf; additives Rauschen und multiplikatives Fading sauber unterscheiden. |
 | 103 | Shannon & Nyquist | Entwurf; Abtasttheorem, ISI-Kriterium und RF-/Basisbandbandbreite wurden vermischt. |
-| 104 | Sprachruf → Bits → Luftschnittstelle | Letzter Nutzer-Titel; Beispielkette muss neu gerechnet werden. |
+| 104 | Sprachruf → Bits → Luftschnittstelle | Letzter festgelegter Titel; Beispielkette muss neu gerechnet werden. |
 | ohne endgültige Nummer | QoS-Berechnung anhand BER/FER | Vorher als 104 angelegt; Inhalt nicht verlieren, Nummer offen. |
 | 105 | ETSI-Standards | Entwurf; Dokumententeile mehrfach falsch zugeordnet. |
 | 106 | ITU-Einordnung | Entwurf; Aufgaben von ITU, CEPT und nationalen Regulierern sowie Dokumententitel prüfen. |
@@ -189,12 +192,12 @@ Die Tabelle ist eine **Bestands- und Übergabematrix**, keine Aussage, dass alle
 | 114 | FAQ | Umfangreicher gewünscht und erstellt; absolute Aussagen über Sicherheit, Reichweite und Netzausfälle müssen revidiert werden. |
 | 115 | Nicht sicher rekonstruierbar | Lücke. |
 | 116, frühere Fassung | Quellen & Literaturverzeichnis | 53 nummerierte, heterogene Kandidaten; keine nachgewiesenen 50 Bücher. |
-| 116, spätere Fassung | Weiterführende Links | Letzter expliziter Nutzer-Titel; Konflikt mit Literaturkapitel bleibt offen. |
+| 116, spätere Fassung | Weiterführende Links | Letzter expliziter festgelegter Titel; Konflikt mit Literaturkapitel bleibt offen. |
 | 117 | Im ursprünglichen Plan weiterführende Links | Keine entsprechend gesicherte finale Kapitelanlage im verfügbaren Verlauf. |
 
 ## 6. Historische Canvas-Referenzen und Wiederherstellung
 
-Die folgenden IDs sind interne historische Dokumentreferenzen. Sie sind **keine Chatlinks, Dateipfade oder öffentliche Download-URLs**. Sie helfen bei einem späteren Export beziehungsweise beim Abgleich mit der Benutzeroberfläche.
+Die folgenden IDs sind interne historische Dokumentreferenzen. Sie sind **keine öffentlichen URLs oder Repository-Dateipfade**. Sie helfen bei einem späteren Export beziehungsweise beim Abgleich mit der Benutzeroberfläche.
 
 | Kapitel / Dokument | Historische Canvas-ID |
 |---|---|
@@ -274,7 +277,7 @@ Leitstellen, Recording, SDS-/IP-Anwendungen, Fremdnetz-Gateways
 Betrieb: Monitoring, Logging, Identitäten, Schlüssel, Energie, Backhaul
 ```
 
-Dies ist eine redaktionelle Zusammenfassung der behandelten Architektur, **kein im Buchchat aufgebautes Deployment**. DMO, TMO, lokaler Rückfallbetrieb, ISI, Telefonie- und Breitbandkopplung müssen als unterschiedliche Betriebs- und Schnittstellenmodelle getrennt bleiben. Referenzen: Anhänge A01, A02, A05, A06, A08 und A10.
+Dies ist eine redaktionelle Zusammenfassung der behandelten Architektur, **kein im Buchprojekt aufgebautes Deployment**. DMO, TMO, lokaler Rückfallbetrieb, ISI, Telefonie- und Breitbandkopplung müssen als unterschiedliche Betriebs- und Schnittstellenmodelle getrennt bleiben. Referenzen: Anhänge A01, A02, A05, A06, A08 und A10.
 
 ### 7.2 Lehrbuchabhängigkeiten
 
@@ -290,18 +293,17 @@ Die mathematischen Beispiele brauchen denselben Satz von Definitionen für Bitty
 
 | Gegenstand | Idee | Beschlossen/geplant | Implementiert / Text angelegt | Getestet | Im Betrieb bestätigt |
 |---|---|---|---|---|---|
-| Umfangreiches TETRA-Buch | Ja | Ja | Viele Kapitelentwürfe im Chat/Canvas historisch belegt | Keine Gesamtprüfung | Nicht anwendbar / kein Publikationsnachweis |
+| Umfangreiches TETRA-Buch | Ja | Ja | Viele Kapitelentwürfe in der Planung/Canvas historisch belegt | Keine Gesamtprüfung | Nicht anwendbar / kein Publikationsnachweis |
 | Vollständiges Manuskript aller 117 Kapitel | Ja | Gliederungsziel | Nicht nachgewiesen | Nein | Nein |
-| Separate spätere Kapitel | Ja | Ja | Historische Canvas-Anlagen belegt | Keine vollständige Export-/Renderprüfung | Kein heutiger Vollständigkeitsnachweis |
+| Separate spätere Kapitel | Ja | Ja | Historische Canvas-Anlagen belegt | Keine vollständige Export-/Renderprüfung | Kein geprüfter Vollständigkeitsnachweis |
 | Cambria-Satz | Ja | Ja | HTML-Stilangaben in Payloads | Tatsächlicher Font nicht geprüft | Nein |
 | Fachlich berichtigtes Kapitel 65 | Ja | Mehrfach ausdrücklich | Mehrere Ersatztexte, aber mit Restfehlern | Erst jetzt begrenzte Quellenstichprobe | Nein |
 | Rund 50 wissenschaftlich belegte Bücher | Ja | Rechercheauftrag | Kandidatenliste mit 53 gemischten Quellen | Keine vollständige bibliografische Prüfung | Nein |
 | Vollständige Glossare A–Z | Ja | Ja | A–U und Nachträge V–Z | Begriffe/Anzahl nicht vollständig geprüft | Nein |
-| NetCore-Funk-, Krypto- oder Leitstellenimplementierung aus diesem Chat | Teilweise beiläufig behauptet | Kein belastbarer Entwicklungsauftrag innerhalb des sichtbaren Buchverlaufs | Historisch nicht nachgewiesen | Keine Builds/On-Air-Tests | Nein |
+| NetCore-Funk-, Krypto- oder Leitstellenimplementierung aus dieser Entwicklungsphase | Teilweise beiläufig behauptet | Kein belastbarer Entwicklungsauftrag innerhalb des sichtbaren Buchverlaufs | Historisch nicht nachgewiesen | Keine Builds/On-Air-Tests | Nein |
 | ETSI-Quellenbasis | Ja | Nutzung gewünscht | 25 PDFs jetzt zugänglich und inventarisiert | Ausgewählte Text-/Tabellenstellen geprüft | Kein Ersatz für Systemabnahme |
-| Diese Archivierung | Ja | Aktuell ausdrücklich autorisiert | Abschlussdokument und Index als eigener Archivauftrag | Speicherung separat zu verifizieren | Kein Eingriff in Funkbetrieb |
 
-**Wichtig:** Ein „Fertig ✅“ im früheren Chat ist allenfalls eine Abschlussbehauptung. Aussagekräftiger sind Werkzeugantwort, tatsächlich vorhandener Inhalt, Quellenbeleg, ausführbarer Code, reproduzierbarer Test und schließlich Betriebsnachweis. Diese Ebenen wurden historisch oft vermischt.
+**Reifegrad:** Einzelentwürfe und erfolgreiche Dokumentänderungen belegen kein konsolidiertes, geprüftes Buch. Dafür fehlen vollständiger Manuskriptbestand, belastbare Quellen und fachliche sowie visuelle Abnahme.
 
 ## 9. Technischer Korrekturkatalog und neue Quellenprüfung
 
@@ -311,15 +313,15 @@ Die folgenden Befunde dienen dem Schutz einer späteren Fortsetzung. Sie ändern
 
 **E01 – TEA-Nummern sind keine aufsteigenden Sicherheitsstufen.** Historisch wurden Zielgruppen, Zulassung, Schlüsselbreite und kryptografische Stärke vermengt. Für die Einordnung sind Algorithmusvariante, zugelassener Nutzerkreis, Schlüsselverwaltung und belegte Sicherheitsanalyse getrennte Größen. Die neu gelesene ETSI-Erklärung von 2023 beschreibt unter anderem die TEA1-Problematik; daraus folgt keine allgemeine Rangfolge „TEA2 am sichersten, TEA3 mittel, TEA4 Basis“. Quellen W01–W04.
 
-Die historische Nutzerkorrektur bleibt als Anforderung erhalten: TEA1 industriell/kommerziell, TEA2 Behörden im europäischen Zulassungsraum, TEA3 Behörden außerhalb dieses Bereichs, TEA4 kommerzielle Variante im Kontext von Exportbeschränkungen. Zusätze wie „TEA1 nur EU-Binnenmarkt“ oder „TEA4 frei und lizenzlos“ wurden damit nicht belastbar belegt. Crypto Museum beschreibt den kommerziellen beziehungsweise Behördenbezug und die nominalen 80-Bit-Schlüssel der ursprünglichen vier Verfahren; bei TEA1 ist die Reduktion auf einen effektiven 32-Bit-Schlüsselraum ein zentraler veröffentlichter Befund. W01 ist eine historische Überblicksseite, keine aktuelle Zulassungsentscheidung.
+Die historische Korrektur bleibt als Anforderung erhalten: TEA1 industriell/kommerziell, TEA2 Behörden im europäischen Zulassungsraum, TEA3 Behörden außerhalb dieses Bereichs, TEA4 kommerzielle Variante im Kontext von Exportbeschränkungen. Zusätze wie „TEA1 nur EU-Binnenmarkt“ oder „TEA4 frei und lizenzlos“ wurden damit nicht belastbar belegt. Crypto Museum beschreibt den kommerziellen beziehungsweise Behördenbezug und die nominalen 80-Bit-Schlüssel der ursprünglichen vier Verfahren; bei TEA1 ist die Reduktion auf einen effektiven 32-Bit-Schlüsselraum ein zentraler veröffentlichter Befund. W01 ist eine historische Überblicksseite, keine am Prüfdatum vorliegende Zulassungsentscheidung.
 
-**E02 – Pauschales TEA2-Schengen-/Exportverbot ist keine ausreichende Beschreibung.** Die geprüfte ETSI TS 101 053-2 V3.1.1, Abschnitte 5.1 und 5.2, verwendet einen eigenen Kreis zulässiger Staaten/Gebiete und die verbindliche Liste des Custodian. Sie enthält außerdem genehmigungsabhängige Regeln für bestimmte militärische Auslandsverwendungen. Deshalb darf die historische Aussage „ausschließlich Schengen, Export ausnahmslos verboten“ nicht als aktuelle allgemeine Rechtsauskunft stehen bleiben. Spezifikationsweitergabe, Geräteexport und Einsatz eines kontrollierten Netzes sind gesondert zu prüfen. Maßgeblich sind jeweils geltende Lizenzbedingungen und zuständige Stellen. Quelle W02; keine individuelle Exportfreigabe durch dieses Archiv.
+**E02 – Pauschales TEA2-Schengen-/Exportverbot ist keine ausreichende Beschreibung.** Die geprüfte ETSI TS 101 053-2 V3.1.1, Abschnitte 5.1 und 5.2, verwendet einen eigenen Kreis zulässiger Staaten/Gebiete und die verbindliche Liste des Custodian. Sie enthält außerdem genehmigungsabhängige Regeln für bestimmte militärische Auslandsverwendungen. Deshalb darf die historische Aussage „ausschließlich Schengen, Export ausnahmslos verboten“ nicht als am Prüfdatum vorliegende allgemeine Rechtsauskunft stehen bleiben. Spezifikationsweitergabe, Geräteexport und Einsatz eines kontrollierten Netzes sind gesondert zu prüfen. Maßgeblich sind jeweils geltende Lizenzbedingungen und zuständige Stellen. Quelle W02; keine individuelle Exportfreigabe durch dieses Archiv.
 
 **E03 – Security Class nicht mit TEA-Variante gleichsetzen.** A09, Abschnitt 4.0 und Tabelle 4.1, unterscheidet Class 1 ohne AIE, Class 2 mit Verschlüsselung und optionaler Authentifizierung sowie Class 3 mit erforderlicher Authentifizierung für DCK und obligatorischem CCK-OTAR. Die frühere Tabelle „Class 2 nur TEA1/TEA4“ ist daraus nicht ableitbar. Ebenso ist „Class 3 bedeutet in jeder Implementierung automatisch erfolgreich erzwungene gegenseitige Authentifizierung“ zu pauschal. Authentifizierungsmechanismen, Betreiberpolicy und tatsächliche Aktivierung sind separat zu beschreiben.
 
 **E04 – GSM-Begriffe durch TETRA-Begriffe ersetzen.** Die Kapitel 62–67 verwenden A3/A8, SRES und Kc als vermeintliche universelle TETRA-Kette. A09 beschreibt dagegen TAA1-Verfahren, unter anderem TA11/TA12, KS, Antworten und DCK; die Anhänge zur TSIM-Schnittstelle bestätigen die TETRA-spezifischen Operationen. Die normativen Schlüsselkategorien DCK, CCK, SCK, GCK, MGCK und ECK dürfen nicht in einem pauschalen „Session Key Kc“ verschwinden. Referenzen A09, A20–A25.
 
-**E05 – OTAR ist ein Verfahren, kein allgemeiner Schlüsseltyp OTAK.** Der alte Stammbaum `Master → KEK → OTAK → EEK/Kc` war ein unbelegtes Universalmodell. Für AIE ist die TETRA-Schlüsselverwaltung aus A09 maßgeblich; ein E2EE-Key-Management kann ein eigenes, profilabhängiges Modell haben. Der aktuelle NetCore-KMF-Ansatz ist wiederum eine konkrete Softwarearchitektur und nicht automatisch identisch mit beiden.
+**E05 – OTAR ist ein Verfahren, kein allgemeiner Schlüsseltyp OTAK.** Der alte Stammbaum `Master → KEK → OTAK → EEK/Kc` war ein unbelegtes Universalmodell. Für AIE ist die TETRA-Schlüsselverwaltung aus A09 maßgeblich; ein E2EE-Key-Management kann ein eigenes, profilabhängiges Modell haben. Der am Prüfdatum vorliegende NetCore-KMF-Ansatz ist wiederum eine konkrete Softwarearchitektur und nicht automatisch identisch mit beiden.
 
 **E06 – Keine standardweiten festen Rotationsintervalle behaupten.** „AIE alle 24–48 h, E2EE 7–30 Tage, Master jährlich“ wurde ohne Beleg als Standard dargestellt. A09, Tabelle 4.4, nennt für DCK die Authentifizierungssitzung und lässt Lebensdauern mehrerer anderer Schlüssel ausdrücklich undefiniert. Betreiberseitige Kryptoperioden müssen als Policy mit Begründung, Verfügbarkeit und Wiederanlaufverhalten dokumentiert werden.
 
@@ -327,7 +329,7 @@ Die historische Nutzerkorrektur bleibt als Anforderung erhalten: TEA1 industriel
 
 **E08 – E2EE nicht als absolute Vertraulichkeitsgarantie darstellen.** Endpunkte, Schlüsselbesitzer, Leitstellenanbindung, Recorder, Klartextgrenzen und Gateways müssen benannt werden. Ein Gateway, das Audio oder Daten entschlüsselt und in ein anderes System überträgt, erhält nicht automatisch dasselbe Ende-zu-Ende-Sicherheitsmodell. Ungeprüfte „TEA2/E2EE-Derivate“, universelle AES-Modi oder behauptete KMF-Zertifizierungen werden nicht übernommen.
 
-**E09 – AES-Grundlagen und Profilzuordnung nachprüfen.** Die historischen Angaben verwechseln teilweise Schlüssel- und Blockgröße und schreiben CTR Integrität zu. Vor Übernahme von Kapitel 66 sind Algorithmus, Betriebsmodus, Integritätsschutz, Nonce-/Zählerverwaltung, Schlüsseltrennung und tatsächliches TETRA-E2EE-Profil anhand einschlägiger Spezifikationen zu belegen. CPU-Prozente, Zusatzlatenzen und behauptete TPM-/Secure-Element-Eigenschaften sind nicht gemessen. Dieser Archivlauf führt keinen vollständigen AES-/E2EE-Profilaudit durch.
+**E09 – AES-Grundlagen und Profilzuordnung nachprüfen.** Die historischen Angaben verwechseln teilweise Schlüssel- und Blockgröße und schreiben CTR Integrität zu. Vor Übernahme von Kapitel 66 sind Algorithmus, Betriebsmodus, Integritätsschutz, Nonce-/Zählerverwaltung, Schlüsseltrennung und tatsächliches TETRA-E2EE-Profil anhand einschlägiger Spezifikationen zu belegen. CPU-Prozente, Zusatzlatenzen und behauptete TPM-/Secure-Element-Eigenschaften sind nicht gemessen. Dieser Prüflauf führt keinen vollständigen AES-/E2EE-Profilaudit durch.
 
 ### 9.2 Nachgeprüfte Sprachkanalkette: 274 → 286 → 432 Bit
 
@@ -354,7 +356,7 @@ A19, Abschnitte 5.4 und 5.5, unterscheidet Empfindlichkeitsklassen. Für zwei Fr
 
 Die acht Prüfbits bestehen hier aus sieben CRC-Bits zum Polynom `1 + X^3 + X^7` sowie einem Gesamtparitätsbit; sie beziehen sich auf die besonders empfindlichen Bits. Die Faltungscodierung läuft über Class 1 und Class 2 kontinuierlich. Anschließend wird eine **24×18-Matrix transponiert**; die Anzahl bleibt 432. Interleaving erzeugt keine zusätzlichen Redundanzbits.
 
-Diese Rechnungen wurden für die Archivierung nachgerechnet. Sie sind ein Quellen-/Arithmetikabgleich, kein Test des gesamten Codec- oder Funkpfads. Der Frame-Stealing-Fall besitzt eigene Regeln und darf nicht allein aus dem Normalfall abgeleitet werden.
+Diese Rechnungen wurden für die Dokumentation nachgerechnet. Sie sind ein Quellen-/Arithmetikabgleich, kein Test des gesamten Codec- oder Funkpfads. Der Frame-Stealing-Fall besitzt eigene Regeln und darf nicht allein aus dem Normalfall abgeleitet werden.
 
 **Überholt/falsch:** `137 → 274 durch FEC → 456 durch Auffüllen/Interleaving → vier Bursts zu 114 Bit`. Dieses in mehreren Entwürfen verwendete Muster ist keine belastbare TETRA-Sprachkanalbeschreibung.
 
@@ -422,11 +424,11 @@ Shannon-Hartley muss mit linearem SNR, eindeutigem Bandbreitenbezug und dem pass
 
 **E22 – Status, SDS und Sprachdaten trennen.** A02 unterscheidet TNSDS-STATUS und TNSDS-UNITDATA sowie D-STATUS und D-SDS-DATA. Das Pre-coded-status-Feld ist 16 Bit lang. Daher ist „Status = SDS Type 1“ keine korrekte allgemeine technische Definition. Das Mikrofonbeispiel in Kapitel 61 darf ohne zusätzliche, ausdrücklich beschriebene Anwendung nicht von ACELP-Sprachdaten in eine SDS-Textnachricht springen. Quelle A02, Abschnitte 13.3.2.1, 14.5.5 und Tabelle 14.14; ergänzend A04/A08.
 
-**E23 – BOS-Statusmatrix nicht verwenden.** Die in Kapitel 83 ausgegebene Tabelle vertauscht beziehungsweise erfindet zentrale Bedeutungen. Sie ist als Schulungs- oder Einsatzgrundlage zu sperren. Eine korrigierte Matrix muss anhand der tatsächlich einschlägigen offiziellen Organisations-/Landesvorgaben erstellt werden; technische Statuswerte, Tastenbelegung, Leitstellenannahme und Rückmeldung sind getrennte Ebenen. Dieser Archivlauf erfindet keine bundesweit universelle Ersatzmatrix.
+**E23 – BOS-Statusmatrix nicht verwenden.** Die in Kapitel 83 ausgegebene Tabelle vertauscht beziehungsweise erfindet zentrale Bedeutungen. Sie ist als Schulungs- oder Einsatzgrundlage zu sperren. Eine korrigierte Matrix muss anhand der tatsächlich einschlägigen offiziellen Organisations-/Landesvorgaben erstellt werden; technische Statuswerte, Tastenbelegung, Leitstellenannahme und Rückmeldung sind getrennte Ebenen. Dieser Prüflauf erfindet keine bundesweit universelle Ersatzmatrix.
 
 **E24 – IP über TETRA nicht aus SDS-Type-3-Segmenten erfinden.** Kapitel 53 nennt nicht belegte 255-Byte-Segmente, „bis 2 kB“ und einen pauschalen SDS-IP-Tunnel. Für eine Fortsetzung sind normativer Paketdatenpfad, Anpassungsschicht, Bearer, Fragmentierung und PEI/TNP getrennt von anwendungsspezifischen SDS-Tunneln zu beschreiben. Referenzen A01, A02, A08. Keine Ableitung einer implementierten IPv6-/TEDS-Unterstützung aus der bloßen Erwähnung im Buch.
 
-**E25 – Rohslotzahl ist nicht Sprachkapazität.** Die Formel `BTS × Carrier × 4` zählt zunächst physische Slotressourcen. Kontrollkanalbelegung, Datenreservierungen, lokale Belegung und Gruppenrufe über mehrere Zellen fehlen. Ein üblicher Zwei-Träger-Fall mit einem reservierten Kontrollslot wäre beispielsweise mit sieben statt acht unmittelbar verfügbaren Traffic-Slots zu betrachten; die konkrete Konfiguration kann hiervon abweichen. Netzwerkweit belegte Kanalressourcen sind nicht gleich viele unabhängige Gespräche. Erlang-B-Ziele für SDS dürfen nicht ohne passendes Warteschlangen-/Zugriffsmodell übernommen werden.
+**E25 – Rohslotzahl ist nicht Sprachkapazität.** Die Formel `BTS × Carrier × 4` zählt zunächst physische Slotressourcen. Kontrollkanalbelegung, Datenreservierungen, lokale Belegung und Gruppenrufe über mehrere Zellen fehlen. Ein üblicher Zwei-Träger-Fall mit einem reservierten Kontrollslot wäre beispielsweise mit sieben statt acht unmittelbar verfügbaren Traffic-Slots zu betrachten; die konkrete Konfiguration kann hiervon abweichen. Netzwerkweit belegte Kanalressourcen sind nicht gleich viele unabhängige Rufe. Erlang-B-Ziele für SDS dürfen nicht ohne passendes Warteschlangen-/Zugriffsmodell übernommen werden.
 
 **E26 – Repeater/DAS schaffen nicht automatisch neue Netzkapazität.** Ausleuchtung, HF-Verteilung und eigenständige Basisstationsressourcen sind zu unterscheiden. Die historischen „Type-1 = Frequency Shift / Type-2 = Same Frequency“-Zuweisungen dürfen nicht als TETRA-DMO-Repeaterklassifikation verwendet werden. Die genannten Produktbeispiele müssen auf Funkstandard und konkrete Funktion geprüft werden. Auch die Behauptung, jedes Gateway erhalte AIE/E2EE unverändert, ist unhaltbar ohne Angabe seiner Terminierungspunkte.
 
@@ -434,11 +436,11 @@ Shannon-Hartley muss mit linearem SNR, eindeutigem Bandbreitenbezug und dem pass
 
 **E27 – BER/FER allein liefert keine vollständige QoS.** Vor-/Nach-FEC-BER, Framefehler, Frame-Erasure/Bad-Frame-Indicator, Paketverlust, Blockierung, Jitter und Latenz sind unterschiedliche Messgrößen. Die Rechnung `FER=1−(1−p)^N` setzt unabhängige Bitfehler mit Wahrscheinlichkeit p am betrachteten Block voraus. Sie ist keine universelle Umrechnung einer Demodulator-BER in FER nach FEC.
 
-Als rein mathematisches, ungeschütztes Beispiel mit N=456 ergeben sich für p=10⁻⁴ etwa 4,4578 % und für p=10⁻³ etwa 36,6331 %. Die Zahl 456 ist dabei **kein bestätigter TETRA-Sprachblock**. Aus einer angenommenen BER und einem nicht gemessenen SNR folgen keine Aussagen über „90 % der Randbereiche“. Pauschale ETSI-Qualitätsklassen A–D, feste 4-%-Betriebsfähigkeitsgrenzen und universelle MOS-Zuordnungen wurden im historischen Chat nicht belegt.
+Als rein mathematisches, ungeschütztes Beispiel mit N=456 ergeben sich für p=10⁻⁴ etwa 4,4578 % und für p=10⁻³ etwa 36,6331 %. Die Zahl 456 ist dabei **kein bestätigter TETRA-Sprachblock**. Aus einer angenommenen BER und einem nicht gemessenen SNR folgen keine Aussagen über „90 % der Randbereiche“. Pauschale ETSI-Qualitätsklassen A–D, feste 4-%-Betriebsfähigkeitsgrenzen und universelle MOS-Zuordnungen wurden in den historischen Planungsunterlagen nicht belegt.
 
 **E28 – Redundanz und Fallback sind keine Unausfallbarkeit.** „TETRA fällt nicht aus“, „Notrufe funktionieren immer“, „Jamming nur lokal und leicht umgehbar“ oder „kritische SDS laufen immer durch“ sind nicht als technische Garantien verwendbar. Backhaul, Energie, Frequenzressourcen, lokale Rufsteuerung, Schlüsselzustand, Netzzugang und Nachversorgung sind eigene Ausfallpfade. A09 nennt ausdrücklich mögliche SCK-Nutzung beim Rückfall einer normalerweise Class-3-Zelle; das widerspricht einem pauschalen Modell „lokale Kc immer weiter“. Konkrete Fallbackfunktionen hängen von System und Konfiguration ab.
 
-**E29 – SLA-, Energie- und Kostenwerte sind unbelegt.** 99,999 %, <300 ms, feste Failoverzeiten, 5–15 Minuten USV, 24–72 Stunden Batterie, 5–20 kVA Diesel, feste Wartungsintervalle, pauschale Mobilfunkausfälle nach 30–60 Minuten und behauptete 40-%-Verbesserungen durch KI wurden nicht durch Messung oder verlässliche Quellen dieses Chats gestützt. Sie dürfen allenfalls nachträglich als klar gekennzeichnete Annahmen oder belastbare Betreiberwerte erscheinen. Gleiches gilt für Gerätepreise, Campus-CAPEX/OPEX, Gebühren und „TEDS immer lizenzpflichtig“.
+**E29 – SLA-, Energie- und Kostenwerte sind unbelegt.** 99,999 %, <300 ms, feste Failoverzeiten, 5–15 Minuten USV, 24–72 Stunden Batterie, 5–20 kVA Diesel, feste Wartungsintervalle, pauschale Mobilfunkausfälle nach 30–60 Minuten und behauptete 40-%-Verbesserungen durch KI wurden nicht durch Messung oder verlässliche Quellen dieser Planung gestützt. Sie dürfen allenfalls nachträglich als klar gekennzeichnete Annahmen oder belastbare Betreiberwerte erscheinen. Gleiches gilt für Gerätepreise, Campus-CAPEX/OPEX, Gebühren und „TEDS immer lizenzpflichtig“.
 
 **E30 – Bedien- und Sicherheitskapitel benötigen eine gesonderte Fachprüfung.** Nicht übernehmen: PTT mehrfach kräftig betätigen, unkontrollierte Resets/Codeplugwechsel im Einsatz, Ortung pauschal zur Akkuschonung abschalten, aus IP67 eine feste Trocknungszeit ableiten oder aus ATEX eine besondere Kryptohärtung folgern. Das sind keine bestätigten Workarounds. Bedienhinweise müssen gerätebezogen sein und operative Vorgaben beachten.
 
@@ -471,9 +473,9 @@ EN, TS, ES, TR und ETS sind zu unterscheiden, ebenso Version, Datum, Entwurfssta
 
 **E34 – Abkürzungen nicht durch erfundene Füllbegriffe vervollständigen.** Zu prüfen sind insbesondere MCC versus MCCH, CMCE, doppelte Bedeutungen von ISI, HF im deutschen beziehungsweise englischen Gebrauch sowie fehlende zentrale Kürzel wie DCK, SCK, TEI, ITSI, TMO, LLC oder PEI. „BURST“ und „YAGI“ sind nicht einfach Abkürzungen desselben Typs. „Knob-Model“, „Witschleife“, pauschal BOS-spezifische ZAC-/ZSK-/ZTD-Angaben und weitere Randbegriffe sind ohne belastbaren Beleg zu entfernen beziehungsweise als offen zu markieren. Quellen für TETRA-Begriffe sind die Abkürzungsabschnitte der einschlägigen Normen, nicht die selbst erzeugten Glossare.
 
-**E35 – Literatur und Links sind Kandidaten, keine fertig verifizierte Bibliografie.** Die ältere Liste umfasst 53 Einträge aus Büchern, Standards, Webseiten, Whitepapers, Artikeln und Projekten. Mehrere Angaben sind unvollständig oder mit unsicheren Nummern/Versionen versehen. In den sichtbaren historischen Antworten ist die behauptete Netz-/Internet-Archive-Recherche nicht dokumentiert. Weder „50 Bücher“ noch „alle Links dauerhaft verfügbar“ darf als Ergebnis behauptet werden. Die spätere DAMM-Adresse enthält sogar ein Leerzeichen. Quellenpflege muss systematisch neu erfolgen.
+**E35 – Literatur und Links sind Kandidaten, keine fertig verifizierte Bibliografie.** Die ältere Liste umfasst 53 Einträge aus Büchern, Standards, Webseiten, Whitepapers, Artikeln und Projekten. Mehrere Angaben sind unvollständig oder mit unsicheren Nummern/Versionen versehen. In den verfügbaren historischen Entwürfen ist die behauptete Netz-/Internet-Archive-Recherche nicht dokumentiert. Weder „50 Bücher“ noch „alle Links dauerhaft verfügbar“ darf als Ergebnis behauptet werden. Die spätere DAMM-Adresse enthält sogar ein Leerzeichen. Quellenpflege muss systematisch neu erfolgen.
 
-## 10. Zusätzlich geprüfter heutiger Repository-Stand
+## 10. Zusätzlich geprüfter geprüfter Repository-Stand
 
 ### 10.1 Methode und Grenzen
 
@@ -486,7 +488,7 @@ Die Verzeichnis-/Tree-Ausgaben waren teilweise umfangreich und in der Anzeige ge
 | Ref. | Datei | Nachgewiesener Befund | Grenze |
 |---|---|---|---|
 | R01 | `README.md` | Projektbeschreibung v1.9.0, Alert-Service und zentrale SIP-Anbindung mit lokalem Asterisk-Fallback beschrieben | README-Aussage, kein Live-Test |
-| R02 | `crates/tetra-entities/src/lmac/components/crc16.rs` | 0x1021, Init 0xffff, erwarteter Rest 0x1d0f, MSB-first | Funktion gelesen, nicht in diesem Auftrag kompiliert |
+| R02 | `crates/tetra-entities/src/lmac/components/crc16.rs` | 0x1021, Init 0xffff, erwarteter Rest 0x1d0f, MSB-first | Funktion gelesen, nicht bei der dokumentierten Prüfung kompiliert |
 | R03 | `crates/tetra-entities/src/lmac/components/convenc.rs` | Getrennte `ConvEncState`- und `SpeechConvEncState`-Implementierungen, vier Speicherbits | Keine vollständige Testvektorabnahme |
 | R04 | `crates/tetra-entities/src/lmac/components/interleaver.rs` | Blockpermutation und Matrixtransposition mit inversen Funktionen | Roundtrip-Tests vorhanden, nicht ausgeführt |
 | R05 | `crates/tetra-entities/src/lmac/components/errorcontrol_params.rs` | Kanalbezogene Größen und CRC16-Flags; mehrere Zweige `unimplemented!()` | Aussage nur über diese Dispatch-Funktion, nicht jede mögliche Implementierung des Repositorys |
@@ -495,7 +497,7 @@ Die Verzeichnis-/Tree-Ausgaben waren teilweise umfangreich und in der Anzeige ge
 | R08 | `system-backend/kmf/README.md` | Lifecycle-KMF, WebUI 8190, Shadow/Authoritative, explizite Labor-/OTAR-Grenzen | Keine echte TA-/D-OTAR-Air-Implementierung laut Dokument |
 | R09 | `system-backend/kmf/src/crypto.rs` | Konkreter Labor-Envelope `lab_sha256_stream_mac_v1`, `SealedBlob`, lokale Zufallsbytes, private Dateierzeugung | Kein AES-/HSM-/TETRA-Zertifizierungsbeleg |
 
-Die Datentypen und Pfade zeigen einen real vorhandenen Softwarestand. Sie belegen nicht, dass dieser Stand im historischen Buchchat entstanden ist oder aktuell auf Jans Anlagen läuft.
+Die Datentypen und Pfade zeigen einen real vorhandenen Softwarestand. Sie belegen nicht, dass dieser Stand im historischen Buchprojekt entstanden ist oder zum Prüfdatum auf den Zielanlagen läuft.
 
 ### 10.3 Wichtige Abweichung: vorhandener PHY-/LMAC-Code statt falscher Buchformeln
 
@@ -512,7 +514,7 @@ Gleichzeitig wurden konkrete Prüf- und Kommentarprobleme gefunden:
 - Die gelesene Sprachdecodierung bildet bereits entschiedene Bits auf −1/+1 und Erasures auf 0 ab. Das beweist nicht die lückenlose Weitergabe echter I/Q-Konfidenzwerte eines Soft-Demappers.
 - `get_params` enthält nicht implementierte Zweige unter anderem für Tch24, Tch48 und Tch72. Keine generelle Vollständigkeitsbehauptung über alle Datenbearer aus der Buchbeschreibung ableiten.
 
-Diese Befunde sind **neue Roadmap-Kandidaten**. In diesem Auftrag wurden keine Codekommentare, Funktionen oder Tests außerhalb des Archivs verändert.
+Diese Befunde sind **neue Roadmap-Kandidaten**. Bei der dokumentierten Prüfung wurden keine Codekommentare, Funktionen oder Tests außerhalb des Archivs verändert.
 
 ### 10.4 Wichtige Abweichung: KMF vorhanden, aber ausdrücklich Laborbetrieb
 
@@ -574,11 +576,11 @@ Diese Endpunkte wurden **gelesen, nicht auf einem laufenden Dienst aufgerufen**.
 
 ### 11.4 Historische generische Port- und Betriebsangaben
 
-Die Logging-Entwürfe nennen Syslog und Port 514 sowie SNMP, TLS, JSON/XML, PCAP, SIEM und UTC/NTP. Daraus folgt keine aktuell konfigurierte Syslog-Transportart, TLS-Absicherung oder Aufbewahrungsfrist in NetCore. Ein Portplan, produktive IPs, Zugangsdaten oder verifizierte LXC-Zuordnungen wurden in diesem Buchchat nicht erarbeitet.
+Die Logging-Entwürfe nennen Syslog und Port 514 sowie SNMP, TLS, JSON/XML, PCAP, SIEM und UTC/NTP. Daraus folgt keine zum Prüfdatum konfigurierte Syslog-Transportart, TLS-Absicherung oder Aufbewahrungsfrist in NetCore. Ein Portplan, produktive IPs, Zugangsdaten oder verifizierte LXC-Zuordnungen wurden in diesem Buchprojekt nicht erarbeitet.
 
 ## 12. Befehle, ausgeführte Arbeit und Reparaturstatus
 
-| Aktion | Status in diesem Auftrag | Ergebnis / Grenze |
+| Aktion | Status bei der dokumentierten Prüfung | Ergebnis / Grenze |
 |---|---|---|
 | Repository-Metadaten und `Archiving` lesen | Erfolgreich ausgeführt | Branch und Lesekommit festgestellt |
 | Archivverzeichnis und README lesen | Erfolgreich ausgeführt | Vorhandene Einträge müssen erhalten bleiben |
@@ -587,10 +589,10 @@ Die Logging-Entwürfe nennen Syslog und Port 514 sowie SNMP, TLS, JSON/XML, PCAP
 | GitHub-Connector als Lese-/Schreibweg | Lesen erfolgreich; Archivspeicherung über Git-Objekte vorgesehen | Kein lokaler Clone erforderlich |
 | PDF-Inventar mit Dateigröße, Seiten und SHA-256 | Erfolgreich ausgeführt | 25 Dateien erfasst |
 | Ausgewählte Normstellen mit Files lesen | Erfolgreich ausgeführt | Teilweise Seitenbildlücken; keine Gesamtauswertung aller Seiten |
-| Zusätzliche lokale PDF-Seitenbilder erzeugen | Erfolgreich ausgeführt | Nur Referenzprüfung, keine historischen Chatbilder |
+| Zusätzliche lokale PDF-Seitenbilder erzeugen | Erfolgreich ausgeführt | Nur Referenzprüfung, keine historischen Originalbilder |
 | Arithmetik-/Polynomchecks | Erfolgreich ausgeführt | Abschnitt 13; keine Funksystemtests |
-| Funkgeräte, TBS oder Dienste konfigurieren | Nicht ausgeführt | Nicht Gegenstand der Archivierung |
-| Historische Canvas-Kapitel heute verändern | Nicht ausgeführt | Nur Historie ausgewertet |
+| Funkgeräte, TBS oder Dienste konfigurieren | Nicht ausgeführt | Nicht Gegenstand der Dokumentation |
+| Historische Canvas-Kapitel zum Prüfdatum verändern | Nicht ausgeführt | Nur Historie geprüft |
 
 Der tatsächlich versuchte Clone-Befehl lautete:
 
@@ -607,7 +609,7 @@ Folgender Befehl wurde lediglich in R08 als Hersteller-/Projektanleitung gelesen
 sudo system-backend/kmf/install/install.sh
 ```
 
-Es gibt im sichtbaren historischen Buchchat keine belastbar erfolgreich ausgeführten Installations-, Deployment- oder Reparaturbefehle für NetCore. Generische Beispielabläufe in den Kapiteln dürfen nicht nachträglich in ein Installationsprotokoll umgedeutet werden.
+Es gibt im sichtbaren historischen Buchprojekt keine belastbar erfolgreich ausgeführten Installations-, Deployment- oder Reparaturbefehle für NetCore. Generische Beispielabläufe in den Kapiteln dürfen nicht nachträglich in ein Installationsprotokoll umgedeutet werden.
 
 ## 13. Tests und Prüfergebnisse einschließlich Grenzen
 
@@ -635,11 +637,11 @@ Die Arithmetik wurde lokal mit Python gerechnet; PDF-Seitenzahlen und Hashes wur
 
 ### 13.2 Nur im Quelltext vorhandene Tests
 
-R04 enthält `test_block_interleave_roundtrip` mit k=10/a=3 und `test_matrix_interleave_roundtrip` mit einer 4×3-Matrix. Ihre Existenz ist überprüft. **Sie wurden in diesem Auftrag nicht ausgeführt.** Ein Roundtriptest allein beweist zudem nicht die richtige Interoperabilität mit einem unabhängig implementierten Encoder/Decoder.
+R04 enthält `test_block_interleave_roundtrip` mit k=10/a=3 und `test_matrix_interleave_roundtrip` mit einer 4×3-Matrix. Ihre Existenz ist überprüft. **Sie wurden bei der dokumentierten Prüfung nicht ausgeführt.** Ein Roundtriptest allein beweist zudem nicht die richtige Interoperabilität mit einem unabhängig implementierten Encoder/Decoder.
 
 ### 13.3 Nicht durchgeführt
 
-Kein Cargo-Build, keine Unit-/Integrationstests des gesamten Workspace, keine aktuellen CI-Ergebnisse als bestanden behauptet, kein Codec-Referenzvektorvergleich, keine BER-/FER-Kurve, kein SDR-/HF-Mitschnitt, kein Spektraltest, keine echte SDS-Zustellung, kein Notruf-/Handover-/Fallbackversuch, kein AES-/TEA-/OTAR-Interoperabilitätstest, keine BDBOS-/TCCA-Zertifizierung und kein Word-/Canvas-Fontrenderingtest.
+Kein Cargo-Build, keine Unit-/Integrationstests des gesamten Workspace, keine am Prüfdatum vorliegenden CI-Ergebnisse als bestanden behauptet, kein Codec-Referenzvektorvergleich, keine BER-/FER-Kurve, kein SDR-/HF-Mitschnitt, kein Spektraltest, keine echte SDS-Zustellung, kein Notruf-/Handover-/Fallbackversuch, kein AES-/TEA-/OTAR-Interoperabilitätstest, keine BDBOS-/TCCA-Zertifizierung und kein Word-/Canvas-Fontrenderingtest.
 
 ## 14. Verbleibende Ideen, Wünsche und Roadmap-Kandidaten
 
@@ -647,10 +649,10 @@ Kein Cargo-Build, keine Unit-/Integrationstests des gesamten Workspace, keine ak
 
 | ID | Aufgabe | Status | Abhängigkeit / Fertigkriterium |
 |---|---|---|---|
-| B01 | Vollständigen ursprünglichen Kapitelplan wiederherstellen | Beschlossen/geplant, unvollständig | Nutzerexport oder nachweisbarer Originalplan; keine geratenen Titel |
+| B01 | Vollständigen ursprünglichen Kapitelplan wiederherstellen | Beschlossen/geplant, unvollständig | Manuskriptexport oder nachweisbarer Originalplan; keine geratenen Titel |
 | B02 | Zugängliche Canvas-Kapitel einzeln sichern und konsolidieren | Beschlossen/geplant | Textkörper je ID, eindeutige Nummer, keine verlorenen Vorgänger |
 | B03 | Cambria wirklich im späteren Buchsatz verwenden | Beschlossen/geplant | Word-/PDF-Formatvorlagen und Sichtprüfung; nicht bloß HTML-Span |
-| B04 | Kapitel 65 mit belastbarer TEA-Zuordnung berichtigen | Mehrfach ausdrücklich verlangt | Algorithmus, Nutzerkreis, aktuelle Lizenzlage und Sicherheitsbefund getrennt belegen |
+| B04 | Kapitel 65 mit belastbarer TEA-Zuordnung berichtigen | Mehrfach ausdrücklich verlangt | Algorithmus, Nutzerkreis, am Prüfdatum vorliegende Lizenzlage und Sicherheitsbefund getrennt belegen |
 | B05 | Doppelte Nummern und doppelte Themen bereinigen | Beschlossen/geplant | 59, 89/90, 104, 116/117; QoS-/Literaturentwurf nicht verlieren |
 | B06 | Literaturrecherche mit Ziel ungefähr 50 geeigneter Bücher | Beschlossen/geplant | Tatsächliche Bücher identifizieren, Ausgaben/Identifier prüfen; andere Quellentypen separat zählen |
 | B07 | Wissenschaftliche Bibliografie herstellen | Beschlossen/geplant | Durchgängiger Zitierstil, präzise Normversionen, DOI/ISBN oder verifizierte Verlags-/Katalogbelege |
@@ -658,16 +660,16 @@ Kein Cargo-Build, keine Unit-/Integrationstests des gesamten Workspace, keine ak
 | B09 | FAQ deutlich ausbauen | Beschlossen; Entwurf vorhanden | Mit freigegebenen Fachkapiteln konsistent und ohne absolute Garantien |
 | B10 | Inhaltliche Doppelungen vermeiden | Laufende redaktionelle Vorgabe | Überblickskapitel und Deep Dives haben unterschiedliche Lernziele |
 
-### 14.2 Neue Kandidaten aus dieser Archivprüfung, noch nicht als Implementierung beschlossen
+### 14.2 Neue Kandidaten aus dieser Quellenprüfung, noch nicht als Implementierung beschlossen
 
 | ID | Kandidat | Vorgeschlagene Priorität |
 |---|---|---|
 | Q01 | Sicherheit, Statusmatrix und operative Bedienhinweise zunächst mit Warnstatus versehen und fachlich neu prüfen | P0: vor jeder Schulungs-/Publikationsfreigabe |
 | Q02 | Kapitel 56, 94–100 und 104 aus einem gemeinsamen, normreferenzierten Signalpfad neu ableiten | P0: falsche Zahlen dürfen nicht als Codevorlage dienen |
 | Q03 | Normenlandkarte Kapitel 105 und alle davon abhängigen Querverweise reparieren | P0 |
-| Q04 | Veraltete Kommentare in `convenc.rs` und TCH/S-Parametertabelle abgleichen | P1; außerhalb dieses Archivauftrags |
+| Q04 | Veraltete Kommentare in `convenc.rs` und TCH/S-Parametertabelle abgleichen | P1; außerhalb dieses Dokumentationslaufs |
 | Q05 | Normal-/Frame-Stealing-Pfade mit unabhängigen Codec-/Kanaltestvektoren prüfen | P1 |
-| Q06 | Echte Softbit-Konfidenz vom Demapper bis zum Decoder gegen den aktuellen ±1-/Erasure-Pfad abgrenzen | P1 |
+| Q06 | Echte Softbit-Konfidenz vom Demapper bis zum Decoder gegen den am Prüfdatum vorliegenden ±1-/Erasure-Pfad abgrenzen | P1 |
 | Q07 | KMF-Laborhülle, Authentifizierung, HSM-/Vault-Grenze und echter On-Air-OTAR-Baustein als getrennte Pakete beschreiben | P1; vorhandene KMF weiterverwenden statt Parallelneubau behaupten |
 | Q08 | Datenbearer-/Capability-Matrix aus tatsächlichen Funktionspfaden ableiten | P1 |
 | Q09 | BER/FER-/Latenz-/Kapazitätsbeispiele mit Annahmen, Messpunkten und Einheiten versehen | P1 |
@@ -679,11 +681,11 @@ Kein Cargo-Build, keine Unit-/Integrationstests des gesamten Workspace, keine ak
 
 P0/P1/P2 sind **hier vorgeschlagene Arbeitsprioritäten**, keine nachträglich erfundenen früheren Termin- oder Sprintzusagen. Eine operative Projektroadmap außerhalb des Archivs wurde nicht verändert.
 
-### 14.3 Kleine Nebenideen aus dem Gespräch
+### 14.3 Kleine Nebenideen aus der Planung
 
 Als optionale, nicht abschließend beauftragte Erweiterungen bleiben erhalten: kommentierte Literaturliste und Top-5-Einstieg, TEA-Härtungs-/Migrationscheckliste, vertiefte KMF-/OTAR-Abläufe, Jamming-Signaturen und Fake-BS-Diagnostik mit Grenzen, Blackout-/Fallback-Szenarien, Indoor-Brandschutz/EMV und objektspezifische Randbedingungen, Zubehörpflege und Beschaffungskriterien, trellisbezogene Viterbi-Erklärungen, freie Distanz und Softbit-Quantisierung, IQ-Cheat-Sheet, RRC-/Spektrenvertiefung, MOS-Bezug und QoS-Klassen, Digital Twins, Edge-/SDN-Architektur sowie vorsichtig eingeordnete Zukunftsthemen.
 
-Die wiederholten Assistentenangebote „300+ Abkürzungen“, „höchste Sicherheit“, „sofort nächstes Kapitel“ oder zusätzliche Kapitelnummern gelten nicht als Nutzerentscheidung. Maßgeblich ist eine belegte inhaltliche Lücke, nicht eine möglichst große Zahl.
+Die wiederholten Erweiterungsvorschläge „300+ Abkürzungen“, „höchste Sicherheit“, „sofort nächstes Kapitel“ oder zusätzliche Kapitelnummern gelten nicht als Festlegung. Maßgeblich ist eine belegte inhaltliche Lücke, nicht eine möglichst große Zahl.
 
 ## 15. Konkrete nächste Schritte
 
@@ -696,11 +698,11 @@ Die wiederholten Assistentenangebote „300+ Abkürzungen“, „höchste Sicher
 7. **Praxis und Quellen prüfen:** Offizielle Bedien-/Statusvorgaben, Betreiberberichte, Herstellerdaten, Normenstatus, Gebühren-/Regelungsquellen und bibliografische Identifier recherchieren. Rechercheergebnisse mit Abrufdatum dokumentieren.
 8. **Publikationsfassung erstellen:** Cambria-Formatvorlagen, einheitliche Tabellen/Mathematik, vollständige Verzeichnisse, Quellenbelege und sichtbare Kennzeichnung von Beispielen. Erst nach inhaltlicher und visueller Prüfung „vollständig“ oder „freigegeben“ verwenden.
 
-Für diese Schritte ist außerhalb des Archivs ein gesonderter Arbeitsauftrag nötig. Diese Archivierung selbst beinhaltet keine stillschweigende Codekorrektur, Kryptofreischaltung, Funkzulassung oder Gesamtrevision des Buches.
+Die Schritte sind offene Folgearbeiten; Codekorrekturen und Buchrevision benötigen eigene Nachweise.
 
 ## 16. Anhänge: vollständiges Datei-Inventar
 
-Alle folgenden Dateien waren als PDF-Referenzen unter `/mnt/data/<Dateiname>` verfügbar. Diese Containerpfade sind **keine dauerhaften Repository-Pfade**. Die Dateien wurden nicht als Teil dieses Archivauftrags erneut in Git hochgeladen. Stattdessen werden Identität, Umfang und Verwendung bewahrt. Insbesondere wird die 4 100-seitige Sammeldatei nicht als eigenständige Norm mit einem einzigen Titel behandelt.
+Alle folgenden Dateien waren als PDF-Referenzen unter `/mnt/data/<Dateiname>` verfügbar. Diese Containerpfade sind **keine dauerhaften Repository-Pfade**. Die Dateien wurden nicht als Teil dieses Dokumentationslaufs erneut in Git hochgeladen. Stattdessen werden Identität, Umfang und Verwendung bewahrt. Insbesondere wird die 4 100-seitige Sammeldatei nicht als eigenständige Norm mit einem einzigen Titel behandelt.
 
 | ID | Dateiname | Tatsächlich auf dem Titelblatt / Verwendung | Seiten |
 |---|---|---|---:|
@@ -762,17 +764,17 @@ A25  9434dad1e7bc80ca39b0edadd8e3b9995fda5ae5f5c3dd565af05708d5059e38
 
 ### 16.2 Bilderstatus
 
-Im anfänglichen Bestand standen ausschließlich die 25 PDF-Dateien zur Verfügung. Im sichtbaren historischen Buchverlauf gibt es schematische Text-/ASCII-Darstellungen und Formeln, aber keine verfügbar gemachten eigenständigen Originalbilddateien dieses Chats.
+Im anfänglichen Bestand standen ausschließlich die 25 PDF-Dateien zur Verfügung. Im sichtbaren historischen Buchverlauf gibt es schematische Text-/ASCII-Darstellungen und Formeln, aber keine verfügbar gemachten eigenständigen Originalbilddateien dieser Planung.
 
-Für die aktuelle Prüfung wurden fünf Seiten aus A02/A19 lokal gerendert. Diese sind **neu erzeugte Referenzansichten**, keine wiedergefundenen historischen Bilder; sie werden nicht als solche in Git ausgegeben. PDF-Abbildungen wie die Konstellationsdarstellung auf A02 Seite 74 und die Interleaving-Tabelle auf A19 Seite 33 wurden zur Prüfung genutzt und sind über Dokumentidentität und Seite wiederauffindbar.
+Für die am Prüfdatum vorliegende Prüfung wurden fünf Seiten aus A02/A19 lokal gerendert. Diese sind **neu erzeugte Referenzansichten**, keine wiedergefundenen historischen Bilder; sie werden nicht als solche in Git ausgegeben. PDF-Abbildungen wie die Konstellationsdarstellung auf A02 Seite 74 und die Interleaving-Tabelle auf A19 Seite 33 wurden zur Prüfung genutzt und sind über Dokumentidentität und Seite wiederauffindbar.
 
-Daher wurden **keine historischen Originalbilder hochgeladen**, weil keine solchen Dateien zugänglich waren. Falls ein vollständiger Chat-/Canvas-Export weitere Bilder enthält, sind sie unter einem eindeutig diesem Archiv zugeordneten Unterordner von `Docs/archive/` nachzutragen; Quelle, Originaldateiname, Bezugskapitel und Prüfsumme sollten dabei erhalten bleiben. Keine Bilder anderer Projektchats als Ersatz verwenden.
+Daher wurden **keine historischen Originalbilder hochgeladen**, weil keine solchen Dateien zugänglich waren. Falls ein vollständiger Manuskript-/Canvas-Export weitere Bilder enthält, sind sie unter einem eindeutig diesem Archiv zugeordneten Unterordner von `Docs/archive/` nachzutragen; Quelle, Originaldateiname, Bezugskapitel und Prüfsumme sollten dabei erhalten bleiben. Keine Bilder anderer Projektphasen als Ersatz verwenden.
 
-## 17. Literatur- und Linkkandidaten des historischen Chats
+## 17. Literatur- und Linkkandidaten der historischen Planung
 
 Die folgenden Namen sind als **historische Rechercheansätze** erhalten, nicht als jetzt vollständig verifizierte wissenschaftliche Bibliografie:
 
-| Kandidat aus dem Chat | Zweck für die spätere Recherche |
+| Kandidat aus den Arbeitsnotizen | Zweck für die spätere Recherche |
 |---|---|
 | Dunlop, Girma, Irvine: *Digital Mobile Communications and the TETRA System* | Grundlagen von TETRA und Mobilfunk; Ausgabe/Verlagsdaten prüfen |
 | Stavroulakis, Hrsg.: *Terrestrial Trunked Radio (TETRA) – A Global Security Tool* | TETRA-System- und Sicherheitsüberblick |
@@ -787,17 +789,17 @@ Die folgenden Namen sind als **historische Rechercheansätze** erhalten, nicht a
 
 Die historische Liste nennt zusätzlich unter anderem IEEE Xplore, SpringerLink, arXiv, ResearchGate, Signal Identification Guide, RadioReference, Herstellerportale und Community-Ressourcen. Diese sind Recherchezugänge mit sehr unterschiedlicher Belegqualität. Eine Portaladresse ist noch kein Beleg für eine konkrete technische Aussage.
 
-Internet Archive war vom Nutzer ausdrücklich als mögliche Suchquelle genannt. Ein erfolgter systematischer Archive-Abgleich, Leih-/Zugriffsstatus oder rechtmäßig verfügbarer Volltextbestand von rund 50 Büchern ist nicht nachgewiesen. Für die spätere Bibliografie sind tatsächliche Bücher separat von Normen, Webseiten, Whitepapers, Abschlussarbeiten und Software zu zählen.
+Internet Archive war ausdrücklich ausdrücklich als mögliche Suchquelle genannt. Ein erfolgter systematischer Archive-Abgleich, Leih-/Zugriffsstatus oder rechtmäßig verfügbarer Volltextbestand von rund 50 Büchern ist nicht nachgewiesen. Für die spätere Bibliografie sind tatsächliche Bücher separat von Normen, Webseiten, Whitepapers, Abschlussarbeiten und Software zu zählen.
 
 ## 18. Quellen der neuen Prüfung und stabile Repository-Referenzen
 
 ### 18.1 Externe Quellen, neu geprüft am 2026-10-04
 
-- **W01:** [Crypto Museum: TEA – TETRA Encryption Algorithm](https://www.cryptomuseum.com/crypto/algo/tea/). Vom Nutzer vorgegebener Link. Historische Überblicksseite, zuletzt dort mit 2023-08-12 bezeichnet; nicht als aktuelle Exportgenehmigung oder vollständiger Sicherheitsstand behandeln.
-- **W02:** [ETSI TS 101 053-2 V3.1.1 (2022-12), Rules for the management … Part 2: TEA2](https://www.etsi.org/deliver/etsi_ts/101000_101099/10105302/03.01.01_60/ts_10105302v030101p.pdf). Insbesondere Abschnitte 5.1/5.2 und rollenbezogene Nutzungsbedingungen. Geprüfte Ausgabe, keine Behauptung, dass jede heutige Einzelfallfreigabe damit abschließend geklärt ist.
+- **W01:** [Crypto Museum: TEA – TETRA Encryption Algorithm](https://www.cryptomuseum.com/crypto/algo/tea/). Ausdrücklich vorgegebener Link. Historische Überblicksseite, zuletzt dort mit 2023-08-12 bezeichnet; nicht als am Prüfdatum vorliegende Exportgenehmigung oder vollständiger Sicherheitsstand behandeln.
+- **W02:** [ETSI TS 101 053-2 V3.1.1 (2022-12), Rules for the management … Part 2: TEA2](https://www.etsi.org/deliver/etsi_ts/101000_101099/10105302/03.01.01_60/ts_10105302v030101p.pdf). Insbesondere Abschnitte 5.1/5.2 und rollenbezogene Nutzungsbedingungen. Geprüfte Ausgabe, keine Behauptung, dass jede zusätzliche Einzelfallfreigabe damit abschließend geklärt ist.
 - **W03:** [ETSI/TCCA-Erklärung zu den am 24.07.2023 veröffentlichten Sicherheitsbefunden](https://www.etsi.org/newsroom/news/2260-etsi-and-tcca-statement-to-tetra-security-algorithms-research-findings-publication-on-24-july-2023/). Zeitgebundene Stellungnahme, keine pauschale Immunitätsgarantie.
-- **W04:** [ETSI Algorithms and codes](https://www.etsi.org/expertise/algorithms-codes/). Aktuelle Zugangs-/Verwaltungsübersicht; TEA-Familie nicht auf die ursprünglichen vier Varianten als gesamten heutigen Bestand reduzieren.
-- **W05:** [USENIX Security 2023: All Cops Are Broadcasting: TETRA Under Scrutiny](https://www.usenix.org/conference/usenixsecurity23/presentation/meijer). Originalpublikationsseite als Einstieg; keine vollständige neue Kryptanalyse in diesem Archivlauf.
+- **W04:** [ETSI Algorithms and codes](https://www.etsi.org/expertise/algorithms-codes/). Am Prüfdatum vorliegende Zugangs-/Verwaltungsübersicht; TEA-Familie nicht auf die ursprünglichen vier Varianten als gesamten geprüften Bestand reduzieren.
+- **W05:** [USENIX Security 2023: All Cops Are Broadcasting: TETRA Under Scrutiny](https://www.usenix.org/conference/usenixsecurity23/presentation/meijer). Originalpublikationsseite als Einstieg; keine vollständige neue Kryptanalyse in diesem Prüflauf.
 - **W06:** [ETSI TS 102 361-1 V2.6.1, Digital Mobile Radio (DMR), Air Interface](https://www.etsi.org/deliver/etsi_ts/102300_102399/10236101/02.06.01_60/ts_10236101v020601p.pdf). Belegt die falsche Zuordnung dieser Reihe zu TEDS im historischen Kapitel 105.
 
 Für die technischen Hauptbefunde wurden vorrangig die konkret bereitgestellten ETSI-Anhänge A01–A25 und die gelesenen Repository-Dateien verwendet. Es erfolgte keine vollständige Aktualitätsprüfung aller weltweiten TETRA-Frequenzen, Gebühren, Herstellerkataloge, Sicherheitsfunde oder Normfassungen.
@@ -816,18 +818,14 @@ Für die technischen Hauptbefunde wurden vorrangig die konkret bereitgestellten 
 | R08 | [KMF-README](https://github.com/JanHG98/netcore-tetra/blob/4e8a633e821b21440057672e8f6dc622fbb64119/system-backend/kmf/README.md) | `fabd0967cffb7ce9f708d277d42752fa5eb0fd95` |
 | R09 | [KMF-Labor-Envelope](https://github.com/JanHG98/netcore-tetra/blob/4e8a633e821b21440057672e8f6dc622fbb64119/system-backend/kmf/src/crypto.rs) | `d022abcd45bb3bf72e0509827b56be3d6b2d1196` |
 
-Es wurden keine historischen Buch-PRs oder angeblichen Feature-Commits nachgetragen. Die genannten SHAs stammen aus tatsächlichen Leseergebnissen dieses Archivierungsauftrags.
+Es wurden keine historischen Buch-PRs oder angeblichen Feature-Commits nachgetragen. Die genannten SHAs stammen aus tatsächlichen Leseergebnissen dieses Dokumentationslaufs.
 
-## 19. Speicherverfahren, Sicherheit und Abschlussgrenzen
-
-Für den Archivauftrag sind ausschließlich diese beiden Änderungen vorgesehen: die neue fachbuchbezogene Abschlussdokumentation und die zusätzliche Zeile im vorhandenen `Docs/archive/README.md`. Keine bestehende Zusammenfassung eines anderen Chats wird umgeschrieben, keine produktive Roadmap angepasst und kein Branch gemerged.
-
-Die Speicherung erfolgt über GitHub-Git-Objekte mit dem erneut gelesenen Branchkopf als Elterncommit und dem aktuellen Tree als Basis. Die Branchreferenz wird nur mit **Fast-Forward ohne Force** weitergesetzt. Falls zwischenzeitlich ein anderer Chat schreibt, muss der neue Stand erneut gelesen und der Archiveintrag unter Erhalt dieser Änderungen aufgebaut werden. Die erfolgreiche Veröffentlichung ist durch anschließendes Lesen beider Dateien und Kontrolle der geänderten Pfade zu bestätigen; das Ergebnis wird in der Abschlussmeldung festgehalten.
+## 19. Arbeitsstand
 
 Nicht übernommen werden Passwörter, Tokens, private Schlüssel, produktive Kryptodateien oder fremde personenbezogene Betriebsdaten. Die dokumentierten Schlüsselbezeichnungen sind technische Kategorien, keine Schlüsselwerte. Ein Beispiel-Endpunkt ist keine Zugangserlaubnis zu einem Produktivsystem.
 
-### Schlussbewertung
+### Arbeitsstand und Prioritäten
 
-Der Wert dieses Chats liegt in der breiten Themen- und Kapitelstruktur, den ausdrücklich formulierten Darstellungswünschen und den konkreten Korrekturhinweisen des Nutzers. Sein Textbestand ist jedoch **kein fertig geprüftes Lehrbuch und keine belastbare NetCore-Implementierungsspezifikation**. Für eine sichere Fortsetzung müssen Originalbestand, Normenbelege, Codezustand und Testergebnisse getrennt bleiben.
+Der Wert dieser Planung liegt in der breiten Themen- und Kapitelstruktur, den ausdrücklich formulierten Darstellungswünschen und den konkreten festgehaltenen Korrekturen. Der Textbestand ist jedoch **kein fertig geprüftes Lehrbuch und keine belastbare NetCore-Implementierungsspezifikation**. Für eine sichere Fortsetzung müssen Originalbestand, Normenbelege, Codezustand und Testergebnisse getrennt bleiben.
 
 Die wichtigsten offenen Arbeiten sind die Sicherung der Kapitel, die Nummerierungsbereinigung, die TEA-/Security- und Sprachkanalkorrekturen, die Reparatur der Normenlandkarte sowie eine echte Literatur- und Quellenprüfung. Die vorhandenen NetCore-Bausteine bieten dafür konkrete Vergleichspunkte, dürfen aber weder als Produktivnachweis noch als Begründung für historische unbelegte Aussagen missverstanden werden.

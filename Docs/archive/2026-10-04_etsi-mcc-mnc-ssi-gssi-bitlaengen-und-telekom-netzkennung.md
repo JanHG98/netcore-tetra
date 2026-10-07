@@ -1,26 +1,28 @@
-# Technische Abschlussdokumentation: ETSI-Bitlängen von MCC, MNC, SSI und GSSI
+# Brainstorming: ETSI-Bitlängen von MCC, MNC, SSI und GSSI
 
-## 1. Metadaten und Geltungsbereich
+**Stand der Notizen und ergänzenden Prüfungen: 2026-10-04.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
+
+**Ziel:** TETRA-Feldbreiten und Normfundstellen klären sowie Zahlenwert, Netzidentität und Anzeigeformat trennen. Maßgeblich sind MCC 10 Bit, MNC 14 Bit, SSI 24 Bit und TSI 48 Bit; Vergabegrenzen und reservierte Werte bleiben zusätzlich zu beachten.
+
+## 1. Kontext und Geltungsbereich
 
 | Merkmal | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | TETRA-Adressierung: Feldbreiten, Dezimaldarstellung, Normfundstellen, Telekom-Netzkennung und Zero-Padding |
-| Ursprünglicher Chattitel | In der verfügbaren Gesprächsansicht nicht ausgewiesen; dieser Dokumenttitel ist redaktionell vergeben. |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link rekonstruiert oder erfunden. |
-| Historischer Gesprächszeitraum | Zeitstempel der einzelnen Fachnachrichten nicht verfügbar. |
+| Historische Datierung | Einzelne fachliche Klärungsschritte ohne verlässliche Zeitstempel. |
 | Erstellungsdatum dieses Archivs | 2026-10-04 |
 | Repository | `JanHG98/netcore-tetra` |
-| Geprüfter und ausschließlich verwendeter Zielbranch | `Archiving` |
+| Geprüfter Repository-Branch | `Archiving` |
 | Geprüfter Repository-Commit | `9e61695884b6dc90174e7d33dec0afddbd2faae1` |
 | Zugehöriger Root-Tree | `15528ed1dd73f66804277f80b04b07ce79f8c217` |
 | Archivdatei | `Docs/archive/2026-10-04_etsi-mcc-mnc-ssi-gssi-bitlaengen-und-telekom-netzkennung.md` |
 | Archivindex | `Docs/archive/README.md` |
-| Art des Ergebnisses | Technische Klärung und Dokumentationskorrektur; kein in diesem Fachchat durchgeführtes Implementierungs- oder Deploymentprojekt. |
+| Art des Ergebnisses | Technische Klärung und Dokumentationskorrektur; kein in diesem Planungsstand durchgeführtes Implementierungs- oder Deploymentprojekt. |
 
-Der geprüfte Commit bezeichnet den gelesenen Ausgangsstand, nicht den späteren Archivcommit. Der tatsächliche Archivcommit ist über die Git-Historie dieser Datei und die Abschlussmeldung des Archivierungslaufs feststellbar.
+Der geprüfte Commit fixiert den gelesenen Repository-Stand. Die Dokumenthistorie ist separat in Git nachvollziehbar.
 
-**Leseregel:** Abschnitt 3 beschreibt den historischen Gesprächsstand. Die danach ausdrücklich ausgewiesenen Normen-, Quellen- und Repository-Prüfungen wurden erst für die Archivierung durchgeführt. Sie sind keine nachträglichen Belege dafür, dass im damaligen Fachgespräch bereits Code geändert oder ein Gerät getestet wurde.
+Historische Einordnung in Abschnitt 3 und zusätzliche Normen-/Repository-Prüfung vom 2026-10-04 bleiben getrennt. Spätere Codebefunde belegen keine historische Implementierung oder Geräteabnahme.
 
 ### Statusbegriffe
 
@@ -28,11 +30,11 @@ Der geprüfte Commit bezeichnet den gelesenen Ausgangsstand, nicht den späteren
 - **Beschlossen/geplant:** ausdrücklich beauftragt oder verbindlich festgelegt, aber nicht allein dadurch implementiert.
 - **Implementiert:** in einer tatsächlich gelesenen Repository-Datei vorhanden; die Aussage ist auf den genannten Commit und Codepfad begrenzt.
 - **Getestet:** eine konkrete Prüfung wurde tatsächlich ausgeführt; Prüfgegenstand und Grenzen sind anzugeben.
-- **Im Betrieb bestätigt:** durch einen nachvollziehbaren Lauf auf dem Zielsystem beziehungsweise durch Endgeräte-/Funkbeobachtung belegt. Ein solcher Nachweis liegt für diesen Chat nicht vor.
+- **Im Betrieb bestätigt:** Nachvollziehbarer Lauf oder Endgeräte-/Funkbeobachtung. Ein solcher Nachweis liegt hier nicht vor.
 
 ## 2. Ziel, Ausgangslage und behandelte Themen
 
-Jan wollte wissen, welche Länge der ETSI-Standard für MCC, MNC und GSSI vorgibt. Die Folgefragen zielten auf belastbare Abschnittsangaben, die ausdrücklich sichtbaren 24 Bit der SSI und die Aktualität der zuvor genannten Ausgabe vom April 2020. Als Vergleich kam anschließend die Netzkennung der Telekom im öffentlichen Handyfunk hinzu. Zuletzt ging es um das Auffüllen mit führenden Nullen.
+Zu klären sind ETSI-Feldbreiten für MCC, MNC und GSSI, belastbare Normfundstellen, 24-Bit-SSI, Aktualität von EN 300 392-1 V1.6.1 (2020-04), Telekom-Netzkennung als Vergleich und Bedeutung führender Nullen.
 
 Die für eine Fortsetzung wesentliche Trennung lautet:
 
@@ -43,49 +45,49 @@ Die für eine Fortsetzung wesentliche Trennung lautet:
 
 Gleiche Zahlenwerte oder ähnlich benannte Felder machen ein öffentliches Mobilfunknetz und ein TETRA-Netz nicht zu demselben Netz. Insbesondere entsteht durch Zero-Padding keine neue Zuteilung.
 
-## 3. Historischer Gesprächsverlauf
+## 3. Historischer Planungsverlauf
 
-### 3.1 Erste Auskunft zu den Feldlängen
+### 3.1 Erste Einordnung der Feldlängen
 
-Die erste Antwort nannte MCC mit drei Dezimalstellen und 10 Bit, den TETRA-MNC mit 14 Bit und höchstens vier Dezimalstellen sowie GSSI mit 24 Bit. Als Hauptquelle wurde ETSI EN 300 392-1 V1.6.1 angegeben. Außerdem wurde erklärt, dass individuelle und Gruppenkennungen aus demselben SSI-Adressraum stammen.
+Die erste Einordnung umfasst MCC mit drei Dezimalstellen und 10 Bit, TETRA-MNC mit 14 Bit und höchstens vier Dezimalstellen sowie GSSI mit 24 Bit. Hauptquelle ist ETSI EN 300 392-1 V1.6.1. Individual- und Gruppenkennungen stammen aus demselben SSI-Adressraum.
 
 **Historisches Ergebnis:** Die grundlegenden Feldbreiten waren richtig. Eine konkrete NetCore-Konfiguration, eine Teilnehmerliste oder ein Nummernvergabeverfahren wurden dadurch nicht festgelegt.
 
-### 3.2 Wunsch nach genauen Normfundstellen
+### 3.2 Präzise Normfundstellen
 
-Jan verlangte ausdrücklich den passenden Abschnitt. Die Antwort verwies für die SSI-Länge auf 7.2.1, für die Verkürzung GTSI zu GSSI auf 7.2.3 und für den Aufbau auf 7.2.4. Diese Zuordnung ist im Kern richtig. Die zusätzliche Zuordnung der MNC-Vergabe und der Vier-Dezimalstellen-Grenze zu 7.2.4 war dagegen ungenau: In der tatsächlich angehängten Ausgabe stehen diese Regeln in **7.2.5**, auf Seite 30.
+SSI-Länge steht in 7.2.1, Verkürzung GTSI zu GSSI in 7.2.3 und Bitaufbau in 7.2.4. Die anfängliche Zuordnung von MNC-Vergabe und Vier-Dezimalstellen-Grenze zu 7.2.4 war ungenau; maßgeblich ist **7.2.5, Seite 30** der bereitgestellten Ausgabe.
 
 Ein ergänzend erwähnter historischer Verweis auf ETS 300 396-01 wurde für die Abschlussdokumentation nicht als maßgebliche Belegstelle übernommen. Die vorhandene EN 300 392-1 enthält den benötigten MCC-Nachweis selbst.
 
 ### 3.3 Bestätigung der 24-Bit-SSI
 
-Jan fragte nach, ob er die 24 Bit für SSI richtig sehe. Die Antwort bestätigte das und erklärte ISSI/GSSI sowie die insgesamt 48 Bit der TSI.
+Bestätigt sind 24 Bit für SSI einschließlich ISSI/GSSI und insgesamt 48 Bit für TSI.
 
 Dabei wurde jedoch ein englischer Satz als wörtliches Zitat aus 7.2.3 dargestellt, der dort in dieser Form nicht steht. Die zutreffende Aussage zur Feldlänge wird durch **7.2.1** getragen; **7.2.3** erklärt die netzspezifische Kurzidentität und ihre Bildung. Das damalige angebliche Direktzitat darf nicht als ETSI-Wortlaut weiterverwendet werden.
 
 Die Aussage zur Vermeidung von Überschneidungen benötigt außerdem den Netzkontext: Es geht um eindeutige Vergabe innerhalb des relevanten TETRA-Netzes, nicht um ein weltweit einmaliges Vorkommen jeder bloßen 24-Bit-Zahl.
 
-### 3.4 Frage nach einer neueren ETSI-Ausgabe
+### 3.4 Versionsstand von EN 300 392-1
 
-Die damalige Antwort konnte keine neuere veröffentlichte EN 300 392-1 als V1.6.1 (2020-04) belegen. Im verfügbaren Verlauf ist allerdings keine umfassende Recherche mit nachvollziehbarer ETSI-Statusauswertung dokumentiert.
+Historisch war keine neuere veröffentlichte EN 300 392-1 als V1.6.1 (2020-04) belegt. Eine umfassende damalige ETSI-Statusauswertung ist nicht dokumentiert.
 
 **Historischer Status:** Aussage zur seinerzeit gefundenen Ausgabe; kein belastbarer Nachweis, dass sämtliche TETRA-Spezifikationen seit 2020 unverändert oder auf demselben Versionsstand sind.
 
 ### 3.5 Telekom als Vergleich zum öffentlichen Mobilfunk
 
-Die Antwort nannte `262-01` für Telekom und ergänzte `262-06`, `262-11` und `262-43` mit angeblichen Telekom-/Congstar-/IoT-Zuordnungen. Diese Erweiterungen waren teilweise falsch beziehungsweise hinsichtlich ihres Verwendungszwecks unbelegt. Die heute für die Archivierung überprüften Zuteilungsinhaber stehen in Abschnitt 6.
+Die frühere Telekom-Vergleichstabelle enthielt `262-01`, `262-06`, `262-11` und `262-43` mit teilweise falschen oder unbelegten Telekom-/Congstar-/IoT-Zuordnungen. Abschnitt 6 enthält die am 2026-10-04 überprüften Zuteilungsinhaber.
 
 Zusätzlich wurde behauptet, ein BOS- oder Betriebsnetz könne beispielsweise MNC `9999` unter MCC `262` selbst definieren, solange kein E.212-Registry-Mapping exportiert werde. Diese Begründung wird zurückgezogen: Eine solche Freigaberegel folgt nicht aus der angehängten ETSI-Norm. Diese beschreibt die nationale MNC-Zuteilung.
 
 ### 3.6 Führende Nullen
 
-Jans letzte Fachnachricht lautete sinngemäß, dass einfach mit Null aufgefüllt werde. Die Antwort interpretierte dies als binäres Auffüllen auf die festgelegten Feldbreiten und zeigte ein Zahlenbeispiel.
+Nullauffüllung wurde zunächst als binäre Festbreitendarstellung eingeordnet und anhand eines Zahlenbeispiels erläutert.
 
-Diese Interpretation ist als Erklärung der Binärdarstellung brauchbar. Der Nutzer hatte aber nicht ausdrücklich zwischen dezimaler Anzeige und binärer Feldkodierung unterschieden. Das Archiv dokumentiert deshalb beide Ebenen, statt daraus einen beschlossenen UI- oder Importspezifikationsstandard zu machen.
+Binäre Feldkodierung und dezimale Anzeige sind getrennte Ebenen. Ein verbindliches UI- oder Importschema ist durch das Beispiel nicht beschlossen.
 
-### 3.7 Nicht ausgeführte Angebote
+### 3.7 Noch offene Vertiefungen
 
-Der Assistent bot mehrfach an, das konkrete MCC-/MNC-/GSSI-/ISSI-Schema zuzuordnen, Kollisionen zu prüfen oder das Layout grafisch darzustellen. Für diese Angebote ist im Fachverlauf kein eigener Umsetzungsauftrag und keine Ausführung belegt.
+Mögliche Vertiefungen sind Zuordnung des konkreten MCC-/MNC-/GSSI-/ISSI-Schemas, Kollisionsprüfung und Bitfeldgrafik. Umsetzung und eigenständiger Arbeitsauftrag fehlen.
 
 **Status: Idee.** Das gezeigte Beispiel ist keine Festlegung, NetCore-Tetra auf die Telekom-Kennung umzustellen.
 
@@ -117,7 +119,7 @@ Bei der Dateiabfrage über die indexierte Leseschnittstelle waren nicht durchgä
 | Verwendung in Adressierung und Routing | **7.2.6, Seite 30** | SSI als untere Luftschnittstellenadresse; TSI als Netzroutingadresse; zusätzliche Regeln für interne und netzübergreifende Rufe. |
 | Reservierte Gruppenadresse | **7.7.8, Seite 37** | 24 Einsen als spezielle SSI für Informationsbroadcast an alle MS eines TETRA-Netzes. |
 
-**Wichtige Präzisierung:** Die Strukturabbildung stand bereits in der früheren Antwort korrekt unter **7.2.4**. Zu korrigieren ist die Zuordnung der Vergaberegeln zu diesem Abschnitt, nicht die Abbildungszuordnung.
+**Präzisierung:** Die Strukturabbildung gehört korrekt zu **7.2.4**. Zu korrigieren ist die frühere Zuordnung der Vergaberegeln, nicht die Abbildungszuordnung.
 
 ### 4.3 Feldkapazität ist nicht der frei vergebbare Wertebereich
 
@@ -136,7 +138,7 @@ Die Regeln dürfen nicht auf eine bloße Prüfung der Anzahl dezimaler Zeichen r
 
 Umgekehrt ist die gleiche numerische SSI in unterschiedlichen TETRA-Netzen nicht schon für sich eine Kollision. Bei netzübergreifenden Prüfungen muss die vollständige Identität beziehungsweise der MCC-/MNC-Kontext berücksichtigt werden. Außerdem behandelt die Norm Alias- und Migrationsidentitäten; diese dürfen nicht ungeprüft wie gewöhnliche statische ISSIs verwaltet werden.
 
-**Status:** Aus der Quelle abgeleitete Anforderung an eine spätere Vergabe-/Validierungsprüfung; in diesem Chat wurde kein Register geändert und keine existierende Belegung auf Kollisionen untersucht.
+**Status:** Aus der Quelle abgeleitete Anforderung an eine spätere Vergabe-/Validierungsprüfung; in diesem Planungsstand wurde kein Register geändert und keine existierende Belegung auf Kollisionen untersucht.
 
 ## 5. Zero-Padding und das konkrete Rechenbeispiel
 
@@ -179,9 +181,9 @@ Auch `01` aus einem öffentlichen Mobilfunk-Nummernplan darf nicht ohne Beachtun
 
 ### 6.1 Telekom: Berichtigung der früheren Zusatztabelle
 
-Die Bundesnetzagentur nennt in ihrer Liste zugeteilter IMSI-Blöcke folgende Zuteilungsinhaber für die im Chat angesprochenen Kombinationen:
+Die Bundesnetzagentur nennt in ihrer Liste zugeteilter IMSI-Blöcke folgende Zuteilungsinhaber für die im Entwurf angesprochenen Kombinationen:
 
-| MCC–MNC | Überprüfter Zuteilungsinhaber | Bewertung der früheren Antwort |
+| MCC–MNC | Überprüfter Zuteilungsinhaber | Bewertung der früheren Einordnung |
 |---|---|---|
 | `262-01` | Telekom Deutschland GmbH | Grundzuordnung bestätigt. |
 | `262-06` | Telekom Deutschland GmbH | Inhaber bestätigt; der speziell behauptete M2M-/IoT-Verwendungszweck ist mit dieser Liste nicht belegt. |
@@ -198,7 +200,7 @@ Die belastbare Aussage lautet deshalb: **V1.6.1 ist die hier direkt geprüfte ve
 
 Schon die Anhänge zeigen unabhängig davon, dass nicht „TETRA insgesamt“ auf April 2020 eingefroren ist: Vorhanden sind beispielsweise eine Codec-Ausgabe von 2025 sowie zwei ausdrücklich als Draft gekennzeichnete Dokumente von 2026. Das sind andere Normteile und keine neuen Ausgaben von EN 300 392-1. Der Versionsstatus jedes Anhangs wurde nicht separat online aktualisiert.
 
-## 7. Heutiger Repository-Abgleich – getrennt vom historischen Ergebnis
+## 7. Repository-Abgleich am Dokumentdatum – getrennt vom historischen Ergebnis
 
 ### 7.1 Umfang
 
@@ -230,9 +232,9 @@ Zusätzlich wurde ein Anfangsausschnitt von `crates/tetra-core/src/typed_pdu_fie
 
 ### 7.4 Was nicht nachgewiesen ist
 
-Nicht nachgewiesen sind ein damals durch diesen Chat verursachter Codecommit, eine konkrete installierte NetCore-Version, die produktiven MCC-/MNC-Werte, eine tatsächlich geführte vollständige SSI-Belegung, ein erfolgreicher Build, ein Endgeräte- oder Funkvergleich und die vollständige Übereinstimmung von UI, Import, APIs und Funkencoder.
+Codeänderung zur historischen Klärung, installierte NetCore-Version, produktive MCC/MNC, vollständige SSI-Belegung, erfolgreicher Build, Endgeräte-/Funkvergleich und Übereinstimmung von UI, Import, APIs und Encoder sind nicht nachgewiesen.
 
-Es wurde kein historischer Fehler am Code festgestellt, dessen spätere Behebung diesem Chat eindeutig zugeordnet werden könnte. Die jetzt vorhandenen Implementierungen dürfen deshalb nicht rückwirkend als damalige Chatleistung oder als Behebung der fehlerhaften Erklärungen dargestellt werden.
+Die Implementierungen am Prüfstand vom 2026-10-04 sind keiner historischen Fehlerbehebung dieser Klärung zugeordnet. Sie dienen ausschließlich als ergänzender Codebefund.
 
 ## 8. Architektur, Schnittstellen und technische Parameter
 
@@ -248,9 +250,9 @@ Normen und Zuteilungsregeln
 Anzeige und Export sind gesonderte Darstellungen derselben Werte.
 ```
 
-Im gelesenen Repository entsprechen `tetra-config`, `tetra-core` und `tetra-pdus` unterschiedlichen Teilen dieser Kette. Eine neue Komponente oder ein neuer Dienst wurde im Fachchat nicht beschlossen.
+`tetra-config`, `tetra-core` und `tetra-pdus` decken unterschiedliche Teile der Kette ab. Eine neue Komponente oder ein Dienst ist hier nicht beschlossen.
 
-| Kategorie | Für diesen Chat gesicherter Stand |
+| Kategorie | Gesicherter Stand |
 |---|---|
 | Normative Bezugspunkte | EN 300 392-1: Identitäten, Zusammensetzung, Vergabe und Nutzung; E.218 wird dort für den TETRA-Codeaufbau referenziert. |
 | Öffentlicher Mobilfunkvergleich | IMSI-/MCC-/MNC-Nummerierung und Zuteilungsinhaber aus der Bundesnetzagentur-Quelle; nicht mit einer TETRA-Zuteilung gleichsetzen. |
@@ -262,7 +264,7 @@ Im gelesenen Repository entsprechen `tetra-config`, `tetra-core` und `tetra-pdus
 
 ## 9. Fehler- und Korrekturregister
 
-| ID | Frühere Aussage / Risiko | Heute dokumentierte Einordnung |
+| ID | Frühere Aussage / Risiko | Einordnung vom 2026-10-04 |
 |---|---|---|
 | K-01 | SSI-Satz als wörtliches Zitat aus 7.2.3 ausgegeben. | Kein entsprechendes Direktzitat. Feldlänge mit 7.2.1 belegen; Bedeutung/Verkürzung mit 7.2.3. |
 | K-02 | MNC-Vergabe und Vier-Dezimalstellen-Grenze unter 7.2.4 genannt. | In der angehängten Ausgabe 7.2.5, Seite 30. Strukturabbildung bleibt korrekt 7.2.4, Seite 29. |
@@ -272,7 +274,7 @@ Im gelesenen Repository entsprechen `tetra-config`, `tetra-core` und `tetra-pdus
 | K-06 | Zero-Padding möglicherweise als allgemeine öffentliche-Mobilfunk-zu-TETRA-Abbildung verstanden. | Nur Darstellungs-/Kodierschritt; keine Netzzuweisung und kein beschlossener Interworking-Algorithmus. |
 | K-07 | „Aktuelle ETSI“ pauschal auf eine 2020-Ausgabe bezogen. | Normteil, Ausgabe und Veröffentlichungs-/Draftstatus getrennt führen; Recherchegrenze in Abschnitt 6 offenlegen. |
 
-Diese Korrekturen stammen aus der Abschlussprüfung. Sie sind keine nachträglichen Nutzerfestlegungen und wurden nicht stillschweigend in die historische Darstellung hineingeschrieben.
+Diese Korrekturen stammen aus der Abschlussprüfung. Sie sind keine nachträglichen Festlegungen und wurden nicht stillschweigend in die historische Darstellung hineingeschrieben.
 
 ## 10. Ausgeführte Prüfungen und nicht ausgeführte Abläufe
 
@@ -286,7 +288,7 @@ Diese Korrekturen stammen aus der Abschlussprüfung. Sie sind keine nachträglic
 | Statisches Lesen der drei relevanten Rust-Dateien | Konfigurationsfelder, SSI-Typ und 10-/14-Bit-Encoder-/Decoderaufrufe vorhanden. | Keine Ausführung, kein vollständiger Aufrufer-/Validierungsaudit. |
 | Öffentliche Zuteilungsliste, Text und gerenderte Seiten | Vier für die historische Tabelle relevante Betreiberzuordnungen übereinstimmend überprüft. | Unterschiedliche angezeigte Dokumentdatumsstände; keine Aussage über spezielle SIMs oder Dienstnutzung. |
 | Archivindex lokal rekonstruiert und gegen Git-Blob geprüft | 35 Zeilen, 13185 Bytes; berechneter Blob-SHA `0d4ba4bf95c0867c4bf39c9e5cb8e3c9ce8e77cf` stimmt mit dem gelesenen Index überein. | Gilt für den gelesenen Ausgangsstand; vor Veröffentlichung ist der Branch erneut zu lesen. |
-| Zielpfad vor Anlage abgefragt | Die für diesen Chat gewählte Datei war am geprüften Commit nicht vorhanden. | Keine andere Zusammenfassung darf unter diesem Namen ersetzt werden. |
+| Zielpfad am Ausgangscommit prüfen | Dokument am Prüfstand noch nicht vorhanden. | Eigenständiger Themenpfad; ISSI-Nummernplan ist separat dokumentiert. |
 
 ### 10.2 Reproduzierbare Rechenprüfung
 
@@ -315,7 +317,7 @@ git show 9e61695884b6dc90174e7d33dec0afddbd2faae1:crates/tetra-pdus/src/mle/pdus
 
 **Nicht als ausgeführt verbuchen:** Diese lokalen `git show`-Befehle wurden hier nicht ausgeführt. Der Repository-Lesezugriff erfolgte über den GitHub-Connector. Ein ergänzender direkter HTTP-Download aus der Arbeitsumgebung scheiterte; er war kein erfolgreiches Klonen des Repositories.
 
-Im historischen Fachchat gab es überhaupt keine Installations-, Deployment-, Reparatur- oder Testbefehle. Es wurden in diesem Archivierungsauftrag weder laufende Dienste angehalten noch Konfigurationen ausgerollt.
+Installations-, Deployment-, Reparatur- und Testbefehle sind historisch nicht dokumentiert. Bei der Prüfung wurden keine Dienste angehalten und keine Konfigurationen ausgerollt.
 
 ## 11. Erreichter Stand und endgültige Festlegungen
 
@@ -324,27 +326,26 @@ Im historischen Fachchat gab es überhaupt keine Installations-, Deployment-, Re
 | MCC 10 Bit, MNC 14 Bit, SSI/GSSI/ISSI 24 Bit, TSI 48 Bit | **Fachlich geklärt und quellengeprüft.** |
 | Exakte Normabschnitte und frühere Fehler | **Dokumentiert/korrigiert** in diesem Archiv; keine Änderung anderer Handbücher oder Wikiseiten. |
 | Führende Nullen als Erklärung fester Binärfelder | **Erklärt und mathematisch geprüft.** Kein verbindlicher neuer Anzeige-/Importstandard beschlossen. |
-| Konkreter NetCore-Nummernplan aus diesem Chat | **Nicht beschlossen.** |
-| Automatische Kollisionsprüfung oder neuer Validator | **Idee / Prüfbedarf**, nicht durch diesen Chat implementiert. |
+| Konkreter NetCore-Nummernplan aus diesem Planungsstand | **Nicht beschlossen.** |
+| Automatische Kollisionsprüfung oder neuer Validator | **Idee / Prüfbedarf**, hier nicht implementiert. |
 | 10-/14-Bit-Kodierung im vorhandenen D-MLE-SYNC-Pfad | **Im Repository implementiert**, hier nur statisch geprüft. |
 | Erfolgreicher Zielgerätebetrieb | **Nicht bestätigt.** |
-| Archivierung in `Archiving`, ausschließlich unter `Docs/archive/` | **Explizit beauftragt**; Veröffentlichung und tatsächlicher Commit sind separat über Git und die Abschlussmeldung nachzuweisen. |
 
-Der historische Fachchat kann nach Jans Prüfung archiviert werden, ohne daraus einen offenen Deploymentauftrag abzuleiten. Die verbleibenden Entwicklungsideen gehören als Kandidaten in die weitere Projektplanung, nicht automatisch als bereits zugesagte Änderungen in die Produktbeschreibung.
+Weitere Entwicklungsansätze bleiben Kandidaten. Aus der technischen Klärung allein entsteht kein zusätzlicher Deploymentauftrag.
 
 ## 12. Offene Aufgaben und Roadmap-Kandidaten
 
-Die folgenden Prioritäten sind **Vorschläge der Abschlussprüfung**. Im ursprünglichen Fachgespräch wurde keine Reihenfolge verbindlich vereinbart. Änderungen außerhalb des Archivordners sind nicht Teil dieses Auftrags.
+Die Prioritäten sind **Vorschläge aus dem fachlichen Abgleich**; eine historische verbindliche Reihenfolge fehlt.
 
 | ID | Kandidat | Status | Vorgeschlagene Priorität / Abhängigkeit | Abnahmekriterium |
 |---|---|---|---|---|
 | R-01 | Normfundstellen und Telekom-Korrekturen in weiterverwendeten Projektdokumenten konsolidieren. | Idee / fachlicher Korrekturbedarf | Zuerst vor erneuter Veröffentlichung der alten Aussagen. | Keine falschen Direktzitate; 7.2.4/7.2.5 korrekt; öffentliche Zuteilung nicht mit TETRA-Konfiguration verwechselt. |
-| R-02 | Tatsächliches MCC-/MNC-/ISSI-/GSSI-Schema mit Netzkontext erfassen und auf Zuteilung, Bereichsgrenzen und Kollisionen prüfen. | Im Chat angeboten, nicht durchgeführt | Vor produktiver Nummernvergabe oder einer automatischen Provisionierung. | Vollständige relevante Belegung, begründete Sonderwerte und nachvollziehbarer Kollisionsbericht. |
+| R-02 | Tatsächliches MCC-/MNC-/ISSI-/GSSI-Schema mit Netzkontext auf Zuteilung, Grenzen und Kollisionen prüfen. | Idee, nicht durchgeführt | Vor Nummernvergabe oder Provisionierung. | Vollständige Belegung, begründete Sonderwerte und Kollisionsbericht. |
 | R-03 | Vorhandene zentrale Validierung und alle relevanten Eingangswege nachvollziehen, statt allein die Konstruktoren zu beurteilen. | Neuer Prüfauftrag als Kandidat, nicht beschlossen | Nach R-02; betrifft insbesondere Konfiguration, Import, APIs und Teilnehmerverwaltung. | Nachweis, wo ungültige Werte abgewiesen werden; anschließend gezielte Änderung nur bei tatsächlich bestätigten Lücken. |
 | R-04 | Grenzwert- und Roundtrip-Tests für die bestehenden Encoder/Decoder ergänzen oder vorhandene Tests zuordnen. | Idee, nicht ausgeführt | Nach Festlegung der validierten Bereiche und Sonderwertpolitik. | Unter anderem MNC 9999/10000, MCC 999/1000, SSI 16777215/16777216 im jeweils richtigen Kontext; keine stille Verwechslung von Feldkapazität und Zuteilung. |
-| R-05 | Verlustfreie Anzeige-/Importregeln und eine Bitfeldgrafik für Dokumentation/UI festlegen. | Im Chat teilweise angeboten, nicht beschlossen | Nach R-02/R-03. | Zahlenwert, Netzkontext und Anzeigeformat getrennt; führende Nullen lösen keine unbeabsichtigte Umnummerierung aus. |
+| R-05 | Verlustfreie Anzeige-/Importregeln und Bitfeldgrafik für Dokumentation/UI festlegen. | Teilweise vorgeschlagen, nicht beschlossen | Nach R-02/R-03. | Zahlenwert, Netzkontext und Anzeigeformat getrennt; führende Nullen verursachen keine Umnummerierung. |
 | R-06 | Normenregister mit Normteil, Ausgabedatum, Veröffentlichung/Draftstatus und überprüften Quellen pflegen. | Idee | Vor einer Aussage über einen projektweit „aktuellen ETSI-Stand“. | Teil 1 nicht mit Codec-, PEI-, Air-Interface- oder ISI-Revisionsständen verwechseln. |
-| R-07 | Zielgeräteabnahme nach einer späteren tatsächlichen Änderung durchführen. | Nicht geplant oder ausgeführt in diesem Chat | Nur nach separat beauftragter Implementierung und erlaubtem Testaufbau. | Soll-/Ist-Netzkennung und Adressierung im Gerät beziehungsweise Protokoll nachvollziehbar; Build-/Commit-/Geräteversion dokumentiert. |
+| R-07 | Zielgeräteabnahme nach einer späteren tatsächlichen Änderung durchführen. | Nicht geplant oder ausgeführt in diesem Planungsstand | Nur nach separat beauftragter Implementierung und erlaubtem Testaufbau. | Soll-/Ist-Netzkennung und Adressierung im Gerät beziehungsweise Protokoll nachvollziehbar; Build-/Commit-/Geräteversion dokumentiert. |
 
 Ein bestehender [Archivbeitrag zum ISSI-Nummernplan und zur Vergaberichtlinie](2026-10-04_issi-nummernplan-rbac-und-vergaberichtlinie.md) ist im gelesenen Index vorhanden und bietet sich für eine spätere Zusammenführung an. Sein Inhalt wurde in diesem Lauf nicht als bereits erfüllte Umsetzung der obigen Kandidaten bewertet.
 
@@ -354,7 +355,7 @@ Ein bestehender [Archivbeitrag zum ISSI-Nummernplan und zur Vergaberichtlinie](2
 
 Es lagen **25 PDF-Dateien mit zusammen 8061 Seiten** vor. Darin enthalten ist `ETSI.pdf` mit 4100 Seiten. Diese Sammeldatei beginnt mit EN 300 812 V2.1.1; sie wurde nicht vollständig segmentiert oder mit sämtlichen Einzeldateien auf Dubletten abgeglichen. Die Seitenzahl ist somit eine Dateiinventar-Summe, kein Nachweis über 8061 unterschiedliche normative Seiten.
 
-Für alle Dateien wurden Öffnungsfähigkeit, Seitenzahl und Titelseite erfasst. Vertieft ausgewertet wurde die für diesen Chat relevante EN 300 392-1. Die übrigen Anhänge sind nachfolgend als Quellenbestand dokumentiert, nicht als vollständig analysierte oder implementierte Funktionsanforderungen.
+Öffnungsfähigkeit, Seitenzahlen und Titelseiten aller Dateien sind erfasst. EN 300 392-1 wurde thematisch vertieft geprüft; die übrigen Quellen sind keine vollständig analysierten Funktionsanforderungen.
 
 | Datei | Ausgabe / Status laut Titelseite | Seiten | Thema / Auswertung |
 |---|---|---:|---|
@@ -366,7 +367,7 @@ Für alle Dateien wurden Öffnungsfähigkeit, Seitenzahl und Titelseite erfasst.
 | `en_3003920313v010201p.pdf` | EN 300 392-3-13 V1.2.1, 2020-04 | 191 | Transportunabhängiger ISI Group Call; inventarisiert. |
 | `en_3003920315v010500a.pdf` | **Draft** EN 300 392-3-15 V1.5.0, 2026-04 | 380 | ISI Mobility Management; Draftstatus erfasst, nicht als verabschiedete Endfassung behandelt. |
 | `en_30039205v020701p.pdf` | EN 300 392-5 V2.7.1, 2020-04 | 320 | PEI; inventarisiert, keine vollständige Prüfung von Anzeige-/AT-Formaten. |
-| `en_30039207v030501p.pdf` | EN 300 392-7 V3.5.1, 2019-07 | 216 | Security; inventarisiert, kein Security-Audit dieses Chats. |
+| `en_30039207v030501p.pdf` | EN 300 392-7 V3.5.1, 2019-07 | 216 | Security; inventarisiert, kein Security-Audit dieser Planung. |
 | `en_30039209v010701p.pdf` | EN 300 392-9 V1.7.1, 2020-04 | 46 | Allgemeine Supplementary-Service-Anforderungen; inventarisiert. |
 | `en_3003921006v010401p.pdf` | EN 300 392-10-6 V1.4.1, 2006-08 | 20 | Call Authorized by Dispatcher, Stage 1; inventarisiert. |
 | `en_3003921018v010301p.pdf` | EN 300 392-10-18 V1.3.1, 2003-10 | 17 | Barring of Outgoing Calls, Stage 1; inventarisiert. |
@@ -386,27 +387,27 @@ Für alle Dateien wurden Öffnungsfähigkeit, Seitenzahl und Titelseite erfasst.
 
 ### 13.2 Bilder
 
-Im verfügbaren historischen Fachchat sind **keine eigenständigen hochgeladenen oder erzeugten Chatbilder** vorhanden. Die sichtbaren Titelblätter stammen aus den PDF-Anhängen. Auch die am Ende angebotene Bitfeldgrafik wurde damals nicht erstellt.
+Eigenständige historische Bilder fehlen. Titelblätter stammen aus PDF-Anhängen; die geplante Bitfeldgrafik wurde nicht erstellt.
 
-Daher gibt es für diesen Chat keine ursprüngliche PNG-/JPEG-Datei, die als historisches Bild ins Repository hochgeladen werden könnte. Das für die Quellenprüfung lokal gerenderte PDF-Seitenbild ist ein neu erzeugtes Prüfmittel, kein wiedergefundenes Chatbild; es wird nicht als solches ausgegeben. Die PDF-Sammlung wird inventarisiert und für die zentrale Norm verlinkt, nicht pauschal als Bildarchiv oder als vollständig neu hochgeladene Sammlung behauptet.
+Das lokal gerenderte PDF-Seitenbild ist ein Prüfmittel, kein wiedergefundenes Originalbild. Der PDF-Bestand ist inventarisiert; die zentrale Norm ist verlinkt.
 
-## 14. Archivierungsumfang, Erhaltung und Grenzen
+## 14. Dokumentationsstand und Nachweisgrenzen
 
-Für diesen Auftrag sind nur die neue Archivdatei und die Ergänzung des vorhandenen Archivindexes vorgesehen. Die bestehende Indexfassung wurde vollständig gelesen und ihr Inhalt zusätzlich durch die passende Git-Blob-Prüfsumme abgesichert. Der neue Dateiname ist themenspezifisch; der vorhandene ISSI-Nummernplan ist ein anderer Chat und wird nicht überschrieben.
+Die thematische Notiz und der separate ISSI-Nummernplan behandeln unterschiedliche Fragen. Der Ausgangsindex ist anhand seiner Git-Blob-Prüfsumme identifiziert.
 
 Die Veröffentlichung verwendet den vorhandenen Branch `Archiving`, dessen aktuellen Stand vor der finalen Tree-/Commit-Erstellung erneut zu prüfen ist. Der Index wird um einen Eintrag ergänzt; vorhandene Zeilen bleiben erhalten. Der Archivcommit erhält einen einzelnen Elterncommit und wird nur per nicht erzwungenem Fast-Forward veröffentlicht. Bei zwischenzeitlicher Änderung ist neu zu lesen und auf dem neuen Stand aufzubauen; kein Force-Push und kein Merge sind Bestandteil dieses Auftrags.
 
-**Auswertungslücken:** Ursprünglicher Chattitel, Chatlink, genaue historische Nachrichtendaten und ein zum Fachgespräch gehörender damaliger Codecommit fehlen. Eine vollständige Lektüre aller PDF-Seiten, eine abschließende ETSI-Statusdatenbankprüfung, eine Vollprüfung der Vergabe-/Validierungspfade und ein Live-Betriebsnachweis wurden nicht durchgeführt. Andere Projektchats oder Erinnerungen wurden nicht zu angeblichen Entscheidungen dieses Chats umgedeutet.
+**Offene Nachweise:** historische Codezuordnung, vollständige PDF-Lektüre, abschließende ETSI-Statusdatenbankprüfung, Vollprüfung aller Vergabe-/Validierungspfade und Livebetrieb.
 
 ## 15. Quellen und Fortsetzungsanker
 
-- **Historischer Gesprächsverlauf:** sechs sichtbare fachliche Nutzerfragen/-bemerkungen mit den zugehörigen Antworten, gefolgt vom Archivierungsauftrag. Alte Chat-Zitationskennungen allein werden nicht als heute überprüfbare Quellenbelege behandelt.
+- **Historische Planungsgrundlage:** Feldbreiten, konkrete Normfundstellen, Netzkontext, Versionseinordnung, Telekom-Vergleich und Nullauffüllung. Frühere Zitatkennungen ersetzen keine überprüfbare Primärquelle.
 - **[N1] Hauptnorm:** bereitgestellte EN 300 392-1 V1.6.1, insbesondere 7.2.1, 7.2.3–7.2.6 und 7.7.8; [offizielle PDF][N1]. Die lokal geprüfte Dateiprüfsumme steht in Abschnitt 4.
 - **[N2]/[N3] Versionsabfrage:** offizielle ETSI-Verzeichnisse; die Grenzen stehen in Abschnitt 6.
 - **[B1] Telekom-Vergleich:** Bundesnetzagentur-Liste der IMSI-Blockzuteilungen, ergänzend [IMSI-Übersichtsseite][B2]. Keine Übertragung der dortigen Zuteilung auf NetCore beschlossen.
 - **[R1]–[R3] Codeprüfung:** unveränderliche Dateilinks auf den geprüften Commit, unten angegeben.
-- **Verwandter Archivkontext:** vorhandener ISSI-Nummernplan-/Vergaberichtlinien-Eintrag im Archivindex; keine inhaltliche Abnahme dieses anderen Chats.
-- **PRs und historische Implementierungscommits:** Für die Facharbeit dieses Chats sind keine entsprechenden Nachweise vorhanden. Es werden keine PR-Nummern ergänzt.
+- **Verwandter Kontext:** ISSI-Nummernplan-/Vergaberichtlinien-Eintrag; keine inhaltliche Abnahme dieses separaten Dokuments.
+- **PRs und historische Implementierungscommits:** Für die Facharbeit dieser Planung sind keine entsprechenden Nachweise vorhanden. Es werden keine PR-Nummern ergänzt.
 
 [N1]: https://www.etsi.org/deliver/etsi_en/300300_300399/30039201/01.06.01_60/en_30039201v010601p.pdf
 [N2]: https://www.etsi.org/deliver/etsi_en/300300_300399/30039201/01.06.01_60/

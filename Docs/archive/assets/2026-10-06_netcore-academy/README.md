@@ -1,6 +1,6 @@
 # NetCore Academy: erhaltene Inhalte und rekonstruierte Bildvorschauen
 
-Zugehörige Abschlussdokumentation: [NetCore Academy](../../2026-10-06_netcore-academy-moodle-kurssystem-noob-bis-bitdecoder.md).
+Zugehörige Projektnotizen: [NetCore Academy](../../2026-10-06_netcore-academy-moodle-kurssystem-noob-bis-bitdecoder.md).
 
 Die HTML-, PDF- und ZIP-Dateien sind unveränderte erhaltene Originalartefakte der Academy-Ausgabe 1.0 vom 2026-10-05. `SHA256SUMS` dokumentiert die archivierten Dateibytes. Das ZIP enthält sämtliche 60 Kurse, 240 Lektionen, Praxis-/Prüfungsdaten, native Moodle-Book-Kapitel, CSV/JSON und das ausführbare Lehrprogramm.
 
@@ -9,14 +9,14 @@ Die HTML-, PDF- und ZIP-Dateien sind unveränderte erhaltene Originalartefakte d
 | [NetCore_Academy_Kurssystem.html](NetCore_Academy_Kurssystem.html) | Durchsuchbares Offline-Kursbuch |
 | [NetCore_Academy_Kurssystem.pdf](NetCore_Academy_Kurssystem.pdf) | Finales Kursbuch, 135 Seiten |
 | [NetCore_Academy_Kursinhalte.zip](NetCore_Academy_Kursinhalte.zip) | Bearbeitbare Inhalte, Moodle-Teilimporte und acht Lehrlabore |
-| [pruefbericht-2026-10-06.json](pruefbericht-2026-10-06.json) | Heute erneut ausgeführte Inhalts-/Formatprüfungen und Grenzen |
+| [pruefbericht-2026-10-06.json](pruefbericht-2026-10-06.json) | Am 2026-10-06 wiederholte Inhalts-/Formatprüfungen und Grenzen |
 | [laborergebnisse-2026-10-06.json](laborergebnisse-2026-10-06.json) | Erneut erzeugte Ergebnisse aller acht Lehrlabore |
 | [quelleninventar.json](quelleninventar.json) | 25 PDF-Anhänge mit Seitenzahl, Größe und SHA-256; Norm-PDFs selbst nicht kopiert |
 | [bildmanifest.json](bildmanifest.json) | Herkunft, Seitenbezug, Größe und SHA-256 der Bildrekonstruktionen |
 
 ## Bildbelege
 
-Die ursprünglichen PNG-Vorschauen des Fachchats sind nach der Workspace-Bereinigung nicht mehr vorhanden. Die folgenden Bilder wurden am 2026-10-06 aus dem unveränderten finalen PDF rekonstruiert. Sie zeigen dieselben erhaltenen finalen Seiteninhalte, sind aber keine bytegleichen ursprünglichen Bilddateien. Die Zwischenfassung mit 138 Seiten ist nicht erhalten.
+Die ursprünglichen PNG-Vorschauen sind nach der Workspace-Bereinigung nicht mehr vorhanden. Die folgenden Bilder wurden am 2026-10-06 aus dem unveränderten finalen PDF rekonstruiert. Sie zeigen dieselben erhaltenen finalen Seiteninhalte, sind aber keine bytegleichen ursprünglichen Bilddateien. Die Zwischenfassung mit 138 Seiten ist nicht erhalten.
 
 | Bild | Seiten | Art |
 | --- | --- | --- |

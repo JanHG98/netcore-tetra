@@ -1,45 +1,43 @@
-# Abschlussdokumentation: SXceiver-Erstinstallation, HamTetra-DMO und Wechsel zu BlueStation
+# Brainstorming: SXceiver-Erstinstallation, HamTetra-DMO und Wechsel zu BlueStation
 
-> **Historisches Chatarchiv – keine unmittelbar ausführbare Installationsanleitung.** Dieses Dokument bewahrt die tatsächlichen Beobachtungen, Benutzerentscheidungen und offenen Fragen des Chats. Mehrere damalige Assistentenantworten enthielten unbelegte oder falsche Hardwareannahmen, Befehle und Protokollerklärungen. Diese sind ausdrücklich zurückgezogen und dürfen nicht durch Übernahme in das Archiv zu vermeintlich bewährten Lösungen werden.
+**Stand der Notizen und ergänzenden Prüfungen: 2026-10-04.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
 
-## 1. Metadaten und Auswertungsumfang
+> **Arbeitsstand:** Softwareinbetriebnahme auf vorhandener SXceiver-Hardware. Root-Gegenprobe und spätere BlueStation-Installation wurden als erfolgreich gemeldet; vollständige Funkabnahme fehlt. Unbelegte Hardwareannahmen, CLI-Flags und DCC-Erklärungen sind im Korrekturregister zurückgezogen.
+
+## 1. Kontext und Prüfumfang
 
 | Feld | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
-| Thema | Erste Inbetriebnahme mit SXceiver, GPIO-/SPI-Zugriffsfehler, HamTetra-DMO-Repeater und anschließend vom Benutzer gemeldeter Installationserfolg mit tetra-bluestation |
+| Thema | SXceiver-Inbetriebnahme, GPIO-/SPI-Zugriffsfehler, HamTetra-DMO und anschließend gemeldeter Erfolg mit tetra-bluestation |
 | Archiv-ID | `basisstation-erstinstallation-sxceiver-hamtetra-dmo-und-bluestation` |
-| Eröffnungsnachricht | „so, neuer Versuch der Basisstation“ |
-| Ursprünglicher Chattitel | Nicht als verlässliches Metadatenfeld verfügbar. Die Eröffnungsnachricht dient nur zur Zuordnung, nicht als behaupteter Originaltitel. |
-| Originaler Chatlink | Nicht verfügbar; kein Link rekonstruiert oder erfunden. |
-| Historische zeitliche Einordnung | Die Terminalausgabe zeigt `Aug 20 22:52`, ohne Jahresangabe. Eine ergänzende Verlaufssuche ordnet den Einstieg dem 20.08.2025 zu. Das ist ein ergänzendes Retrieval-Metadatum, kein vollständiger datierter Chatexport. |
+| Historische Datierung | Terminalausgabe `Aug 20 22:52` ohne Jahr; Einstieg ergänzend dem 20.08.2025 zugeordnet. Kein vollständig datierter Originalexport vorhanden. |
 | Erstellung der Zusammenfassung | **2026-10-04**, Datumsbezug Europe/Berlin |
 | Zielrepository | `JanHG98/netcore-tetra` |
-| Ausschließlicher Schreibbranch | **`Archiving`** |
+| Repository-Branch des Abgleichs | **`Archiving`** |
 | Geprüfter Repository-Stand vor Archivierung | **`55f910820262fbe04ef7be0e586f9646c292bc32`** |
 | Zugehöriger Root-Tree | `5edd71ab996547435f74712ecef89ab2921cdfd4` |
 | Ablage dieser Datei | `Docs/archive/2026-10-04_basisstation-erstinstallation-sxceiver-hamtetra-dmo-und-bluestation.md` |
 | Archivindex | `Docs/archive/README.md` |
-| Archivierungscommit | Der tatsächliche Speichercommit wird durch die Git-Dateihistorie und die Abschlussmeldung ausgewiesen. Der oben genannte SHA ist ausdrücklich der **geprüfte Ausgangsstand**, nicht ein vorab behaupteter Archivierungscommit. |
 
 ### 1.1 Verwendete Evidenzebenen
 
-- **H – Historischer Chat:** die hier zugänglichen Benutzer- und Assistentennachrichten einschließlich der eingefügten Terminalausgaben. Benutzerbestätigungen werden mit ihrer tatsächlichen Aussageweite erhalten.
+- **H – Historischer Planungsstand:** Anforderungen und eingefügte Terminalausgaben. Gemeldete Betriebserfolge gelten jeweils nur im dokumentierten Umfang.
 - **R – Heutiges Zielrepository:** gezielt gelesene Dateien und Verzeichnisbäume des oben fixierten `Archiving`-Commits. Dateiinhalte belegen Quellcode oder Konfiguration, nicht deren Installation auf Jans Rechner.
-- **U – Zusätzlich geprüfte Upstream-Quellen:** HamTetra/osmo-tetra-dmo und MidnightBlueLabs/tetra-bluestation. Diese erklären konkrete Fehler der damaligen Antworten, sind aber kein nachträglicher Beweis für die Version des historischen lokalen Builds.
+- **U – Zusätzlich geprüfte Upstream-Quellen:** HamTetra/osmo-tetra-dmo und MidnightBlueLabs/tetra-bluestation. Sie korrigieren frühe technische Annahmen, belegen jedoch nicht die Revision des historischen lokalen Builds.
 - **A – Bereitgestellte Anhänge:** 25 ETSI-PDFs aus dem zugänglichen Projekt-/Dateikontext. Inventar und ausgewählte relevante Stellen wurden geprüft; keine vollständige Normenkonformitätsprüfung durchgeführt.
 
-Die Quellenschlüssel werden in Abschnitt 15 aufgelöst. Quellen aus anderen NetCore-Chats werden nicht als Testergebnisse dieses Chats ausgegeben. Insbesondere gehören spätere Dual-Carrier-, Dashboard-, GPIO-Verkabelungs- oder Deployment-Arbeiten nicht automatisch zu diesem frühen Installationsversuch.
+Die Quellenkennungen stehen in Abschnitt 15. Spätere Dual-Carrier-, Dashboard-, GPIO- und Deployment-Arbeiten bilden eigene Entwicklungsphasen und keine Testergebnisse dieser Erstinstallation.
 
 ### 1.2 Grenzen der Auswertung
 
-Der sichtbare Verlauf ist ausgewertet. Nicht verfügbar sind ein vollständiger Roh-Export mit allen Original-Metadaten, der externe DeepSeek-Dialog, die damals tatsächlich ausgeführten Installationsschritte für BlueStation, ein Abbild von `srv-tmo-bs01` sowie eventuell außerhalb des sichtbaren Verlaufs liegende Backups. Frühere generische Dateiverweise im Chat enthalten keine ausreichend identifizierbaren Backup-Inhalte. Daraus wird keine vermeintliche frühere Architektur rekonstruiert.
+Der sichtbare Verlauf ist ausgewertet. Nicht verfügbar sind ein vollständiger Roh-Export mit allen Original-Metadaten, der externe DeepSeek-Dialog, die damals tatsächlich ausgeführten Installationsschritte für BlueStation, ein Abbild von `srv-tmo-bs01` sowie eventuell außerhalb des sichtbaren Verlaufs liegende Backups. Frühere generische Dateiverweise im Entwurf enthalten keine ausreichend identifizierbaren Backup-Inhalte. Daraus wird keine vermeintliche frühere Architektur rekonstruiert.
 
-Es gab keinen Zugriff auf das laufende Funkgerät oder den Host, keine SSH-Sitzung zu Jan, keinen Senderstart und keinen heutigen Hardwaretest. Der Quellcodeabgleich erfolgte über den GitHub-Connector. Ein lokaler Cloneversuch scheiterte an der DNS-Auflösung der Arbeitsumgebung; dies ist kein Befund über Jans Installation und kein Ausfall des funktionierenden GitHub-Connectorzugriffs.
+Der Abgleich ist statisch; Host und Funkgerät wurden nicht direkt erreicht. Senderstart und Hardwaretest wurden nicht ausgeführt. Ein DNS-Fehler beim lokalen Cloneversuch betrifft die Prüfumgebung, nicht die Installation auf `srv-tmo-bs01`.
 
 ## 2. Ergebnis in einem Absatz
 
-Jan wollte die **Softwareinstallation seiner SXceiver-basierten Funkstation** fortsetzen, nicht neue Hardware auswählen. Auf `jan@srv-tmo-bs01` lag unter `~/HamTetra` ein ausführbares `osmo-tetra-dmo/src/hamtetra_main2`. Zunächst scheiterte dessen Geräteinitialisierung am Zugriff auf `gpiochip0`, anschließend am Öffnen des SPI-Geräts. Jan bestätigte, dass der vorgeschlagene Gegenversuch als root läuft. Danach zeigte er Geräte mit Gruppenrechten für `gpio` und `spi` sowie entsprechende im Benutzerkonto eingetragene Gruppen; ein abschließender erfolgreicher Start ohne root ist im Chat jedoch nicht dokumentiert. Für den DMO-Versuch nannte er **419.99375 MHz, MCC 1, MNC 333 und GSSI 2000**. Die danach behaupteten DMO-DCC-Einstellungen und Zusatzflags waren unbelegt. Den abschließenden Installationserfolg meldete Jan nach Hilfe durch **DeepSeek**, das ihn auf **MidnightBlueLabs/tetra-bluestation** gebracht hatte. Welche Funktionen dieser erfolgreiche Aufbau tatsächlich erfüllte, bleibt mangels Konfiguration und Testprotokoll offen. [H01–H09]
+Ziel ist die **Softwareinstallation der vorhandenen SXceiver-Station**. Auf `jan@srv-tmo-bs01` lag unter `~/HamTetra` das ausführbare `osmo-tetra-dmo/src/hamtetra_main2`. Geräteinitialisierung scheiterte zuerst an `gpiochip0`, danach am SPI-Zugriff. Der Root-Gegenversuch wurde als erfolgreich gemeldet. Geräte- und Kontogruppen für `gpio` und `spi` sind belegt, ein erfolgreicher Nicht-root-Start fehlt. Vorgesehene DMO-Werte: **419.99375 MHz, MCC 1, MNC 333, GSSI 2000**. DCC-Angaben und zusätzliche CLI-Flags waren unbelegt. Letzter gemeldeter Erfolg ist die Installation von **MidnightBlueLabs/tetra-bluestation**; Betriebsart, Revision und Funktionsumfang bleiben offen. [H01–H09]
 
 ## 3. Statusmodell und belastbarer Abschlussstand
 
@@ -48,42 +46,42 @@ In diesem Archiv bedeuten die Statusbegriffe:
 | Status | Bedeutung |
 |---|---|
 | **Idee** | Erwähnter Vorschlag ohne nachgewiesene Beauftragung oder Umsetzung. |
-| **Beschlossen/geplant** | Ausdrückliche Benutzerfestlegung oder autorisierter nächster Arbeitsschritt; noch kein Umsetzungsbeweis. |
+| **Beschlossen/geplant** | Ausdrückliche Festlegung oder gewählter Arbeitsschritt; Umsetzung separat nachzuweisen. |
 | **Implementiert** | Konkretes Artefakt beziehungsweise Quellcode ist in einer benannten Quelle nachgewiesen. Eine nur vorgeschlagene Datei ist nicht implementiert. |
 | **Getestet** | Ein bestimmter Versuch mit beobachtetem oder ausdrücklich berichteten Ergebnis ist dokumentiert. Die Grenzen des Versuchs bleiben sichtbar. |
-| **Im Betrieb bestätigt** | Der Benutzer hat einen laufenden Zustand ausdrücklich gemeldet. Ohne Messdaten umfasst dies nur seine Aussage, nicht automatisch Dauerbetrieb oder alle Funktionen. |
+| **Im Betrieb bestätigt** | Laufender Zustand wurde vom Betreiber gemeldet; ohne Messdaten keine pauschale Dauerbetriebs- oder Funktionsabnahme. |
 | **Unbestätigt / zurückgezogen** | Nicht nachgewiesen beziehungsweise als falsche oder ungeprüfte Anleitung nicht weiterzuverwenden. |
 
 | Gegenstand | Historischer Status | Nachweis und Grenze |
 |---|---|---|
-| SXceiver statt LimeSDR | **Beschlossen und als verwendete Hardware benannt** | Mehrfach ausdrücklich von Jan korrigiert. |
+| SXceiver statt LimeSDR | **Beschlossen und als Hardware benannt** | Ursprüngliche Lime-Annahme ausdrücklich korrigiert. |
 | Versionsmeldung `Hardware version 1.2` | **Getestet / Ausgabe vorhanden** | Geräteinitialisierung erreicht die Versionsausgabe; kein alleiniger Beweis für funktionierenden SPI- oder RF-Datenpfad. |
 | HamTetra-Binary vorhanden und gestartet | **Implementiert auf dem damaligen Host / Startversuche getestet** | Pfad und Fehlerausgaben vorhanden. Buildherkunft und Commit unbekannt. |
-| Zugriff als root | **Getestet nach Benutzerbericht** | „1 als root läuft“; keine vollständige Startausgabe oder Funkabnahme dazu. |
+| Zugriff als root | **Erfolgreich nach Betreiberbericht** | Vollständige Startausgabe und Funkabnahme fehlen. |
 | Geräte `root:gpio` und `root:spi`, Modus `0660` | **Getestet / Ausgabe vorhanden** | Zustand zum Zeitpunkt von `ls -l` belegt. Persistenz nach Neustart nicht belegt. |
 | Gruppeneinträge für `jan` | **Getestet / Ausgabe vorhanden** | `groups jan` belegt Konto-Gruppen, nicht sicher die Gruppen des schon laufenden Prozesses. |
 | Erfolgreicher HamTetra-Start als normaler Benutzer nach Reparatur | **Unbestätigt** | Kein abschließendes Startprotokoll. |
-| DMO-Gruppe mit MCC 1, MNC 333, GSSI 2000 | **Beschlossen/geplant** | Benutzerwerte; keine nachgewiesene Übernahme in Quellcode oder Geräteprogrammierung. |
+| DMO-Gruppe MCC 1, MNC 333, GSSI 2000 | **Beschlossen/geplant** | Vorgegebene Werte; Übernahme in Code oder Geräteprogrammierung nicht nachgewiesen. |
 | DMO-Repeaterfunktion auf 419.99375 MHz | **Gewünschter Versuch** | Mode-1-Aufruf besprochen, kein belegter Repeater-Funktionstest. |
-| BlueStation installiert und zum Laufen gebracht | **Im Betrieb bestätigt, nur nach Benutzerbericht** | Externe Hilfe durch DeepSeek ausdrücklich benannt; Betriebsart, Revision und Leistungsumfang nicht dokumentiert. |
-| Autostart, Health-Check, API-/SDS-/Voice-Integration | **Ideen des Assistenten** | Kein damaliger Auftrag beziehungsweise Erfolgsbeleg für die vorgeschlagenen Artefakte. |
-| Moderne NetCore-Rust-Struktur und mitgeführter SoapySX-Treiber | **Heute im Zielrepository nachgewiesen** | Statischer Befund aus R02–R08, getrennt vom historischen Host. |
+| BlueStation installiert und gestartet | **Im Betrieb bestätigt nach Betreiberbericht** | Betriebsart, Revision und Funktionsumfang nicht dokumentiert. |
+| Autostart, Health-Check, API-/SDS-/Voice-Integration | **Ausbauideen** | Kein damaliger Implementierungs- oder Erfolgsnachweis. |
+| Moderne NetCore-Rust-Struktur und mitgeführter SoapySX-Treiber | **Am 2026-10-04 nachgewiesen** | Statischer Befund R02–R08, getrennt vom historischen Host. |
 
 ## 4. Historischer Ablauf mit Quellenankern
 
-### H01 – Der Benutzer korrigiert die Aufgabenstellung
+### H01 – Ausgangspunkt und korrigierte Hardwareannahmen
 
-Auf „so, neuer Versuch der Basisstation“ antwortete der Assistent zunächst mit Hardwarekonzeption: Orange Pi/NUC, LimeSDR, Gehäuse, Versorgung und Zusatzfunktionen. Jan präzisierte nacheinander:
+Der erste Hardwareentwurf mit Orange Pi/NUC, LimeSDR, Gehäuse und Zusatzfunktionen passte nicht zur Aufgabe. Maßgeblich sind die vorhandene SXceiver-Hardware und die tatsächliche Softwareinstallation:
 
-> „ne, die ganzen installation“
->
-> „ich meine den ganzen spaß mit sxceiver und so“
->
-> „ich nutze den sxceiver, kein Lime“
->
-> „wir nutzen osmotetra“
+- Installation auf dem vorhandenen Aufbau fortsetzen.
 
-**Festlegung:** Ausgangspunkt ist die vorhandene SXceiver-Hardware mit der tatsächlich verwendeten Software. Die Alternativhardware und fiktiven Node-Pakete waren kein Beschluss des Benutzers. Die spätere konkrete Ausgabe identifiziert HamTetra beziehungsweise dessen `osmo-tetra-dmo`-Teil genauer als die anfängliche Kurzbezeichnung „osmotetra“.
+- SXceiver als RF-Hardware verwenden.
+
+- LimeSDR bleibt ausgeschlossen.
+
+- Ausgangssoftware zunächst als „osmotetra“ bezeichnet.
+
+**Festlegung:** Vorhandene SXceiver-Hardware und tatsächlich verwendete Software sind die Grundlage. Alternativhardware und fiktive Node-Pakete sind nicht ausgewählt. Die konkrete Ausgabe identifiziert HamTetra beziehungsweise `osmo-tetra-dmo` genauer als die ursprüngliche Kurzbezeichnung.
 
 ### H02 – Erster dokumentierter GPIO-Fehler
 
@@ -93,9 +91,9 @@ jan@srv-tmo-bs01:~/HamTetra$ osmo-tetra-dmo/src/hamtetra_main2 sx 0
 SoapySDRDevice_make failed (0): cannot open GPIO device gpiochip0: Permission denied
 ```
 
-Die Zeile ist als historische Eingabe erhalten, **nicht als empfohlener neuer Startbefehl**. Im heute überprüften Upstream-Parser wäre die `0` hier die Frequenz und nicht der Betriebsmodus; siehe Abschnitt 8.1. Der genaue historische Binary-Stand ist nicht nachgewiesen. [U03]
+Die Zeile ist als historische Eingabe erhalten, **nicht als empfohlener neuer Startbefehl**. Im am 2026-10-04 überprüften Upstream-Parser wäre die `0` hier die Frequenz und nicht der Betriebsmodus; siehe Abschnitt 8.1. Der genaue historische Binary-Stand ist nicht nachgewiesen. [U03]
 
-Der Assistent schlug root als Gegenprobe, Gruppenberechtigungen, udev-Regeln, neue Anmeldung und optional ACLs vor. Für diesen ersten GPIO-Fehler allein wurde kein vollständiges Abschlussprotokoll geliefert. Dass der nächste Versuch einen SPI-Fehler meldete, dokumentiert einen anderen sichtbaren Initialisierungsfehler, aber nicht die genaue dazwischen ausgeführte Reparaturfolge.
+Vorgeschlagen wurden Root-Gegenprobe, Gruppenrechte, udev-Regeln, neue Anmeldung und optional ACLs. Ein vollständiges Abschlussprotokoll des GPIO-Fehlers fehlt. Der folgende SPI-Fehler zeigt einen anderen Initialisierungsschritt, nicht die genaue dazwischen ausgeführte Reparaturfolge.
 
 ### H03 – Zweiter dokumentierter Fehler: SPI öffnen
 
@@ -106,13 +104,11 @@ SoapySDRDevice_make failed (0): Failed to open SPI
 Done
 ```
 
-Der Assistent schlug als ersten Gegenversuch denselben Aufruf mit `sudo` vor. Es folgten zahlreiche weitere Möglichkeiten, obwohl noch keine systematische Geräte-/Versionsprüfung vorlag: SPI aktivieren, Kernelmodule, alternative Chip-Selects, USB-SPI-Adapter, eine vermeintliche Umgebungsvariable und Python-Tests. Diese Möglichkeiten wurden nicht als tatsächlich ausgeführte Ursachenbehebung belegt.
+Erste Gegenprobe war derselbe Aufruf mit `sudo`. Weitere Hypothesen umfassten SPI-Aktivierung, Kernelmodule, alternative Chip-Selects, USB-SPI-Adapter, eine vermeintliche Umgebungsvariable und Python-Tests. Ohne Geräte-/Versionsprüfung und Ausführungsnachweise gelten sie nicht als bestätigte Ursachenbehebung.
 
 ### H04 – Root-Gegenprobe erfolgreich gemeldet
 
-Jan antwortete:
-
-> „1 als root läuft“
+**Betriebsbefund:** Der Root-Gegenversuch lief.
 
 Gemeint war der erste vorgeschlagene Gegenversuch zum SPI-Fehler. Dies ist ein wertvoller diagnostischer Hinweis auf einen Berechtigungs- oder Ausführungskontextunterschied. Es rechtfertigt **keinen Neuaufbau der Hardware**, beweist aber auch nicht, dass nur eine bestimmte udev-Datei ursächlich war oder dass schon Sprachverkehr funktionierte.
 
@@ -134,45 +130,41 @@ jan : jan adm dialout cdrom sudo audio video plugdev games users input render ne
 
 **Belegt:** Die aufgeführten Character Devices existieren; ihre Gruppen haben Lese-/Schreibrechte; das Benutzerkonto ist in `gpio`, `spi`, `audio`, `dialout` und `i2c` eingetragen.
 
-**Nicht belegt:** Dass alle vorgeschlagenen udev-Dateien genau so angelegt wurden, welche Regel den Zustand erzeugte, ob eine neue Sitzung begonnen wurde, welche Gruppen der laufende Prozess tatsächlich hatte oder ob der nicht privilegierte Start anschließend erfolgreich war. Die damals folgende Aussage des Assistenten, weitere Fehler könnten jetzt nicht mehr an Rechten liegen, war deshalb zu weitgehend. [L01]
+**Nicht belegt:** konkret aktivierte udev-Regeln, neue Sitzung, Gruppen des laufenden Prozesses und erfolgreicher Nicht-root-Start. Kontogruppen allein schließen ein Rechteproblem nicht aus. [L01]
 
-### H06 – Repeaterfrage und Benutzerparameter
+### H06 – DMO-Netz- und Gruppenparameter
 
-Jan fragte, ob der Aufruf mit abschließender `1` für einen Repeater nicht zusätzlich MCC, MNC und GSSI benötigt. Danach nannte er:
+Für den Repeater-Versuch mit abschließender `1` wurden folgende Kennungen festgelegt:
 
 ```text
 MCC 1 MNC 333 GSSI 2000
 ```
 
-Der Assistent antwortete zunächst mit TMO-Zellparametern und einer erfundenen erweiterten CLI. Jan korrigierte:
+Die erste Einordnung als TMO-Zelle und eine erweiterte CLI waren falsch; der Kontext ist ausdrücklich DMO.
 
-> „das ist ne dmo gruppe“
-
-**Gültige Benutzerfestlegung:** Die Kennungen gehören zum besprochenen DMO-Gruppenkontext. Daraus folgt weder eine TMO-Zellkonfiguration noch die Bedeutung von GSSI 2000 als Repeateradresse.
+**Festlegung:** Die Kennungen gehören zur DMO-Gruppe. Sie beschreiben weder eine TMO-Zellkonfiguration noch automatisch GSSI 2000 als Repeateradresse.
 
 ### H07 – Unbelegte DCC-Erklärung
 
-Der Assistent erfand beziehungsweise behauptete für den konkreten Aufbau einen „DMO Colour Code“, Wertebereich 0–15, allgemeine Herstellervorgaben und CLI-/INI-Felder. Jan entgegnete:
+Ein „DMO Colour Code“ mit Bereich 0–15, allgemeine Herstellervorgaben sowie CLI-/INI-Felder wurden zunächst ohne Nachweis angenommen.
 
-> „dcc kenn ich nicht“
-
-Es gab keine Konfigurationsansicht eines Endgeräts, keinen Normbeleg und keinen Parsernachweis für diese Aussagen. Die erneute Empfehlung, einfach `DCC = 0` zu setzen, wird ausdrücklich zurückgezogen. Der Benutzer hat keinen DCC gewählt oder bestätigt.
+Endgeräte-Konfiguration, Normbeleg und Parsernachweis fehlen. `DCC = 0` ist ausdrücklich zurückgezogen; eine DCC-Festlegung liegt nicht vor.
 
 ### H08 – Extern erreichter Installationserfolg
 
-Jan berichtete:
+Der zuletzt erfolgreiche Installationsweg verwendet:
 
-> „deine konkurrenz hat es geschafft mir zu helfen es zum laufen zu bekommen. Deepseek hat das Repo https://github.com/MidnightBlueLabs/tetra-bluestation gefunden und mir beim installieren geholfen“
+[MidnightBlueLabs/tetra-bluestation](https://github.com/MidnightBlueLabs/tetra-bluestation).
 
-Dies ist die maßgebliche letzte Erfolgsmeldung. Der erfolgreiche Weg wurde **nicht durch die davor vorgeschlagenen erfundenen Befehle dieses Assistenten nachgewiesen**, sondern nach Benutzerangabe mit Hilfe von DeepSeek gefunden. BlueStation ist als tatsächlich herangezogenes Projekt zu bewahren. Der externe Installationsdialog selbst fehlt.
+Die Installation und ein laufender Zustand wurden nach externer Unterstützung bestätigt. Die vollständige Installationsfolge und deren Funktionsabnahme fehlen; die vorherigen unbelegten Befehle erklären diesen Erfolg nicht.
 
 ### H09 – Nur noch vorgeschlagene Folgeprüfungen
 
-Der Assistent fragte anschließend nach mindestens etwa 30 Minuten Laufzeit, CPU-Last, Overflows/XRUNs, Endgeräteverhalten, Gruppenruf, Audio und Reichweite. Er schlug API-Anbindung, SDS/Voice, Autostart und Monitoring vor. Auf diese Fragen liegt keine weitere historische Antwort vor. Sie sind **keine bestandenen Tests** und keine vom Benutzer zugesagte Roadmap.
+Vorgeschlagene Folgeprüfungen: mindestens etwa 30 Minuten Laufzeit, CPU-Last, Overflows/XRUNs, Endgeräteverhalten, Gruppenruf, Audio und Reichweite. API-Anbindung, SDS/Voice, Autostart und Monitoring bleiben **Ausbauideen**; ausgeführte Tests und verbindliche Umsetzung fehlen.
 
 ## 5. Endgültige Anforderungen und historische Parameter
 
-### 5.1 Tatsächlich vom Benutzer vorgegeben
+### 5.1 Festgelegte Werte
 
 | Parameter / Anforderung | Historischer Wert | Bedeutung / Einschränkung |
 |---|---|---|
@@ -180,23 +172,23 @@ Der Assistent fragte anschließend nach mindestens etwa 30 Minuten Laufzeit, CPU
 | RF-Hardware | SXceiver | LimeSDR ausdrücklich ausgeschlossen. |
 | Gemeldete Hardwareversion | 1.2 | Aus Startausgabe; nicht als verifizierter kompletter Hardwareinventarsatz behandeln. |
 | Benutzer / Host | `jan` / `srv-tmo-bs01` | Aus Shellprompt. Der Hostname beweist keine TMO-Betriebsart. |
-| Arbeitsverzeichnis | `~/HamTetra` | Absoluter Pfad `/home/jan/HamTetra` war später im Assistentenbeispiel angenommen, nicht durch `pwd` belegt. |
+| Arbeitsverzeichnis | `~/HamTetra` | `/home/jan/HamTetra` war später als absoluter Beispielpfad angenommen, nicht durch `pwd` belegt. |
 | Tatsächlich gestartetes Programm | `osmo-tetra-dmo/src/hamtetra_main2` | Im Arbeitsverzeichnis aufgerufen. |
 | Hardwareargument | `sx` | Im historischen Befehl und im geprüften Upstream vorhanden. |
-| Besprochene Frequenz | **419.99375 MHz** | Entspricht 419993750 Hz; historische Vorgabe, keine Freigabe oder heutige Betriebsbestätigung. |
+| Besprochene Frequenz | **419.99375 MHz** | Entspricht 419993750 Hz; historische Vorgabe, keine Freigabe oder ergänzende Betriebsbestätigung. |
 | Mode-Argumente | `0` bei dokumentiertem Fehler; `1` für besprochenen Repeater | Bedeutung im überprüften Upstream: Monitor / DMO-Repeater. Lokaler Versionsabgleich fehlt. |
-| MCC | **1** | Vom Benutzer vorgegeben; nicht ersatzlos wegen DMO verwerfen. |
-| MNC | **333** | Vom Benutzer vorgegeben. |
-| GSSI | **2000** | Vom Benutzer ausdrücklich als DMO-Gruppe eingeordnet. |
+| MCC | **1** | Vorgegeben; wegen DMO nicht ersatzlos verwerfen. |
+| MNC | **333** | Vorgegeben. |
+| GSSI | **2000** | Ausdrücklich als DMO-Gruppe eingeordnet. |
 | Erfolgreich verwendetes Folgeprojekt | `MidnightBlueLabs/tetra-bluestation` | Installationserfolg gemeldet; Revision, Konfiguration und Betriebsart nicht genannt. |
 
 ### 5.2 Nicht festgelegt oder nicht bestätigt
 
-Keine belegte Betriebssystemversion, CPU-Architektur oder genaue Raspberry-Pi-Generation; keine bewiesene virtuelle Maschine oder Containerinstallation; keine vom Benutzer festgelegten `Cell ID`, `DCC`, manuellen Zeitschlitze, TX-Leistung, Hangtime oder Kryptoparameter. Die Assistentenannahme „Ubuntu x86_64, wie bei dir Standard“ war nicht durch diesen Chat gedeckt.
+OS-Version, CPU-Architektur und Pi-Generation sind nicht belegt; ebenso wenig VM- oder Containerbetrieb. `Cell ID`, `DCC`, manuelle Zeitschlitze, TX-Leistung, Hangtime und Kryptoparameter sind nicht festgelegt. Die frühe Ubuntu-x86_64-Annahme war unbegründet.
 
 Es gibt keine belegte Zuordnung von `/dev/spidev0.1` oder `/dev/spidev10.0` zum SXceiver, keinen bestätigten USB-SPI-Adapter, keinen Nachweis einer seriellen Verbindung über `/dev/ttyUSB0` und keine festgelegte serielle Baudrate. Die Existenz mehrerer Geräteknoten allein bestimmt nicht deren elektrische Zuordnung.
 
-Es wurde kein TMO-Uplink von 409.99375 MHz durch den Benutzer angefordert. Diese Zahl stammte aus der falschen Umdeutung des DMO-Versuchs. Die Frequenzwerte im Archiv ersetzen weder einen gültigen Betriebs-/Frequenzplan noch einen kontrollierten Testaufbau.
+409.99375 MHz als TMO-Uplink war nicht vorgegeben, sondern entstand aus der falschen TMO-Einordnung. Die Frequenzwerte ersetzen keinen gültigen Betriebs-/Frequenzplan oder kontrollierten Testaufbau.
 
 ## 6. Architektur und Abhängigkeiten: drei getrennte Ebenen
 
@@ -212,41 +204,41 @@ Benutzer jan auf srv-tmo-bs01
 
 Diese Kette ist durch Prompt und Fehlerausgaben begrenzt belegt. Welche SoapySX-Version dynamisch geladen wurde, welche Bibliotheken verlinkt waren und welche Device-Tree-Konfiguration aktiv war, wurde nicht ermittelt.
 
-### 6.2 Heute nachvollzogener HamTetra-Referenzaufbau
+### 6.2 HamTetra-Referenzaufbau, geprüft am 2026-10-04
 
 Der zusätzlich gelesene HamTetra-Snapshot bindet `libosmocore`, `osmo-tetra-dmo`, `suo` und `liquid-dsp` als Submodule ein. Das Hauptprogramm `hamtetra_main2.c` verbindet Protokoll-/Timinglogik mit `libsuo`, einem DPSK-Empfänger und einem PSK-Sender. Für `sx` wird SoapySDR mit dem Treiber `sx` verwendet. Dies ist ein softwaredefinierter Signalpfad und kein Beleg für ein Board, das selbständig ganze TETRA-Rufe, SDS, FEC und MAC abarbeitet. [U01–U03]
 
 Der im aktuellen NetCore-Repository mitgeführte SoapySX-Treiber steuert SX1255-Register über SPI, GPIO-Leitungen über die Linux-GPIO-Character-Device-Schnittstelle und I/Q-Samples über I²S/ALSA. Die SoapySDR-Anwendung sieht komplexe Samples, nicht eine erfundene serielle SDS-CLI. Die bisherige Behauptung, mit SXceiver falle die SDR-Schicht weg, ist damit für den überprüften Aufbau nicht haltbar. [R06–R08]
 
-### 6.3 BlueStation und heutiges NetCore
+### 6.3 BlueStation und geprüftes NetCore
 
 BlueStation wird im geprüften Upstream-README als experimenteller FOSS-TETRA-Stack mit Basisstations-Downlink, Anbindung passend programmierter Mobilgeräte, Gruppenanmeldung, teilweiser Sprachunterstützung und optionalem Brew beschrieben. Das README kennzeichnet den Stand als Alpha. Daraus lässt sich **keine automatische DMO-Repeaterfähigkeit** ableiten. [U05]
 
-Das heutige Zielrepository enthält einen Rust-Workspace mit `bluestation-bs`, TETRA-Crates und zahlreichen Backend-Komponenten. Das ist ein späterer Projektzustand. Er darf nicht rückwirkend als damals bereits installierte NetCore-Node-Architektur ausgegeben werden. Ebenso sind moderne Dateien namens `security-core`, `sds-router` oder `mobility-core` allein kein Beleg für vollständige Protokollimplementierung oder Betriebsabnahme. [R02–R05]
+Das ergänzende Zielrepository enthält einen Rust-Workspace mit `bluestation-bs`, TETRA-Crates und zahlreichen Backend-Komponenten. Das ist ein späterer Projektzustand. Er darf nicht rückwirkend als damals bereits installierte NetCore-Node-Architektur ausgegeben werden. Ebenso sind moderne Dateien namens `security-core`, `sds-router` oder `mobility-core` allein kein Beleg für vollständige Protokollimplementierung oder Betriebsabnahme. [R02–R05]
 
 ## 7. Fehlerdiagnose und tatsächlich tragfähige Erkenntnisse
 
 ### 7.1 GPIO: explizite Zugriffsverweigerung
 
-`Permission denied` beim Öffnen von `gpiochip0` ist der konkrete historische Fehler. Die erfolgreiche Versionsausgabe davor zeigt nur, dass ein früherer Initialisierungsschritt eine Versionsangabe liefern konnte. Im heute gelesenen SoapySX-Code wird die HAT-Information aus `/proc/device-tree/hat/product_id` und `product_ver` gelesen; dieser Zugriff ist vom späteren SPI-/GPIO-Zugriff getrennt. [H02; R07]
+`Permission denied` beim Öffnen von `gpiochip0` ist der konkrete historische Fehler. Die erfolgreiche Versionsausgabe davor zeigt nur, dass ein früherer Initialisierungsschritt eine Versionsangabe liefern konnte. Im am 2026-10-04 gelesenen SoapySX-Code wird die HAT-Information aus `/proc/device-tree/hat/product_id` und `product_ver` gelesen; dieser Zugriff ist vom späteren SPI-/GPIO-Zugriff getrennt. [H02; R07]
 
-Die damalige Aussage, das Programm benutze zwingend `libgpiod`, war aus dem Log nicht nachweisbar. Der heute mitgeführte Code verwendet direkt Linux-GPIO-v2-ioctls. Ein älterer installierter Treiber kann anders aufgebaut gewesen sein. Diese Versionsgrenze ist relevant, weil die historische Fehlermeldung nicht wortgleich mit allen heutigen Fehlerpfaden ist. [R07; R08]
+Die damalige Aussage, das Programm benutze zwingend `libgpiod`, war aus dem Log nicht nachweisbar. Der am 2026-10-04 mitgeführte Code verwendet direkt Linux-GPIO-v2-ioctls. Ein älterer installierter Treiber kann anders aufgebaut gewesen sein. Diese Versionsgrenze ist relevant, weil die historische Fehlermeldung nicht wortgleich mit allen geprüften Fehlerpfaden ist. [R07; R08]
 
 ### 7.2 SPI: Öffnen ist nicht Datenübertragung
 
 Der aktuelle Treiber wirft `Failed to open SPI`, wenn `open(spidev_path, O_RDWR)` einen Fehler liefert. Ein fehlgeschlagener SPI-Transfer hat einen separaten Fehlertext. Der gezeigte Fehler belegt somit im überprüften Code einen Fehler beim **Öffnen**, nicht automatisch einen verdrahteten, aber elektrisch defekten Bus. Der Code enthält an dieser Stelle weiterhin einen TODO für eine genauere Fehlerausgabe. [R07]
 
-Jans root-Gegenprobe macht Rechte beziehungsweise Ausführungskontext zum vorrangigen Prüfpfad. Sie rechtfertigt keine Schlussfolgerung, dass ein USB-Adapter gekauft, ein anderes SPI-Gerät ausprobiert oder eine Frequenz geändert werden müsse. Ein Vergleich der tatsächlich geladenen Bibliothek und der Prozessgruppen bleibt sinnvoll, weil root und Benutzer nicht zwingend in jedem Punkt dieselbe Umgebung verwenden.
+Die erfolgreiche Root-Gegenprobe priorisiert Rechte und Ausführungskontext als Prüfpfad. Hardwarekauf, anderes SPI-Gerät und Frequenzwechsel lassen sich daraus nicht begründen. Geladene Bibliothek und Prozessgruppen vergleichen, da Root- und Dienstumgebung voneinander abweichen können.
 
 ### 7.3 Warum die letzte Gruppenliste den Fehler nicht abschließend ausschließt
 
-`groups jan` fragt die für das Konto gespeicherten Gruppen ab. Die Gruppen einer bereits laufenden Sitzung können davon abweichen. Für deren Prüfung sind `id` oder `groups` **ohne Benutzerargument** maßgeblich. Eine frische Anmeldung und ein danach dokumentierter Start waren im Chat nicht mehr zu sehen. [L01]
+`groups jan` fragt die für das Konto gespeicherten Gruppen ab. Die Gruppen einer bereits laufenden Sitzung können davon abweichen. Für deren Prüfung sind `id` oder `groups` **ohne Benutzerargument** maßgeblich. Eine frische Anmeldung und ein danach dokumentierter Start waren im Entwurf nicht mehr zu sehen. [L01]
 
 Deshalb lautet der Abschluss nicht „alle Rechte behoben und Nicht-root-Betrieb getestet“, sondern: **Dateirechte und Kontogruppen sahen passend aus; abschließender Prozess- und Startnachweis fehlt.**
 
 ### 7.4 Historisch vorgeschlagener Reparaturablauf und seine Grenzen
 
-Die folgenden Schritte wurden vom Assistenten vorgeschlagen; ihre vollständige Ausführung ist nicht als Befehlsprotokoll vorhanden:
+Vorgeschlagene Schritte; ihre vollständige Ausführung ist nicht als Befehlsprotokoll dokumentiert:
 
 ```bash
 sudo groupadd -f spi
@@ -288,7 +280,7 @@ git submodule status
 
 Danach vorhandene udev-Regeln, den wirklichen Servicebenutzer, die geladene SoapySX-Bibliothek und deren Quellstand gezielt vergleichen. Vor einer Veröffentlichung von Diagnosedaten Zugangsdaten und sensible Konfigurationsteile entfernen. Ein SoapySDR-`--probe` ist bereits eine Geräteinitialisierung und wird nicht mit einer rein lesenden Dateiauflistung gleichgesetzt.
 
-## 8. Heutiger Abgleich der HamTetra-Befehle
+## 8. Geprüfter Abgleich der HamTetra-Befehle
 
 > **Referenz, nicht historischer Versionsnachweis:** Geprüft wurde `rats-ry/HamTetra` bei `d0eddfc3bec3b65b2bcc63734d84f24a7ff77c9f` und dessen eingetragener Submodulstand `tejeez/osmo-tetra-dmo` bei `c630336d118075d6bba736be928ece39447decd3`. Es ist nicht bewiesen, dass Jans lokales Binary aus genau diesen Ständen gebaut wurde. [U01–U04]
 
@@ -331,13 +323,13 @@ Die Datei `src/hamtetra_config.h` enthält im geprüften Upstream:
 #define DT254 2
 ```
 
-Diese Werte sind **Upstream-Konstanten, keine Benutzerwerte und keine Empfehlung für Jans Aufbau**. Insbesondere ist `REP_ADDRESS` eine Repeateradressierung mit einem im Kommentar beschriebenen 10-Bit-Luftschnittstellenfeld, nicht die GSSI einer Rufgruppe. GSSI 2000 darf deshalb nicht einfach als Repeateradresse übernommen werden. [U04]
+Dies sind **Upstream-Konstanten, keine Projektfestlegungen**. `REP_ADDRESS` ist eine Repeateradressierung mit laut Kommentar 10-Bit-Luftschnittstellenfeld, keine Gruppen-GSSI. GSSI 2000 darf nicht einfach als Repeateradresse übernommen werden. [U04]
 
 Der Befund widerlegt die damalige pauschale Aussage, MCC/MNC hätten bei diesem DMO-Repeater grundsätzlich keine Rolle. Er beantwortet noch nicht vollständig, wie Jans gewünschte Gruppe im konkreten lokalen Fork behandelt, gefiltert oder weitergeleitet wurde. Dazu wären dessen Gruppen-/PDU-Pfade und die Endgeräteprogrammierung zu prüfen. Ein neuer Patch der Konstanten wurde in diesem Archivierungsauftrag nicht durchgeführt.
 
 ### 8.3 Signalpfad und Offset im Referenzcode
 
-Der `sx`-Zweig setzt unter anderem `driver=sx`, Zeitstempelverwendung, RX-/TX-Antennenbezeichner und eine Sample-Rate von 150000 Samples/s. Er verwendet einen internen Offset von 25000 Hz zwischen SDR-Mitte und TETRA-Signal; RX- und TX-Mitte werden dafür gemeinsam aus der gewünschten Frequenz abgeleitet. Dieser **DSP-Offset ist kein TMO-Duplexabstand**. Die dort mit `TBD` kommentierten Gainwerte sind keine im Chat gemessene Ausgangsleistung in dBm. [U03]
+Der `sx`-Zweig setzt unter anderem `driver=sx`, Zeitstempelverwendung, RX-/TX-Antennenbezeichner und eine Sample-Rate von 150000 Samples/s. Er verwendet einen internen Offset von 25000 Hz zwischen SDR-Mitte und TETRA-Signal; RX- und TX-Mitte werden dafür gemeinsam aus der gewünschten Frequenz abgeleitet. Dieser **DSP-Offset ist kein TMO-Duplexabstand**. Die dort mit `TBD` kommentierten Gainwerte sind keine im Entwurf gemessene Ausgangsleistung in dBm. [U03]
 
 ### 8.4 Tatsächlich vorhandener Installationspfad, nachträglich wiedergefunden
 
@@ -354,20 +346,20 @@ install/build_osmocore.sh
 install/build_osmotetra.sh
 ```
 
-Das sind reale Referenzpfade im gefundenen HamTetra-Projekt und ein deutlich belastbarerer Ausgangspunkt als die zuvor erfundene `sxceiver`-CLI. Das README verwendet teilweise die historische Repository-Adresse `OH2NXX/HamTetra` und nennt Raspberry Pi OS 12 als dort getestete Umgebung. Weder diese README-Testangabe noch die vorhandenen Skriptnamen sind ein Beweis für Jans Betriebssystem, die damals ausgeführte Installationsfolge oder einen heute erfolgreichen Neuaufbau. [U01; U02]
+Das sind reale Referenzpfade im gefundenen HamTetra-Projekt und ein deutlich belastbarerer Ausgangspunkt als die zuvor erfundene `sxceiver`-CLI. Das README verwendet teilweise die historische Repository-Adresse `OH2NXX/HamTetra` und nennt Raspberry Pi OS 12 als dort getestete Umgebung. Weder diese README-Testangabe noch die vorhandenen Skriptnamen sind ein Beweis für Jans Betriebssystem, die damals ausgeführte Installationsfolge oder einen am 2026-10-04 erfolgreichen Neuaufbau. [U01; U02]
 
 ## 9. Korrekturregister: nicht als Lösung weiterverwenden
 
 | Frühere Aussage oder Vorschlag | Bewertung bei Archivierung | Konsequenz für die Fortsetzung |
 |---|---|---|
-| Orange Pi/NUC/LimeSDR als vorhandenes beziehungsweise gewähltes Setup | Vom Benutzer nicht vorgegeben; Lime ausdrücklich korrigiert. | SXceiver und tatsächlichen Host inventarisieren. |
-| Ubuntu x86_64 sei Jans Standard für diesen Aufbau | Im Chat nicht belegt. | OS und Architektur erheben, nicht aus früheren Assistentenannahmen übernehmen. |
+| Orange Pi/NUC/LimeSDR als vorhandenes oder gewähltes Setup | Nicht vorgegeben; Lime ausdrücklich ausgeschlossen. | SXceiver und tatsächlichen Host inventarisieren. |
+| Ubuntu x86_64 als Standard dieses Aufbaus | Nicht belegt. | OS und Architektur am konkreten Host erheben. |
 | SXceiver sei bereits ein vollständiges TETRA-natives Modem; die SDR-Schicht entfalle | Für den überprüften SoapySX-/HamTetra-Pfad falsch. | SPI/GPIO/I²S, SoapySDR und Host-Signalverarbeitung getrennt betrachten. |
-| `github.com/netcore-tetra/sxceiver.git` sowie `sxceiver`, `sxceiver-cli` als fertige verwendete Software | Nicht durch einen Build, einen Dateifund oder einen tatsächlichen Repositorybezug dieses Chats belegt. | Nicht als Abhängigkeit, Dienst oder Installationsweg ausgeben. |
+| `github.com/netcore-tetra/sxceiver.git` sowie `sxceiver`, `sxceiver-cli` als fertige verwendete Software | Nicht durch einen Build, einen Dateifund oder einen tatsächlichen Repositorybezug dieser Planung belegt. | Nicht als Abhängigkeit, Dienst oder Installationsweg ausgeben. |
 | `/dev/ttyUSB0`, 115200 Baud als SXceiver-Anbindung | Erfundenes Beispiel statt Bestandsaufnahme. | Keine serielle Schnittstelle unterstellen. |
-| Stock-osmo-tetra liefere die gezeigte Komplett-BS mit `tetra-mux`, `tetra-mgr`, `osmo-tetra-sds` und `osmo-tetra-voice` | Im Chat nicht verifiziert; kein solcher lokaler Aufruf gezeigt. | Die erfundene Toolchain und zugehörigen Konfigurationen nicht weiterverwenden. |
+| Stock-osmo-tetra liefere Komplett-BS mit `tetra-mux`, `tetra-mgr`, `osmo-tetra-sds` und `osmo-tetra-voice` | Nicht verifiziert; lokaler Aufruf fehlt. | Unbelegte Toolchain und zugehörige Konfigurationen nicht verwenden. |
 | Mode `1` sei zugleich TMO-Basisstation mit Einbuchung, Cell-ID und Duplexpaar | Widerspricht dem geprüften DMO-Parser. | DMO-Repeater und TMO-Basisstation als verschiedene Betriebsziele dokumentieren. |
-| Für DMO seien MCC/MNC grundsätzlich irrelevant | Für den geprüften Repeatercode falsch beziehungsweise unzulässig pauschal. | Benutzerwerte erhalten und ihre jeweilige Funktion prüfen. |
+| MCC/MNC seien für DMO grundsätzlich irrelevant | Im geprüften Repeatercode falsch oder unzulässig pauschal. | Vorgegebene Kennungen erhalten und ihre jeweilige Rolle prüfen. |
 | DMO benötige hier zwingend einen „DCC 0–15“, Herstellerstandard 0 oder Beispiel 7 | Ohne Norm-, Codeplug- oder Parserbeleg behauptet. | Diese Konfiguration vollständig zurückziehen; keine DCC-Werte nachtragen. |
 | Manuell `TS1` und `--slot 1` seien passende Pflichtparameter | Kein Nachweis eines solchen CLI-Feldes; DMO-Timing nicht auf dieses Beispiel reduzieren. | Betriebs-/Repeaterverfahren im realen Stack und Endgerät prüfen. |
 | Erweiterte CLI mit `--mcc`, `--dmo-gssi`, `--dmo-dcc`, `--txpower` usw. | Im geprüften `main()` nicht implementiert. | Keine unverifizierten Flags an einen Funkstart anhängen. |
@@ -378,12 +370,12 @@ Das sind reale Referenzpfade im gefundenen HamTetra-Projekt und ein deutlich bel
 | `SXCVR_SPI` wähle den SPI-Pfad | Im gelesenen aktuellen SoapySX-Konstruktor nicht verwendet; der Pfad ist dort fest hinterlegt. | Kein wirkungsloses Exportieren oder blindes Durchprobieren als Lösung verkaufen. |
 | Durchprobieren aller SPI-Geräte sei ein geeigneter automatischer Health-Check | Keine elektrische Zuordnung oder gefahrlose Initialisierungsfolge belegt. | Ein Health-Check muss bekannte Geräte prüfen, nicht unbekannte Peripherie umkonfigurieren. |
 | `SupplementaryGroups=gpio,dialout` sei die passende systemd-Schreibweise | Kommaseparierte Aufzählung nicht als korrektes Gruppenlistenbeispiel übernehmen. | Benötigte Gruppen als getrennte Listeneinträge, z. B. durch Leerzeichen, und gegen die reale Unit prüfen. |
-| BlueStation sei pauschal ein fertiger DMO-Repeater-/BS-Ersatz | Das geprüfte README beschreibt Basisstationsfunktionen und Alpha-Grenzen, keinen solchen umfassenden Nachweis. | Den von Jan gemeldeten Erfolg anerkennen, aber dessen Modus und Testumfang nicht hinzuerfinden. |
-| Bestimmte BlueStation-Funktionen wie Auth, Handover oder SDS seien sämtlich nicht vorhanden | Kein umfassender damaliger oder heutiger Feature-Audit durchgeführt. | Funktionsaussagen nur anhand konkreter Revisionen und Tests treffen. |
+| BlueStation als pauschal fertiger DMO-Repeater-/BS-Ersatz | README belegt Basisstationsfunktionen und Alpha-Grenzen, keine umfassende Abnahme. | Gemeldeten Start als Erfolg führen; Betriebsart und Funktionsumfang separat prüfen. |
+| Bestimmte BlueStation-Funktionen wie Auth, Handover oder SDS seien sämtlich nicht vorhanden | Kein umfassender damaliger oder geprüfter Feature-Audit durchgeführt. | Funktionsaussagen nur anhand konkreter Revisionen und Tests treffen. |
 
-Die in den frühen Antworten genannten fiktiven INI-/YAML-Beispiele werden nicht als gültige Konfiguration wiederabgedruckt. Ihre wesentlichen falschen Annahmen und Dateinamen bleiben zur Wiedererkennung in diesem Register und im Pfadverzeichnis erhalten.
+Die frühen fiktiven INI-/YAML-Beispiele sind keine gültige Konfiguration. Ihre falschen Annahmen und Dateinamen bleiben im Korrekturregister und Pfadverzeichnis zur eindeutigen Zuordnung erhalten.
 
-## 10. Getrennter heutiger Stand im Zielrepository
+## 10. Getrennter geprüfter Stand im Zielrepository
 
 ### 10.1 Prüfmethode
 
@@ -399,7 +391,7 @@ Alle folgenden R-Befunde beziehen sich auf `Archiving` bei `55f910820262fbe04ef7
 | SoapySX | C++-Treiber unter `sxxcvr-main/SoapySX/SoapySX.cpp`. | Mitgeführter Quellstand; geladene Bibliothek auf Jans Rechner unbekannt. |
 | Treiberbeispiele/-tests | Python-Beispiele und Tests für Stream-/Timestamp-/Gain-Themen im SoapySX-Baum vorhanden. | Keine Ausführung oder Testabnahme dokumentiert. |
 | Updateablauf | `install/update-basisstation.sh` vorhanden. | Spezialisierter aktueller NetCore-Updateweg, keine nachträgliche Bestätigung eines historischen HamTetra-Installers. |
-| Projekt-README | Nennt NetCore v1.9.0, Warnfunktionen und eine zentrale SIP-Anbindung mit lokalem Fallback. | Dokumentierte spätere Projektbeschreibung, nicht in diesem Chat nachgewiesener Live-Zustand. |
+| Projekt-README | Nennt NetCore v1.9.0, Warnfunktionen und eine zentrale SIP-Anbindung mit lokalem Fallback. | Dokumentierte spätere Projektbeschreibung, nicht in diesem Planungsstand nachgewiesener Live-Zustand. |
 
 Quellen: [R01–R08].
 
@@ -438,7 +430,7 @@ colour_code = 1
 timezone = "Europe/Berlin"
 ```
 
-**Dies ist ein dokumentierender Auszug, keine vollständige oder zu übernehmende Betriebsdatei.** Er belegt einen heutigen BS-/Dual-Carrier-Konfigurationskontext mit anderen Netzkennungen und Frequenzen. Die damals genannten DMO-Werte `1 / 333 / 2000` bleiben in ihrem historischen Zusammenhang bestehen. Die beiden Kontexte dürfen nicht über dieselbe ungeprüfte Startzeile vermischt werden. [R05]
+**Dies ist ein dokumentierender Auszug, keine vollständige oder zu übernehmende Betriebsdatei.** Er belegt einen geprüften BS-/Dual-Carrier-Konfigurationskontext mit anderen Netzkennungen und Frequenzen. Die damals genannten DMO-Werte `1 / 333 / 2000` bleiben in ihrem historischen Zusammenhang bestehen. Die beiden Kontexte dürfen nicht über dieselbe ungeprüfte Startzeile vermischt werden. [R05]
 
 In der gelesenen Datei gibt es außerdem veraltete beziehungsweise widersprüchliche Inline-Kommentare: Der Kommentar bei `main_carrier` passt nicht zum dortigen Zahlenwert, und der Kommentar zu `duplex_spacing` spricht von 5 MHz, während die expliziten TX-/RX-Werte 10 MHz auseinanderliegen. Dieses Archiv bewertet nicht abschließend die aktuelle Ableitungslogik; es markiert den notwendigen späteren Abgleich zwischen Frequenzwerten, ausgestrahlten Zellparametern und Kommentaren. Änderungen daran wären außerhalb dieses Auftrags.
 
@@ -460,7 +452,7 @@ Im gelesenen Konstruktor sind fest angegeben:
 | Soapy-Streamformat im betrachteten Setup | `CF32` |
 | HAT-Identifikation | `/proc/device-tree/hat/product_id`, `/proc/device-tree/hat/product_ver` |
 
-Die GPIO-Zahlen sind hier **Quellcodewerte**, kein in diesem Chat elektrisch geprüfter Pinplan. Insbesondere die Zuordnung von Linux-GPIO-Chips zu einem bestimmten Pi-/Kernelstand muss zum tatsächlichen Gerät passen. [R07; R08]
+Die GPIO-Zahlen sind hier **Quellcodewerte**, kein in diesem Planungsstand elektrisch geprüfter Pinplan. Insbesondere die Zuordnung von Linux-GPIO-Chips zu einem bestimmten Pi-/Kernelstand muss zum tatsächlichen Gerät passen. [R07; R08]
 
 Der Konstruktor ignoriert seine Geräteargumente mit `(void)args`; eine Auswertung der damals vorgeschlagenen Variable `SXCVR_SPI` ist dort nicht vorhanden. Der SPI-Pfad kann in diesem Code folglich nicht allein durch die vorgeschlagenen Shell-Exports auf `.1` oder `10.0` umgestellt werden. Der SPI-Open-Fehler enthält weiterhin keine aussagekräftige `errno`-/Pfadangabe. Dies ist ein konkreter kleiner Roadmap-Kandidat, nicht ein im Archiv behobener Bug.
 
@@ -468,7 +460,7 @@ Das SoapySX-README beschreibt Build und Probe über `SoapySDRUtil --probe=driver
 
 ### 10.5 Aktueller NetCore-Updater: bereits vorhandene Teilantwort auf frühere Ideen
 
-`install/update-basisstation.sh` enthält einen realen Ablauf für die heutige Basisstation:
+`install/update-basisstation.sh` enthält einen realen Ablauf für die ergänzende Basisstation:
 
 1. Systemd-/Werkzeugprüfung und Ermittlung des Buildbenutzers; Cargo wird bevorzugt in dessen Rustup-Umgebung gefunden, nicht nur in roots `PATH`.
 2. Unit-Ermittlung aus Konfiguration beziehungsweise bekannten Namen und Ermittlung der tatsächlich gestarteten `bluestation-bs`-Binary über Prozess-/Unitinformationen.
@@ -478,7 +470,7 @@ Das SoapySX-README beschreibt Build und Probe über `SoapySDRUtil --probe=driver
 
 Der Scriptstandard für die Konfiguration ist `/etc/netcore/config.toml`; Backups liegen unter `/var/backups/netcore-tetra`. Als Unit-Kandidaten erscheinen `tetra.service`, `bluestation.service`, `tetra-bluestation.service` und `bluestation-bs.service`. Die Konfiguration dieses Snapshots nennt `service_name = "tetra"`. Kein dieser Namen ist dadurch als damals tatsächlich laufende Unit auf `srv-tmo-bs01` belegt. [R05; R09]
 
-Die im Script stehenden Tests `media_library_top_level_section_parses` und `media_library_unknown_field_is_rejected` wurden bei der Archivierung **nicht ausgeführt**. Gleiches gilt für den Build. Der Updater enthält weitere TTS-/Piper-spezifische Migrationen und ist deshalb kein neutraler universeller Reparaturbefehl für den alten DMO-Aufbau. Er zeigt aber, dass „Autoupdate/Backup/Health-Prüfung“ im heutigen Projekt nicht pauschal als völlig neu zu bauende Idee behandelt werden sollte.
+Die im Script stehenden Tests `media_library_top_level_section_parses` und `media_library_unknown_field_is_rejected` wurden bei der Archivierung **nicht ausgeführt**. Gleiches gilt für den Build. Der Updater enthält weitere TTS-/Piper-spezifische Migrationen und ist deshalb kein neutraler universeller Reparaturbefehl für den alten DMO-Aufbau. Er zeigt aber, dass „Autoupdate/Backup/Health-Prüfung“ im geprüften Projekt nicht pauschal als völlig neu zu bauende Idee behandelt werden sollte.
 
 ## 11. Befehls-, Datei- und Schnittstellenregister
 
@@ -486,9 +478,9 @@ Die im Script stehenden Tests `media_library_top_level_section_parses` und `medi
 
 | Befehl / Ablauf | Status | Ergebnis oder Einschränkung |
 |---|---|---|
-| `osmo-tetra-dmo/src/hamtetra_main2 sx 0` | **Tatsächlich im Chat ausgeführt** | GPIO-Zugriff verweigert; Argumentbedeutung problematisch, nicht wiederholen. |
-| `osmo-tetra-dmo/src/hamtetra_main2 sx 419.99375 0` | **Tatsächlich im Chat ausgeführt** | `Failed to open SPI`, danach `Done`. |
-| Gegenprobe mit `sudo` für den vorherigen Start | **Erfolg vom Benutzer bestätigt** | Läuft als root; exakte Ausgabe und Funktionsumfang fehlen. |
+| `osmo-tetra-dmo/src/hamtetra_main2 sx 0` | **Tatsächlich im Entwurf ausgeführt** | GPIO-Zugriff verweigert; Argumentbedeutung problematisch, nicht wiederholen. |
+| `osmo-tetra-dmo/src/hamtetra_main2 sx 419.99375 0` | **Tatsächlich im Entwurf ausgeführt** | `Failed to open SPI`, danach `Done`. |
+| Gegenprobe mit `sudo` für vorherigen Start | **Erfolg nach Betreiberbericht** | Läuft als root; exakte Ausgabe und Funktionsumfang fehlen. |
 | `ls -l /dev/spidev* /dev/gpiochip* 2>/dev/null` | **Tatsächlich ausgeführt** | Geräteknoten und Rechte in H05 vollständig bewahrt. |
 | `groups jan` | **Tatsächlich ausgeführt** | Kontogruppenliste in H05. |
 | Start mit abschließender `1` | **Besprochen** | Repeaterfrage, kein zugehöriges Erfolgs-/Fehlerprotokoll. |
@@ -496,13 +488,13 @@ Die im Script stehenden Tests `media_library_top_level_section_parses` und `medi
 | `newgrp`, erneute Anmeldung, Reboot | **Vorgeschlagen** | Kein belegt erfolgreicher Folgestart aus neuer Sitzung. |
 | ACL mittels `setfacl` | **Vorgeschlagen** | Nicht als dauerhafte oder tatsächlich angewendete Lösung belegt. |
 | `modprobe spidev`, Pi-`dtparam=spi=on` | **Vorgeschlagen** | Kein fehlendes SPI-Gerät als Ursache nachgewiesen; root-Erfolg spricht gegen vorschnellen Neuaufbau. |
-| `gpiodetect`, `gpioinfo`, `lsmod`, `dmesg`, `lsusb` | **Angefordert/vorgeschlagen** | Keine zugehörigen Ausgaben im Chat. |
+| `gpiodetect`, `gpioinfo`, `lsmod`, `dmesg`, `lsusb` | **Angefordert/vorgeschlagen** | Keine zugehörigen Ausgaben im Entwurf. |
 | Python-/periphery-Tests | **Vorgeschlagen** | Nicht ausgeführt belegt; damaliger Paketname/Installationsweg nicht verifiziert. |
 | `export SXCVR_SPI=...` | **Unbelegt, nicht als Lösung übernehmen** | Im überprüften SoapySX-Pfad keine solche Auswahl nachgewiesen. |
 | `systemctl enable --now hamtetra.service` | **Vorgeschlagen** | Weder Unitdatei noch Servicezustand tatsächlich vorgelegt. |
 | BlueStation-Installation durch DeepSeek-Anleitung | **Erfolg gemeldet** | Die genauen Befehle fehlen und werden nicht nacherfunden. |
 
-### 11.2 Historische und heutige Pfade strikt unterscheiden
+### 11.2 Historische und ergänzende Pfade strikt unterscheiden
 
 | Pfad / Name | Einordnung |
 |---|---|
@@ -513,17 +505,17 @@ Die im Script stehenden Tests `media_library_top_level_section_parses` und `medi
 | `/etc/sxceiver/config.yaml`, `hamtetra.conf`, `cell.cfg`, `devices.conf` | Frühe unbelegte Beispielkonfigurationen, kein Bestandsnachweis. |
 | `sxceiver.service`, `osmotetra.service`, Dienst `node` | Vorgeschlagene Namen aus unzureichend belegten Architekturen; keine tatsächlich nachgewiesenen Dienste. |
 | `/var/log/syslog`, `journalctl -u ...` | Allgemeine damalige Diagnosevorschläge; keine hier vorgelegten Servicejournal-Auszüge. |
-| `sxxcvr-main/SoapySX/SoapySX.cpp` | Heutiger gezielt geprüfter Treiber im Zielrepository. |
-| `sxxcvr-main/SoapySX/test/` und `sxxcvr-main/example/` | Heutige Test-/Beispielartefakte, nicht in diesem Auftrag gestartet. |
-| `bins/bluestation-bs/`, `crates/`, `config.toml` | Heutige NetCore-Struktur, nicht der historische HamTetra-Baum. |
-| `/etc/netcore/config.toml`, `/var/backups/netcore-tetra` | Pfadstandards im heute geprüften Updater, nicht automatisch Live-Pfade. |
+| `sxxcvr-main/SoapySX/SoapySX.cpp` | Geprüfter gezielt geprüfter Treiber im Zielrepository. |
+| `sxxcvr-main/SoapySX/test/` und `sxxcvr-main/example/` | Ergänzende Test-/Beispielartefakte, nicht in diesem Auftrag gestartet. |
+| `bins/bluestation-bs/`, `crates/`, `config.toml` | Ergänzende NetCore-Struktur, nicht der historische HamTetra-Baum. |
+| `/etc/netcore/config.toml`, `/var/backups/netcore-tetra` | Pfadstandards im am 2026-10-04 geprüften Updater, nicht automatisch Live-Pfade. |
 | `/etc/flowstation/config.toml`, `/usr/bin/bluestation-bs` | Im gelesenen Paketmanifest enthaltene Paketpfade; nicht mit dem Updaterstandard gleichsetzen. |
 
 ### 11.3 Ports, Protokolle und Zugriffskontexte
 
-Historisch ist **kein tatsächlich belegter TCP-/UDP-Dienstport** dokumentiert. Die frühere WebUI-Adresse mit Port `8443` war ein Assistentenbeispiel, kein gefundenes Interface. Es gibt keinen Nachweis eines REST-Endpunkts, eines Managementsockets oder eines aktiven VPN-Tunnels dieses Aufbaus.
+Ein historischer TCP-/UDP-Dienstport ist nicht belegt. WebUI-Port `8443` war ein Beispiel, kein nachgewiesenes Interface. REST-Endpunkt, Managementsocket und aktiver VPN-Tunnel sind nicht bestätigt.
 
-Belegt beziehungsweise im heutigen Code nachvollzogen sind Linux-Character-Device-Zugriffe, SPI, GPIO, SoapySDR sowie im überprüften Treiber ALSA/I²S für komplexe Samples. DMO-Repeaterbetrieb und TMO-Basisstationsbetrieb sind getrennte Luftschnittstellen-/Betriebskontexte. Brew-, SIP-, REST- oder Monitoring-Anbindungen dürfen nur mit ihren jeweils vorhandenen späteren Quellen beschrieben werden, nicht aus den damaligen Versprechen abgeleitet werden.
+Belegt beziehungsweise im geprüften Code nachvollzogen sind Linux-Character-Device-Zugriffe, SPI, GPIO, SoapySDR sowie im überprüften Treiber ALSA/I²S für komplexe Samples. DMO-Repeaterbetrieb und TMO-Basisstationsbetrieb sind getrennte Luftschnittstellen-/Betriebskontexte. Brew-, SIP-, REST- oder Monitoring-Anbindungen dürfen nur mit ihren jeweils vorhandenen späteren Quellen beschrieben werden, nicht aus den damaligen Versprechen abgeleitet werden.
 
 ## 12. Tests, Ergebnisse und fehlende Abnahmen
 
@@ -531,16 +523,16 @@ Belegt beziehungsweise im heutigen Code nachvollzogen sind Linux-Character-Devic
 |---|---|---|---|
 | Programmstart als `jan`, erster dokumentierter Aufruf | Ja, Terminalausgabe | GPIO-`Permission denied`. | Erfolgreicher RF-Pfad. |
 | Programmstart als `jan`, mit Frequenz und Mode 0 | Ja, Terminalausgabe | SPI-Open-Fehler. | Elektrische Busfunktion, RF, Audio. |
-| Root-Gegenprobe | Nach Benutzerbericht ja | Läuft. | Dauer, verwendete Frequenz tatsächlich am Ausgang, DMO-Repeater, SDS/Voice. |
+| Root-Gegenprobe | Nach Betreiberbericht ja | Läuft. | Dauer, Ausgangsfrequenz, DMO-Repeater und SDS/Voice. |
 | Geräte-/Kontogruppenliste | Ja, Terminalausgabe | Geräte vorhanden, Gruppenrechte gesetzt. | Prozessgruppen, Persistenz und späterer Nicht-root-Start. |
-| BlueStation-Inbetriebnahme | Nach Benutzerbericht ja | Zum Laufen gebracht. | Installationsrezept, Revision, DMO/TMO, Endgerätemodelle und Ende-zu-Ende-Funktionen. |
+| BlueStation-Inbetriebnahme | Nach Betreiberbericht ja | Zum Laufen gebracht. | Installationsfolge, Revision, DMO/TMO, Endgeräte und Ende-zu-Ende-Funktion. |
 | Gruppenruf GSSI 2000 | Nicht belegt | Offen. | Kein Sprach-/Signalisierungsprotokoll vorhanden. |
 | SDS Senden/Empfangen | Nicht belegt | Offen. | Weder konkrete gültige CLI noch Empfangsquittung dokumentiert. |
 | Mehr als 30 Minuten stabiler Betrieb | Nur vorgeschlagen | Offen. | Keine CPU-/Underrun-/Abbruchdaten. |
 | Reboot/Autostart ohne root | Nicht belegt | Offen. | Keine Unit-/Journal-/Gruppenprüfung. |
 | Reichweite, Antennenabstimmung, Ausgangsleistung | Nicht belegt | Offen. | Keine Messungen und kein HF-Aufbau dokumentiert. |
-| Heutiger statischer Codeabgleich | Ja, gezielte Dateien | Argumente, Treiberpfade, aktuelle BS-Konfiguration und Updater geprüft. | Kein vollständiger Feature-/Security-Audit. |
-| Heutige Cargo-/Treiber-/Hardwaretests | Nein | Nicht Bestandteil des Archivierungslaufs. | Keine technische Abnahme aus dem Speichern der Dokumentation ableiten. |
+| Geprüfter statischer Codeabgleich | Ja, gezielte Dateien | Argumente, Treiberpfade, aktuelle BS-Konfiguration und Updater geprüft. | Kein vollständiger Feature-/Security-Audit. |
+| Ergänzende Cargo-/Treiber-/Hardwaretests | Nein | Nicht Bestandteil des Archivierungslaufs. | Keine technische Abnahme aus dem Speichern der Dokumentation ableiten. |
 
 Für eine spätere Abnahme sind Modus, Source-Commit, Binary-Hash, Treiberversion, OS/Kernel, Endgerätekonfiguration und Erfolgskriterium zusammen zu protokollieren. DMO-Repeaterdurchleitung und TMO-Einbuchung sind unterschiedliche Testfälle. Ein „Programm läuft“ darf nicht als Nachweis beider Fälle gelten.
 
@@ -548,38 +540,38 @@ Für eine spätere Abnahme sind Modus, Source-Commit, Binary-Hash, Treiberversio
 
 ### 13.1 Relevante noch offene Arbeit
 
-Die folgenden Prioritäten sind **neu vorgeschlagene Arbeitsreihenfolge für die Fortsetzung**, keine im historischen Chat bereits vereinbarte Termin- oder Prioritätenplanung. Es werden hier keine Issues, PRs, Codeänderungen oder Roadmapdateien außerhalb des Archivs angelegt.
+Die folgenden Prioritäten sind **neu vorgeschlagene Arbeitsreihenfolge für die Fortsetzung**, keine im historischen Planungsstand bereits vereinbarte Termin- oder Prioritätenplanung. Es werden hier keine Issues, PRs, Codeänderungen oder Roadmapdateien außerhalb des Archivs angelegt.
 
 | ID | Priorität | Aufgabe | Ursprung / Status | Abhängigkeit und Abschlusskriterium |
 |---|---|---|---|---|
 | SX-01 | P0 | Historisch beziehungsweise aktuell tatsächlich funktionierende Installation sichern: Repository, Commit, Submodule, Binary-/Treiber-Hashes, OS, Startpfad. | Auswertungslücke; **offen**. | Nur bereinigte Konfiguration ohne Zugangsdaten archivieren; rekonstruierbarer Buildstand liegt vor. |
-| SX-02 | P0 | Betriebsziel eindeutig trennen: alter HamTetra-DMO-Repeater oder heutige NetCore-TMO-Basisstation. | Benutzerkorrektur DMO versus späterer BlueStation-Erfolg; **offen**. | Benannte Binary, Modus und passender Endgerätekanal dokumentiert. |
+| SX-02 | P0 | Betriebsziel trennen: HamTetra-DMO-Repeater oder NetCore-TMO-Basisstation. | DMO-Festlegung und späterer BlueStation-Erfolg; **offen**. | Binary, Betriebsart und passender Endgerätekanal dokumentiert. |
 | SX-03 | P0 | Nicht-root-Zugriff abschließen: echte Prozessgruppen, aktive Regeln und Gerätezuordnung prüfen. | Früherer Fehler; **teilweise beobachtet, nicht abschließend getestet**. | Start als vorgesehener Dienstbenutzer nach frischer Anmeldung und Neustart belegt. |
-| SX-04 | P0 | Benutzerwerte 1/333/2000 richtig auf DMO-Netz-/Gruppen-/Repeaterparameter abbilden, sofern der alte DMO-Pfad weiter genutzt wird. | Explizite Benutzerwerte; **beschlossen, Umsetzung unbestätigt**. | Gruppenidentität und Repeateradresse getrennt; keine fiktiven Flags oder DCC-Felder. |
-| SX-05 | P1 | Reproduzierbare SXceiver-Installation mit dokumentierten realen Abhängigkeiten und Versionen. | Installeridee; reale Upstream-Referenzen heute gefunden. | Neuaufbau aus festgehaltenem Stand getestet; keine Vermischung mehrerer SoapySDR-/Treiberinstallationen. |
-| SX-06 | P1 | Fehlertexte des SoapySX-Open-Pfads um betroffenen Gerätepfad und Systemfehler ergänzen. | Konkreter heutiger Codebefund; **Idee**. | Fehlertests unterscheiden fehlendes Gerät, Zugriffsverweigerung und Transferfehler nachvollziehbar. |
+| SX-04 | P0 | Kennungen 1/333/2000 auf DMO-Netz-/Gruppen-/Repeaterparameter abbilden, sofern der alte DMO-Pfad fortgeführt wird. | **Beschlossen, Umsetzung unbestätigt**. | Gruppenidentität und Repeateradresse getrennt; keine fiktiven Flags/DCC-Felder. |
+| SX-05 | P1 | Reproduzierbare SXceiver-Installation mit dokumentierten realen Abhängigkeiten und Versionen. | Installeridee; reale Upstream-Referenzen am 2026-10-04 gefunden. | Neuaufbau aus festgehaltenem Stand getestet; keine Vermischung mehrerer SoapySDR-/Treiberinstallationen. |
+| SX-06 | P1 | Fehlertexte des SoapySX-Open-Pfads um betroffenen Gerätepfad und Systemfehler ergänzen. | Konkreter geprüfter Codebefund; **Idee**. | Fehlertests unterscheiden fehlendes Gerät, Zugriffsverweigerung und Transferfehler nachvollziehbar. |
 | SX-07 | P1 | Sichere Preflight-/Health-Prüfung bekannter Devices und Bibliotheken. | Damaliger kleiner Health-Check-Vorschlag; **Idee**. | Keine automatische Initialisierung unbekannter SPI-Geräte; klare Diagnose ohne unbeabsichtigten Senderstart. |
 | SX-08 | P1 | Reale Unit, Arbeitsverzeichnis, Benutzer/Gruppen, Neustartverhalten und Journalausgabe dokumentieren. | Autostartvorschlag; **unbestätigt**. | Kein dauerhaft privilegierter Betrieb nur als ungeprüfter Ersatz für Rechtebehebung; Neustart-/Fehlerfalltest protokolliert. |
 | SX-09 | P1 | Getrennte DMO-/TMO-Testmatrix mit Gruppenruf, Audio, gegebenenfalls SDS, Dauerlast und Wiederanlauf. | Frühere Testvorschläge; **offen**. | Ergebnisse mit genauer Revision und Endgeräten statt pauschalem „läuft“. |
-| SX-10 | P1 | Heutige Frequenz-/Zellparameter und widersprüchliche Konfigurationskommentare abgleichen. | Heutiger R05-Befund; **offen**. | Parser-/Broadcastableitung und freigegebener Frequenzplan stimmen überein; nicht im Archivauftrag verändern. |
-| SX-11 | P2 | APIs, SDS/Voice, Monitoring, Logging und Backup mit vorhandenen NetCore-Komponenten zusammenführen. | Assistentenideen; heute teilweise entsprechende Artefakte vorhanden. | Bestand vor Neubau prüfen; Ende-zu-Ende-Funktion und Recovery nachweisen. |
-| SX-12 | P2 | Den erfolgreichen externen BlueStation-Installationsweg nachdokumentieren. | Benutzererfolg, Rezept fehlt. | Freigegebene Befehlsfolge, Konfiguration und Revision ohne Geheimnisse als zusätzlicher Beleg vorhanden. |
+| SX-10 | P1 | Frequenz-/Zellparameter und widersprüchliche Konfigurationskommentare abgleichen. | Geprüfter R05-Befund; **offen**. | Parser/Broadcast und freigegebener Frequenzplan stimmen überein. |
+| SX-11 | P2 | APIs, SDS/Voice, Monitoring, Logging und Backup mit vorhandenen NetCore-Komponenten zusammenführen. | Ausbauideen; am 2026-10-04 teilweise Artefakte vorhanden. | Bestand, Ende-zu-Ende-Funktion und Recovery prüfen. |
+| SX-12 | P2 | Erfolgreichen BlueStation-Installationsweg nachdokumentieren. | Betriebserfolg gemeldet, Rezept fehlt. | Befehlsfolge, Konfiguration und Revision als zusätzlicher Nachweis vorhanden. |
 
-SX-04 ist nur dann erneut als Implementierungsaufgabe nötig, wenn der historische DMO-Pfad tatsächlich weiterverfolgt wird. Die Archivierung soll keinen heute erfolgreichen TMO-Aufbau auf alte Versuche zurücksetzen. Die damaligen Gerätezugriffsprobleme sind als historisch unvollständig abgeschlossen zu kennzeichnen, nicht ohne aktuellen Fehlerbeleg als heute fortbestehende Störung.
+SX-04 ist nur dann erneut als Implementierungsaufgabe nötig, wenn der historische DMO-Pfad tatsächlich weiterverfolgt wird. Die Archivierung soll keinen am 2026-10-04 erfolgreichen TMO-Aufbau auf alte Versuche zurücksetzen. Die damaligen Gerätezugriffsprobleme sind als historisch unvollständig abgeschlossen zu kennzeichnen, nicht ohne aktuellen Fehlerbeleg als am 2026-10-04 fortbestehende Störung.
 
 ### 13.2 Kleinere Nebenideen, die nicht verloren gehen sollen
 
-Der Assistent bot automatische Installer unter Namen wie `setup-node.sh`, `setup-sxceiver.sh` und `setup-osmotetra.sh`, ein Level-0/1-Installationshandbuch beziehungsweise A4-Booklet, einen GPIO-/SPI-Health-Check, eine systemd-Unit, Logrotation, Temperatur-/TX-Last-Telemetrie, Konfigurationsbackup und einen Deploymentbericht an. **Keines dieser Artefakte wurde in diesem Chat tatsächlich geliefert oder vom Benutzer abschließend beauftragt.** Heute vorhandene ähnliche Funktionen sind zuerst zu prüfen, bevor diese Ideen als neue Entwicklungsarbeit übernommen werden. [H01–H09; R09]
+Nebenideen sind Installer `setup-node.sh`, `setup-sxceiver.sh` und `setup-osmotetra.sh`, Level-0/1-Handbuch beziehungsweise A4-Booklet, GPIO-/SPI-Health-Check, systemd-Unit, Logrotation, Temperatur-/TX-Last-Telemetrie, Konfigurationsbackup und Deploymentbericht. **Keines ist in dieser frühen Phase als geliefert oder abschließend beauftragt nachgewiesen.** Ähnliche inzwischen vorhandene Funktionen zuerst prüfen. [H01–H09; R09]
 
 Die API-Idee umfasste SDS/Voice aus einer App oder Zentrale; dazu kamen Vorschläge für SNR/BER-/Temperatur-/TX-Last-Anzeigen. Es wurden keine konkreten Messdatenquellen, APIs oder Portverträge erarbeitet. Auch der Vorschlag, BlueStation genauer auf Schwachstellen zu untersuchen, wurde hier nicht als vollständiger Audit ausgeführt.
 
 ### 13.3 Aus dem Auftrag herausgefallene oder ersetzte Ansätze
 
-Die anfänglichen Ideen zu Orange Pi/NUC, LimeSDR/LimeSuite, LTE/5G, GPS, SSD, modularen Nodes, 19-Zoll-/Outdoor-Gehäusen, IP65, Lüfter-/Notabschaltung, 230-V-USV, 12/24-V-/Solarbetrieb und Mesh-VPN waren **unaufgeforderte Konzeptvorschläge im falschen Aufgabenverständnis**. Sie sind keine Hardware-BOM und keine Anforderungen dieses Chats.
+Die anfänglichen Ideen zu Orange Pi/NUC, LimeSDR/LimeSuite, LTE/5G, GPS, SSD, modularen Nodes, 19-Zoll-/Outdoor-Gehäusen, IP65, Lüfter-/Notabschaltung, 230-V-USV, 12/24-V-/Solarbetrieb und Mesh-VPN waren **unaufgeforderte Konzeptvorschläge im falschen Aufgabenverständnis**. Sie sind keine Hardware-BOM und keine Anforderungen dieser Planung.
 
 Gleiches gilt für vermeintliche ZKN-/Lighthouse-Registrierung, Hardware-Fingerprint, Whitelist, TLS-Verteilung, Honeypot, vorgeschlagenes Secure Boot und feste Partitionsgrößen. Diese Themen wurden nicht ausgearbeitet und nicht als Bestandteil der erfolgreichen Inbetriebnahme belegt. Eine spätere separate Verwendung solcher Ideen ist möglich, darf aber nicht als damaliger Beschluss dargestellt werden.
 
-Der Wechsel zu BlueStation ist der letzte benutzerseitig gemeldete praktische Lösungsweg. Das historische HamTetra-Verzeichnis muss deshalb nicht gelöscht oder erneut aufgebaut werden. Vor Änderungen an einer funktionierenden Installation steht deren Sicherung und eindeutige Identifikation.
+BlueStation ist der zuletzt als praktisch erfolgreich gemeldete Weg. Das historische HamTetra-Verzeichnis muss dafür nicht gelöscht oder neu aufgebaut werden. Zuerst funktionierenden Installationsstand sichern und eindeutig identifizieren.
 
 ## 14. Anhänge und Bildarchiv
 
@@ -587,9 +579,9 @@ Der Wechsel zu BlueStation ist der letzte benutzerseitig gemeldete praktische L�
 
 Im zugänglichen Projekt-/Dateikontext liegen **25 PDFs mit insgesamt 8061 physischen PDF-Seiten und 55265473 Bytes**. Die Seitenzahl enthält Überschneidungen zwischen Einzeldokumenten und `ETSI.pdf` und bezeichnet **keinen Umfang einmaliger oder vollständig fachlich ausgewerteter Normenseiten**.
 
-Dateinamen, Seitenzahl, Deckblattkennung und SHA-256 wurden erfasst. Inhaltlich wurden für diesen Chat besonders die Identitäts-/Gruppenkontexte und die DMO-Gruppentabelle in `es_20081202v020401m.pdf`, Seiten 99–100, geprüft, einschließlich gerenderter Tabellen-/Seitenansicht. Dort sind Netzwerkadressverweis und GSSI getrennte Einträge. Dies unterstützt die vorsichtige Behandlung der Benutzerkennungen; es liefert keine HamTetra-CLI und keinen Nachweis einer auf dem Host implementierten TSIM-Funktion. [A07]
+Dateinamen, Seitenzahlen, Deckblattkennung und SHA-256 sind erfasst. Vertieft geprüft wurden Identitäts-/Gruppenkontext und DMO-Gruppentabelle in `es_20081202v020401m.pdf`, Seiten 99–100, einschließlich gerenderter Seitenansicht. Netzwerkadressverweis und GSSI sind getrennte Einträge. Dies unterstützt die korrekte Einordnung der Kennungen, liefert aber keine HamTetra-CLI und keinen TSIM-Implementierungsnachweis. [A07]
 
-Die bereitgestellten Dateien sind als Projektquellen zugänglich. Ihre heutige Verfügbarkeit beweist nicht, dass jede Datei schon während des historischen Installationsversuchs vorhanden war. Insbesondere werden die Dokumente mit Draft-Kennung 2026 nicht rückwirkend als damalige Implementierungsgrundlage ausgegeben. Eine Prüfung, ob jede Ausgabe heute die neueste oder endgültig verabschiedete Fassung ist, war nicht Gegenstand dieser Archivierung.
+Die bereitgestellten Dateien sind als Projektquellen zugänglich. Ihre ergänzende Verfügbarkeit beweist nicht, dass jede Datei schon während des historischen Installationsversuchs vorhanden war. Insbesondere werden die Dokumente mit Draft-Kennung 2026 nicht rückwirkend als damalige Implementierungsgrundlage ausgegeben. Eine Prüfung, ob jede Ausgabe am 2026-10-04 die neueste oder endgültig verabschiedete Fassung ist, war nicht Gegenstand dieser Archivierung.
 
 ### 14.2 Inhaltsinventar
 
@@ -621,7 +613,7 @@ Die bereitgestellten Dateien sind als Projektquellen zugänglich. Ihre heutige V
 | A24 | `en_30039202v030801p.pdf` | EN 300 392-2 V3.8.1, 2016-08 | V+D Air Interface | 1445 |
 | A25 | `ETSI.pdf` | Sammeldatei; erstes Deckblatt EN 300 812 V2.1.1 | Überlappender umfangreicher Normenbestand; Zusammensetzung nicht vollständig abgeglichen | 4100 |
 
-Die bloße Bereitstellung dieser Normen begründet keine zusätzlichen Benutzeranforderungen an ISI, TSIM, PPC, PEI oder alle Zusatzdienste. Kein Dokument ersetzt die Prüfung des tatsächlich ausgeführten Codes.
+Die Normanhänge begründen keine zusätzlichen Anforderungen an ISI, TSIM, PPC, PEI oder sämtliche Zusatzdienste. Der tatsächlich ausgeführte Code ist gesondert zu prüfen.
 
 ### 14.3 Prüfsummen zur späteren eindeutigen Zuordnung
 
@@ -655,7 +647,7 @@ ac716ca18082cc0fd2ee768a14f03deb48fa78a77e83751b1a6b319c7fc2106a  en_30039502v01
 
 ### 14.4 Bilder: Ergebnis der Verfügbarkeitsprüfung
 
-Im sichtbaren historischen Chat sind keine eigenständigen Aufbau-, Terminal- oder generierten Entwurfsbilder enthalten. Die Suche nach eigenständigen Bilddateien auf der verfügbaren Dateifläche sowie die Prüfung der gemounteten Dateien ergaben **keine PNG-, JPEG-, WebP- oder GIF-Chatbilder**.
+Eigenständige historische Aufbau-, Terminal- oder Entwurfsbilder sind nicht verfügbar. Die Dateibestandsprüfung fand **keine PNG-, JPEG-, WebP- oder GIF-Bilder**.
 
 Deshalb wird kein leerer Bildordner angelegt und kein Ersatzbild erzeugt. Die eingebetteten ETSI-Deckblätter und Normgrafiken werden nicht als Fotos dieses Aufbaus umetikettiert. Die PDFs wurden als Quellen inventarisiert, nicht erneut als angebliche Bildanhänge in das Repository kopiert. Sollten außerhalb des zugänglichen Verlaufs doch Originalbilder existieren, müssten diese später ausdrücklich identifiziert und unter demselben Archivbereich ergänzt werden; für deren Vorhandensein gibt es hier keinen Nachweis.
 
@@ -663,7 +655,7 @@ Deshalb wird kein leerer Bildordner angelegt und kein Ersatzbild erzeugt. Die ei
 
 ### 15.1 Historische Quellen
 
-**H01–H09** bezeichnen die in Abschnitt 4 erhaltenen Ereignisse und Benutzeräußerungen dieses Chats. Der Chatlink ist nicht verfügbar. Der dortige Wechsel von allgemeinen Assistentenvorschlägen zu tatsächlichen Benutzerlogs ist absichtlich sichtbar gehalten.
+**H01–H09** bezeichnen die historischen Entwicklungsschritte aus Abschnitt 4. Terminalausgaben und gemeldete Betriebserfolge sind von unbestätigten Vorschlägen getrennt.
 
 ### 15.2 Zielrepository – fixierter Prüfstand
 
@@ -704,9 +696,9 @@ Docs/archive/README.md vor diesem Archiveintrag  def5491853451fd7e700e87f864ccfd
 | U05 | [MidnightBlueLabs/tetra-bluestation README](https://github.com/MidnightBlueLabs/tetra-bluestation/blob/09d4e0d9a0b8cf6c881e77353db325df9a4715aa/README.md) | Frisch gelesener `main`-Stand `09d4e0d9a0b8cf6c881e77353db325df9a4715aa`; Alpha-Basisstationsbeschreibung. Nicht der unbekannte historische Installationscommit. |
 | L01 | [GNU Coreutils: groups invocation](https://www.gnu.org/s/coreutils/manual/html_node/groups-invocation.html) | Unterscheidung zwischen Kontogruppen bei Benutzerargument und Gruppen des aktuellen Prozesses ohne Benutzerargument. |
 
-Die vom BlueStation-README verlinkte [BlueStation-Dokumentationswiki](https://github.com/MidnightBlueLabs/tetra-bluestation-docs/wiki) ist eine sinnvolle nachfolgende Referenz, wurde aber nicht vollständig als Installations- und Funktionshandbuch geprüft. Es wird kein externer PR und kein historischer Entwicklungscommit dieses Chats behauptet.
+Die vom BlueStation-README verlinkte [BlueStation-Dokumentationswiki](https://github.com/MidnightBlueLabs/tetra-bluestation-docs/wiki) ist eine sinnvolle nachfolgende Referenz, wurde aber nicht vollständig als Installations- und Funktionshandbuch geprüft. Es wird kein externer PR und kein historischer Entwicklungscommit dieser Planung behauptet.
 
-### 15.4 Verwandte Archive – ausdrücklich andere Chats
+### 15.4 Verwandte Entwicklungsnotizen
 
 Im vorhandenen Index stehen unter anderem bereits:
 
@@ -718,10 +710,10 @@ Diese Links dienen der Navigation zur späteren Projektgeschichte. Deren vollst�
 
 ## 16. Übergabe und Abschlussbedingungen
 
-**Gesichert für die Fortsetzung:** ursprüngliche Aufgabenpräzisierungen; SXceiver statt Lime; tatsächliche Host-/Programmpfade; beide Fehlerbilder; root-Erfolg in seiner begrenzten Aussageweite; vollständige letzte Geräte-/Gruppenliste; DMO-Frequenz und Benutzerkennungen; Wechsel zu BlueStation mit angemessener Zuordnung des extern erreichten Erfolgs; korrigierte heutige Parser-/Treiberbefunde; getrennte aktuelle NetCore-Bestandsaufnahme; offene Aufgaben und Quelleninventar.
+**Gesichert:** SXceiver als Hardware, Host-/Programmpfade, beide Fehlerbilder, begrenzter Root-Erfolg, Geräte-/Kontogruppenliste, DMO-Frequenz und Kennungen sowie gemeldeter BlueStation-Installationserfolg. Ergänzende Parser-/Treiberbefunde und NetCore-Bestandsaufnahme gehören zum Prüfdatum.
 
-**Weiterhin fehlend:** Originaltitel/-link, vollständige historische Installationsfolge, damalige Commits und Bibliotheksversionen, tatsächlich aktivierte Regeln/Unit, abschließender Nicht-root-Nachweis, reproduzierbarer BlueStation-Installationsstand sowie DMO-/TMO-/Sprach-/SDS-/Dauerbetriebsabnahmen. Es sind keine eigenständigen Chatbilder verfügbar. Die Normen wurden nicht vollständig durchgearbeitet und nicht als neue Bilddateien hochgeladen.
+**Offene Nachweise:** vollständige historische Installationsfolge, Commits/Bibliotheken, aktivierte Regeln und Unit, Nicht-root-Erfolg, reproduzierbarer BlueStation-Stand sowie DMO-/TMO-/Sprach-/SDS-/Dauerbetriebsabnahme. Eigenständige Bilder fehlen; die Normsammlung ist nicht vollständig ausgewertet.
 
-**Schreibgrenze dieses Auftrags:** ausschließlich diese Markdown-Datei und der zugehörige Eintrag in `Docs/archive/README.md` auf `Archiving`. Keine Änderungen an RF-Konfiguration, Treiber, Diensten, aktiven Roadmaps, anderen Archiveinträgen oder anderen Branches; kein Merge und kein Force-Push. Vor Veröffentlichung ist der aktuelle Branchstand erneut abzugleichen. Die Abschlussmeldung muss den tatsächlichen Speichercommit und die erfolgreiche Rückleseprüfung nennen, nicht einen nur geplanten Commit.
+**Nächster Schritt:** Reale Installation einschließlich Binary, Modus, Bibliotheken und Konfiguration identifizieren; danach den vorgesehenen Dienstbenutzer und den tatsächlichen Funkpfad abnehmen.
 
 Die wichtigste praktische Übergabe lautet: **Nicht die damals erfundenen Befehle weiter reparieren, sondern den wirklich funktionierenden Source-/Binary-/Treiberstand identifizieren und darauf aufbauen.**

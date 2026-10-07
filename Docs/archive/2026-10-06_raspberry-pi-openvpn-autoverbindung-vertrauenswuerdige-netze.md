@@ -1,48 +1,41 @@
-# Raspberry Pi OS: OpenVPN-Autoverbindung abhängig von vertrauenswürdigen Netzen
+# Brainstorming: Raspberry Pi OS – OpenVPN-Autoverbindung abhängig von vertrauenswürdigen Netzen
 
-Der Chat entwickelte einen konkreten Vorschlag für einen mobilen Raspberry Pi: In benannten vertrauenswürdigen WLANs oder im physischen Heim-LAN `10.0.1.0/24` soll der Heim-VPN-Tunnel ausgeschaltet sein, außerhalb soll er automatisch aufgebaut werden. Vorgeschlagen wurden ein NetworkManager-OpenVPN-Profil, eine Bash-Policy, ein systemd-Oneshot und ein NetworkManager-Dispatcher. Ein nftables-Kill-Switch blieb eine optionale Erweiterung. Installation, erfolgreiche Tests und laufender Betrieb sind im Chat nicht belegt.
+Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
+
+Entwurf für einen mobilen Raspberry Pi: In benannten vertrauenswürdigen WLANs oder im physischen Heim-LAN `10.0.1.0/24` bleibt der Heim-VPN-Tunnel aus; außerhalb wird er automatisch aufgebaut. Vorgesehen sind ein NetworkManager-OpenVPN-Profil, eine Bash-Policy, ein systemd-Oneshot und ein NetworkManager-Dispatcher. Ein nftables-Kill-Switch ist eine optionale Erweiterung. Installation, erfolgreicher Test und Betrieb sind nicht belegt.
 
 Die am 06.10.2026 gelesenen Repository-Dateien enthalten eine separate historische Imagebuilder-/VPN-Vorschau und allgemeine WLAN-/Firewall-Komponenten. Der dazugehörige `deployment-core` und die hier vorgeschlagenen Policy-Dateien sind im geprüften `Archiving`-Stand nicht vorhanden. Diese unterschiedlichen Quellenstände werden unten ausdrücklich getrennt.
 
-## 1. Metadaten und Auswertungsumfang
+## 1. Projektstand und Quellenbasis
 
 | Feld | Wert |
 |---|---|
-| Ursprünglicher Chattitel | A: VPN Toggle je nach Netzwerk |
-| Chat-ID | `6ab6bf17-c764-83ed-9a06-a36879b43e2b` |
-| Chatlink | [Ursprünglicher Chat](https://chatgpt.com/c/6ab6bf17-c764-83ed-9a06-a36879b43e2b) · [App-Referenz](chatgpt-conversation://6ab6bf17-c764-83ed-9a06-a36879b43e2b) |
-| Technischer Gesprächszeitraum | 25.09.2026, 20:36–20:38 Uhr MESZ, Europe/Berlin; Zeitangaben aus dem Chatabruf |
-| Späterer Archivauftrag im Quellchat | 06.10.2026, 15:10 Uhr MESZ |
+| Technischer Arbeitszeitraum | 25.09.2026, 20:36–20:38 Uhr MESZ, Europe/Berlin; Zeitangaben aus dem Entwurfabruf |
 | Erstellung und Repository-Prüfung | 2026-10-06, Europe/Berlin |
 | Repository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
-| Geprüfter und verwendeter Branch | `Archiving` |
+| Geprüfter Branch | `Archiving` |
 | Geprüfter Basiscommit vor der Dokumentationsänderung | [`0f87d409d400376385013754418aaacfe04a830a`](https://github.com/JanHG98/netcore-tetra/commit/0f87d409d400376385013754418aaacfe04a830a) |
 | Betreff des Basiscommits | `docs: archive TBS container updates and KatWarn release history` |
 | Archivdatei | `Docs/archive/2026-10-06_raspberry-pi-openvpn-autoverbindung-vertrauenswuerdige-netze.md` |
 | Archivindex | [README.md](README.md) |
-| Änderungsumfang | Genau diese Dokumentation und der zugehörige Indexeintrag unter `Docs/archive/` |
 
-Der Basiscommit ist der geprüfte Quellstand und nicht der erst durch diese Archivierung entstehende Commit. Der tatsächliche Veröffentlichungscommit ist in der Git-Dateihistorie und der Abschlussmeldung zu finden. Es wurden ausschließlich `Archiving` und seine Dateien geprüft; aus diesem Befund folgt keine Aussage über den heutigen `main` oder installierte Zielgeräte.
+Die Befunde beziehen sich auf den angegebenen Stand von `Archiving`. Andere Branches und installierte Zielgeräte wurden nicht geprüft.
 
 ### 1.1 Tatsächlich zugänglicher Verlauf
 
-Der Abruf mit `read_thread`, `turnLimit: 10` und `maxOutputCharsPerItem: 20000` lieferte drei Gesprächsrunden mit fünf Nachrichten:
+Die erhaltene Ausarbeitung vom 25.09.2026 enthält das funktionale Ziel, vollständige Skriptentwürfe und die optionale Kill-Switch-Idee.
 
-1. Einleitende Frage und kurze Antwort.
-2. Die konkrete Raspberry-Pi-/OpenVPN-Frage und die vollständige technische Antwort mit 7.551 Zeichen einschließlich Skripten und Kill-Switch-Idee.
-3. Den späteren ausführlichen Archivauftrag.
+Der vollständige Skriptentwurf ist erhalten. Spätere technische Korrekturen, reale SSID-Festlegungen oder erfolgreiche Zielgerätetests sind nicht dokumentiert.
 
-`hasMore: false` und `nextCursor: null` boten keine weiteren Seiten an. Die im Fortsetzungsauftrag mitgelieferte Vorschau brach mitten im Skript ab; dieses Archiv beruht stattdessen auf der vollständig zurückgegebenen technischen Antwort. Es gibt im zugänglichen Verlauf keine spätere fachliche Korrektur, Freigabe konkreter SSIDs oder Erfolgsmeldung. Der aktuelle Fortsetzungsauftrag präzisiert die Archivierung, nicht die technische Umsetzung.
-
-`attachments: []` und sämtliche zurückgegebenen Nachrichten enthalten keine Bilder oder sonstigen Anhänge. **Im zugänglichen Chat sind keine Bilder vorhanden.** Deshalb wurden keine Bilddateien angelegt, keine fremden Projektbilder zugeordnet und keine Abbildungen erfunden. Die unten verwendeten Ablaufbeschreibungen sind Text.
+Bilder, `.ovpn`-Profile, Zielgeräteausgaben und Testprotokolle sind nicht erhalten.
 
 Die historischen Quellenmarker 0 bis 4 wurden ohne zugehörige Ziel-URLs geliefert. Ihre ursprüngliche Zuordnung ist nicht rekonstruierbar. Die offiziellen Quellen in Abschnitt 10 wurden zusätzlich am Archivdatum geprüft und ersetzen keine fehlenden historischen Referenzen.
 
 ## 2. Ziel, Ausgangslage und verbindliche Anforderungen
 
-Ausgangsfrage des Nutzers: Raspberry Pi OS und OpenVPN; der Pi soll sich automatisch nach Hause verbinden, wenn er weder in ausdrücklich benannten WLANs noch im Heim-LAN `10.0.1.0/24` ist.
+Ziel: Raspberry Pi OS und OpenVPN; der Pi soll sich automatisch nach Hause verbinden, wenn er weder in ausdrücklich benannten WLANs noch im Heim-LAN `10.0.1.0/24` ist.
 
-Die daraus im Chat formulierte Regel:
+Die funktionale Regel:
 
 ~~~text
 VPN erforderlich = NICHT (vertrauenswürdiges WLAN ODER physisches Heim-LAN)
@@ -50,15 +43,15 @@ VPN erforderlich = NICHT (vertrauenswürdiges WLAN ODER physisches Heim-LAN)
 
 | Situation | Gewünschtes Verhalten | Beleg / Grenze |
 |---|---|---|
-| Mit einem vertrauenswürdigen WLAN verbunden | VPN aus | Nutzeranforderung; tatsächliche SSIDs fehlen |
-| Physisches LAN im Netz `10.0.1.0/24` | VPN aus | Nutzeranforderung; reale Interfaces und Netzparameter fehlen |
-| Fremdes WLAN, Hotspot oder fremdes LAN | Heim-VPN automatisch an | Nutzeranforderung; erreichbarer Uplink und gültiges Profil vorausgesetzt |
-| Heimnetz nur durch VPN-Route erreichbar | VPN eingeschaltet lassen | Zentrale Korrektur eines möglichen Erkennungsfehlers in der Antwort |
+| Mit einem vertrauenswürdigen WLAN verbunden | VPN aus | Anforderung; tatsächliche SSIDs fehlen |
+| Physisches LAN im Netz `10.0.1.0/24` | VPN aus | Anforderung; reale Interfaces und Netzparameter fehlen |
+| Fremdes WLAN, Hotspot oder fremdes LAN | Heim-VPN automatisch an | Anforderung; erreichbarer Uplink und gültiges Profil vorausgesetzt |
+| Heimnetz nur durch VPN-Route erreichbar | VPN eingeschaltet lassen | Zentrale Korrektur eines möglichen Erkennungsfehlers im ersten Entwurf |
 | Kein nutzbarer Uplink | Noch nicht abschließend definiert | Der Vorschlag versucht ohne gesonderte Offline-Prüfung den VPN-Start |
 | Vertrauenswürdiger und fremder Anschluss gleichzeitig aktiv | Noch nicht ausdrücklich entschieden | Das Skript lässt jeden erkannten vertrauenswürdigen Anschluss global gewinnen |
 | VPN-Verbindung scheitert | Historischer Vorschlag bleibt fail-open | Direkter Verkehr wird von der Policy nicht gesperrt; Kill-Switch nur angeboten |
 
-**Festgelegt ist das funktionale Ziel.** Der konkrete technische Weg ist ein ausgearbeiteter Assistentenvorschlag. Es gibt keine ausdrückliche Nutzerentscheidung für Dispatcher statt Timer, keinen Installationsauftrag im Fachdialog und keinen Beschluss für einen Kill-Switch. Die spätere Autorisierung gilt der Dokumentation einschließlich Commit und Push.
+**Festgelegt ist das funktionale Ziel.** Der technische Weg ist ein ausgearbeiteter Vorschlag. Dispatcher oder Timer sowie die Einführung eines Kill-Switch sind noch zu entscheiden; ein Zielgeräte-Rollout ist nicht erfolgt.
 
 Nicht geliefert wurden Pi-Modell, installierte OS-/NetworkManager-/OpenVPN-Versionen, reale SSID-Liste, Interface-Namen, vorhandenes VPN-Profil, VPN-Endpunkt, Port, UDP/TCP-Auswahl, Tunneladressen, DNS-Konzept, IPv6-Regel, Split-/Full-Tunnel-Anforderung oder Betriebsprotokolle. Auch die im Beispiel angenommene bereits vorhandene `.ovpn`-Datei wurde nicht angehängt.
 
@@ -67,22 +60,21 @@ Nicht geliefert wurden Pi-Modell, installierte OS-/NetworkManager-/OpenVPN-Versi
 | Status | Verwendung in diesem Archiv |
 |---|---|
 | **Idee** | Option oder Vorschlag ohne ausdrücklichen Umsetzungsbeschluss |
-| **beschlossen/geplant** | Vom Nutzer festgelegtes Ziel oder autorisierte Arbeit; kein Umsetzungsnachweis |
+| **beschlossen/geplant** | Festgelegtes Ziel oder autorisierte Arbeit; kein Umsetzungsnachweis |
 | **implementiert** | Konkreter Code oder eine Konfiguration im benannten Repository-Stand vorhanden |
 | **getestet** | Nachvollziehbar ausgeführter, abgegrenzter Test mit Ergebnis |
 | **im Betrieb bestätigt** | Beobachteter erfolgreicher Einsatz auf dem Zielsystem |
 
-| Gegenstand | Chat-Ergebnis | Am Archivdatum belegter Stand |
+| Gegenstand | Entwurfsergebnis | Am Archivdatum belegter Stand |
 |---|---|---|
 | Automatisches Heim-VPN außerhalb vertrauenswürdiger Netze | **beschlossen/geplant** als gewünschte Funktion | Kein zugehöriger Zielgerätebetrieb nachgewiesen |
-| NetworkManager-OpenVPN-Profil `VPN-Home` | Konkreter Vorschlag, **Idee** | Kein Profil oder Importbeleg dieses Chats vorhanden |
-| Bash-Policy `/usr/local/sbin/vpn-policy` | Vollständiger Entwurf als Chattext | Im geprüften Repository keine entsprechende Implementierung gefunden |
+| NetworkManager-OpenVPN-Profil `VPN-Home` | Konkreter Vorschlag, **Idee** | Kein Profil oder Importbeleg dieser Arbeitsphase vorhanden |
+| Bash-Policy `/usr/local/sbin/vpn-policy` | Vollständiger Skriptentwurf | Im geprüften Repository keine entsprechende Implementierung gefunden |
 | `vpn-policy.service` und `90-vpn-policy` | Vollständige vorgeschlagene Konfigurationen | Keine installierten Units, Dispatcher-Dateien oder Laufzeitlogs belegt |
 | nftables-Kill-Switch | **Idee**, ausdrücklich optional | Keine Regeln dieses VPN-Kill-Switches vorhanden oder getestet |
-| Allgemeine Dashboard-WLAN-Verwaltung | Kein Umsetzungsergebnis dieses Chats | **implementiert**: `crates/tetra-entities/src/wifi.rs` vorhanden |
-| Historische Imagebuilder-/VPN-Variante | Im Fachchat nicht behandelt | In heutigen Handbüchern als andere Entwicklungsvorschau beschrieben; Quellpfad im geprüften Branch fehlt |
-| Netzwerkwechsel, Wiederverbindung und Leakfreiheit | Kein Testbericht im Chat | Weder **getestet** noch **im Betrieb bestätigt** |
-| Archivierung | Ausdrücklich **beschlossen/geplant** und autorisiert | Dieser Dokumentationsauftrag; keine Installation auf einem Pi |
+| Allgemeine Dashboard-WLAN-Verwaltung | Kein Umsetzungsergebnis dieser Arbeitsphase | **implementiert**: `crates/tetra-entities/src/wifi.rs` vorhanden |
+| Historische Imagebuilder-/VPN-Variante | Im Fachentwurf nicht behandelt | In geprüften Handbüchern als andere Entwicklungsvorschau beschrieben; Quellpfad im geprüften Branch fehlt |
+| Netzwerkwechsel, Wiederverbindung und Leakfreiheit | Kein Testbericht im dokumentierten Arbeitsstand | Weder **getestet** noch **im Betrieb bestätigt** |
 
 Ein kopierbarer Codeblock ist noch keine Repository-Implementierung. Ein erfolgreicher Dokumentationscheck oder Git-Push wäre ebenfalls kein Nachweis eines funktionsfähigen VPN.
 
@@ -106,7 +98,7 @@ Der Dispatcher soll kurz bleiben; den eigentlichen Policy-Lauf übernimmt system
 
 | Komponente / Parameter | Historischer Vorschlag | Bedeutung und Grenze |
 |---|---|---|
-| Betriebssystem | Raspberry Pi OS mit NetworkManager | Die Antwort nahm Bookworm/Trixie an; installiertes System unbekannt |
+| Betriebssystem | Raspberry Pi OS mit NetworkManager | Der Entwurf setzt Bookworm/Trixie voraus; installiertes System unbekannt |
 | Pakete | `network-manager-openvpn`, `openvpn` | Installation nur vorgeschlagen |
 | Hilfsprogramme | Bash, `nmcli`, `ip`, `awk`, `grep`, `logger`, `systemctl`, `journalctl` | Implizite Laufzeitabhängigkeiten des Entwurfs |
 | VPN-Profilname | `VPN-Home` | Beispielname; tatsächliche UUID fehlt |
@@ -116,7 +108,7 @@ Der Dispatcher soll kurz bleiben; den eigentlichen Policy-Lauf übernimmt system
 | Dispatcher | `/etc/NetworkManager/dispatcher.d/90-vpn-policy` | Shell-Skript, Ereignis in Argument `$2` |
 | Ereignisse im konkreten Skript | `up`, `down`, `dhcp4-change`, `connectivity-change` | `vpn-up` wurde erläutert, aber nicht in den Handler aufgenommen; auch `vpn-down` fehlt |
 | Rechte | Beide Skripte `root:root` und Modus `700` | Vorgeschlagen, nicht als tatsächlich gesetzt belegt |
-| Heimnetz | `10.0.1.0/24` | Nutzerparameter |
+| Heimnetz | `10.0.1.0/24` | Standortparameter |
 | Adressprüfung im Entwurf | `^10\.0\.1\.[0-9]+/`, `ip -4 -o addr … scope global` | Prüft IPv4-Adressmuster auf Geräten vom Typ `wifi` oder `ethernet` |
 | VPN-Aufruf | `nmcli -w 0 connection up/down` | Wartet nicht auf Abschluss; keine erfolgreiche Tunnelprüfung |
 | Logging | `logger -t vpn-policy` | Meldet die beabsichtigte Aktion, keinen Verbindungserfolg |
@@ -138,7 +130,7 @@ TRUSTED_SSIDS=(
 )
 ```
 
-Diese Namen sind ausschließlich Beispiele des Assistenten. Die zweite Liste ist eine Ausbauidee und keine ausdrücklich bestätigte Ablösung der ersten Liste. Der Nutzer hat keine tatsächliche SSID freigegeben.
+Die SSID-Namen sind Beispiele. Die zweite Liste ist eine Ausbauidee; reale vertrauenswürdige SSIDs sind noch festzulegen.
 
 ## 5. Historisch vorgeschlagene Befehle und Konfigurationen
 
@@ -160,17 +152,17 @@ sudo nmcli connection modify "ALTER-NAME" connection.id "VPN-Home"
 sudo nmcli connection modify "VPN-Home" connection.autoconnect no
 ```
 
-`ALTER-NAME` muss den tatsächlich importierten Profilnamen bezeichnen. Der Sinn des letzten Befehls war laut Chat, die Steuerung der Policy zu überlassen. Die heutige NetworkManager-Dokumentation präzisiert jedoch: Allgemeines `connection.autoconnect` ist für VPN-Profile nicht implementiert; `connection.secondaries` ist ein anderer Aktivierungsmechanismus. `connection.autoconnect no` allein verhindert daher nicht jede konkurrierende Aktivierung. Siehe Abschnitt 10.
+`ALTER-NAME` muss den tatsächlich importierten Profilnamen bezeichnen. Das Ziel des letzten Befehls war, die Steuerung der Policy zu überlassen. Die geprüfte NetworkManager-Dokumentation präzisiert jedoch: Allgemeines `connection.autoconnect` ist für VPN-Profile nicht implementiert; `connection.secondaries` ist ein anderer Aktivierungsmechanismus. `connection.autoconnect no` allein verhindert daher nicht jede konkurrierende Aktivierung. Siehe Abschnitt 10.
 
 ### 5.2 Policy-Skript
 
-Im Chat vorgeschlagener Editoraufruf:
+Im Entwurf vorgeschlagener Editoraufruf:
 
 ```bash
 sudo nano /usr/local/sbin/vpn-policy
 ```
 
-Vollständiger historischer Skriptinhalt, unverändert aus der zugänglichen Antwort:
+Vollständiger historischer Skriptinhalt, unverändert aus dem ersten Entwurf:
 
 ```bash
 #!/bin/bash
@@ -299,7 +291,7 @@ ExecStart=/usr/local/sbin/vpn-policy
 sudo systemctl daemon-reload
 ```
 
-Die Original-Unit besitzt keinen `[Install]`-Abschnitt, kein `WantedBy`, keine explizite NetworkManager-Reihenfolge, keinen Timer und keine Wiederholungsregel. Ein `systemctl enable vpn-policy.service` wurde im Chat nicht vorgeschlagen. Das Anstoßen erfolgt über den Dispatcher beziehungsweise den einmaligen manuellen Start.
+Die Original-Unit besitzt keinen `[Install]`-Abschnitt, kein `WantedBy`, keine explizite NetworkManager-Reihenfolge, keinen Timer und keine Wiederholungsregel. Ein `systemctl enable vpn-policy.service` wurde im dokumentierten Arbeitsstand nicht vorgeschlagen. Das Anstoßen erfolgt über den Dispatcher beziehungsweise den einmaligen manuellen Start.
 
 ### 5.4 NetworkManager-Dispatcher
 
@@ -347,7 +339,7 @@ Dazu wurden keine Ausgaben zurückgemeldet. Insbesondere ist ein erfolgreicher O
 
 ## 6. Optionale nftables-Kill-Switch-Idee
 
-Der Chat bezeichnet die Basisvariante ausdrücklich als **fail-open**: Wenn der VPN-Aufbau scheitert, verhindert die Policy normalen direkten Internetverkehr nicht. Selbst bei aktivem Tunnel entscheidet die tatsächliche Routing-/DNS-Konfiguration, welcher Verkehr über das VPN läuft.
+Die Basisvariante ist ausdrücklich **fail-open**: Wenn der VPN-Aufbau scheitert, verhindert die Policy normalen direkten Internetverkehr nicht. Selbst bei aktivem Tunnel entscheidet die tatsächliche Routing-/DNS-Konfiguration, welcher Verkehr über das VPN läuft.
 
 Als zusätzliche, nicht beschlossene Funktion wurde vorgeschlagen:
 
@@ -358,9 +350,9 @@ Tunnel betriebsbereit: übriger erlaubter Verkehr über das VPN
 Tunnel ausgefallen: kein ungeschützter allgemeiner Internetverkehr
 ~~~
 
-**Status: Idee.** Im Chat existieren weder `nft`-Befehle noch Tabellen, Chains, Hook-Prioritäten, Policies oder eine getestete Regeldatei. Es gibt auch keine Entscheidung, ob nur lokaler Pi-Verkehr oder weitergeleiteter TBS-/Containerverkehr erfasst werden soll.
+**Status: Idee.** Im Entwurf existieren weder `nft`-Befehle noch Tabellen, Chains, Hook-Prioritäten, Policies oder eine getestete Regeldatei. Es gibt auch keine Entscheidung, ob nur lokaler Pi-Verkehr oder weitergeleiteter TBS-/Containerverkehr erfasst werden soll.
 
-Als heutige Planungsableitung bleiben zu klären:
+Als geprüfte Planungsableitung bleiben zu klären:
 
 - IPv4 und IPv6 gemeinsam behandeln; DNS-Leaks und Split-/Full-Tunnel-Anforderungen festlegen.
 - Für den Aufbau erforderliche Ausnahmen definieren, etwa DHCP, Namensauflösung eines VPN-Hostnamens und gegebenenfalls Zeitabgleich. „Nur VPN-Server“ ist bislang ein Zielbild, keine vollständige Regelmenge.
@@ -369,13 +361,13 @@ Als heutige Planungsableitung bleiben zu klären:
 - Bestehende Host-/Gateway-Regeln erhalten; keine globale Regeln-Löschung als Installationsschritt.
 - Wiederherstellung und lokalen Konsolenzugang vorsehen, damit eine fehlerhafte Regel keinen dauerhaften Verwaltungsverlust verursacht.
 
-Diese Punkte sind zusätzliche technische Prüfaufgaben der Archivierung und keine nachträglich unterstellten Nutzerentscheidungen.
+Diese Punkte sind zusätzliche technische Prüfaufgaben der Archivierung und keine nachträglich festgelegten Projektentscheidungen.
 
 ## 7. Fehlerbilder, Risiken und verworfene Ansätze
 
 ### 7.1 Zentrales Risiko: VPN-Routen-Schleife
 
-Die Antwort verwarf ausdrücklich folgende Erkennung des Heimnetzes:
+Verworfen wurde folgende Erkennung des Heimnetzes:
 
 ```bash
 ip route | grep 10.0.1.0/24
@@ -391,22 +383,22 @@ Fremdes Netz -> VPN startet -> Heimnetzroute erscheint
 -> Policy startet erneut -> wiederholtes Verbinden/Trennen
 ~~~
 
-Das ist ein erläutertes mögliches Fehlerbild, kein im Chat beobachteter Ausfall. Als Gegenmaßnahme schlug die Antwort die Adressprüfung auf Ethernet/WLAN vor. Beispiele:
+Das ist ein erläutertes mögliches Fehlerbild, kein im dokumentierten Arbeitsstand beobachteter Ausfall. Vorgesehen war deshalb eine Adressprüfung auf Ethernet/WLAN. Beispiele:
 
-| Beispiel aus dem Chat | Beabsichtigte Einordnung |
+| Beispiel aus dem Entwurf | Beabsichtigte Einordnung |
 |---|---|
 | `eth0 = 10.0.1.42/24` | Heimnetz, VPN aus |
 | `wlan0 = 192.168.178.34/24`, `tun0 = 10.100.0.3`, Heimnetzroute über Tunnel | Fremdes Netz, VPN bleibt an |
 
 Die Beispiele enthalten keine Messung eines realen Pi. Die Vermeidung der Routen-Schleife ist ein begründeter Entwurfsansatz, noch keine getestete Lösung.
 
-### 7.2 Heutige statische Prüfung des Chatentwurfs
+### 7.2 Statische Prüfung des Skriptentwurfs vom 06.10.2026
 
 Die folgenden Befunde entstehen aus dem Lesen des Originalcodes und dem dokumentierten Schnittstellenverhalten. Sie wurden nicht als Laufzeitfehler reproduziert.
 
 | Befund | Mögliche Wirkung | Offene Maßnahme |
 |---|---|---|
-| Adressprüfung läuft bei `wifi` **und** `ethernet` | Ein fremdes WLAN mit einer `10.0.1.x`-Adresse wird auch ohne SSID-Treffer vertrauenswürdig; engerer Nutzerbegriff „physisches LAN“ ist nicht eindeutig umgesetzt | LAN-Kriterium ausdrücklich auf die gewünschten kabelgebundenen Geräte begrenzen oder die breitere Regel bewusst bestätigen |
+| Adressprüfung läuft bei `wifi` **und** `ethernet` | Ein fremdes WLAN mit einer `10.0.1.x`-Adresse wird auch ohne SSID-Treffer vertrauenswürdig; engerer Anforderungsbegriff „physisches LAN“ ist nicht eindeutig umgesetzt | LAN-Kriterium ausdrücklich auf die gewünschten kabelgebundenen Geräte begrenzen oder die breitere Regel bewusst bestätigen |
 | Adressregex verlangt nicht die Präfixlänge `/24` | Auch `10.0.1.x/16` oder `/32` trifft; IP-Bereich und tatsächliches lokales Netz werden nicht getrennt geprüft | Festlegen, ob Adresszugehörigkeit, exaktes Interfacepräfix oder konkrete LAN-Verbindung gefordert ist |
 | Gerätetyp ist kein physischer Herkunftsnachweis | Virtuelle Ethernet-Geräte können ebenfalls als `ethernet` erscheinen; Bridges/Bonds/VLANs mit IP auf dem logischen Interface werden wiederum ausgelassen | Reale Geräte-/Profil-Allowlist und gewünschte Topologien festlegen |
 | Jeder einzelne Treffer setzt global `TRUSTED=1` | Ein Nebenanschluss im Heimnetz kann VPN abschalten, während die Standardroute über fremdes WLAN führt | Regel für mehrere aktive Uplinks, Routing und Egress-Vertrauen definieren |
@@ -429,14 +421,14 @@ Die historische Annahme einer gültigen, unbeaufsichtigt aktivierbaren VPN-Konfi
 
 | Ansatz | Einordnung |
 |---|---|
-| Heimnetz ausschließlich aus einer vorhandenen Route erkennen | Im Chat ausdrücklich verworfen, um die Rückkopplung mit der VPN-Route zu vermeiden |
-| Gesamten VPN-Aufbau synchron im Dispatcher durchführen | In der Antwort zugunsten eines kurzen Triggers und systemd-Service verworfen |
+| Heimnetz ausschließlich aus einer vorhandenen Route erkennen | Im Entwurf ausdrücklich verworfen, um die Rückkopplung mit der VPN-Route zu vermeiden |
+| Gesamten VPN-Aufbau synchron im Dispatcher durchführen | Im Entwurf zugunsten eines kurzen Triggers und systemd-Service verworfen |
 | VPN immer aktiv halten | Entspricht nicht der gewünschten Ausnahme für Heim-LAN/vertrauenswürdige WLANs |
-| Nur SSID prüfen | Vom Vorschlag um das LAN-Kriterium ergänzt; allein würde es die Nutzeranforderung nicht erfüllen |
+| Nur SSID prüfen | Vom Vorschlag um das LAN-Kriterium ergänzt; allein würde es die Anforderung nicht erfüllen |
 | fail-open vollständig durch Kill-Switch ersetzen | Nur als Option angeboten, nicht beschlossen und nicht implementiert |
 | Spätere Beispiel-SSID-Liste | Ausbauidee, keine bestätigte neue Standortkonfiguration |
-| Timer + `openvpn-client@netcore.service` | Separate Repository-Dokumentation aus anderem Entwicklungsstand; im Fachchat weder verworfen noch als Nachfolger beschlossen |
-| WireGuard, IPsec oder anderer VPN-Anbieter | Im zugänglichen Fachchat nicht erörtert; keine erfundene Alternativenentscheidung |
+| Timer + `openvpn-client@netcore.service` | Separate Repository-Dokumentation aus anderem Entwicklungsstand; im Fachentwurf weder verworfen noch als Nachfolger beschlossen |
+| WireGuard, IPsec oder anderer VPN-Anbieter | Im zugänglichen Fachentwurf nicht erörtert; keine erfundene Alternativenentscheidung |
 
 Es wurden keine tatsächlichen Fehlerlogs übergeben. Eine „funktionierende Reparatur“ kann daher nicht als bereits durchgeführt dokumentiert werden.
 
@@ -446,9 +438,7 @@ Alle folgenden Live-Repository-Befunde beziehen sich auf `Archiving` bei `0f87d4
 
 ### 8.1 Archivbestand und eindeutige Zuordnung
 
-Vor dieser Ergänzung lagen direkt unter `Docs/archive/` 66 datierte Chatdokumentationen sowie `README.md`; der Index enthielt 66 entsprechende Einträge. Suche nach Chat-ID, Chattitel, `vpn-policy` und `TRUSTED_SSIDS` ergab keine bereits eindeutig diesem Chat zugehörige Archivdatei. Deshalb wird eine neue Datei angelegt. Der thematisch benachbarte [Deployment-/Imagebuilder-Chat](2026-10-05_deployment-vm-tbs-imagebuilder-und-auto-discovery.md) bleibt ein eigenständiges Archiv.
-
-Die bestehenden Indexeinträge bleiben erhalten. Es werden weder fremde Archive noch Code, Roadmaps, Dienste oder Konfigurationen außerhalb der beiden autorisierten Markdown-Dateien geändert.
+Im geprüften Archivbestand lagen 66 datierte Dokumente und `README.md` vor. Eine passende Implementierung von `vpn-policy` oder `TRUSTED_SSIDS` war dort nicht vorhanden. Die [Deployment-/Imagebuilder-Ausarbeitung](2026-10-05_deployment-vm-tbs-imagebuilder-und-auto-discovery.md) beschreibt eine separate Variante.
 
 ### 8.2 Code und Dokumentation getrennt bewertet
 
@@ -459,15 +449,15 @@ Die bestehenden Indexeinträge bleiben erhalten. Es werden weder fremde Archive 
 | [`Docs/NetCore-Tetra-Komplettguide-2026-09-28.md`](https://github.com/JanHG98/netcore-tetra/blob/0f87d409d400376385013754418aaacfe04a830a/Docs/NetCore-Tetra-Komplettguide-2026-09-28.md) | Ab Zeile 3952 ausdrücklich gesonderte Entwicklungsvorschau; ab Zeile 4013 Pi-Images und VPN-Automatik beschrieben | Historische Dokumentation eines anderen Quellstands |
 | [`Docs/NetCore-Tetra-Systemhandbuch-2026-09-28.md`](https://github.com/JanHG98/netcore-tetra/blob/0f87d409d400376385013754418aaacfe04a830a/Docs/NetCore-Tetra-Systemhandbuch-2026-09-28.md) | Entsprechende Vorschau mit OpenVPN-Timer, `openvpn-client@netcore.service` und `/etc/netcore/image-network.json` vorhanden | Dokumentierte Variante, kein Nachweis ihrer Integration in diesen Branch |
 | `system-backend/deployment-core/` | Weder als getrackter Verzeichnisbaum noch als lokaler Pfad vorhanden | Die beschriebene Imagebuilder-Implementierung ist am geprüften Branchstand nicht verfügbar |
-| Suche nach `vpn-policy`, `TRUSTED_SSIDS`, `network-manager-openvpn` und `dispatcher.d` | Vor dem Schreiben keine entsprechende Chat-Implementierung im getrackten Textbestand gefunden | Keine Aussage über unbekannte Dateien auf Zielgeräten oder andere Git-Refs |
+| Suche nach `vpn-policy`, `TRUSTED_SSIDS`, `network-manager-openvpn` und `dispatcher.d` | Vor dem Schreiben keine entsprechende Policy-Implementierung im getrackten Textbestand gefunden | Keine Aussage über unbekannte Dateien auf Zielgeräten oder andere Git-Refs |
 | [`system-backend/ip-gateway/docs/architecture.md`](https://github.com/JanHG98/netcore-tetra/blob/0f87d409d400376385013754418aaacfe04a830a/system-backend/ip-gateway/docs/architecture.md) | TETRA-Paketdatenpfad und eigene nftables-Tabellen `inet netcore_ip_gateway` / `ip netcore_ip_gateway_nat` dokumentiert | Diese Gateway-Regeln sind kein Heim-VPN-Kill-Switch |
 | [`crates/tetra-entities/src/sndcp/packet_gateway.rs`](https://github.com/JanHG98/netcore-tetra/blob/0f87d409d400376385013754418aaacfe04a830a/crates/tetra-entities/src/sndcp/packet_gateway.rs) und `contrib/packet-data/` | Vorhandene nftables-/iptables-Anbindung für Packet Data | Keine Abnahme von Host-VPN-Leakfreiheit |
 
-Die Suchprüfung umfasste getrackte Textdateien und Dateinamen; relevante Treffer wurden einzeln gelesen. Weder aus Quellkommentaren noch aus Handbuchformulierungen wird eine heute laufende Installation abgeleitet.
+Die Suchprüfung umfasste getrackte Textdateien und Dateinamen; relevante Treffer wurden einzeln gelesen. Weder aus Quellkommentaren noch aus Handbuchformulierungen wird eine zum Prüfstand vom 06.10.2026 laufende Installation abgeleitet.
 
 ### 8.3 Separate Imagebuilder-Variante und ihr Herkunftsstand
 
-Die heute im Branch vorhandenen Handbücher kennzeichnen ihre Vorschau mit dem historischen Commit `bbf039729b9b05f8d623b11195ca24a124f68d16` des damals genannten `feature/openlab-discovery-deployment`. Dieser SHA ist eine **übernommene Herkunftsangabe der gelesenen Dokumentation**, kein in diesem Auftrag ausgecheckter oder auf Funktionsfähigkeit getesteter Stand.
+Die zum Prüfstand vom 06.10.2026 im Branch vorhandenen Handbücher kennzeichnen ihre Vorschau mit dem historischen Commit `bbf039729b9b05f8d623b11195ca24a124f68d16` des damals genannten `feature/openlab-discovery-deployment`. Dieser SHA ist eine **übernommene Herkunftsangabe der gelesenen Dokumentation**, kein in diesem Auftrag ausgecheckter oder auf Funktionsfähigkeit getesteter Stand.
 
 Laut dieser Vorschau:
 
@@ -478,31 +468,29 @@ Laut dieser Vorschau:
 - wird der Timer ohne eingebettetes OpenVPN-Profil nicht aktiviert;
 - soll die Richtlinie keine Funkdienste neu starten.
 
-Diese Variante benutzt NetworkManager zur Netzerkennung, steuert aber einen systemd-OpenVPN-Client statt des im Fachchat vorgeschlagenen importierten NM-VPN-Profils. Ein Timer unterscheidet sich auch vom Chat-Dispatcher. Die Handbuchaussage zur kabelgebundenen Prüfung ist enger als der historische Bash-Code, der auch WLAN-Adressen prüft.
+Diese Variante benutzt NetworkManager zur Netzerkennung, steuert aber einen systemd-OpenVPN-Client statt des im Fachentwurf vorgeschlagenen importierten NM-VPN-Profils. Ein Timer unterscheidet sich auch vom vorgeschlagenen Dispatcher. Die Handbuchaussage zur kabelgebundenen Prüfung ist enger als der historische Bash-Code, der auch WLAN-Adressen prüft.
 
-Das [benachbarte Deployment-Archiv vom 05.10.2026](2026-10-05_deployment-vm-tbs-imagebuilder-und-auto-discovery.md) beschreibt eine damalige historische Quellprüfung und eine Integrationslücke. Dessen Aussagen über `main`, frühere Branchlisten, Z01-Roadmap, PRs und Tests bleiben diesem anderen Archiv zugeordnet. Sie wurden hier nicht als heutiger Stand anderer Branches erneut bestätigt.
+Das [benachbarte Deployment-Archiv vom 05.10.2026](2026-10-05_deployment-vm-tbs-imagebuilder-und-auto-discovery.md) beschreibt eine damalige historische Quellprüfung und eine Integrationslücke. Dessen Aussagen über `main`, frühere Branchlisten, Z01-Roadmap, PRs und Tests bleiben diesem anderen Archiv zugeordnet. Sie wurden hier nicht als geprüfter Stand anderer Branches erneut bestätigt.
 
 Vor einer Implementierung ist deshalb zu entscheiden, welcher Lebenszyklus verwendet oder kontrolliert übernommen wird. Zwei parallel schaltende VPN-Policies dürfen nicht versehentlich für dasselbe Profil aktiviert werden. Dieses Archiv integriert keinen historischen Code und erzeugt keinen neuen technischen PR.
 
 ## 9. Tests, Ergebnisse und fehlende Abnahme
 
-### 9.1 In diesem Archivierungsauftrag durchgeführt
+### 9.1 In diesem Prüfdurchlauf vom 06.10.2026 durchgeführt
 
-- Den gesamten vom Chatwerkzeug angebotenen Verlauf gelesen; technische Antwort vollständig statt nur Vorschau ausgewertet.
-- Quellchat-Metadaten, fehlende weitere Seiten und leere Anhangsliste festgestellt.
+- Funktionales Ziel und vollständigen Skriptentwurf geprüft.
+- Erhaltene Entwurfsunterlagen und fehlende Anhänge festgestellt.
 - Aktuellen Remote-Branch, lokalen Branch und vollständigen Basis-SHA verglichen; saubere separate Arbeitskopie vorgefunden.
-- Bestehende Archive und Index auf eindeutige Chatzuordnung geprüft.
+- Bestehende Ausarbeitungen und Index auf bereits dokumentierte Policyvarianten geprüft.
 - Relevante Repository-Dateien und das Fehlen der konkreten Policy-/Deployment-Core-Pfade statisch geprüft.
 - Den historischen Entwurf gelesen und seine Grenzen von tatsächlich beobachteten Fehlern getrennt.
 - Aktuelle offizielle Dokumentation zu NetworkManager, nmcli, Dispatcher und Debian-Paketangebot abgeglichen.
 
 Diese Punkte sind Quellen-/Dokumentationsprüfungen. Es wurden keine Linux-Dienste gestartet, keine VPN-Verbindung aufgebaut, keine Firewallregeln verändert, kein Pi neu gestartet und keine TBS getestet.
 
-Für die Veröffentlichung werden zusätzlich Inhalt, relative Links, unveränderte historische Codeblöcke, der Erhalt aller Indexeinträge und die genaue Zwei-Dateien-Grenze geprüft. Commit/Push und anschließender Remote-Dateiabgleich werden in der Abschlussmeldung mit dem tatsächlichen Commit belegt; sie ersetzen keine VPN-Abnahme.
-
 ### 9.2 Noch ausstehende Testmatrix
 
-Alle folgenden Tests sind **geplant als Empfehlung dieses Archivs**, nicht durchgeführt und nicht bereits vom Nutzer terminiert.
+Alle folgenden Tests sind **geplant als Empfehlung dieses Archivs**, nicht durchgeführt und nicht bereits durch den Betreiber terminiert.
 
 | Testfall | Erwartung / zu prüfendes Kriterium |
 |---|---|
@@ -532,7 +520,7 @@ Als zusätzliche spätere Diagnose sind beispielsweise `nmcli --version`, `openv
 
 ## 10. Zusätzlich geprüfte offizielle Quellen
 
-Abrufdatum: 06.10.2026. Diese Quellen wurden für die heutige technische Einordnung herangezogen. Sie sind keine rekonstruierten Originalquellenmarker und kein Ersatz für die Versionsprüfung auf dem Zielgerät.
+Abrufdatum: 06.10.2026. Diese Quellen wurden für die geprüfte technische Einordnung herangezogen. Sie sind keine rekonstruierten Originalquellenmarker und kein Ersatz für die Versionsprüfung auf dem Zielgerät.
 
 | Quelle | Unterstützte Aussage |
 |---|---|
@@ -546,7 +534,7 @@ Keine aktuelle Paketversionsnummer, VPN-Portnummer oder Systemversion wurde als 
 
 ## 11. Offene Aufgaben, Roadmap-Kandidaten und nächste Schritte
 
-Die nachfolgende Reihenfolge ist eine Empfehlung aus der Archivprüfung. Im ursprünglichen Fachchat wurden keine Prioritäten oder Termine vereinbart. Die Roadmap-Kandidaten bleiben ausschließlich in dieser Datei.
+Die nachfolgende Reihenfolge ist eine Empfehlung aus der Archivprüfung. Im ursprünglichen Fachentwurf wurden keine Prioritäten oder Termine vereinbart. Die Roadmap-Kandidaten bleiben ausschließlich in dieser Datei.
 
 | Kandidat | Inhalt | Abhängigkeit / Abschlusskriterium |
 |---|---|---|
@@ -557,14 +545,14 @@ Die nachfolgende Reihenfolge ist eine Empfehlung aus der Archivprüfung. Im ursp
 | VPN-05: Optionalen Kill-Switch entscheiden | fail-open oder fail-closed, DNS/IPv6, Endpoint-Ausnahmen und lokaler/weitergeleiteter Verkehr | Bewusste Freigabe des Sicherheitsverhaltens; anschließend Regelentwurf und Leaktests |
 | VPN-06: NetCore-Integration abnehmen | WLAN-Bedienung, Funk-/Core-Verbindungen, Netzwechsel und Dauerbetrieb prüfen | Reale Pi-/TBS-Testprotokolle mit Datum, Versionen und Ergebnissen |
 
-Konkreter nächster technischer Schritt ist VPN-01, danach die Architekturentscheidung VPN-02. Erst dann ist eine belastbare Implementierung sinnvoll. Der Archivauftrag selbst enthält keine Autorisierung zum Installieren oder Umschalten auf einem Zielgerät.
+Konkreter nächster technischer Schritt ist VPN-01, danach die Architekturentscheidung VPN-02. Erst dann ist eine belastbare Implementierung sinnvoll. Ein Rollout auf das Zielgerät steht aus.
 
-## 12. Auswertungslücken und Fortsetzungsgrenzen
+## 12. Offene Belege und Fortsetzungsgrenzen
 
-1. Vollständig ausgewertet wurde der gesamte **angebotene** Verlauf dieses Chatabrufs. Nicht angebotene gelöschte, alternative oder außerhalb dieses Chats geführte Gesprächszweige können damit nicht ausgeschlossen werden.
+1. Die erhaltene Ausarbeitung wurde vollständig geprüft; darüber hinausgehende frühere Festlegungen sind nicht belegt.
 2. Die fünf historischen Quellenmarker sind ohne Ziel-URLs überliefert. Neue offizielle Quellen sind separat kenntlich gemacht.
-3. Keine Bilder, Anhänge, `.ovpn`-Dateien, Zielgeräteausgaben oder Testlogs sind im zugänglichen Chat vorhanden.
-4. Tatsächliche SSIDs, VPN-Zugangsdaten, Endpunkt und installierte Versionen fehlen; keine wurden erfunden oder aus anderen Chats übernommen.
-5. Historischer Vorschlag, im Branch vorhandene Dokumentation und heute vorhandener Code sind verschiedene Evidenzebenen. Der genannte historische `bbf0397…`-Stand, seine PR-/CI-Angaben und heutige andere Branches wurden hier nicht erneut geprüft.
+3. Keine Bilder, Anhänge, `.ovpn`-Dateien, Zielgeräteausgaben oder Testlogs sind im erhaltenen Material vorhanden.
+4. Tatsächliche SSIDs, VPN-Zugangsdaten, Endpunkt und installierte Versionen fehlen; keine wurden erfunden oder aus anderen Arbeitsphasen übernommen.
+5. Historischer Vorschlag, im Branch vorhandene Dokumentation und zum Prüfstand vom 06.10.2026 vorhandener Code sind verschiedene Evidenzebenen. Der genannte historische `bbf0397…`-Stand, seine PR-/CI-Angaben und geprüfte andere Branches wurden hier nicht erneut geprüft.
 6. Kein Laufzeit-/Hardware-/End-to-End-Test dieses VPN-Toggles ist belegt. Der nftables-Kill-Switch bleibt eine unbeschlossene Idee.
 7. Die Archivierung ändert ausschließlich diese Datei und den Index. Codeintegration, Roadmapänderungen außerhalb des Archivs und Deployment sind offene Folgearbeit.

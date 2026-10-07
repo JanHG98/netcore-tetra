@@ -1,40 +1,36 @@
-# Technische Abschlussdokumentation – Media Library, zentrale TTS, Archivierung, Basisstations-Playout und IP-Gateway-Routing
+# Brainstorming: Media Library, zentrale TTS, Archivierung und Basisstations-Playout
 
-## 1. Metadaten
+## 1. Rahmen
 
 | Feld | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
-| Thema dieses Chats | Media Library, Recorder-Import, zentrale Piper/TTS-Erzeugung, NFS-/SMB-Archivierung, TTS-Archivkategorien, Aussendung über Media Switch bzw. Basisstation sowie Diagnose des IP-Gateways |
-| Ursprünglicher Chattitel | Im zugänglichen Chatkontext nicht ausgewiesen |
-| Chatlink | Im zugänglichen Chatkontext nicht verfügbar |
-| Erstellungsdatum dieser Abschlussdokumentation | 2026-10-05 |
+| Thema | Media Library, Recorder-Import, zentrale Piper/TTS-Erzeugung, NFS-/SMB-Archivierung, TTS-Archivkategorien, Aussendung über Media Switch bzw. Basisstation sowie Diagnose des IP-Gateways |
+| Notizstand | 2026-10-05 |
 | Zielbranch für die Archivierung | `Archiving` |
 | Geprüfter Repository-Ausgangsstand | `Archiving` @ `8539085862651887ee1b560a9893c943501e0f22` |
-| Historisch im Chat verwendeter Entwicklungszweig | überwiegend `swmi`; einzelne ZIP-/Patchstände wurden im Chat erzeugt, sind aber als Chat-Artefakte nicht automatisch mit einem Git-Commit gleichzusetzen |
+| Historischer Entwicklungszweig | überwiegend `swmi`; einzelne ZIP-/Patchstände wurden separat bereitgestellt, sind aber als Arbeitsartefakte nicht automatisch mit einem Git-Commit gleichzusetzen |
 | Repository | `JanHG98/netcore-tetra` |
 
-### Auswertungsgrundlage und Lücken
+### Arbeitsgrundlage und zeitlicher Bezug
 
-Diese Dokumentation wertet den in diesem Projekt zugänglichen Chatverlauf, die im Chat sichtbaren Laufzeit-Ausgaben, die direkt verfügbaren Chatbilder sowie den am 2026-10-05 geprüften Stand des Branches `Archiving` aus. Zusätzlich wurde der angehängte Textdump mit Media-Library-Status, Jobliste, Codec-Konfiguration, Assetliste, produktiver Media-Library-Konfiguration und Media-Switch-Sessionabfrage berücksichtigt.
+Grundlage sind Laufzeit-Ausgaben, Screenshots, der Textdump mit Status, Jobs, Codec-Konfiguration, Assets und Media-Switch-Sessions sowie der am **2026-10-05** geprüfte Repository-Stand. Ältere ZIP-/Patchstände wurden nicht erneut byteweise geprüft. Ausgelieferte Arbeitsstände, eingecheckter Code und reale Betriebsnachweise bleiben deshalb getrennt.
 
-Nicht verfügbar waren ein vom Produkt bereitgestellter ursprünglicher Chattitel und ein Chatlink. Frühere Teile des langen Chats sind im aktuellen Kontext teilweise nur über die projektinterne Konversationszusammenfassung und die späteren Korrekturen präsent; daher werden dort nur Aussagen übernommen, die durch den zugänglichen Verlauf, spätere Festlegungen oder den heutigen Repository-Stand ausreichend gestützt sind. Die im Chat erzeugten ZIP-Dateien wurden bei dieser Archivierung nicht erneut byteweise analysiert; entscheidend ist daher getrennt dokumentiert, was im Chat behauptet/ausgeliefert, was heute im Repository vorhanden und was im realen Betrieb nachgewiesen wurde.
-
-Die Zeitstempel der gezeigten Laufzeitlogs liegen überwiegend am **2026-07-30**, während diese Abschlussdokumentation am **2026-10-05** erstellt wird. Diese Diskrepanz wurde nicht weiter aufgelöst; die Logzeiten werden deshalb als Zeitstempel der gezeigten Systeme/Ausgaben behandelt und nicht als Beleg dafür, dass die jeweilige Aktion am Archivierungsdatum erneut ausgeführt wurde.
+Die Laufzeitlogs tragen überwiegend Zeitstempel vom **2026-07-30**. Sie belegen den damaligen Systemzustand; daraus folgt keine erneute Ausführung am Dokumentationsdatum **2026-10-05**.
 
 ### Statusbegriffe in diesem Dokument
 
 - **Idee** – diskutierter oder vorgeschlagener Ansatz ohne Festlegung.
-- **Beschlossen/geplant** – im Chat als Zielbild oder nächster Schritt festgelegt, aber nicht zwingend umgesetzt.
+- **Beschlossen/geplant** – als Zielbild oder nächster Schritt festgelegt, aber nicht zwingend umgesetzt.
 - **Implementiert** – im aktuell geprüften Repository-Code bzw. in zugehörigen Repository-Dateien vorhanden.
-- **Getestet** – durch konkrete Tests/Kommandos im Chat oder durch erkennbare Repository-Tests belegt; Repository-Tests wurden bei dieser Archivierung nicht automatisch ausgeführt.
+- **Getestet** – durch konkrete historische Tests/Kommandos oder durch erkennbare Repository-Tests belegt; Repository-Tests wurden bei der Bestandsaufnahme nicht automatisch ausgeführt.
 - **Im Betrieb bestätigt** – durch Laufzeit-Ausgaben auf den realen NetCore-Systemen belegt.
 
 ---
 
 ## 2. Ziel, Ausgangslage und behandelte Themen
 
-Der Chat entwickelte die Media Library von einem zentralen Audio-/Archivdienst zu einem zentralen Baustein für drei zusammenhängende Aufgaben:
+Die Media Library soll drei zusammenhängende Aufgaben zentral übernehmen:
 
 1. **Aufzeichnungen aus der Basisstation zentralisieren**, ohne die lokale Ausfallsicherheit zu verlieren.
 2. **TTS/Piper aus der Basisstation herauslösen** und vollständig in die Media Library verlagern.
@@ -42,7 +38,7 @@ Der Chat entwickelte die Media Library von einem zentralen Audio-/Archivdienst z
 
 Parallel wurde ein Betriebsproblem am **IP-Gateway** diagnostiziert. Der Dienst selbst lief, wurde vom Node-Gateway jedoch als ausgefallen/Fallback angezeigt. Die Ursache war letztlich keine HTTP- oder Packet-Core-Anwendungsstörung, sondern eine persistente, über die IP-Gateway-WebUI angelegte Route, die das komplette Managementnetz `10.0.1.0/24` fälschlich über `ntc-tun0` schickte. Dadurch versuchte das IP-Gateway den Packet Core `10.0.1.166:8160` mit Quelladresse `10.0.0.1` über den TETRA-TUN zu erreichen.
 
-Die beiden Themen hängen betrieblich zusammen: Der Chat war geprägt von dem Ziel, zentrale Dienste zu nutzen, aber **lokale Fallbacks und klare Netz-/Datenpfade** zu bewahren. Genau diese Trennung ist bei der Media Library inzwischen weitgehend umgesetzt, während der IP-Gateway-Routenvalidator nach heutigem Repository-Stand noch eine Schutzlücke hat.
+Gemeinsames Ziel ist die Nutzung zentraler Dienste mit **lokalen Fallbacks und klaren Netz-/Datenpfaden**. Für die Media Library ist diese Trennung im geprüften Stand weitgehend umgesetzt. Beim IP-Gateway fehlt weiterhin ein Schutz gegen Routen, die das Managementnetz in den TETRA-TUN umbiegen.
 
 ---
 
@@ -50,7 +46,7 @@ Die beiden Themen hängen betrieblich zusammen: Der Chat war geprägt von dem Zi
 
 ### 3.1 Gemeinsame Archivstruktur
 
-**Beschlossen/geplant und heute im Repository implementiert:** Die Media Library verwendet drei physisch getrennte Archivwurzeln:
+**Beschlossen/geplant und am Prüfstand 05.10.2026 im Repository implementiert:** Die Media Library verwendet drei physisch getrennte Archivwurzeln:
 
 ```text
 /mnt/nfs-share/Media-Library
@@ -68,7 +64,7 @@ sonstige Medien   -> /mnt/nfs-share/Media-Library
 
 Darunter wird nach `YYYY/MM/DD` strukturiert. Die Dateinamen sollen aus Metadaten lesbar abgeleitet werden, statt UUID-Verzeichnisse als Bedienoberfläche zu verwenden. Für Recordings werden u. a. Rufart, GSSI/ISSI, Quelle, Zeit und Dauer in den Dateinamen eingearbeitet; TTS erhält einen `TTS`-Typmarker und den Titel.
 
-**Spätere Korrektur mit Vorrang:** TTS-Dateien dürfen **nicht** unter `Recordings` einsortiert werden. Der Chat begann mit einem fehlerhaften Stand, in dem TTS im Recording-Baum auftauchte. Dieser Stand ist überholt. `Docs/MEDIA_LIBRARY_TTS_ARCHIVE_ROUTING_FIX.md` und `migrate-archive-layout.py` im aktuellen Repository erzwingen die getrennten Wurzeln.
+**Spätere Korrektur mit Vorrang:** TTS-Dateien dürfen **nicht** unter `Recordings` einsortiert werden. Im frühen Arbeitsstand lagen TTS-Dateien fälschlich im Recording-Baum. Dieser Stand ist überholt. `Docs/MEDIA_LIBRARY_TTS_ARCHIVE_ROUTING_FIX.md` und `migrate-archive-layout.py` im aktuellen Repository erzwingen die getrennten Wurzeln.
 
 ### 3.2 Rechte auf dem NFS-/SMB-Archiv
 
@@ -79,7 +75,7 @@ Im Open-Lab wurde bewusst auf einfache parallele NFS-/SMB-Nutzung gesetzt. Die f
 - gemeinsame Archivdateien werden explizit auf `0666` gesetzt;
 - systemd erlaubt Schreibzugriff gezielt auf `/var/lib/netcore-media-library` sowie die drei Archivwurzeln.
 
-**Überholt:** Ein früher Chat-/Änderungsstand sprach von `UMask=0000` für die Media-Library-Unit. Der aktuell geprüfte Stand nutzt wieder `UMask=0077` und öffnet ausschließlich die freigegebenen Archivbäume per `chmod`. Dieser heutige Stand hat Vorrang.
+**Überholt:** Ein früher Änderungsstand sprach von `UMask=0000` für die Media-Library-Unit. Der aktuell geprüfte Stand nutzt wieder `UMask=0077` und öffnet ausschließlich die freigegebenen Archivbäume per `chmod`. Dieser geprüfte Stand hat Vorrang.
 
 ### 3.3 Recorder-Import: Basisstation bleibt zunächst Quelle
 
@@ -125,7 +121,7 @@ de_DE-pavoque-low
 de_DE-thorsten_emotional-medium
 ```
 
-**Spätere Korrektur mit Vorrang:** Ein Installationslauf wurde versehentlich auf der TBS statt im Media-Library-LXC ausgeführt. Das danach beobachtete `cargo: command not found` war deshalb keine belastbare Media-Library-LXC-Diagnose. Der Chat erkannte den Bedienfehler; der lokale Piper-Dienst auf der TBS sollte wieder deaktiviert/entfernt werden. Ob diese Bereinigung anschließend tatsächlich durchgeführt wurde, wurde im sichtbaren Verlauf nicht bestätigt.
+**Spätere Korrektur mit Vorrang:** Ein Installationslauf wurde versehentlich auf der TBS statt im Media-Library-LXC ausgeführt. Das danach beobachtete `cargo: command not found` war deshalb keine belastbare Media-Library-LXC-Diagnose. Nach Erkennen des Bedienfehlers sollte der lokale Piper-Dienst auf der TBS wieder deaktiviert/entfernt werden. Ob diese Bereinigung anschließend tatsächlich durchgeführt wurde, wurde nicht bestätigt.
 
 ### 3.5 Kein Live-Streaming während der Funkaussendung
 
@@ -139,9 +135,9 @@ Begründung:
 
 ### 3.6 Aussendearchitektur: Basisstation statt zentralem WAV->TACELP-Zwang
 
-Der Chat begann mit einem Media-Library-Aussendeformular, das praktisch nur für einen bestehenden Media-Switch-Ruf geeignet war. Im `shadow`-Modus wurde ein Job lediglich protokolliert. Im `authoritative`-Modus hätte der alte Pfad einen vorhandenen `audio.tacelp`-Cache und eine existierende Media-Switch-Session benötigt.
+Das frühe Media-Library-Aussendeformular war praktisch nur für einen bestehenden Media-Switch-Ruf geeignet. Im `shadow`-Modus wurde ein Job lediglich protokolliert. Im `authoritative`-Modus hätte der alte Pfad einen vorhandenen `audio.tacelp`-Cache und eine existierende Media-Switch-Session benötigt.
 
-**Endgültige Entscheidung und heutiger Repository-Stand:** Für normale WAV-/TTS-Aussendungen wird der neue Modus `basisstation` verwendet. Die Media Library delegiert an den lokalen TBS-AudioPlayer. Die Basisstation übernimmt Download, Cache, nativen TETRA-Codec, Rufaufbau, Aussendung und Rufende.
+**Endgültige Entscheidung und geprüfter Repository-Stand:** Für normale WAV-/TTS-Aussendungen wird der neue Modus `basisstation` verwendet. Die Media Library delegiert an den lokalen TBS-AudioPlayer. Die Basisstation übernimmt Download, Cache, nativen TETRA-Codec, Rufaufbau, Aussendung und Rufende.
 
 Der alte direkte Media-Switch-Pfad bleibt als Legacy-/Spezialpfad `media_switch` erhalten.
 
@@ -184,14 +180,14 @@ Diese Schutzregel ist **noch nicht** im aktuell geprüften Repository implementi
 
 ### 4.1 Media Library
 
-**Dienst:** `netcore-media-library.service`  
-**Live-Konfiguration im Chat:** `/etc/netcore/media-library.toml`  
-**Repository-Beispiel:** `system-backend/media-library/config/media-library.example.toml`  
-**Zustand:** `/var/lib/netcore-media-library/state.json`  
-**Asset-Root:** `/var/lib/netcore-media-library/assets`  
-**Temp:** `/var/lib/netcore-media-library/tmp`  
-**Backups:** `/var/lib/netcore-media-library/backups`  
-**Web/API-Port im Chat:** `8230`  
+**Dienst:** `netcore-media-library.service`\
+**Historische Live-Konfiguration:** `/etc/netcore/media-library.toml`\
+**Repository-Beispiel:** `system-backend/media-library/config/media-library.example.toml`\
+**Zustand:** `/var/lib/netcore-media-library/state.json`\
+**Asset-Root:** `/var/lib/netcore-media-library/assets`\
+**Temp:** `/var/lib/netcore-media-library/tmp`\
+**Backups:** `/var/lib/netcore-media-library/backups`\
+**Historischer Web/API-Port:** `8230`\
 **Live-Bind im gezeigten System:** `10.0.1.154:8230`
 
 Wichtige API-Bereiche:
@@ -217,12 +213,12 @@ POST /api/v1/tts/generate
 
 ### 4.2 Piper/TTS
 
-**Soll-Host:** ausschließlich Media-Library-LXC  
-**Dienst:** `netcore-piper.service`  
-**Venv:** `/opt/netcore-piper`  
-**Voice-Root:** `/var/lib/netcore-media-library/piper`  
-**TTS-Cache:** `/var/lib/netcore-media-library/tts/cache`  
-**Vorlagen:** `/var/lib/netcore-media-library/tts/templates`  
+**Soll-Host:** ausschließlich Media-Library-LXC\
+**Dienst:** `netcore-piper.service`\
+**Venv:** `/opt/netcore-piper`\
+**Voice-Root:** `/var/lib/netcore-media-library/piper`\
+**TTS-Cache:** `/var/lib/netcore-media-library/tts/cache`\
+**Vorlagen:** `/var/lib/netcore-media-library/tts/templates`\
 **Endpoint:** `http://127.0.0.1:5005`
 
 Der Installer prüft `piper`, `piper.http_server` und `piper.download_voices`, lädt fehlende Stimmen nach, schreibt die Unit für den Media-Library-Serviceaccount und wartet derzeit bis zu 30 Sekunden auf `/voices`.
@@ -289,7 +285,7 @@ frame_bytes = 35
 frame_interval_ms = 60
 ```
 
-Der Chat zeigte für `GET /api/v1/sessions` zum Diagnosezeitpunkt:
+Die Sessionabfrage `GET /api/v1/sessions` ergab zum Diagnosezeitpunkt:
 
 ```json
 []
@@ -331,7 +327,7 @@ Die gezeigte IP-Gateway-Konfiguration war `authoritative`. Das TUN wurde geöffn
 
 ### 5.1 Im Repository implementiert
 
-Der am 2026-10-05 geprüfte Branch `Archiving` enthält bereits die finalen Codepfade dieses Chats:
+Der am 2026-10-05 geprüfte Branch `Archiving` enthält bereits die finalen Codepfade dieser Planung:
 
 - zentrale TTS/Piper-Integration in der Media Library;
 - getrennte Archivwurzeln für `Media-Library`, `Recordings` und `TTS-Dateien`;
@@ -347,7 +343,7 @@ Der am 2026-10-05 geprüfte Branch `Archiving` enthält bereits die finalen Code
 
 ### 5.2 Im Betrieb bestätigt
 
-Aus den im Chat gezeigten Live-Ausgaben sind folgende Punkte tatsächlich belegt:
+Aus den historischen Live-Ausgaben sind folgende Punkte tatsächlich belegt:
 
 - `netcore-ip-gateway.service` lief `active (running)` und lauschte auf `10.0.1.142:8170`.
 - Der IP-Gateway-DNS-Dienst lauschte nach kurzer Anlaufphase auf `10.0.0.1:53`.
@@ -363,7 +359,7 @@ Aus den im Chat gezeigten Live-Ausgaben sind folgende Punkte tatsächlich belegt
 
 ### 5.3 Nicht im Betrieb bestätigt
 
-Folgendes ist **nicht** durch einen anschließenden Live-Nachweis im Chat bestätigt:
+Folgendes ist **nicht** durch einen anschließenden Live-Nachweis bestätigt:
 
 - erfolgreiche Entfernung der fehlerhaften IP-Gateway-Route aus dem persistenten State und anschließende grüne Readiness;
 - erfolgreiche Verbindung IP-Gateway -> Packet Core nach der Routenbereinigung;
@@ -375,7 +371,7 @@ Folgendes ist **nicht** durch einen anschließenden Live-Nachweis im Chat bestä
 
 ---
 
-## 6. Relevante Dateien und heutiger Repository-Abgleich
+## 6. Relevante Dateien und geprüfter Repository-Abgleich
 
 ### 6.1 Media Library / TTS / Playout
 
@@ -406,7 +402,7 @@ install/update-basisstation.sh
 install/remove-local-tts-config.py
 ```
 
-Wichtige heute verifizierte Codeaussagen:
+Wichtige am Prüfstand 05.10.2026 verifizierte Codeaussagen:
 
 - `config.rs` definiert `BASISSTATION_PLAYOUT_MODE = "basisstation"` und `MEDIA_SWITCH_PLAYOUT_MODE = "media_switch"`.
 - `basisstation` ist der Default-Playoutmodus; eine Station muss aber konfiguriert sein, bevor sie als Default verwendet werden kann.
@@ -431,14 +427,14 @@ system-backend/ip-gateway/src/runtime.rs
 system-backend/ip-gateway/web-ui/index.html
 ```
 
-**Wichtiger heutiger Befund:** Der Repository-Code reproduziert die strukturelle Ursache des Vorfalls weiterhin:
+**Wichtiger geprüfter Befund:** Der Repository-Code reproduziert die strukturelle Ursache des Vorfalls weiterhin:
 
 - `state.rs::validate_route()` validiert CIDR, Gateway-IP und Interface-Syntax, prüft aber **keine Überlappung mit dem Managementnetz** und schützt weder die eigene Bind-Adresse noch die Packet-Core-Adresse.
 - `kernel.rs` führt für jede aktivierte persistente Route `ip route replace <destination> ...` aus.
 - Die WebUI schlägt beim Route-Dialog als Beispiel `192.168.50.0/24` und als optionales Interface standardmäßig `ntc-tun0` vor.
 - Damit kann eine über die WebUI angelegte Route wie `10.0.1.0/24 dev ntc-tun0` den direkt verbundenen Managementpfad verdrängen und wird durch den Reconcile-Prozess wiederhergestellt.
 
-Dieser Fehler ist **heute noch offen** und sollte nicht als bereits behoben archiviert werden.
+Dieser Fehler ist **am Prüfstand 05.10.2026 noch offen** und sollte nicht als bereits behoben archiviert werden.
 
 ---
 
@@ -453,7 +449,7 @@ curl -fsS "$ML/api/v1/status" | python3 -m json.tool
 curl -fsS "$ML/api/v1/jobs?limit=10" | python3 -m json.tool
 ```
 
-Ergebnis im Chat vor Moduswechsel:
+Ergebnis vor Moduswechsel:
 
 ```text
 operating_mode: shadow
@@ -582,7 +578,7 @@ dc3e00fb-bf75-4226-826c-3eb04350967e
   10.0.1.0/24 -> ntc-tun0
 ```
 
-### 7.8 Persistente Fehlroute löschen – vorgeschlagen, im sichtbaren Verlauf nicht bestätigt
+### 7.8 Persistente Fehlroute löschen – vorgeschlagen, nicht bestätigt
 
 Der korrekte permanente Reparaturweg ist die DELETE-API, nicht nur ein manuelles `ip route del`, weil der Reconcile-Prozess persistente Routen sonst erneut setzt:
 
@@ -598,7 +594,7 @@ curl -i -X DELETE \
   http://10.0.1.142:8170/api/v1/routes/84f4a04b-4e12-4c85-bf98-ffbfbcf533c5
 ```
 
-Danach müssen Route und Readiness geprüft werden. Ein erfolgreicher Abschluss wurde im Chat nicht mehr gezeigt.
+Danach müssen Route und Readiness geprüft werden. Ein erfolgreicher Abschluss wurde nicht mehr dokumentiert.
 
 ---
 
@@ -618,17 +614,17 @@ Danach müssen Route und Readiness geprüft werden. Ein erfolgreicher Abschluss 
 
 **Symptom:** Piper-Pakete/Stimmen wurden installiert, danach `system-backend/media-library/install/update.sh: line 27: cargo: command not found`.
 
-**Korrektur:** Der Benutzer stellte klar, dass das Skript versehentlich auf der TBS lief. Damit war die vorherige Cargo-Diagnose für den Media-Library-LXC gegenstandslos.
+**Korrektur:** Betriebsrückmeldung: Das Skript lief versehentlich auf der TBS. Damit war die vorherige Cargo-Diagnose für den Media-Library-LXC gegenstandslos.
 
 **Folge:** Lokalen Piper auf der TBS deaktivieren/entfernen und Media-Library-Installer nur im vorgesehenen LXC ausführen.
 
-**Status:** Fehlbedienung erkannt; Cleanup im sichtbaren Verlauf nicht bestätigt.
+**Status:** Fehlbedienung erkannt; Cleanup nicht bestätigt.
 
 ### 8.3 `cargo` unter `sudo` nicht gefunden
 
 Unabhängig vom obigen Fehlbedienungsfall war im Projekt bereits ein reales Muster bekannt: Rustup-Cargo liegt häufig unter `/home/<user>/.cargo/bin/cargo` und verschwindet aus `sudo secure_path`.
 
-**Heutiger Repository-Stand:** `install/update-basisstation.sh` ermittelt `SUDO_USER`, dessen Home, `.cargo/bin/cargo`, `CARGO_HOME` und `RUSTUP_HOME` und führt den Build kontrolliert als Build-Benutzer aus. Dieser Fix ist im aktuellen Repository vorhanden.
+**Geprüfter Repository-Stand:** `install/update-basisstation.sh` ermittelt `SUDO_USER`, dessen Home, `.cargo/bin/cargo`, `CARGO_HOME` und `RUSTUP_HOME` und führt den Build kontrolliert als Build-Benutzer aus. Dieser Fix ist im aktuellen Repository vorhanden.
 
 ### 8.4 Vorschau auswählbar, Aussende-Assetliste leer
 
@@ -638,7 +634,7 @@ Unabhängig vom obigen Fehlbedienungsfall war im Projekt bereits ein reales Must
 
 **Zwischenfix:** Im Shadow-Modus sollten `ready + approved` Assets sichtbar sein, ohne `broadcast_ready` zu verlangen.
 
-**Heutige Lösung:** Der aktuelle `basisstation`-Playoutpfad benötigt in `authoritative` nur eine gültige Preview-WAV und delegiert Codec/Rufaufbau an die TBS. `broadcast_ready` bleibt nur für den direkten Media-Switch-Pfad relevant.
+**Geprüfte Lösung:** Der aktuelle `basisstation`-Playoutpfad benötigt in `authoritative` nur eine gültige Preview-WAV und delegiert Codec/Rufaufbau an die TBS. `broadcast_ready` bleibt nur für den direkten Media-Switch-Pfad relevant.
 
 ### 8.5 Klick auf „Aussendung“ erzeugt keinen Funkruf
 
@@ -691,7 +687,7 @@ ip route get 10.0.1.166
 
 ## 9. Durchgeführte Tests und ihre Grenzen
 
-### Betrieblich durch den Benutzer ausgeführt
+### Historische Betriebsprüfungen
 
 | Test | Ergebnis | Bewertung |
 |---|---|---|
@@ -706,7 +702,7 @@ ip route get 10.0.1.166
 
 ### Im Repository vorhanden, aber bei Archivierung nicht ausgeführt
 
-Der heutige Code enthält Unit-/Regressionstests u. a. für Dispatch-Modi und die `[media_library]`-Parserregistrierung. Bei dieser Archivierung wurde **kein Cargo-Build, kein CI-Lauf und kein Hardware-/RF-Test** ausgeführt. Das Vorhandensein eines Tests im Repository ist daher nicht mit einem frischen Testerfolg gleichzusetzen.
+Der geprüfte Code enthält Unit-/Regressionstests u. a. für Dispatch-Modi und die `[media_library]`-Parserregistrierung. Bei dieser Archivierung wurde **kein Cargo-Build, kein CI-Lauf und kein Hardware-/RF-Test** ausgeführt. Das Vorhandensein eines Tests im Repository ist daher nicht mit einem frischen Testerfolg gleichzusetzen.
 
 ### Wichtige noch fehlende Tests
 
@@ -766,7 +762,7 @@ Der heutige Code enthält Unit-/Regressionstests u. a. für Dispatch-Modi und di
    - WebUI-Default `ntc-tun0` für freie Routen überdenken; kein gefährlicher Standard für Managementziele.
 
 2. **Live-IP-Gateway bereinigen und Readiness beweisen.**
-   - die beiden im Chat gefundenen persistenten Routen prüfen/löschen;
+   - die beiden festgestellten persistenten Routen prüfen/löschen;
    - `ip route get 10.0.1.166` muss über `eth0 src 10.0.1.142` laufen;
    - Packet-Core-API vom IP-Gateway erreichbar;
    - `/health/ready` HTTP 200;
@@ -801,13 +797,13 @@ Der heutige Code enthält Unit-/Regressionstests u. a. für Dispatch-Modi und di
 14. Später zentralen Codec nur dann ergänzen, wenn ein echter Use Case unabhängig von einer TBS entsteht; nicht als Voraussetzung für normale Durchsagen.
 15. Mehrere Basisstationen mit Standort-/Zellenbezug und automatischer Zielauswahl für Multisite-Playout anbinden.
 16. Job-/Audit-Ansicht um Station, GSSI/ISSI, Remote-Job-ID, Cachephase, Rufaufbauphase und RF-Sendephase erweitern.
-17. Das im Chat entwickelte TTS-Vorlagen-Namensschema (`TEST_`, `TECH_`, `OPS_`, `EVENT_`, `ALARM_`, `INFO_`) samt Platzhaltern wie `{ORT}`, `{UHRZEIT}` und `{GRUPPE}` als optionalen Konventionsstandard dokumentieren; kurze Sätze, ausgeschriebene kritische Zahlen und möglichst wenige Abkürzungen bleiben als Sprachqualitätsregel sinnvoll.
+17. Das entwickelte TTS-Vorlagen-Namensschema (`TEST_`, `TECH_`, `OPS_`, `EVENT_`, `ALARM_`, `INFO_`) samt Platzhaltern wie `{ORT}`, `{UHRZEIT}` und `{GRUPPE}` als optionalen Konventionsstandard dokumentieren; kurze Sätze, ausgeschriebene kritische Zahlen und möglichst wenige Abkürzungen bleiben als Sprachqualitätsregel sinnvoll.
 
 ---
 
-## 12. Screenshots aus dem Chat
+## 12. Screenshots aus den Entwicklungsnotizen
 
-Hinweis: Die im Repository abgelegten Archivkopien der Screenshots wurden zur Größenreduktion farbreduziert; die Media-Library-Vollbildaufnahme wurde zusätzlich auf 960 px Breite skaliert. Inhalt und dokumentierte UI-Zustände bleiben erkennbar; die Original-Uploads verbleiben im Chatkontext.
+Die gesicherten Screenshots wurden farbreduziert; die Media-Library-Vollbildaufnahme wurde zusätzlich auf 960 px Breite skaliert. Die UI-Zustände bleiben erkennbar. Die gesicherten Kopien ersetzen keine unveränderten Originaldateien.
 
 ### Media-Library-Aussendemaske im Shadow-Zwischenstand
 
@@ -823,11 +819,11 @@ Das Bild dokumentiert die Betreiberansicht `AUSGEFALLEN`/`FALLBACK` mit `connect
 
 ---
 
-## 13. Relevante Chat-Artefakte und Anhänge
+## 13. Relevante Arbeitsartefakte und Anhänge
 
-Im Verlauf wurden mehrere Arbeits-/Übergabepakete erzeugt. Sie sind als historische Chat-Artefakte zu verstehen; maßgeblich für den heutigen Codeabgleich ist der aktuelle Repository-Stand.
+Im Verlauf wurden mehrere Arbeits-/Übergabepakete erzeugt. Sie sind als historische Arbeitsartefakte zu verstehen; maßgeblich für den geprüften Codeabgleich ist der aktuelle Repository-Stand.
 
-Bekannte Artefakte aus dem zugänglichen Verlauf:
+Bekannte Artefakte aus den Entwicklungsnotizen:
 
 ```text
 netcore-tetra-swmi-tts-archive-routing-fix.zip
@@ -843,13 +839,13 @@ Bewertung:
 
 - Der `cargo-toolchain-fix` entstand unmittelbar vor der Klarstellung, dass das Media-Library-Update versehentlich auf der TBS gestartet worden war. Er ist daher **nicht** als Beweis für einen realen Media-Library-LXC-Fehler zu lesen.
 - Der `shadow-asset-fix` war ein Zwischenstand zur Bedienbarkeit im Shadow-Modus; die spätere Basisstations-Playoutarchitektur ist der maßgebliche Weg für echte Aussendung.
-- Das finale Basisstations-Playoutpaket entspricht konzeptionell dem heute im Repository vorhandenen `basisstation`-Modus; ein späterer Live-On-Air-Test nach Installation wurde im Chat nicht mehr gezeigt.
+- Das finale Basisstations-Playoutpaket entspricht konzeptionell dem am Prüfstand 05.10.2026 im Repository vorhandenen `basisstation`-Modus; ein späterer Live-On-Air-Test nach Installation wurde nicht mehr dokumentiert.
 
 ---
 
 ## 14. Relevante Repository-Quellen
 
-Die folgenden Dateien wurden beim Archivierungsdurchlauf auf `Archiving` geprüft bzw. als maßgebliche heutige Referenz herangezogen:
+Die folgenden Dateien wurden bei der Quellprüfung auf `Archiving` geprüft bzw. als maßgebliche geprüfte Referenz herangezogen:
 
 ```text
 CHANGES-CENTRAL-MEDIA-LIBRARY-TTS.md
@@ -877,7 +873,7 @@ system-backend/ip-gateway/src/kernel.rs
 system-backend/ip-gateway/web-ui/index.html
 ```
 
-Keine PR-Nummer oder ein separater Implementierungscommit für genau diesen Chat wurde im zugänglichen Verlauf belastbar identifiziert. Es werden deshalb bewusst keine erfundenen PR-/Commitzuordnungen angegeben. Der geprüfte Ausgangsstand für den heutigen Vergleich ist der oben genannte Commit des Branches `Archiving`.
+Ein separater Implementierungscommit oder PR lässt sich dem Arbeitsstand nicht eindeutig zuordnen. Maßgeblich für den Codevergleich ist der oben genannte `Archiving`-Commit.
 
 ---
 
@@ -893,4 +889,4 @@ Die Fortsetzung dieses Themenstrangs sollte in dieser Reihenfolge erfolgen:
 6. **Archivmigration prüfen:** TTS ausschließlich unter `TTS-Dateien`, Recordings ausschließlich unter `Recordings`, allgemeine Medien unter `Media-Library`.
 7. **Dokumentations-/Konfigurationshygiene:** veraltete `UMask=0000`-Aussage korrigieren, Zugangsdaten aus späterem Produktionsmodell herauslösen und Multi-TBS-Betriebsfälle ergänzen.
 
-Damit ist der Chat fachlich abgeschlossen, ohne die noch fehlenden Live-Nachweise fälschlich als erledigt zu markieren.
+Für die Fortsetzung sind vor allem die Routenabsicherung und die fehlenden Ende-zu-Ende-Nachweise maßgeblich.

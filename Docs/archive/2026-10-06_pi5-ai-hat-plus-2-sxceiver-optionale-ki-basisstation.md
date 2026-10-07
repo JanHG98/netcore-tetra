@@ -1,30 +1,27 @@
-# Pi5 Basisstation Aufbau: AI HAT+ 2, SXceiver und optionale lokale KI
+# Brainstorming: Pi-5-Basisstation mit AI HAT+ 2, SXceiver und optionale lokale KI
 
-Der Chat prüfte eine Hardwareidee: Raspberry Pi 5, darüber AI HAT+ 2 und darüber ein SDR für eine NetCore-Tetra-Basisstation. Das Ergebnis war eine bedingte technische Empfehlung für lokale Transkription und Diagnose. Ein konkreter Kauf, der Dreierstapel, eine KI-Integration oder deren Betrieb wurden im verfügbaren Verlauf nicht beschlossen beziehungsweise nachgewiesen. Die Funkverarbeitung sollte von einer optionalen KI-Auswertung unabhängig bleiben.
+Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
 
-## 1. Metadaten und Auswertungsumfang
+Hardwareidee: Raspberry Pi 5 mit AI HAT+ 2 und darüber einem SDR für die NetCore-Tetra-Basisstation. Lokale Transkription und Diagnose erscheinen unter den unten genannten Bedingungen sinnvoll. Stückliste, Dreierstapel und KI-Integration sind noch nicht festgelegt oder praktisch abgenommen. Die Funkverarbeitung soll von optionaler KI-Auswertung unabhängig bleiben.
+
+## 1. Projektstand und Quellenbasis
 
 | Feld | Wert |
 |---|---|
-| Ursprünglicher Chattitel | Pi5 Basisstation Aufbau |
-| Chat-ID | `6ab2f9ef-89f0-83eb-b89c-c04000ca3364` |
-| Chatlink | [Ursprünglicher Chat](https://chatgpt.com/c/6ab2f9ef-89f0-83eb-b89c-c04000ca3364) · [App-Referenz](chatgpt-conversation://6ab2f9ef-89f0-83eb-b89c-c04000ca3364) |
-| Technische Gesprächsrunde | Laut Abruf 22.09.2026, 23:58 Uhr bis 23.09.2026, 00:05 Uhr; Europe/Berlin, MESZ |
-| Späterer Archivauftrag im Quellchat | 06.10.2026, 08:06 Uhr MESZ |
+| Technische Planungsphase | Laut Abruf 22.09.2026, 23:58 Uhr bis 23.09.2026, 00:05 Uhr; Europe/Berlin, MESZ |
 | Erstellungs- und Prüfdatum dieses Archivs | 2026-10-06; Europe/Berlin |
 | Repository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
-| Geprüfter und verwendeter Branch | `Archiving` |
+| Geprüfter Branch | `Archiving` |
 | Geprüfter Repository-Basiscommit | [`1e15cece5993fcad3fbca5a14792b99a02093c63`](https://github.com/JanHG98/netcore-tetra/commit/1e15cece5993fcad3fbca5a14792b99a02093c63) |
 | Betreff dieses Basiscommits | `docs(archive): preserve dual-baseboard KiCad design and evidence` |
 | Archivdatei | `Docs/archive/2026-10-06_pi5-ai-hat-plus-2-sxceiver-optionale-ki-basisstation.md` |
 | Archivindex | [README.md](README.md) |
-| Umfang der Änderung | Diese neue Markdown-Datei und ein zusätzlicher Indexeintrag; ausschließlich `Docs/archive/` |
 
-Der Basiscommit bezeichnet den vor dem Schreiben gelesenen Repository-Stand. Der durch diesen Auftrag entstehende Archivcommit ist über die Git-Dateihistorie und die Abschlussmeldung bestimmbar; er ist nicht mit dem geprüften Basiscommit gleichzusetzen. Aussagen über den heutigen Code beziehen sich ausschließlich auf diesen Stand von `Archiving`, nicht auf `main`, installierte Binärdateien oder laufende Geräte.
+Der Basiscommit ist die geprüfte Quelle. Die Codebefunde beziehen sich ausschließlich auf diesen Stand von `Archiving`; installierte Binärdateien, laufende Geräte und andere Branches einschließlich `main` wurden damit nicht geprüft.
 
-Der vollständige vom Chatwerkzeug angebotene Verlauf wurde gelesen: zwei Gesprächsrunden mit insgesamt drei Nachrichten, nämlich Hardwarefrage, vollständige technische Antwort und späterer Archivauftrag. Der Abruf erfolgte mit `turnLimit: 10` und `maxOutputCharsPerItem: 20000`; die technische Antwort umfasst 7.165 Zeichen. `hasMore: false` und `nextCursor: null` boten keine weitere Seite an. Die zunächst mitgelieferte Vorschau war gekürzt; für dieses Archiv wurde stattdessen die vollständige abrufbare Antwort ausgewertet.
+Die technische Einschätzung stammt vom 22./23.09.2026. Sie ist als Hardware- und Architekturvorschlag erhalten; ein Aufbau- oder Messprotokoll liegt nicht vor.
 
-`attachments: []` und die zurückgegebenen Nachrichten enthalten keine Bilder, Audiodateien, Messprotokolle, ZIPs oder anderen Anhänge. Deshalb wurden keine Bilddateien angelegt und keine Bilder aus anderen Chats, Herstellerseiten oder dem Projektquellenordner übernommen. Die ursprünglichen Quellenmarker mit Indizes 0 bis 8 wurden als Marker, jedoch ohne ihre zugehörigen Ziel-URLs geliefert. Die in Abschnitt 8 genannten Herstellerquellen wurden heute zusätzlich geprüft; sie sind keine rekonstruierte Zuordnung dieser historischen Marker.
+Für diesen Entwurf sind keine Bilder, Audiodateien, Messprotokolle oder ZIPs erhalten. Die historischen Quellenmarker 0 bis 8 enthielten keine Ziel-URLs. Herstellerquellen wurden am 06.10.2026 zusätzlich geprüft und werden getrennt als neue Referenzen geführt.
 
 ## 2. Statusbegriffe und erreichte Ergebnisse
 
@@ -33,39 +30,38 @@ Die Begriffe werden hier evidenzbezogen verwendet:
 | Status | Bedeutung |
 |---|---|
 | **Idee** | Diskutierte Möglichkeit oder Empfehlung ohne ausdrücklichen Umsetzungsbeschluss. |
-| **beschlossen-geplant** | Vom Nutzer ausdrücklich festgelegter nächster Schritt; noch keine Umsetzung oder Abnahme. |
+| **beschlossen-geplant** | Ausdrücklich festgelegter nächster Schritt; noch keine Umsetzung oder Abnahme. |
 | **implementiert** | Konkreter Quellcode oder ein Artefakt ist am angegebenen Repository-Stand vorhanden. |
 | **getestet** | Ein abgegrenzter Test wurde mit nachvollziehbarem Ergebnis durchgeführt; Testart und Grenzen müssen genannt sein. |
 | **im Betrieb bestätigt** | Tatsächlicher Einsatz auf dem Zielsystem mit beobachtetem Ergebnis ist belegt. |
 
-| Gegenstand | Historischer Chatstand | Heute überprüfter Stand / Grenze |
+| Gegenstand | Historischer Entwurfstand | Zum Prüfstand vom 06.10.2026 überprüfter Stand / Grenze |
 |---|---|---|
-| Pi 5 + AI HAT+ 2 + SDR übereinander | **Idee** des Nutzers. | Keine Stückliste, Pinfreigabe, Aufbauaufnahme oder Hardwareabnahme dieses Stapels belegt. |
-| SDR konkret als SXceiver | In der Antwort angenommene Projektkomponente. | SXceiver-/SoapySX-Code ist **implementiert** vorhanden; die ursprüngliche Nutzerfrage nennt lediglich „SDR“, keine Platinenrevision. |
-| Pi 5 + SXceiver als reine TBS | Empfehlung der Antwort. | Vorhandene Funksoftware ist keine durch diesen Chat bestätigte Installation oder Betriebsabnahme. |
-| Separater optionaler KI-Dienst | **Idee**, Architekturvorschlag der Antwort. | Keine identifizierte Hailo-/Whisper-Anbindung im geprüften NetCore-Stand. |
+| Pi 5 + AI HAT+ 2 + SDR übereinander | **Idee** des Betreibers. | Keine Stückliste, Pinfreigabe, Aufbauaufnahme oder Hardwareabnahme dieses Stapels belegt. |
+| SDR konkret als SXceiver | Im frühen Entwurf angenommene Projektkomponente. | SXceiver-/SoapySX-Code ist **implementiert** vorhanden; die ursprüngliche Hardwareidee nennt lediglich „SDR“, keine Platinenrevision. |
+| Pi 5 + SXceiver als reine TBS | Architekturvorschlag. | Vorhandene Funksoftware ist keine für diesen Entwicklungsstand bestätigte Installation oder Betriebsabnahme. |
+| Separater optionaler KI-Dienst | **Idee**, Architekturvorschlag. | Keine identifizierte Hailo-/Whisper-Anbindung im geprüften NetCore-Stand. |
 | Lokale Funktranskription | **Idee**, als erster sinnvoller KI-Anwendungsfall empfohlen. | Audio-/Recorder-Bausteine sind **implementiert**; deren Verknüpfung mit Spracherkennung ist nicht nachgewiesen. |
 | Lesender Diagnoseassistent | **Idee**. | Kein hierfür identifizierter NetCore-KI-Dienst, keine fachliche Abnahme. |
-| Gleichzeitiger Funk-/KI-Lasttest | Empfohlener Prüfplan, kein ausdrücklich bestätigter Nutzerbeschluss. | **getestet** und **im Betrieb bestätigt** sind für den Dreierstapel nicht belegt. |
-| Abschlussdokumentation unter `Docs/archive/` | Im späteren Auftrag ausdrücklich **beschlossen-geplant** und zum Commit/Push autorisiert. | Gegenstand dieses Dokumentationsauftrags; keine Hardware- oder Softwarebereitstellung. |
+| Gleichzeitiger Funk-/KI-Lasttest | Empfohlener Prüfplan, kein ausdrücklich bestätigter Umsetzungsbeschluss. | **getestet** und **im Betrieb bestätigt** sind für den Dreierstapel nicht belegt. |
 
-Für das Hardwareprojekt liegt damit kein ausdrücklicher Umsetzungsbeschluss vor. Die Formulierung der damaligen Antwort, welche Auslegung sie wählen würde, ist eine Empfehlung des Assistenten und keine abschließende Entscheidung des Nutzers. Es gibt keine spätere technische Korrektur oder Nutzerfreigabe im abrufbaren Verlauf; der spätere Auftrag betrifft die Archivierung.
+Für das Hardwareprojekt liegt noch kein Umsetzungsbeschluss vor. Die empfohlene Auslegung bleibt eine zu prüfende Option; eine spätere Hardwareabnahme ist nicht dokumentiert.
 
 ## 3. Ziel, Ausgangslage und nicht festgelegte Anforderungen
 
 Die Ausgangsfrage lautete sinngemäß: Pi 5, AI HAT+ 2 und darüber SDR für die eigene Basisstation – ist diese Kombination sinnvoll? Sie war eine offene Einschätzung, kein Bau- oder Installationsauftrag.
 
-Die Antwort ordnete den Zusatznutzen in zwei Bereiche ein: Gespräche vor Ort auswerten und Betriebsdaten lokal erklären. Eine Verbesserung der zeitkritischen TETRA-Verarbeitung allein durch Aufstecken des HAT wurde nicht zugesagt. Auch zusätzliche TETRA-Träger, weniger TX-Late-Skips und bessere Funkstabilität wurden ausdrücklich nicht aus der TOPS-Zahl abgeleitet.
+Der Entwurf ordnete den Zusatznutzen in zwei Bereiche ein: Gespräche vor Ort auswerten und Betriebsdaten lokal erklären. Eine Verbesserung der zeitkritischen TETRA-Verarbeitung allein durch Aufstecken des HAT wurde nicht zugesagt. Auch zusätzliche TETRA-Träger, weniger TX-Late-Skips und bessere Funkstabilität wurden ausdrücklich nicht aus der TOPS-Zahl abgeleitet.
 
-Nicht festgelegt wurden insbesondere Pi-RAM-Ausbau, genaue SDR-/HAT-Revision, Gehäuse, Abstände oberhalb des AI HAT, Gesamtstrombedarf, Frequenz- und Carrierplan, Modellversion, Durchsatz, Transkriptlatenz, Erkennungsquote, KI-Dienstname, Port, Datenformat, Ressourcenlimits und Installationsdatum. Die Antwort bezog sich auf einen bisher Bookworm-orientierten Aufbau und einen zentral gedachten Diensteaufbau; diese Kontextannahmen sind im kurzen Quellchat nicht durch einen Gerätebestand oder eine aktuelle Konfigurationsdatei nachgewiesen.
+Nicht festgelegt wurden insbesondere Pi-RAM-Ausbau, genaue SDR-/HAT-Revision, Gehäuse, Abstände oberhalb des AI HAT, Gesamtstrombedarf, Frequenz- und Carrierplan, Modellversion, Durchsatz, Transkriptlatenz, Erkennungsquote, KI-Dienstname, Port, Datenformat, Ressourcenlimits und Installationsdatum. Der frühe Entwurf bezog sich auf einen bisher Bookworm-orientierten Aufbau und einen zentral gedachten Diensteaufbau; diese Annahmen sind nicht durch einen Gerätebestand oder eine aktuelle Konfigurationsdatei nachgewiesen.
 
 ## 4. Historische technische Einschätzung
 
 ### 4.1 Rolle des AI HAT+ 2
 
-Die Antwort beschrieb den AI HAT+ 2 mit Hailo-10H, 40 TOPS bei INT4 und 8 GB eigenem Arbeitsspeicher. Der Speicher wurde als Speicher der KI-Baugruppe eingeordnet, nicht als allgemeine RAM-Erweiterung für Pi oder NetCore. Diese Bauteilangaben sind in Abschnitt 8 zusätzlich mit heutigen Herstellerquellen abgeglichen.
+Die technische Einschätzung beschreibt den AI HAT+ 2 mit Hailo-10H, 40 TOPS bei INT4 und 8 GB eigenem Arbeitsspeicher. Der Speicher wurde als Speicher der KI-Baugruppe eingeordnet, nicht als allgemeine RAM-Erweiterung für Pi oder NetCore. Diese Bauteilangaben sind in Abschnitt 8 zusätzlich mit geprüften Herstellerquellen abgeglichen.
 
-| Aufgabe | Einordnung in der damaligen Antwort |
+| Aufgabe | Historische Einordnung |
 |---|---|
 | TETRA-Modulation, Demodulation, Kanalcodierung, zeitkritische Verarbeitung | Kein automatischer Beschleunigungseffekt durch den HAT. |
 | Call Control, SIP, MQTT, Weboberfläche | Herkömmliche Softwareaufgaben; keine automatische Verlagerung auf die NPU. |
@@ -74,23 +70,23 @@ Die Antwort beschrieb den AI HAT+ 2 mit Hailo-10H, 40 TOPS bei INT4 und 8 GB eig
 
 ### 4.2 Datenwege und elektrische Verträglichkeit
 
-Die vorgeschlagene Kombination nutzte unterschiedliche hauptsächliche Datenwege: AI HAT+ 2 über das PCIe-Flachbandkabel des Pi 5, SXceiver über I²S und SPI am 40-Pin-Anschluss. Die Antwort nannte den Pi 5 als vom SXceiver-Hersteller getestete Plattform. Der heutige Quellenabgleich bestätigt diese grundsätzlichen Angaben, nicht den gemeinsamen Dreierstapel.
+Die vorgeschlagene Kombination nutzte unterschiedliche hauptsächliche Datenwege: AI HAT+ 2 über das PCIe-Flachbandkabel des Pi 5, SXceiver über I²S und SPI am 40-Pin-Anschluss. Als Herstellerangabe lag vor: den Pi 5 als vom SXceiver-Hersteller getestete Plattform. Der geprüfte Quellenabgleich bestätigt diese grundsätzlichen Angaben, nicht den gemeinsamen Dreierstapel.
 
-Vor dem Zusammenstecken sollten dennoch die tatsächliche GPIO-Belegung, weitere Steuerleitungen, HAT-Erkennung, ID-EEPROMs und beim Booten geladene Device-Tree-Overlays abgeglichen werden. Die Antwort verwies auf die in der HAT+-Spezifikation vorgesehene Kombination aus normalem HAT und „Stackable HAT+“ mit unterschiedlichen EEPROM-Adressen. Eine Einstufung der konkreten AI-HAT+‑2-/SXceiver-Kombination in dieses Modell wurde nicht nachgewiesen. Numerische EEPROM-Adressen oder eine freigegebene Pinmatrix wurden nicht genannt.
+Vor dem Zusammenstecken sollten dennoch die tatsächliche GPIO-Belegung, weitere Steuerleitungen, HAT-Erkennung, ID-EEPROMs und beim Booten geladene Device-Tree-Overlays abgeglichen werden. Technische Grundlage ist die in der HAT+-Spezifikation vorgesehene Kombination aus normalem HAT und „Stackable HAT+“ mit unterschiedlichen EEPROM-Adressen. Eine Einstufung der konkreten AI-HAT+‑2-/SXceiver-Kombination in dieses Modell wurde nicht nachgewiesen. Numerische EEPROM-Adressen oder eine freigegebene Pinmatrix wurden nicht genannt.
 
 Die archivierte Folgerung lautet daher: unterschiedliche Datenbusse sind ein guter Ausgangspunkt, reichen aber als Nachweis für eine vollständige elektrische Stapelkompatibilität nicht aus. Zwei HATs wurden weder pauschal ausgeschlossen noch pauschal freigegeben.
 
 ### 4.3 Mechanik, Kühlung und Versorgung
 
-Der mitgelieferte 16-mm-Stacking-Header wurde als Freiraum für den Active Cooler unter dem AI HAT beschrieben. Daraus wurde keine Freigabe für den Bauraum eines darüber montierten SDR abgeleitet. Die Antwort empfahl zusätzlich den Kühlkörper auf dem AI HAT+ 2 sowie ausreichenden Abstand und freien seitlichen Luftstrom.
+Der mitgelieferte 16-mm-Stacking-Header wurde als Freiraum für den Active Cooler unter dem AI HAT beschrieben. Daraus wurde keine Freigabe für den Bauraum eines darüber montierten SDR abgeleitet. Der Entwurf empfahl zusätzlich den Kühlkörper auf dem AI HAT+ 2 sowie ausreichenden Abstand und freien seitlichen Luftstrom.
 
 Für den Pi 5 wurde das von Raspberry Pi empfohlene 27-W-Netzteil genannt. Für den Gesamtaufbau blieb ausdrücklich eine separate Lastbilanz aller Baugruppen offen. Ein Netzteilmodell für die konkrete Station, ein gemessener Spitzenstrom, eine thermische Berechnung oder eine Versorgung unter kombinierter Dauerlast sind nicht dokumentiert. Die 27-W-Angabe ist deshalb keine Dimensionierungsfreigabe des gesamten Stapels.
 
 ### 4.4 HF-Verträglichkeit und Betriebssystem
 
-Als HF-Prüfung schlug die Antwort vergleichbare Empfangsmessungen mit ausgeschalteter beziehungsweise ruhender KI und anschließend unter voller KI-Last vor. Störlinien, Rauschboden und Empfangsfehler sollten verglichen werden. Es wurde nicht vorausgesetzt, dass zusätzliche digitale Elektronik unmittelbar unter dem SDR HF-seitig ohne Auswirkungen bleibt.
+Als HF-Abnahme sind vergleichbare Empfangsmessungen mit ausgeschalteter oder ruhender KI und anschließend unter voller KI-Last vorgeschlagen. Störlinien, Rauschboden und Empfangsfehler sollten verglichen werden. Es wurde nicht vorausgesetzt, dass zusätzliche digitale Elektronik unmittelbar unter dem SDR HF-seitig ohne Auswirkungen bleibt.
 
-Für den damals dokumentierten Hailo-Installationsweg wurden Raspberry Pi OS Trixie in 64 Bit und das Paket `hailo-h10-all` genannt. Der Übergang vom angenommenen Bookworm-Aufbau sollte ein eigener Kompatibilitätstest mit SoapySX, ALSA und den Overlays sein. Ein direktes Upgrade der laufenden TBS war keine empfohlene Vorgehensweise. Es gab keinen ausgeführten Upgrade-, Installations- oder Rollbackablauf im Chat.
+Für den damals dokumentierten Hailo-Installationsweg wurden Raspberry Pi OS Trixie in 64 Bit und das Paket `hailo-h10-all` genannt. Der Übergang vom angenommenen Bookworm-Aufbau sollte ein eigener Kompatibilitätstest mit SoapySX, ALSA und den Overlays sein. Ein direktes Upgrade der laufenden TBS war keine empfohlene Vorgehensweise. Es gab keinen ausgeführten Upgrade-, Installations- oder Rollbackablauf im dokumentierten Arbeitsstand.
 
 ## 5. Historische Anwendungsfälle und Architekturvorschlag
 
@@ -102,7 +98,7 @@ Vor einer Integration sollten eigene Testaufnahmen beantworten, ob ein unterstü
 
 ### 5.2 Lesender Diagnoseassistent
 
-Ein weiterer Vorschlag war ein lokales Sprachmodell für ausgewählte Logs und Messwerte. Die Antwort nannte als Beispiele die Suche nach Änderungen vor den letzten drei Verbindungsabbrüchen sowie eine Zusammenfassung von Auffälligkeiten seit dem letzten Neustart.
+Ein weiterer Vorschlag war ein lokales Sprachmodell für ausgewählte Logs und Messwerte. Als Herstellerangabe lag vor: als Beispiele die Suche nach Änderungen vor den letzten drei Verbindungsabbrüchen sowie eine Zusammenfassung von Auffälligkeiten seit dem letzten Neustart.
 
 Die empfohlene erste Auslegung war ausschließlich lesend: Beobachtungen mit zugehörigen Logstellen erklären. Frequenzen ändern, Dienste neu starten oder selbstständig Reparaturen ausführen gehörten nicht zu diesem Vorschlag. NetCore-Anbindung und fachliche Qualität müssten erst entwickelt und geprüft werden.
 
@@ -123,11 +119,11 @@ flowchart LR
 
 Der KI-Dienst sollte eigene Ressourcenlimits erhalten und bei Überlast Arbeit verschieben oder Daten auslassen dürfen. Der Funkstack dürfte nicht auf die KI warten. Die konkrete Warteschlange, ihre Größe, ein Prozess-/Containerformat und eine API wurden nicht spezifiziert. Auch bei getrennten Diensten blieben Kernel, Hardware und Stromversorgung gemeinsam; die Trennung wäre keine vollständige Fehler- oder Ressourcenisolation.
 
-Die bedingte Empfehlung war: Für eine reine TBS zunächst Pi 5 mit SXceiver; für eine bewusst offlinefähige TBS mit lokaler Transkription oder Diagnose einen KI-Prototyp erwägen. Vor dessen Übernahme müssten Empfangsqualität, RX-Overruns, TX-Late-Skips und Temperaturen unter kombinierter Funk-/KI-Last unauffällig bleiben. Die Reihenfolge ist eine Empfehlung der damaligen Antwort, keine bestätigte Projektplanung.
+Die bedingte Empfehlung war: Für eine reine TBS zunächst Pi 5 mit SXceiver; für eine bewusst offlinefähige TBS mit lokaler Transkription oder Diagnose einen KI-Prototyp erwägen. Vor dessen Übernahme müssten Empfangsqualität, RX-Overruns, TX-Late-Skips und Temperaturen unter kombinierter Funk-/KI-Last unauffällig bleiben. Die Reihenfolge ist eine Architektur-Empfehlung, keine bestätigte Projektplanung.
 
-## 6. Heute geprüfter Repository-Stand
+## 6. Zum Prüfstand vom 06.10.2026 geprüfter Repository-Stand
 
-Alle folgenden Befunde wurden am 06.10.2026 am oben genannten Basiscommit zusätzlich ermittelt. Sie sind keine rückwirkenden Implementierungsergebnisse der technischen Chatantwort vom September.
+Alle folgenden Befunde wurden am 06.10.2026 am oben genannten Basiscommit zusätzlich ermittelt. Sie sind keine rückwirkenden Implementierungsergebnisse der technischen Einschätzung vom September.
 
 ### 6.1 Keine identifizierte KI-Integration
 
@@ -147,7 +143,7 @@ Das ist ein begrenzter Repository-Befund: Eine Hailo-/Whisper-Integration ist an
 | [phy/components/soapy_dev.rs](../../crates/tetra-entities/src/phy/components/soapy_dev.rs) | Enthält Late-Skip-Zähler und die Meldung `TX continuity` mit `late_skip_events`, `late_skipped_blocks`, `hw_underflows`, `hw_time_errors` sowie `hw_status_supported`. Diese Felder können eine spätere Lastabnahme unterstützen. |
 | [phy/components/soapyio.rs](../../crates/tetra-entities/src/phy/components/soapyio.rs) | Unterscheidet Software-Late-Skips von Treiberstatus wie Underflow und TimeError; die Statusabfrage kann als nicht unterstützt gemeldet werden. Fehlende Treiberunterstützung ist kein Beleg für Fehlerfreiheit. |
 
-Die vorhandene SoapySX-Quelle nutzt direkt die Linux-GPIO-Schnittstelle; ihre CMake-Datei linkt keine `libgpiod`. Historische libgpiod-Reparaturen aus anderen Chats sollten deshalb nicht ungeprüft als Voraussetzung dieses aktuellen Treiberstands übernommen werden. Ein Build des hier eingebetteten Treibers wurde nicht ausgeführt.
+Die vorhandene SoapySX-Quelle nutzt direkt die Linux-GPIO-Schnittstelle; ihre CMake-Datei linkt keine `libgpiod`. Historische libgpiod-Reparaturen aus anderen Arbeitsphasen sollten deshalb nicht ungeprüft als Voraussetzung dieses aktuellen Treiberstands übernommen werden. Ein Build des hier eingebetteten Treibers wurde nicht ausgeführt.
 
 ### 6.3 Zwei unterschiedliche Aufzeichnungspfade
 
@@ -158,7 +154,7 @@ Die vorhandene SoapySX-Quelle nutzt direkt die Linux-GPIO-Schnittstelle; ihre CM
 
 Die begrenzte lokale Recorder-Übergabe enthält bereits Verhalten für Überlast: Bei voller Queue wird eine Epochennummer erhöht, damit alte Ereignisse nicht fälschlich einem Ruf zugeordnet werden. Das ist ein vorhandenes Muster für vom Funkpfad entkoppelte Verarbeitung, aber keine implementierte KI-Queue und keine Abnahme der kombinierten Last.
 
-**Wichtige Abgrenzung:** Der Quellchat sprach von bereits decodierten Aufzeichnungen. Der heutige zentrale Recorder speichert hingegen codierte Frames. Das ist eine konkret zu lösende Integrationsfrage und kein Widerspruch, der durch bloßes Umbenennen von `.tacelp` in `.wav` verschwindet. Der lokale WAV-Pfad und der zentrale Recorder dürfen bei einer Fortsetzung nicht gleichgesetzt werden. Auch eine eventuell erforderliche Sample-Rate-Anpassung ist anhand des tatsächlich gewählten Modells zu prüfen; sie ersetzt keine fehlende Sprachbandbreite.
+**Wichtige Abgrenzung:** Der frühe Entwurf setzte auf bereits decodierten Aufzeichnungen. Der geprüfte zentrale Recorder speichert hingegen codierte Frames. Das ist eine konkret zu lösende Integrationsfrage und kein Widerspruch, der durch bloßes Umbenennen von `.tacelp` in `.wav` verschwindet. Der lokale WAV-Pfad und der zentrale Recorder dürfen bei einer Fortsetzung nicht gleichgesetzt werden. Auch eine eventuell erforderliche Sample-Rate-Anpassung ist anhand des tatsächlich gewählten Modells zu prüfen; sie ersetzt keine fehlende Sprachbandbreite.
 
 ### 6.4 Relevante Dienste, Parameter und Pfade
 
@@ -175,27 +171,27 @@ Die Werte stammen aus dem aktuellen Recorder-Beispiel und der gelesenen Implemen
 | Framezeit | `frame_duration_ms = 60` in der Recorder-Vorlage. |
 | Sicherheitsmodus | `open_lab`; der Recorder dokumentiert fehlende Authentisierung/TLS/RBAC. Eine spätere KI-Anbindung benötigt einen passenden Zugriffsvertrag; diese Vorlage ist kein Produktionsfreigabenachweis. |
 | NetCore-Update-Einstieg | [install/update-basisstation.sh](../../install/update-basisstation.sh) ist vorhanden; in diesem Auftrag nicht ausgeführt. |
-| Künftiger KI-Dienst | Kein festgelegter Dienstname, Port, Installationspfad oder API-Vertrag aus diesem Chat. |
+| Künftiger KI-Dienst | Kein festgelegter Dienstname, Port, Installationspfad oder API-Vertrag aus dieser Arbeitsphase. |
 
 Die Dokumentation [NetCore-Tetra-Komplettguide-2026-09-28.md](../NetCore-Tetra-Komplettguide-2026-09-28.md) beschreibt weiterhin ein Image-Rezept auf Raspberry Pi OS Lite Bookworm ARM64. Andere Repository-Stellen enthalten bereits Trixie-Bezüge, etwa beim Asterisk-Installer. Daraus folgt keine einheitliche Trixie-Freigabe des gesamten TBS-/Hailo-/SXceiver-Stacks. Das tatsächlich installierte OS, der Kernel, die Firmware und der Treiberstand der Station sind unbekannt.
 
 ## 7. Befehle und Ausführungsstatus
 
-### 7.1 Historischer Chat
+### 7.1 Historischer Entwurf
 
 Es wurden keine Shellbefehle, Installationen, Builds, Deployments, Reparaturen oder Hardwaretests erfolgreich ausgeführt und protokolliert. `hailo-h10-all` war als benötigtes Paket erwähnt, nicht als ausgeführter Installationsschritt. Es gab weder Konsolenausgaben noch eine bereitgestellte Testaufnahme.
 
-### 7.2 Heute tatsächlich ausgeführte Dokumentationsprüfung
+### 7.2 Zum Prüfstand vom 06.10.2026 tatsächlich ausgeführte Dokumentationsprüfung
 
-Ausgeführt wurden der vollständige angebotene Chatabruf, die Prüfung der Remote-Referenz `refs/heads/Archiving`, ein separater Checkout dieses Branches, `git fetch origin Archiving`, die Gleichheitsprüfung von lokalem HEAD und `origin/Archiving`, die Prüfung des sauberen Arbeitsstands sowie das Lesen von Archivindex, Dateibaum und relevantem Quellcode. Die Prüfung vor dem Schreiben ergab 62 vorhandene datierte Indexeinträge und keine diesem Chat zugehörige Archivdatei.
+Die Dokumentationsprüfung vom 06.10.2026 umfasste die Remote-Referenz `refs/heads/Archiving`, einen separaten Checkout, `git fetch origin Archiving`, den Vergleich von lokalem HEAD und `origin/Archiving` sowie Archivindex, Dateibaum und relevanten Quellcode. Die Prüfbasis enthielt 62 datierte Indexeinträge; eine entsprechende Hardwareausarbeitung lag dort noch nicht vor.
 
-Die Codeprüfung erfolgte lesend mit `git show`, `git ls-tree` und `git grep`, bezogen auf den genannten Basiscommit. Zusätzlich wurden die in Abschnitt 8 verlinkten Herstellerseiten abgerufen. Es wurden keine Quellcodeänderungen, Pi-/SSH-Kommandos, Cargo-/CMake-Builds, KI-Inferenzen oder Funkmessungen durchgeführt. Der Commit-/Push-Nachweis und der tatsächlich veröffentlichte Archivcommit gehören zur Abschlussmeldung dieses Auftrags.
+Die Codeprüfung erfolgte lesend mit `git show`, `git ls-tree` und `git grep`, bezogen auf den genannten Basiscommit. Zusätzlich wurden die in Abschnitt 8 verlinkten Herstellerseiten abgerufen. Es wurden keine Quellcodeänderungen, Pi-/SSH-Kommandos, Cargo-/CMake-Builds, KI-Inferenzen oder Funkmessungen durchgeführt. Die Veröffentlichung dieser Notizen ist kein Hardware- oder Softwaretest.
 
-### 7.3 Heute belegte Einstiegspunkte für einen späteren Prototyp — nicht ausgeführt
+### 7.3 Zum Prüfstand vom 06.10.2026 belegte Einstiegspunkte für einen späteren Prototyp — nicht ausgeführt
 
 Die folgenden Befehle sind Referenzen für eine separate Testinstallation nach Klärung von Hardware und OS. Sie waren nicht Teil einer ausgeführten historischen Installationsfolge und sind kein bestätigtes Upgrade-Rezept für die laufende Station.
 
-Der heute dokumentierte Raspberry-Pi-Weg für einen vorbereiteten Trixie-64-Bit-Testaufbau nennt diese Paketinstallation und Erkennung. `hailo-all` und `hailo-h10-all` sind laut Hersteller nicht parallel installierbar. Quelle: [AI software](https://www.raspberrypi.com/documentation/computers/ai.html).
+Der am 06.10.2026 geprüfte Raspberry-Pi-Weg für einen vorbereiteten Trixie-64-Bit-Testaufbau nennt diese Paketinstallation und Erkennung. `hailo-all` und `hailo-h10-all` sind laut Hersteller nicht parallel installierbar. Quelle: [AI software](https://www.raspberrypi.com/documentation/computers/ai.html).
 
 ```bash
 sudo apt install dkms
@@ -224,9 +220,9 @@ Kein EEPROM wurde geschrieben. Die versionsabhängigen EEPROM-Schreibbefehle aus
 
 ## 8. Zusätzlicher Herstellerabgleich am 06.10.2026
 
-Diese Quellen wurden heute unabhängig gelesen. Sie ergänzen den historischen Inhalt, ersetzen aber weder die nicht aufgelösten Quellenmarker noch einen Hardwaretest.
+Diese Quellen wurden zum Prüfstand vom 06.10.2026 unabhängig gelesen. Sie ergänzen den historischen Inhalt, ersetzen aber weder die nicht aufgelösten Quellenmarker noch einen Hardwaretest.
 
-| Quelle | Heute belegter Umfang |
+| Quelle | Zum Prüfstand vom 06.10.2026 belegter Umfang |
 |---|---|
 | [Raspberry Pi AI HAT+ 2: Produktseite](https://www.raspberrypi.com/products/ai-hat-plus-2/) | Hailo-10H, 40 TOPS INT4, eigene 8 GB RAM, 16-mm-Stacking-Header und Kühlkörper; vorgesehen ist die Montage mit Active Cooler. Daraus ergibt sich keine zusätzliche SDR-Stapelfreigabe. |
 | [Raspberry Pi: AI HATs](https://www.raspberrypi.com/documentation/accessories/ai-hat-plus.html) | PCIe-Flachbandverbindung und mechanischer Montageweg der AI-HAT-Baugruppe. |
@@ -238,29 +234,29 @@ Eine gemeinsame Freigabe exakt des Pi-5-/AI-HAT+‑2-/SXceiver-Dreierstapels wur
 
 ## 9. Fehler, Grenzen und verworfene Schlussfolgerungen
 
-Im technischen Quellchat wurde kein tatsächlich aufgetretener Build-, Boot-, GPIO-, Audio- oder Funkfehler samt Diagnose protokolliert. Die genannten Risiken sind mögliche Konflikte und Abnahmekriterien, keine beobachteten Fehler und keine bereits funktionierenden Reparaturen.
+Im frühen Entwurf wurde kein tatsächlich aufgetretener Build-, Boot-, GPIO-, Audio- oder Funkfehler samt Diagnose protokolliert. Die genannten Risiken sind mögliche Konflikte und Abnahmekriterien, keine beobachteten Fehler und keine bereits funktionierenden Reparaturen.
 
-| Nicht übernommene Annahme / Grenze | Begründung aus Chat oder heutigem Abgleich |
+| Nicht übernommene Annahme / Grenze | Begründung aus Entwurf oder geprüftem Abgleich |
 |---|---|
 | Mehr TOPS bedeuten automatisch mehr TETRA-Leistung. | Die NPU benötigt kompatible Modelle; ein RF-/DSP-Offload ist nicht implementiert oder getestet. |
 | Die zusätzlichen 8 GB erweitern den allgemeinen Pi-RAM. | Die Angaben betreffen eigenen Speicher der KI-Baugruppe. |
 | Getrennte Datenbusse beweisen vollständige Stapelbarkeit. | GPIO, Steuerleitungen, EEPROMs, Overlays und Mechanik sind zusätzlich zu prüfen. |
 | Der 16-mm-Header garantiert Platz für ein weiteres SDR. | Der beschriebene Abstand betrifft den Active Cooler unter dem AI HAT. |
 | Ein separat laufender KI-Prozess isoliert alle Fehler. | Kernel, Stromversorgung und Ressourcen werden weiterhin geteilt. |
-| Ein KI-HAT ist für einfache Grenzwerte und Watchdog nötig. | Die damalige Antwort bevorzugt dafür nachvollziehbare Regeln. |
+| Ein KI-HAT ist für einfache Grenzwerte und Watchdog nötig. | Vorgesehen sind dafür nachvollziehbare Regeln. |
 | Lokale KI soll selbstständig die Funkstation reparieren. | Der historische Diagnosevorschlag war lesend und quellengestützt. |
 | Das Vorhandensein von Recorder-Code belegt eine Transkriptionsfunktion. | Die Spracherkennungsanbindung fehlt als Nachweis; zudem unterscheiden sich codierter Zentralrecorder und lokales WAV. |
 | Trixie-Erwähnungen oder eine Herstellerkompatibilitätsliste beweisen den Gesamtbetrieb. | Ein konkreter NetCore-/Treiber-/OS-/HAT-Versionsverbund und ein gemeinsamer Lasttest fehlen. |
 
-Diese Punkte sind Präzisierungen und abgegrenzte Empfehlungen, keine nachträglich erfundenen Nutzerentscheidungen. Es wurde keine bereits umgesetzte KI-Lösung im Chat verworfen oder ersetzt.
+Diese Punkte sind Präzisierungen und abgegrenzte Empfehlungen, keine nachträglich erfundenen Projektentscheidungen. Es wurde keine bereits umgesetzte KI-Lösung im dokumentierten Arbeitsstand verworfen oder ersetzt.
 
 ## 10. Teststand und vorgeschlagene Abnahme
 
 **Historisch:** Keine Messreihe, kein Firmware-/Treibererkennungsergebnis, keine Transkription und kein erfolgreicher Realbetrieb dokumentiert.
 
-**Heute:** Die Repository- und Herstellerprüfung ist eine Lese-/Quellenprüfung. Vorhandene Implementierungen wurden nicht gebaut oder auf ARM64 ausgeführt. Es gab keinen Zugriff auf Pi, SDR oder AI HAT und keine Live-Betriebsbestätigung. Vorhandene Testdateien im Repository zählen nicht als in diesem Auftrag ausgeführte Tests.
+**Zum Prüfstand vom 06.10.2026:** Die Repository- und Herstellerprüfung ist eine Lese-/Quellenprüfung. Vorhandene Implementierungen wurden nicht gebaut oder auf ARM64 ausgeführt. Es gab keinen Zugriff auf Pi, SDR oder AI HAT und keine Live-Betriebsbestätigung. Vorhandene Testdateien im Repository zählen nicht als in diesem Auftrag ausgeführte Tests.
 
-Der folgende Plan konkretisiert die historischen Prüfempfehlungen für eine Fortsetzung. Die Reihenfolge und Nachweisform sind aus dem Archivabgleich abgeleitet; Grenzwerte, Dauer, Gerätedaten und Prioritäten wurden im Quellchat nicht verbindlich vereinbart.
+Der folgende Plan konkretisiert die historischen Prüfempfehlungen für eine Fortsetzung. Die Reihenfolge und Nachweisform sind aus dem Archivabgleich abgeleitet; Grenzwerte, Dauer, Gerätedaten und Prioritäten wurden im frühen Entwurf nicht verbindlich vereinbart.
 
 | Schritt | Zu prüfen | Benötigter Nachweis |
 |---|---|---|
@@ -278,20 +274,20 @@ Die auf der TBS vorhandenen TX-Zähler sollten dabei getrennt interpretiert werd
 
 ## 11. Offene Aufgaben und Roadmap-Kandidaten
 
-1. **Ziel und Hardware konkretisieren — Idee, Voraussetzung für weitere Planung.** Reine TBS oder bewusst lokale Offline-Auswertung wählen; den in der Nutzerfrage nicht benannten SDR-Typ und die Revisionen bestätigen. Strom-/Kühlungs-/Pinmatrix und reale EEPROM-/Overlaybelegung prüfen.
+1. **Ziel und Hardware konkretisieren — Idee, Voraussetzung für weitere Planung.** Reine TBS oder bewusst lokale Offline-Auswertung wählen; den in der Hardwareidee nicht benannten SDR-Typ und die Revisionen bestätigen. Strom-/Kühlungs-/Pinmatrix und reale EEPROM-/Overlaybelegung prüfen.
 2. **Getrennte Testbasis herstellen — abgeleitete nächste Empfehlung.** Installierten und funktionierenden Funkstand dokumentieren und sichern; eine separate Trixie-Testinstallation für den H10-Weg aufsetzen. Den vorhandenen Bookworm-/Funkbetrieb erst nach erfolgreichem Vergleich verändern.
 3. **Audioquelle und Vertrag festlegen — Idee, technische Abhängigkeit.** Lokales fertiges WAV oder zentralen Recorder mit Decodierung wählen; Session-ID, Zeit, GSSI/ISSI, Sprecher, Dateilebenszyklus und benötigtes Modellformat festlegen. Kein KI-Eingriff in den TDMA-/RF-Pfad.
 4. **Dateibasierte Transkription zuerst erproben — historische Empfehlung.** Kompatibles deutschsprachiges Modell, HailoRT-Version und Testkorpus festhalten; Rufnamen/Zahlen, Qualität, Laufzeit und Offline-Neustart messen. Erst daraus Durchsatz- oder Echtzeitanforderungen ableiten.
 5. **Optionalen KI-Dienst entwerfen und implementieren — weiterhin Idee.** Ressourcenlimits, nicht blockierende Übergabe, Abbruch-/Überlastverhalten, Ergebnisablage und UI-Anzeige definieren. Im geprüften Stand gibt es dafür keinen identifizierten Dienstvertrag.
 6. **Gleichzeitige Funk-/KI-Abnahme durchführen — historische Empfehlung.** Den Prüfplan aus Abschnitt 10 mit realen Grenzwerten und einer unveränderten Baseline durchführen. Ergebnisse und genaue Versionen sichern, bevor „getestet“ oder „im Betrieb bestätigt“ vergeben werden.
 7. **Lesende Diagnose nachgelagert prototypisieren — Idee.** Relevante Logs und Messwerte auswählen, Fragen zu Abbrüchen und Neustarts beantworten lassen und fachlich gegenprüfen; Quellenbezug und lesende Befugnisse erhalten.
-8. **Einfache Überwachung konventionell halten — historische Empfehlung.** Temperaturregeln, Lüfter und Watchdog ohne KI-Abhängigkeit vorsehen. Die konkrete Implementierung solcher Funktionen war nicht Gegenstand dieses Chats.
+8. **Einfache Überwachung konventionell halten — historische Empfehlung.** Temperaturregeln, Lüfter und Watchdog ohne KI-Abhängigkeit vorsehen. Die konkrete Implementierung solcher Funktionen war nicht Gegenstand dieser Arbeitsphase.
 
 Keine dieser Hardware-/KI-Aufgaben wird durch die Archivierung selbst als beschlossen, umgesetzt oder getestet markiert. Roadmap-Kandidaten werden ausschließlich in dieser Datei festgehalten; andere Repository-Dokumente oder Quelltexte werden dadurch nicht verändert.
 
-## 12. Verwandte Repository-Referenzen und Auswertungslücken
+## 12. Verwandte Repository-Referenzen und offene Belege
 
-Für die Fortsetzung sind folgende bereits vorhandene Archive als separate Quellen hilfreich; ihre Ergebnisse werden diesem Quellchat nicht zugerechnet:
+Für die Fortsetzung sind folgende bereits vorhandene Archive als separate Quellen hilfreich; ihre Ergebnisse werden diesem Entwurf nicht zugerechnet:
 
 - [SXceiver/SoapySX: Trixie- und libgpiod-Buildreparatur](2026-10-04_sxceiver-soapysx-trixie-libgpiod-build-reparatur.md).
 - [Basisstation: GPIO-Breakout, Jumpersteuerung und SXceiver](2026-10-05_basisstation-gpio-breakout-jumper-steuerung-sxceiver.md).
@@ -299,13 +295,13 @@ Für die Fortsetzung sind folgende bereits vorhandene Archive als separate Quell
 - [Recorder-LXC, Fallback und Echtzeit-Medienpfad](2026-10-04_recorder-lxc-edge-fallback-echtzeit-und-buildfehler.md).
 - [Basisstation Clean Install und SXceiver/SoapySX](2026-10-05_basisstation-clean-install-sxceiver-soapysx-sndcp-healthchecks.md).
 
-Verbleibende Auswertungslücken sind klar begrenzt:
+Offene Belege sind klar begrenzt:
 
-- Der gesamte angebotene Verlauf wurde gelesen, aber das Werkzeug ermöglicht keine Aussage über darüber hinaus nicht angebotene, gelöschte oder ausgeblendete Historie. Im gelesenen Text gibt es keine weiteren technischen Nutzerfestlegungen.
-- Die historischen Quellenmarker 0 bis 8 haben im Abruf keine auflösbaren Ziel-URLs. Die heute verlinkten Herstellerquellen sind separat datiert und dürfen nicht als originalgetreue Wiederherstellung der damaligen Zitate gelten.
-- Es sind keine Chatbilder oder anderen Anhänge zugänglich oder im zurückgegebenen Verlauf genannt. Es wurden deshalb keine Bilder, Audio-Beispiele, Pinpläne oder Prüfprotokolle hinzuerfunden.
-- Die Bezeichnung „dein SXceiver“, die Bookworm-Ausgangslage und der zentral gedachte Diensteaufbau stammen aus der damaligen Antwort. Eigentum, Geräteversion, installierter Stand und reale Topologie wurden in diesem Chat nicht inventarisiert.
-- Vollständige Schaltpläne und eine gemeinsame HAT-/EEPROM-Freigabe wurden nicht geprüft. Die heutige Quellenprüfung bestätigt Einzelmerkmale, keine Gesamtkompatibilität.
-- Keine Aussagen über aktuelle Hardware, andere Branches, private Änderungen, CI-Ergebnisse, PRs oder einen erfolgreichen Live-Betrieb werden aus dem Repository-Lesezugriff abgeleitet. Für diese Chatidee ist kein zugehöriger Implementierungscommit oder PR belegt.
+- Weitere technische Festlegungen sind nicht erhalten.
+- Die historischen Quellenmarker 0 bis 8 haben im Abruf keine auflösbaren Ziel-URLs. Die zum Prüfstand vom 06.10.2026 verlinkten Herstellerquellen sind separat datiert und dürfen nicht als originalgetreue Wiederherstellung der damaligen Zitate gelten.
+- Bilder, Audio-Beispiele, Pinpläne und Prüfprotokolle für den vorgesehenen Aufbau fehlen.
+- SXceiver, Bookworm-Ausgangslage und zentrale Dienste sind Annahmen des frühen Entwurfs. Eigentum, Geräteversion, installierter Stand und reale Topologie wurden nicht inventarisiert.
+- Vollständige Schaltpläne und eine gemeinsame HAT-/EEPROM-Freigabe wurden nicht geprüft. Die Quellenprüfung vom 06.10.2026 bestätigt Einzelmerkmale, keine Gesamtkompatibilität.
+- Keine Aussagen über aktuelle Hardware, andere Branches, private Änderungen, CI-Ergebnisse, PRs oder einen erfolgreichen Live-Betrieb werden aus dem Repository-Lesezugriff abgeleitet. Für diese Hardwareidee ist kein zugehöriger Implementierungscommit oder PR belegt.
 
 Die technische Fortsetzung beginnt damit bei einem überprüfbaren Prototyp und einer klaren Audio-/Dienstschnittstelle. Das Archiv bewahrt die Idee und ihre Grenzen; es dokumentiert keinen fertig aufgebauten KI-Funkstandort.

@@ -62,7 +62,7 @@ Als **nicht erprobten Ausgangspunkt**, nicht als fertiges Prozessprofil:
 - Bei Bedarf etwa 4 mm Außen-Brim; anschließend prüfen, ob Brim und Spülturm noch aufs Bett passen.
 - Vor allem die erste Schicht und die kleinen Logo-/Schriftlinien kontrollieren. Dünne Linien dürfen im Slicer nicht verschwinden.
 
-Der A1 ist vom Hersteller für PLA und PETG vorgesehen. Für einen ersten Passformtest ist das vorhandene PLA+ ein sinnvoller Ausgangspunkt. Für die spätere mechanische Blende würde ich PETG als Kandidaten erproben; das ist **keine Zusage einer bestimmten Dauerfestigkeit oder Temperaturbeständigkeit**. Die tatsächlich eingesetzte Sorte und Racktemperatur sind maßgeblich. Innerhalb eines Druckteils möglichst dieselbe Materialfamilie verwenden; nicht ungeprüft PLA-Schrift in eine PETG-Platte einplanen.
+Der A1 ist vom Hersteller für PLA und PETG vorgesehen. Für einen ersten Passformtest ist das vorhandene PLA+ ein sinnvoller Ausgangspunkt. Für die spätere mechanische Blende ist PETG ein zu erprobender Materialkandidat; das ist **keine Zusage einer bestimmten Dauerfestigkeit oder Temperaturbeständigkeit**. Die tatsächlich eingesetzte Sorte und Racktemperatur sind maßgeblich. Innerhalb eines Druckteils möglichst dieselbe Materialfamilie verwenden; nicht ungeprüft PLA-Schrift in eine PETG-Platte einplanen.
 
 ## 4. Tatsächliche Modellmaße
 
@@ -95,7 +95,7 @@ Alle Maße in Millimetern. Bezug für die folgenden Koordinaten: **Vorderansicht
 
 **Höhe:** 88,9 mm ist das nominale 2-HE-Raster. Die tatsächliche Platte ist hier 88,1 mm hoch, damit sie oben und unten etwas Luft hat. Eine 482,6 × 88,1 × 3 mm große 2-HE-Frontplatte findet sich auch bei METCASE. Die bereits besprochenen Reihenhöhen von 22,5 und 63,5 mm im nominalen Raster bleiben erhalten; durch den 0,4-mm-Randfreiraum werden daraus 22,1 und 63,1 mm ab der tatsächlichen Unterkante. Nicht die ganze Datei skalieren, um andere Lochdurchmesser zu erhalten.
 
-**D-Lochbild:** Die vom Nutzer gezeigte Zeichnung nennt Ø 23,6 mm. Die zusätzlich geprüfte offizielle NE8FDP-Zeichnung nennt dagegen mindestens Ø 24 mm und Befestigungsbohrungen ab Ø 3,2 mm. Für diese erste FDM-Fassung sind Ø 24,2 und Ø 3,3 mm als Konstruktionszugabe gewählt. Das ersetzt nicht die Prüfung der konkreten Buchsen.
+**D-Lochbild:** Die vorgelegte Zeichnung nennt Ø 23,6 mm. Die zusätzlich geprüfte offizielle NE8FDP-Zeichnung nennt dagegen mindestens Ø 24 mm und Befestigungsbohrungen ab Ø 3,2 mm. Für diese erste FDM-Fassung sind Ø 24,2 und Ø 3,3 mm als Konstruktionszugabe gewählt. Das ersetzt nicht die Prüfung der konkreten Buchsen.
 
 **Schraublöcher:** Die frühere generierte Grafik mit vier Löchern pro Flansch war falsch. Die Druckfassung hat zwei diagonal gegenüberliegende Löcher: in der Vorderansicht **links oben und rechts unten**, jeweils ±9,5 mm in X und ±12 mm in Y zum großen Lochmittelpunkt.
 
@@ -151,11 +151,11 @@ Beispiel für einen nach dem Passformtest abweichenden Lochdurchmesser:
 python build_panel.py --output ./Panel_angepasst --hole-d 24.0 --screw-d 3.3
 ```
 
-Die anderen Konstruktionsgrößen stehen als benannte Konstanten im oberen Teil der Datei. Nach Änderungen alle Kollisionen und Testdrucke erneut prüfen. Intern entstehen Kontroll-SVGs/PNGs; die verbindliche Geometrie steckt in den erzeugten 3MF-/STL-Dateien, nicht in alten KI-Konzeptbildern.
+Die anderen Konstruktionsgrößen stehen als benannte Konstanten im oberen Teil der Datei. Nach Änderungen alle Kollisionen und Testdrucke erneut prüfen. Intern entstehen Kontroll-SVGs/PNGs; die verbindliche Geometrie steckt in den erzeugten 3MF-/STL-Dateien, nicht in alten Konzeptbildern.
 
 ## 10. Externe Maß- und Herstellerreferenzen
 
-Das Funktionslayout stammt aus diesem Chat. Ergänzend wurden folgende Herstellerquellen zum Maßabgleich verwendet; Designzugaben, Teilung, Rippen, Farben und Schriftpositionen sind eigene Konstruktionsentscheidungen.
+Das Funktionslayout folgt der dokumentierten Dual-SDR- und Duplexer-Belegung. Ergänzend wurden folgende Herstellerquellen zum Maßabgleich verwendet; Designzugaben, Teilung, Rippen, Farben und Schriftpositionen sind eigene Konstruktionsentscheidungen.
 
 - Neutrik NE8FDP, Produktseite und Zeichnung: https://www.neutrik.com/en/product/ne8fdp
 - Neutrik NE8FDP, offizielles Maßblatt: https://www.neutrik.com/media/8668/download/ne8fdp-3.pdf?v=1

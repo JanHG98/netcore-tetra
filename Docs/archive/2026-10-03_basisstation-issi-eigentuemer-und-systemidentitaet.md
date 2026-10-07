@@ -1,34 +1,31 @@
-# Technische Abschlussdokumentation: Basisstations-ISSI, Eigentümer und Systemidentität
+# Brainstorming: Basisstations-ISSI, Eigentümer und Systemidentität
 
-## 1. Metadaten und Auswertungsumfang
+## 1. Rahmen und Quellenstand
 
 | Merkmal | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
 | Thema | Nummerierung einer Basisstation und ihres logischen SDS-/Systemteilnehmers |
-| Ursprünglicher Chattitel | Nicht im zugänglichen Verlauf übermittelt |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link erfunden |
 | Erstellungsdatum | 2026-10-03, Europe/Berlin |
 | Repository | [JanHG98/netcore-tetra](https://github.com/JanHG98/netcore-tetra) |
-| Zielbranch dieses Archivauftrags | `Archiving` |
-| Geprüfter Stand von Archiving vor Archivierung | `2fe2a1939a8795db3816d45973282781dae856f0` |
+| Geprüfter Branchs | `Archiving` |
+| Geprüfter Stand von Archiving am 03.10.2026 | `2fe2a1939a8795db3816d45973282781dae856f0` |
 | Zusätzlich geprüfter Stand von main | `6aa9be8f74ab731f72dc133a5f8e90c5018c626d` |
-| Änderungen dieses Auftrags | Nur diese Datei und `Docs/archive/README.md`; keine Produktivkonfiguration oder Codeänderung |
 | Zuordnung | Sichtbarer Dialog: Klassen-/ISSI-Schema → Eigentümer 01 → ausdrückliche Auswahl `04010001` |
 
 ### Verfügbarkeit und Grenzen
 
-Ausgewertet wurden der hier übermittelte fachliche Dialog und die finalen Festlegungen, die 25 lokal zugänglichen PDF-Anhänge sowie relevante Dateien des aktuellen Repository-Stands. Der fachliche Dialog beginnt mitten in einem Satz mit „nicht Teil der ISSI ist.“ und enthält einen Ausschnitt aus einer vorhandenen Nummerierungsdokumentation. Die vollständige ursprüngliche Dokumentation, ein vollständiger früherer Chatverlauf, dessen Titel und Link wurden nicht bereitgestellt.
+Grundlage sind ein Ausschnitt der vorhandenen Nummerierungsdokumentation, die endgültige Adressfestlegung, 25 PDF-Anhänge und die relevanten Repository-Dateien. Die vollständige ursprüngliche Nummerierungsdokumentation fehlt.
 
-Der sichtbare Verlauf reicht von der Frage nach der Basisstationsnummer bis zur Bestätigung der Anzeige `04010001`. Er enthält keine nachgewiesene Installation, Konfigurationsänderung auf der echten Basisstation oder Funkmessung. Die im übergeordneten Projektkontext erwähnten anderen Chats sind keine vollständig verfügbaren Quellen dieses Einzelchats. Deren Themen werden hier nur aufgenommen, wenn sie unmittelbar an die geprüfte Systemadresse anknüpfen.
+Festgelegt ist die Anzeige `04010001`. Eine Installation, Konfigurationsänderung auf der realen Basisstation oder Funkmessung ist dafür nicht nachgewiesen. Benachbarte Projektideen sind nur insoweit relevant, wie sie unmittelbar an diese Systemadresse anknüpfen.
 
 Die PDFs wurden sämtlich per Textauszug erfasst und nach Titel, Version und Thema eingeordnet. Die für die Nummerierung maßgeblichen Abschnitte aus EN 300 392-1 wurden gezielt gelesen. Das ist **keine vollständige inhaltliche Auswertung aller 25 Normen** und keine Prüfung auf die jeweils neueste veröffentlichte Fassung. Die Anhänge werden nicht in dieses Archiv kopiert. Zugangsdaten werden nicht übernommen.
 
-Der Commit, der diese Archivdatei erstmals speichert, ist über die Git-Historie feststellbar; die obigen SHAs bezeichnen die tatsächlich geprüften Quellstände, nicht den späteren Archivcommit.
+Die aufgeführten SHAs bezeichnen die geprüften Quellstände.
 
 ## 2. Ziel, Ausgangslage und behandelte Themen
 
-Jan wollte eine Basisstation konsistent in sein vorhandenes organisatorisches Nummernschema einordnen. Der bereitgestellte Ausschnitt beschreibt folgende Felder:
+Ziel ist, die Basisstation konsistent in das vorhandene organisatorische Nummernschema einzuordnen. Der bereitgestellte Ausschnitt beschreibt folgende Felder:
 
 | Feld | Breite | Bedeutung im gelieferten Schema |
 |---|---:|---|
@@ -47,11 +44,11 @@ Der Ausschnitt weist darauf hin, dass die ISSI numerisch ist und eine achtstelli
 - Umgang mit führenden Nullen, technischen SSI-Grenzen und dem früher diskutierten Wert `9999`.
 - Vorschlag möglicher Konfigurationsfelder; diese wurden im Dialog nicht implementiert.
 
-### Im Chat vorgegebene Klassen
+### Vorgegebene Teilnehmerklassen
 
 Diese Tabelle dokumentiert das gelieferte organisatorische Schema. Die Klassen sind keine ETSI-definierten Berechtigungs- oder Gerätetypcodes.
 
-| K | Zahlenblock ohne D | Klasse | Beschreibung aus dem Chat |
+| K | Zahlenblock ohne D | Klasse | Beschreibung aus den Arbeitsnotizen |
 |---|---|---|---|
 | 1 | 1 000 000–1 999 999 | Leitstelle (LST) | Voll berechtigte Steuer- und Bedienplätze |
 | 2 | 2 000 000–2 999 999 | HRT | Handheld Radio Terminal |
@@ -64,15 +61,15 @@ Diese Tabelle dokumentiert das gelieferte organisatorische Schema. Die Klassen s
 
 ## 3. Endgültige Entscheidungen und Status
 
-Die letzte ausdrückliche Nutzerentscheidung lautet: **„04010001 nehm ich, das passt in mein System rein“**. Vorausgegangen war die ausdrückliche Korrektur, Jan mit Eigentümernummer 1 einzubeziehen.
+**Verbindliche Festlegung: `04010001` für die erste Basisstation.** Die Eigentümernummer ist ausdrücklich `01` für Jan; frühere Vorschläge mit Eigentümer `00` sind damit überholt.
 
 | Festlegung | Endgültiger Wert | Status und Nachweis |
 |---|---|---|
-| Anzeige-/Schema-ID für Basisstation 1 | `04010001` | **Beschlossen:** ausdrücklich vom Nutzer gewählt |
+| Anzeige-/Schema-ID für Basisstation 1 | `04010001` | **Beschlossen:** ausdrücklich ausdrücklich gewählt |
 | Technische numerische ISSI | `4010001` | **Beschlossen im Dialog**, als numerisches Gegenstück erklärt; im aktuellen Code an mehreren Stellen vorhanden |
 | Produktivdomäne | `D = 0` | Bestandteil der gewählten Anzeige; keine eigenständige Isolation nachgewiesen |
 | Klasse | `K = 4`, Infrastruktur | **Beschlossen** durch Auswahl der vorgeschlagenen Infrastrukturkennung |
-| Eigentümer | `EE = 01`, Jan | **Beschlossen:** ausdrückliche Nutzerkorrektur |
+| Eigentümer | `EE = 01`, Jan | **Beschlossen:** ausdrückliche Präzisierung |
 | Laufende Nummer | `NNNN = 0001` | Bestandteil der ausgewählten Kennung für Basisstation 1 |
 | Zusätzliche Felder `station_display_id` usw. | siehe Abschnitt 6 | **Idee/Vorschlag**, kein nachgewiesenes produktives Schema |
 | Neue Nummer auf echter Station und Endgeräten eingerichtet | nicht belegt | **Nicht getestet / nicht im Betrieb bestätigt** |
@@ -106,11 +103,11 @@ Die pauschale frühere Aussage, ISSIs seien stets sechs- oder siebenstellig, ist
 
 ### 4.3 RF- und Managementidentität
 
-MCC/MNC bestimmen das Netz. Location Area, Colour Code, Carrier und gegebenenfalls weitere Zellparameter sind für die RF-Zuordnung relevant. Die im Chat beispielhaft genannte „Cell-/Node-ID“ darf dabei nicht als eine einheitliche standardisierte Luftschnittstellenkennung verstanden werden. Die NetCore-Node-ID ist im geprüften Code eine Managementzeichenkette.
+MCC/MNC bestimmen das Netz. Location Area, Colour Code, Carrier und gegebenenfalls weitere Zellparameter sind für die RF-Zuordnung relevant. Die in den Arbeitsnotizen beispielhaft genannte „Cell-/Node-ID“ darf dabei nicht als eine einheitliche standardisierte Luftschnittstellenkennung verstanden werden. Die NetCore-Node-ID ist im geprüften Code eine Managementzeichenkette.
 
 Eine Class-4-Adresse ist eine interne Nummernkonvention, keine vom Standard aus der führenden Dezimalziffer abgeleitete Infrastrukturrolle. Auch Eigentümerschaft und Berechtigung entstehen nicht allein aus `EE = 01`.
 
-## 5. Heutiger Repository-Stand, getrennt vom historischen Chat
+## 5. Repository-Befund vom 03.10.2026
 
 ### 5.1 Prüfmethode
 
@@ -131,7 +128,7 @@ Zusätzlich wurde `main` gelesen/geholt. Für die maßgeblichen Dateien `config.
 | `crates/tetra-entities/src/net_control_room/protocol.rs` | Explizite Node-ID hat Vorrang; sonst `tbs-{mcc}-{mnc}-la{location_area}-cc{colour_code}-c{main_carrier}` | **Implementiert**, unabhängig von ISSI |
 | `Docs/PROVISIONING_CORE_COMPLETE_INSTALL.md` | Beispiel `node_id = "tbs-04010001"` | **Dokumentiert**, kein Nachweis einer laufenden Station mit dieser Node-ID |
 | `system-backend/shared/contracts/src/address.rs` | `MAX_SSI = 0x00ff_ffff`; Konstruktor mit Rangeprüfung, numerische Darstellung | **Implementiert**; generische Prüfung ist keine vollständige Vergabepolicy |
-| dieselbe Contract-Datei | Test `serde_is_numeric_and_roundtrips` mit `4_010_001` und JSON `"4010001"` | **Test vorhanden**, in diesem Auftrag nicht ausgeführt |
+| dieselbe Contract-Datei | Test `serde_is_numeric_and_roundtrips` mit `4_010_001` und JSON `"4010001"` | **Test vorhanden**, bei der Quellenprüfung nicht ausgeführt |
 | `crates/tetra-core/src/address.rs` | `TetraAddress` speichert `ssi: u32`; Konstruktor prüft dort selbst keine 24-Bit-Grenze | **Implementiert**; keine pauschale Behauptung flächendeckender Validierung |
 | `crates/tetra-pdus/src/cmce/pdus/d_sds_data.rs` | SSI-Feld wird mit 24 Bit gelesen/geschrieben | **Implementiert**, Grenzen vor Serialisierung weiterhin relevant |
 | `wiki/ISSI-and-GSSI.md` | Organisatorisches D/K/EE/NNNN-Schema und getrennte System-ISSIs empfohlen | **Dokumentiert**, D-/Sonderbetriebssemantik noch präzisierungsbedürftig |
@@ -179,7 +176,7 @@ station_class = "infrastructure"
 station_role = "base_station_sds_service"
 ```
 
-**Status: Idee/Vorschlag.** Der Nutzer bestätigte die Nummer, nicht die Implementierung dieser fünf Felder. Dieser Block darf nicht als geprüfte Installationsanleitung in die bestehende `config.toml` kopiert werden. Dass unbekannte Werte gegebenenfalls als Zusatzdaten geparst werden, würde keine Nutzung durch den Stack beweisen.
+**Status: Idee/Vorschlag.** Beschlossen ist die Nummer; die Implementierung dieser fünf Felder ist nicht belegt. Dieser Block darf nicht als geprüfte Installationsanleitung in die bestehende `config.toml` kopiert werden. Dass unbekannte Werte gegebenenfalls als Zusatzdaten geparst werden, würde keine Nutzung durch den Stack beweisen.
 
 Für eine Fortsetzung ist zunächst das vorhandene Schema mit `netcore_directory.bs_issi`, dienstspezifischen Quellen und `control_room.node_id` zu berücksichtigen. Ein zentraler neuer Parameter müsste ausdrücklich entworfen, verdrahtet und auf alle hart codierten Stellen angewendet werden.
 
@@ -204,7 +201,7 @@ Bei Erstellung dieses Archivs wurden read-only Repository- und Anhangsprüfungen
 
 Ein fehlender `origin/main`-Ref im Prüfcheckout war ein lokales Git-Prüfproblem und kein Fehler des Produktivsystems. Der Vergleich über den zuvor geholten `FETCH_HEAD` löste es.
 
-Der Archivauftrag speichert ausschließlich Dokumentation. Er ist keine Migration von `9999` und kein Deployment der ausgewählten Nummer.
+Der Dokumentation speichert ausschließlich Dokumentation. Er ist keine Migration von `9999` und kein Deployment der ausgewählten Nummer.
 
 ## 8. Fehler, Abweichungen, Tests und Grenzen
 
@@ -214,7 +211,7 @@ Der Archivauftrag speichert ausschließlich Dokumentation. Er ist keine Migratio
 |---|---|
 | `4000001` für die erste Basisstation | **Ersetzt** durch `4010001`, nachdem Jan Eigentümer 01 ausdrücklich ergänzte |
 | `04000001` als Anzeige | **Ersetzt** durch ausdrücklich gewähltes `04010001` |
-| EE 00 für NetCore/Core reservieren | **Idee des Assistants**, keine ausdrückliche Reservierung durch den Nutzer belegt |
+| EE 00 für NetCore/Core reservieren | **Idee**, keine verbindliche Reservierung belegt |
 | `9999` „rauswerfen“ | **Empfehlung**, keine vollständige Migration oder Deploymentbestätigung |
 | Achtstellige Kennungen generell problematisch | **Präzisiert:** Zahlenwert/Reservierungen sind ausschlaggebend, nicht die bloße Stellenzahl |
 | D garantiert getrennte Betriebsdomänen | **Nicht belegt:** Verwaltungsdarstellung allein bewirkt keine technische Trennung |
@@ -225,7 +222,7 @@ Der Archivauftrag speichert ausschließlich Dokumentation. Er ist keine Migratio
 
 `crates/tetra-entities/tests/test_sds_bs.rs` enthält `test_u_status_command_ip_replies_to_authorized` und `test_u_status_command_unauthorized_no_reply`, die U-STATUS an `9999` senden. Die aktuelle Routingfunktion behandelt den lokalen Befehlskanal dagegen über `DASHBOARD_ISSI = 4010001`.
 
-Das ist eine **statisch festgestellte Abweichung zwischen Testannahme und Implementierung**. In diesem Auftrag wurde nicht geprüft, ob oder wie die Tests im vollständigen Testaufbau fehlschlagen. Insbesondere beweist ein negativer Test an der alten Adresse nicht, dass die Autorisierung des heutigen Befehlskanals funktioniert.
+Das ist eine **statisch festgestellte Abweichung zwischen Testannahme und Implementierung**. In diesem Auftrag wurde nicht geprüft, ob oder wie die Tests im vollständigen Testaufbau fehlschlagen. Insbesondere beweist ein negativer Test an der alten Adresse nicht, dass die Autorisierung des geprüften Befehlskanals funktioniert.
 
 Andere `9999`-Treffer gehören zu Testdaten, MNC-Werten, Node-IDs oder Dienstbeispielen. Ein pauschales Suchen/Ersetzen wäre fachlich falsch. Beispielsweise sind noch dienstspezifische Absender in generierten Task-Workflow-/Application-Gateway-Konfigurationen vorhanden; daraus folgt keine aktive Fehlkonfiguration.
 
@@ -234,9 +231,8 @@ Andere `9999`-Treffer gehören zu Testdaten, MNC-Werten, Node-IDs oder Dienstbei
 - **Statisch überprüft:** Vorhandensein der Adresse, Codepfade, Konfigurationswerte, Schemanamen und 24-Bit-Felder.
 - **Testcode vorhanden:** numerischer JSON-Roundtrip für `4010001`, generische SSI-Grenztests und SDS-Komponententests.
 - **Nicht durchgeführt:** Ausführung dieser Tests, RF-SDS-Senden/Empfangen, Endgeräteprogrammierung, UI-Anzeigeprüfung auf laufendem Dienst.
-- **Im Betrieb bestätigt:** Für die neue Anzeige bzw. eine abgeschlossene Adressmigration liegt in diesem Chat kein Nachweis vor.
+- **Im Betrieb bestätigt:** Für die neue Anzeige bzw. eine abgeschlossene Adressmigration liegt in dieser Entwicklungsphase kein Nachweis vor.
 - **Erreichter Stand:** Nummer organisatorisch beschlossen, technische Adresse bereits teilweise im Code verwendet; ganzheitliche Migration und mehrzellige Parametrisierung bleiben offen.
-
 
 Bei der Archivvalidierung wurden zusätzlich alle 19 enthaltenen Markdown-Links auf verfügbare lokale Ziele bzw. referenzierte HTTPS-Quellen geprüft, die numerische Gleichheit von `04010001` und `4010001` bestätigt, die 24-Bit-Beispiele rechnerisch kontrolliert und die Ablehnung der führenden Null bei numerischer TOML-Schreibweise mit `tomllib` überprüft. Diese erfolgreichen Dokumentationsprüfungen sind keine Produkt- oder Funkfunktionstests.
 
@@ -266,7 +262,7 @@ Die Reihenfolge ist eine technische Empfehlung aus der Archivprüfung; im Nummer
 | 1 | Aktuelle Live-Konfiguration und Endgeräteadressbücher mit `4010001` abgleichen | **Offen**; benötigt tatsächliche TBS-/Endgerätewerte; Anzeige und technische Adresse getrennt bestätigen |
 | 2 | Vergabe und Eigentümer 01 verbindlich im Directory/Nummernregister dokumentieren | **Roadmap-Kandidat**; bestehende Belegungen und Servicezweck prüfen |
 | 3 | Festlegen, welche Nachrichten an `4010001` lokal bleiben und welche zentral weitergegeben werden | **Roadmap-Kandidat**; WX, Dashboard-Reports, U-STATUS-Kommandos und HA-Nutzdaten voneinander abgrenzen |
-| 4 | Tests für heutige Systemadresse und Autorisierung abgleichen | **Roadmap-Kandidat**; alte `9999`-Annahmen einzeln prüfen; positiver und negativer Test am tatsächlichen Befehlskanal |
+| 4 | Tests für geprüfte Systemadresse und Autorisierung abgleichen | **Roadmap-Kandidat**; alte `9999`-Annahmen einzeln prüfen; positiver und negativer Test am tatsächlichen Befehlskanal |
 | 5 | Basisstations-/Service-ISSI zentral konfigurierbar machen, falls pro TBS eigene Adresse gewünscht | **Idee**; bestehende Directory-Parameter, Senderdefaults, CMCE-Routing und Dashboard konsistent verdrahten |
 | 6 | Produktivanzeige `04010001` in UI, Export und Inventar konsistent erhalten | **Beschlossener Darstellungswunsch**, Umsetzung nicht nachgewiesen; numerische API-/Funkwerte bleiben numerisch |
 | 7 | Sonderbetriebsdomäne D abschließend definieren und Werte validieren | **Offen**; Verwaltung vs. eigene Funkadresse vs. separates Netz entscheiden |
@@ -296,7 +292,7 @@ Alle nachfolgenden relativen Links beziehen sich auf den Branch/Commit, aus dem 
 - [Systemhandbuch mit SDS-/HA-Prüfstrecke](../NetCore-Tetra-Systemhandbuch-2026-09-27.md)
 - [FAQ](../../wiki/FAQ.md) und [Troubleshooting](../../wiki/Troubleshooting.md)
 
-Es wurde kein thematisch zugehöriger Implementierungs-PR aus dem historischen Nummerierungsdialog übermittelt. Allgemeine PRs anderer Projektchats werden nicht als Nachweis dieses Chats geführt.
+Es wurde kein thematisch zugehöriger Implementierungs-PR aus dem historischen Nummerierungsdialog übermittelt. Allgemeine PRs anderer Projektphasen werden nicht als Nachweis dieses Vorhabens geführt.
 
 ### 10.2 Anhangsinventar
 

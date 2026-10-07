@@ -1,64 +1,54 @@
-# Home Assistant auf Proxmox, NetCore-MQTT und SDS-Diagnose
+# Brainstorming: Home Assistant auf Proxmox, MQTT und SDS-Diagnose
 
-## 1. Metadaten und Ergebnis
+**Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
+
+## 1. Arbeitsstand und Ergebnis
 
 | Feld | Wert |
 |---|---|
 | Projekt | NetCore-Tetra |
-| Ursprünglicher Chattitel | Anleitung Homematic VM erstellen |
-| Ursprünglicher Chat | [ChatGPT-Verlauf](https://chatgpt.com/c/6aad5d0c-735c-83eb-b118-b8ea922f4e35), ID `6aad5d0c-735c-83eb-b118-b8ea922f4e35` |
-| Historischer Arbeitszeitraum | 18.09.2026; erste im Browser sichtbare Anfrage 17:47 Uhr, abschließende technische Antwort nach den SDS-Tests um 19:26 Uhr; Zeiten wie im Chat bzw. Screenshot angezeigt |
+| Historischer Arbeitszeitraum | 18.09.2026, 17:47–19:26 Uhr; VM-Einrichtung, MQTT-Anbindung und SDS-Diagnose, Zeiten gemäß den Betriebsaufzeichnungen |
 | Archiv erstellt | 05.10.2026, Bezugszeitzone Europe/Berlin |
 | Repository / ausschließlich bearbeiteter Branch | `JanHG98/netcore-tetra` / `Archiving` |
 | Vor dem Schreiben lokal und remote geprüfter Basis-Commit | `8958a4120548dbe442b8b1ebd3847ab0dfadc92e` |
-| Historischer, im Chat genannter TBS-Build | `6a7cf58f`, beim Archivieren zu `6a7cf58fa40e15c676cc9349aa70f406282e605d` aufgelöst und als Git-Objekt erneut gelesen |
+| Historischer, in der Planung genannter TBS-Build | `6a7cf58f`, beim Archivieren zu `6a7cf58fa40e15c676cc9349aa70f406282e605d` aufgelöst und als Git-Objekt erneut gelesen |
 | Historischer Entwicklungsbranch | `mqtt`; am 05.10.2026 lieferte die gezielte Remote-Ref-Abfrage keinen Branch dieses Namens |
 | Späterer relevanter Fix-Commit | `086a81fa8820ef579c475a65a38e3d23644c52f0` vom 27.09.2026; Änderung der CMCE-Befehlsweiterleitung im Diff nachgeprüft |
 | Archivdatei | `Docs/archive/2026-10-05_home-assistant-proxmox-mqtt-sds-diagnose.md` |
 | Bilder und Herkunftsnachweis | [Bildarchiv mit Prüfsummen](assets/2026-10-05_homeassistant-mqtt-sds/README.md) |
-| Veröffentlichungsstand | Der einführende Git-Commit dieser Datei dokumentiert die Veröffentlichung; der oben genannte Basis-Commit ist ausdrücklich der geprüfte Quellstand vor dem Archiv-Commit. |
 
-**Ergebnis des historischen Chats:** Home Assistant wurde in einer lokalen Proxmox-VM zum Laufen gebracht und mit dem bestehenden NetCore-MQTT-Broker verbunden. Die Geräteerkennung zeigte vier Geräte mit acht Entitäten. Der Nutzer bestätigte den Empfang beim Abonnieren sowie fünf verbundene Zustandsanzeigen. Der anschließend begonnene Test „Funkgerät sendet `HA TEST` → automatische HA-Benachrichtigung“ blieb dagegen offen: SDS waren am TBS-Eingang sichtbar, der direkte HA-MQTT-Listener blieb leer.
+**Historischer Betriebsstand:** Home Assistant wurde in einer lokalen Proxmox-VM zum Laufen gebracht und mit dem bestehenden NetCore-MQTT-Broker verbunden. Die Geräteerkennung zeigte vier Geräte mit acht Entitäten. Eine Betriebsrückmeldung bestätigt den Empfang beim Abonnieren und fünf verbundene Zustandsanzeigen. Der anschließend begonnene Test „Funkgerät sendet `HA TEST` → automatische HA-Benachrichtigung“ blieb dagegen offen: SDS waren am TBS-Eingang sichtbar, der direkte HA-MQTT-Listener blieb leer.
 
-**Ergebnis des heutigen Quellenabgleichs:** Die damalige Lücke bei `DeliverSds` ist im geprüften `Archiving`-Quellstand behoben. Der Sonderfall `4010001` und die Bedingungen für zentrale SDS-Übergabe bestehen weiterhin. Das belegt Quellcode, aber weder eine Aktualisierung der damaligen TBS noch einen heute funktionierenden Funk-zu-HA-Gesamtpfad.
+**Repository-Befund vom Prüfdatum:** Die damalige Lücke bei `DeliverSds` ist im geprüften `Archiving`-Quellstand behoben. Der Sonderfall `4010001` und die Bedingungen für zentrale SDS-Übergabe bestehen weiterhin. Das belegt Quellcode, aber weder eine Aktualisierung der damaligen TBS noch einen am Prüfdatum funktionierenden Funk-zu-HA-Gesamtpfad.
 
-Dieses Dokument ist ein technisches Archiv. Die darin wiedergegebenen Installations-, Test- und Diagnosebefehle wurden während der Archivierung nicht auf Proxmox, HA, TBS oder LXC ausgeführt.
+Dieses Dokument ist ein technisches Archiv. Die darin wiedergegebenen Installations-, Test- und Diagnosebefehle wurden während der Quellenprüfung nicht auf Proxmox, HA, TBS oder LXC ausgeführt.
 
-## 2. Quellenumfang, Auswertungsgrenzen und Statusbegriffe
+## 2. Quellenumfang, Nachweisgrenzen und Statusbegriffe
 
-### 2.1 Tatsächlich ausgewertete Quellen
+### 2.1 Quellenbasis
 
-1. Der direkte Chatabruf lieferte fünf jüngere technische Gesprächsabschnitte einschließlich der vollständigen korrigierten HA-Automation und der abschließenden Diagnose. Er meldete keine weitere Cursor-Seite. Dieser Abruf allein hätte für eine vollständige technische Zusammenfassung nicht ausgereicht.
-2. Der ursprüngliche Chat wurde deshalb zusätzlich im angemeldeten Browser geöffnet. Ältere Nachrichten ließen sich bis zur ersten Anfrage nach einer „Homematic Assistant VM“ nachladen. Ausgewertet wurden der sichtbare Verlauf von VM-Planung und Bootfehler über MQTT/Discovery und Lab-Test bis zur SDS-Diagnose sowie der spätere Archivierungsauftrag.
-3. Sieben zugehörige Chatbilder wurden visuell geprüft und unter dem oben verlinkten Bildarchiv gesichert. Drei PNGs waren als Dateien über den Chatabruf zugänglich. Vier ältere Bilder wurden als vollständige Browseransichten der Bildvorschau gesichert.
-4. Die relevanten Dateien des aktuellen `Archiving`-Basis-Commits sowie gezielte historische Dateien aus `6a7cf58fa40e15c676cc9349aa70f406282e605d` wurden direkt gelesen. Die historische Commit-ID wurde zusätzlich über GitHub aufgelöst. Es wurde dafür kein anderer Arbeitsbranch ausgecheckt.
-5. Bestehender Archivindex und vorhandene Archivdateien wurden auf ein bereits diesem Chat zugeordnetes Dokument geprüft. Es gab keinen entsprechenden Eintrag; andere Archive werden nicht ersetzt.
+Erhalten sind VM-Planung und Bootfehler, MQTT-/Discovery-Einrichtung, Lab-Test, SDS-Diagnose, die korrigierte HA-Automation und die vorgeschlagenen Diagnoseprogramme. Sieben Originalbilder dokumentieren den Aufbau; drei sind als PNG-Originaldateien und vier als vollständige Ansichten der Bildvorschau gesichert. Der Repository-Abgleich bezieht sich auf den oben genannten Basiscommit und den späteren Fix `086a81f...`.
 
-### 2.2 Verbleibende Quellenlücken
+### 2.2 Offene Nachweise
 
-- Der im letzten Diagnoseabschnitt angehängte **`Eingefügter Text.txt`** wird zwar im Chat angezeigt, seine Vorschau meldete auch nach erneutem Versuch **„Diese Datei konnte nicht geladen werden“**. Der vollständige Rohlog und seine Datei-Prüfsumme sind deshalb nicht verfügbar. Die ausdrücklich zitierten Logzeilen sind als **Chat-Zitat aus dem damals ausgewerteten Anhang** erhalten; sie wurden beim Archivieren nicht erneut gegen den Rohlog geprüft.
-- Für die vier älteren Bilder gelang kein verlässlicher Originaldatei-Export. Ihre archivierten `*-ansicht.jpg` sind **Ansichtsreproduktionen mit Viewer-Rahmen und teils reduzierter Darstellung**, keine behaupteten Originaldateien. Die ursprünglich im Browser gemeldeten Bildabmessungen stehen im Bildindex.
-- Die sichtbare Gesprächsfolge wurde vom Anfang bis zur letzten technischen Antwort gelesen. Ein vollständiger Datenexport sämtlicher interner Toolausgaben, früherer Antwortvarianten oder gelöschter Nachrichten liegt nicht vor.
-- Einzelne historische Assistentenantworten verweisen auf damals eingelesenen Code oder externe Dokumentation. Wo kein heutiger unabhängiger Abgleich vorliegt, bleiben diese Aussagen entsprechend als historische Anleitung oder Diagnose gekennzeichnet.
-- Es gab keine neue Verbindung zu den realen Zielsystemen. Laufende Binary-Versionen, aktive Konfigurationspfade, VM-Bootreihenfolge nach der Reparatur, Sicherungsdateien und aktuelle MQTT-Zähler wurden nicht live erhoben.
-- Die Aussage am Ende des Altchats, einige Projektuploads seien abgelaufen, wird nicht pauschal auf alle Bilder übertragen: Die sieben hier aufgeführten Bildinhalte waren tatsächlich sichtbar.
+Der Rohanhang **`Eingefügter Text.txt`** ließ sich am Prüfdatum nicht erneut laden. Seine vollständigen Daten und SHA-256 fehlen. Exakte Millisekunden-Logzeilen stammen deshalb aus einer erhaltenen damaligen Logauswertung; die Bildbelege bestätigen den Verlauf mit sekundengenauen Zeiten. Frühere interne Werkzeugausgaben und alternative Entwurfsstände sind nicht vollständig erhalten. Der aktive Host-/Gateway-Zustand wurde am Prüfdatum nicht erneut gemessen.
 
 ### 2.3 Verwendete Statusbegriffe
 
 | Status | Bedeutung in diesem Archiv |
 |---|---|
 | **Idee** | Möglichkeit oder spätere Erweiterung, ohne verbindliche Umsetzung |
-| **Beschlossen/geplant** | Im Chat festgelegter nächster Ablauf bzw. konkrete Empfehlung; Ausführung nicht automatisch belegt |
+| **Beschlossen/geplant** | In der Planung festgelegter nächster Ablauf bzw. konkrete Empfehlung; Ausführung nicht automatisch belegt |
 | **Implementiert** | Funktion im benannten Repository-Commit nachvollziehbar vorhanden |
 | **Getestet** | Konkret benannter Versuch mit benanntem Ergebnis; Testumfang und Quelle bleiben angegeben |
-| **Im Betrieb bestätigt** | Nutzerbestätigung bzw. unmittelbar sichtbarer historischer Betriebsbeleg für genau die genannte Teilfunktion |
+| **Im Betrieb bestätigt** | Betriebsrückmeldung bzw. unmittelbar sichtbarer historischer Betriebsbeleg für genau die genannte Teilfunktion |
 | **Offen / unbestätigt** | Ergebnis fehlt, Diagnose ist nur plausibel oder die aktuelle Installation wurde nicht überprüft |
 
-Ein Quellcode-Test im Repository ist kein Nachweis, dass dieser Test während der Archivierung ausgeführt wurde. Ein erfolgreicher MQTT-Verbindungsstatus beweist keinen SDS-Eingang und eine lokale Zustellannahme keine Empfangsbestätigung des Ziel-Funkgeräts.
+Ein Quellcode-Test im Repository ist kein Nachweis, dass dieser Test während der Quellenprüfung ausgeführt wurde. Ein erfolgreicher MQTT-Verbindungsstatus beweist keinen SDS-Eingang und eine lokale Zustellannahme keine Empfangsbestätigung des Ziel-Funkgeräts.
 
 ## 3. Ziel, Ausgangslage und Abgrenzung
 
-Der Nutzer wollte eine lokale VM, um MQTT für das NetCore-Netz einzubinden. „Homematic Assistant“ wurde im Chat als **Home Assistant** präzisiert. Homematic bzw. Homematic IP blieb eine mögliche spätere Integration; eine CCU-/RaspberryMatic-Installation oder die Inbetriebnahme physischer Homematic-Aktoren wurde in diesem Chat nicht durchgeführt.
+Ziel ist eine lokale VM für die MQTT-Anbindung des NetCore-Netzes. Die zunächst unklare Bezeichnung „Homematic Assistant“ wurde zu **Home Assistant** präzisiert. Homematic bzw. Homematic IP blieb eine mögliche spätere Integration; eine CCU-/RaspberryMatic-Installation oder die Inbetriebnahme physischer Homematic-Aktoren wurde für diesen Arbeitsstand nicht durchgeführt.
 
 Der Zielaufbau verwendete:
 
@@ -76,14 +66,14 @@ Es sollte kein zweiter Broker in Home Assistant installiert werden. Der erste SD
 |---|---|---|
 | 1. VM planen | Offizielles HAOS-KVM/QCOW2-Image, UEFI, LAN-Bridge, DHCP; vorhandenen NetCore-Broker verwenden | **Beschlossen/geplant**; Ressourcen zunächst Vorschlag |
 | 2. VM bootet nicht | Konsole zeigt nicht bootfähige Platte und iPXE-Fallback | **Getestet: fehlgeschlagener Start**, Bild 1 |
-| 3. Ursache konkretisieren | Nutzer: `.img` als Boot-ISO eingebunden; Hardwarebild zeigt CD-Laufwerk mit `haos_generic-x86-64-18.3.img` | **Vom Nutzer und Bild bestätigt**; reine Firmwarevermutung reicht nicht mehr |
+| 3. Ursache konkretisieren | `.img` als Boot-ISO eingebunden; Hardwarebild zeigt CD-Laufwerk mit `haos_generic-x86-64-18.3.img` | **Durch Rückmeldung und Bild bestätigt**; reine Firmwarevermutung reicht nicht mehr |
 | 4. Bestehende VM reparieren | VM `148`, Storage `Media`; HAOS-QCOW2 neu importieren und an `scsi2` anschließen; vorhandene `scsi0` erhalten | Konkreter Reparaturablauf; einzelne Befehlsausgaben fehlen |
-| 5. HA läuft | Nutzer „so, ist drin“ mit HA-Übersicht | **Im Betrieb bestätigt:** erreichbare HA-Oberfläche nach Grundeinrichtung |
+| 5. HA läuft | Erreichbare HA-Übersicht nach Grundeinrichtung | **Im Betrieb bestätigt:** erreichbare HA-Oberfläche nach Grundeinrichtung |
 | 6. MQTT und Discovery | Verbindung zu `10.0.1.119`; Bild zeigt vier NetCore-Geräte / acht Entitäten | **Im Betrieb bestätigt:** Discovery-Konfiguration in HA angekommen |
-| 7. Lab-Test und Quellen | Virtuelles Relais beobachten; Nutzer: „das mit dem Abo hat geklappt und die dienste sind auch aktiv alle 5 verbunden“ | **Im Betrieb bestätigt:** berichteter Zustandsempfang und fünf verbundene Anzeigen; kein physischer Aktortest |
+| 7. Lab-Test und Quellen | Zustandsempfang über MQTT-Abo und fünf verbundene Dienstanzeigen zurückgemeldet | **Im Betrieb bestätigt:** berichteter Zustandsempfang und fünf verbundene Anzeigen; kein physischer Aktortest |
 | 8. Stand sichern / Dashboard | Backup `NetCore-HA-MQTT-Grundstand` und eigenes Dashboard vorgeschlagen | **Geplant**, Erstellung/Download nicht bestätigt |
-| 9. Echte SDS als HA-Auslöser | Nutzer „dann mal los“; erste Automation mit fester Automation-ID | **Test begonnen**, kein Gesamterfolg belegt |
-| 10. YAML-Editorfehler | „Nur Automationen in automations.yaml sind editierbar.“; Nutzer stellt klar, dass Speichern gar nicht möglich war | Annahme einer bereits gespeicherten Automation **ausdrücklich korrigiert** |
+| 9. Echte SDS als HA-Auslöser | Erste Testautomation mit fester Automation-ID | **Test begonnen**, kein Gesamterfolg belegt |
+| 10. YAML-Editorfehler | „Nur Automationen in automations.yaml sind editierbar.“; Speichern war gar nicht möglich | Annahme einer bereits gespeicherten Automation **ausdrücklich korrigiert** |
 | 11. Vollständige YAML-Korrektur | Neue UI-Automation ohne äußere `id:` und ohne `automation:`-Wrapper | **Bereitgestellt**, eigenständige positive Speicherbestätigung fehlt |
 | 12. SDS an `4010001` | Keine Reaktion; Adresse ist lokale Dashboard-/Steueradresse | Historisch und aktuell im Code bestätigte Sonderbehandlung |
 | 13. Test an andere Ziele | `HA TEST` von `5102` an Gruppe `15201` und Einzelziel `5235960`; HA weiterhin leer | TBS-Eingang sichtbar; zentraler Router-/MQTT-Pfad für diese Tests nicht nachgewiesen |
@@ -122,13 +112,13 @@ iPXE ...
 No bootable device. Retrying in 1 seconds.
 ```
 
-Die erste Antwort vermutete Legacy-/SeaBIOS und empfahl die Kontrolle von OVMF, EFI-Disk und Bootplatte. Das spätere Hardwarebild zeigt jedoch OVMF bereits aktiv und eine vorhandene EFI-Disk. Der Nutzer benannte zudem selbst den fehlerhaften `.img`-als-ISO-Weg. Die konkrete Reparatur musste deshalb den **Festplattenimport** korrigieren; ein bloßes Aushängen des Mediums oder Umbenennen einer Dateiendung genügte nicht.
+Der erste Entwurf vermutete Legacy-/SeaBIOS und empfahl die Kontrolle von OVMF, EFI-Disk und Bootplatte. Das spätere Hardwarebild zeigt jedoch OVMF bereits aktiv und eine vorhandene EFI-Disk. Zusätzlich wurde der fehlerhafte `.img`-als-ISO-Weg bestätigt. Die konkrete Reparatur musste deshalb den **Festplattenimport** korrigieren; ein bloßes Aushängen des Mediums oder Umbenennen einer Dateiendung genügte nicht.
 
 Es wurde festgelegt, die bisherige 64-GB-`scsi0` und die EFI-Disk zunächst zu erhalten. Ihr tatsächlicher Inhalt war unbekannt. Eine spätere Bereinigung wurde höchstens nach erfolgreichem Start in Aussicht gestellt; eine Löschung ist nicht belegt.
 
 ### 5.3 Historischer Ablauf auf dem Proxmox-Host
 
-**Status: als Reparatur vorgeschlagen; anschließender HA-Betrieb sichtbar, konkrete Konsolenausgaben nicht erhalten. Nicht im Rahmen dieser Archivierung ausgeführt.**
+**Status: als Reparatur vorgeschlagen; anschließender HA-Betrieb sichtbar, konkrete Konsolenausgaben nicht erhalten. Nicht in dieser Quellenprüfung ausgeführt.**
 
 1. VM `148` vollständig stoppen.
 2. Bei `scsi1` „Kein Medium verwenden“ einstellen; bestehende Platten nicht entfernen.
@@ -228,7 +218,7 @@ Bild 4 zeigt vier Geräte:
 - `NetCore lab-relay-01`: eine Entität;
 - `NetCore-TETRA IoT Gateway`: fünf Entitäten.
 
-Die fünf Verbindungsanzeigen wurden im Chat als Gateway-Verfügbarkeit plus Node Gateway, Mobility Core, Call Control und SDS Router erklärt. Die Nutzerbestätigung des Abos und aller fünf verbundenen Anzeigen ist ein positiver Betriebsbeleg für diesen Teil des Aufbaus. Vollständige MQTT-Payloads, eine lückenlose Ein-/Aus-Messreihe und ein physischer Relaisausgang wurden nicht dokumentiert.
+Die fünf Verbindungsanzeigen wurden in der Planung als Gateway-Verfügbarkeit plus Node Gateway, Mobility Core, Call Control und SDS Router erklärt. Die Betriebsrückmeldung des Abos und aller fünf verbundenen Anzeigen ist ein positiver Betriebsbeleg für diesen Teil des Aufbaus. Vollständige MQTT-Payloads, eine lückenlose Ein-/Aus-Messreihe und ein physischer Relaisausgang wurden nicht dokumentiert.
 
 ### 6.3 Sicherung und Bedienoberfläche
 
@@ -280,13 +270,13 @@ Home Assistant beobachtet hier den zentralen Ereignisstrom. Eine eigene Funk-ISS
 
 ## 8. YAML-Fehler und endgültiger historischer Automationsblock
 
-Die erste Antwort setzte `id: netcore_sds_ha_test_v1`. Nach der Fehlermeldung „Nur Automationen in automations.yaml sind editierbar.“ vermutete der Assistent eine ID-/Editor-Zuordnungsabweichung und schlug zunächst Neuladen sowie Öffnen einer möglicherweise bereits gespeicherten Automation vor.
+Der erste YAML-Entwurf setzte `id: netcore_sds_ha_test_v1`. Bei „Nur Automationen in automations.yaml sind editierbar.“ wurde zunächst eine ID-/Editor-Zuordnungsabweichung vermutet und Neuladen beziehungsweise Öffnen einer bereits gespeicherten Automation erwogen.
 
-Der Nutzer korrigierte ausdrücklich: **Speichern war überhaupt nicht möglich.** Deshalb ist die Annahme einer schon gespeicherten Automation überholt. Die genaue interne Fehlerursache wurde im verfügbaren Verlauf nicht durch HA-Logs oder eine Live-Prüfung bewiesen. „Feste ID war wahrscheinlich der Auslöser“ bleibt eine historische Diagnosehypothese, keine allgemein gültige Erklärung jeder gleichlautenden HA-Meldung.
+Der entscheidende spätere Befund: **Speichern war überhaupt nicht möglich.** Deshalb ist die Annahme einer schon gespeicherten Automation überholt. Die genaue interne Fehlerursache wurde im verfügbaren Verlauf nicht durch HA-Logs oder eine Live-Prüfung bewiesen. „Feste ID war wahrscheinlich der Auslöser“ bleibt eine historische Diagnosehypothese, keine allgemein gültige Erklärung jeder gleichlautenden HA-Meldung.
 
 Die abschließende Anleitung verlangte eine neue Automation über den Editor der **gesamten** Automation, mit folgendem vollständigen Inhalt, **ohne zusätzliches `id:` und ohne `automation:`-Wrapper**. Die feste `notification_id` innerhalb der Aktion bleibt erhalten.
 
-**Status: im Chat bereitgestellt; erfolgreiche Speicherung und automatische SDS-Auslösung nicht gesondert bestätigt. Unverändert aus der späteren korrigierten Antwort übernommen.**
+**Status: in der Planung bereitgestellt; erfolgreiche Speicherung und automatische SDS-Auslösung nicht gesondert bestätigt. Der korrigierte YAML-Entwurf ist unverändert erhalten.**
 
 ```yaml
 alias: "NetCore – SDS-Test empfangen"
@@ -417,7 +407,7 @@ Bild 6 belegt am TBS-Eingang:
 | 19:26:09 | `5102` | `4010001` | LIP-Positionsmeldung; keine passende `HA TEST`-Text-SDS |
 | 19:26:19 | `5102` | `5235960` | `HA TEST`, Einzelziel |
 
-Die im Chat zitierten Rohlogstellen lauten:
+Die in der Planung zitierten Rohlogstellen lauten:
 
 ```text
 19:26:07.938  SDS: U-SDS-DATA from ISSI 5102 to ISSI 15201
@@ -427,7 +417,7 @@ Die im Chat zitierten Rohlogstellen lauten:
 19:26:19.952  SDS: forwarding to Brew: 5102 -> 5235960
 ```
 
-**Quellenstatus:** Diese genauen Millisekunden-Zeilen stammen aus der erhaltenen Assistentenantwort über den damals gelesenen Textanhang; der Rohanhang selbst ließ sich beim Archivieren nicht laden. Der Bildbeleg bestätigt die Eingangsnachrichten mit sekundengenauen Zeiten.
+**Quellenstatus:** Diese genauen Millisekunden-Zeilen stammen aus der erhaltenen frühere Ausarbeitung über den damals gelesenen Textanhang; der Rohanhang selbst ließ sich beim Archivieren nicht laden. Der Bildbeleg bestätigt die Eingangsnachrichten mit sekundengenauen Zeiten.
 
 Der historische Quellcode ordnet die lokale Gruppenroute dem Legacy-Pfad zu. Bei gesunder zentraler Übergabe wären die Meldung `SDS: central handoff ...` und `TelemetryEvent::SdsEdgeIngress` zu erwarten. Die erhaltenen Logzitate stützen daher die Diagnose, dass diese beiden Tests nicht den von der Automation vorausgesetzten zentralen Ingress nutzten.
 
@@ -435,7 +425,7 @@ Das zeigt eine Weiterleitungsentscheidung der TBS, **keinen belegten Empfang am 
 
 ### 9.3 Fallback und fehlende DeliverSds-Weiterleitung
 
-Die letzte Antwort berichtet, die TBS sei bereits um `19:25:43` wieder `Online` gewesen, also vor den Tests. Auch diese Zeit stammt aus der damaligen Logauswertung. Eine anfängliche Fallback-Meldung erklärt damit die späteren Tests nicht ohne Weiteres.
+Die überlieferte Logauswertung nennt `19:25:43` als Rückkehr der TBS nach `Online`, also vor den Tests. Auch diese Zeit stammt aus der damaligen Logauswertung. Eine anfängliche Fallback-Meldung erklärt damit die späteren Tests nicht ohne Weiteres.
 
 Die erneut gelesenen historischen Dateien zeigen:
 
@@ -462,13 +452,13 @@ Bild 7 zeigt das Gateway als MQTT-`ONLINE`, vier von vier Quellen online und **`
 | `started_at` ändert sich | Zwischenzeitlicher Neustart; einfache Zählerdifferenzen nicht als Durchsatz verwenden |
 | MQTT-Ereignis kommt verspätet an | HA-Altersfilter kann es trotz Empfang verwerfen |
 
-Ein gesunder Quellen-Poll kann im heutigen `poller.rs` auch bei einem leeren Eventarray erfolgreich sein. Deshalb bedeutet „fünf verbunden“ nicht „die konkrete SDS ist im Router angekommen“. Ebenso zeigt das kleine HA-Listenerbild ein aktives Abo auf `netcore/v1/events/sds/#` mit UI-QoS 0, aber keine angezeigte Nachricht. Diese UI-QoS-Einstellung ist von der QoS-1-Vorgabe der Automation zu unterscheiden; sie erklärt für sich allein kein vollständig fehlendes Ereignis.
+Ein gesunder Quellen-Poll kann im geprüften `poller.rs` auch bei einem leeren Eventarray erfolgreich sein. Deshalb bedeutet „fünf verbunden“ nicht „die konkrete SDS ist im Router angekommen“. Ebenso zeigt das kleine HA-Listenerbild ein aktives Abo auf `netcore/v1/events/sds/#` mit UI-QoS 0, aber keine angezeigte Nachricht. Diese UI-QoS-Einstellung ist von der QoS-1-Vorgabe der Automation zu unterscheiden; sie erklärt für sich allein kein vollständig fehlendes Ereignis.
 
 **Offen:** Es liegen keine Resultate der verlangten Vorher-/Nachher-Messung vor. Eine konkrete Outbox-Ursache oder erfolgreiche Behebung wurde nicht nachgewiesen.
 
 ## 11. Letzte vereinbarte Diagnosebefehle
 
-Die folgenden zwei Blöcke sind aus der abschließenden historischen Antwort übernommen. **Sie waren vorgeschlagen; im verfügbaren Verlauf ist keine Ausführung mit Ergebnis dokumentiert.** Die Archivierung hat sie nicht gegen die realen Zielsysteme ausgeführt.
+Die folgenden zwei Blöcke sind aus der abschließenden historischen Ausarbeitung übernommen. **Sie waren vorgeschlagen; im verfügbaren Verlauf ist keine Ausführung mit Ergebnis dokumentiert.** Die Archivierung hat sie nicht gegen die realen Zielsysteme ausgeführt.
 
 ### 11.1 A: relevante Konfiguration auf SRV-M-TBS-01 lesen
 
@@ -505,7 +495,7 @@ PY
 
 ### 11.2 B: MQTT-Fortschritt im IoT-Gateway-LXC lesen
 
-Der Loopback-Endpunkt gilt nur innerhalb des Gateway-LXC und bei passendem tatsächlichem Bind. Sollte die Installation nur an ihrer LAN-Adresse lauschen, ist der reale Bind zu verwenden. Das ist eine Ausführungsbedingung, kein bereits beobachteter Fehler dieses Chats.
+Der Loopback-Endpunkt gilt nur innerhalb des Gateway-LXC und bei passendem tatsächlichem Bind. Sollte die Installation nur an ihrer LAN-Adresse lauschen, ist der reale Bind zu verwenden. Das ist eine Ausführungsbedingung, kein bereits beobachteter Fehler dieser Planung.
 
 ```bash
 python3 - <<'PY'
@@ -587,10 +577,10 @@ Die Blöcke enthalten keine Zugangsdaten und ändern weder Konfiguration noch Wa
 
 Alle folgenden Aussagen beziehen sich auf **`Archiving@8958a4120548dbe442b8b1ebd3847ab0dfadc92e`**, gelesen am 05.10.2026. Sie werden nicht rückwirkend dem Betriebsstand vom 18.09.2026 zugeschrieben.
 
-| Prüfpunkt | Historischer Stand / Chatbefund | Heutiger Quellbefund | Konsequenz |
+| Prüfpunkt | Historischer Stand / historischer Befund | Geprüfter Quellbefund | Konsequenz |
 |---|---|---|---|
 | `DeliverSds` im CMCE-Dispatcher | In `6a7cf58f` fehlend | Match-Arm in `crates/tetra-entities/src/cmce/cmce_bs.rs` vorhanden; Weitergabe an `sds.rx_sds_from_control` und `SdsDeliveryResponse` | Die konkrete Quellcode-Lücke ist inzwischen behoben; installierte TBS-Version bleibt unbekannt |
-| Herkunft dieser Änderung | Im Altchat noch nicht vorhanden | Diff von `086a81f^` nach `086a81f` enthält diese Ergänzung einschließlich Tests | Zeitliche Zuordnung zum späteren 27.09.-Stand belegt |
+| Herkunft dieser Änderung | Im historischen Arbeitsstand noch nicht vorhanden | Diff von `086a81f^` nach `086a81f` enthält diese Ergänzung einschließlich Tests | Zeitliche Zuordnung zum späteren 27.09.-Stand belegt |
 | Bestätigungssemantik | Gefahr beschädigter Rückzustellung bei blindem Umschalten | Kommentar grenzt lokale Annahme ausdrücklich von MS-Empfangsbestätigung ab | Kein On-Air-Erfolg allein aus positiver Response ableiten |
 | `4010001` | Lokale Steuer-/Dashboardadresse | Konstante und lokaler Rücksprung weiter vorhanden | Für diesen zentralen Beobachtertest weiterhin ungeeignet |
 | Zentrales Routing | Konfigurationsflags und Verfügbarkeit relevant | `enabled && central_sds_routing` plus SDS-Serviceverfügbarkeit weiterhin erforderlich | Tatsächliche Laufzeitkonfiguration und Health separat erheben |
@@ -602,9 +592,9 @@ Alle folgenden Aussagen beziehen sich auf **`Archiving@8958a4120548dbe442b8b1ebd
 | Quellenhealth | Fünf verbundene HA-Anzeigen | Poller markiert erfolgreiche HTTP-/JSON-Abfrage auch ohne neue Ereignisse als Erfolg | Health ist kein konkreter SDS-Durchlauf |
 | HA-/Homematic-Funktionen | Discovery und Lab-Funktionen benutzt | Phase-5-Konfiguration, Discovery, State-Ingress, Policies und optional XML-RPC vorhanden | Reale Aktoren oder CCU im historischen Betrieb weiterhin unbestätigt |
 
-Im Dispatcher liegen unter anderem Tests mit den Namen `central_sds_dispatch_preserves_payload_and_destination_on_radio_path` und `invalid_central_sds_payload_reports_failure_without_radio_delivery`. **Vorhandensein und Inhalt wurden gelesen; diese Rust-Tests wurden für den Archivauftrag nicht ausgeführt.**
+Im Dispatcher liegen unter anderem Tests mit den Namen `central_sds_dispatch_preserves_payload_and_destination_on_radio_path` und `invalid_central_sds_payload_reports_failure_without_radio_delivery`. **Vorhandensein und Inhalt wurden gelesen; diese Rust-Tests wurden für die Quellenprüfung nicht ausgeführt.**
 
-Der aktuelle Gateway-README beschreibt weiterhin den Open-Lab-Betrieb ohne WebUI-Login, API-Tokens, MQTT-Credentials oder TLS. Das ist die dokumentierte Beispielkonfiguration, keine Zusicherung über jede Installation und keine Bestätigung heutiger Netzabsicherung.
+Der aktuelle Gateway-README beschreibt weiterhin den Open-Lab-Betrieb ohne WebUI-Login, API-Tokens, MQTT-Credentials oder TLS. Das ist die dokumentierte Beispielkonfiguration, keine Zusicherung über jede Installation und keine Bestätigung geprüfter Netzabsicherung.
 
 ## 13. Dateien, Dienste, Ports und Parameter für die Fortsetzung
 
@@ -644,7 +634,7 @@ Der aktuelle Gateway-README beschreibt weiterhin den Open-Lab-Betrieb ohne WebUI
 | HA | HTTP `8123`; Automationen im UI / `automations.yaml` | Historische Anleitung und sichtbare HA-Oberfläche |
 | Optionale CCU/HmIP-Schnittstelle | XML-RPC, Beispielport `2010` | Aktuelle Beispielkonfiguration, historisch nicht in Betrieb belegt |
 
-Es wird keine heutige reale SDS-Router-IP aus anderen Chats in diesen historischen Aufbau hineingeschrieben. Die jeweilige Source-URL muss aus der tatsächlich aktiven Gateway-Konfiguration stammen.
+Für die SDS-Router-IP fehlt eine gesicherte Erhebung in diesem historischen Aufbau. Die jeweilige Source-URL muss aus der tatsächlich aktiven Gateway-Konfiguration stammen.
 
 ### 13.3 Aktuelle Beispielparameter, ausdrücklich keine erhobene Live-Konfiguration
 
@@ -658,14 +648,14 @@ Es wird keine heutige reale SDS-Router-IP aus anderen Chats in diesen historisch
 
 Wichtige State-Dateien unter `/var/lib/netcore-iot-gateway/`: `outbox/`, `dedup.json`, `command-inbox.ndjson`, `command-ledger.json`, `command-audit.ndjson`, `virtual-device-state.json`, `external-entity-state.json` und `homematic-datapoint-state.json`. Ein späterer Update-/Reparaturauftrag muss diese Betriebsdaten erhalten; Leeren der Outbox war hier nicht beschlossen.
 
-## 14. Entwicklungs- und Betriebsstand zum Chatende
+## 14. Entwicklungs- und Betriebsstand zum dokumentierten Arbeitsabschluss
 
 | Gegenstand | Status | Begründung / Grenze |
 |---|---|---|
-| HA-Oberfläche nach VM-Reparatur erreichbar | **Im Betrieb bestätigt** | Nutzerbild und „so, ist drin“ |
+| HA-Oberfläche nach VM-Reparatur erreichbar | **Im Betrieb bestätigt** | Bildbeleg und „so, ist drin“ |
 | Konkrete ausgeführte `qm`-Befehle / endgültige Diskliste | **Unbestätigt** | Keine abschließende Hostausgabe |
 | MQTT-Discovery: vier Geräte / acht Entitäten | **Im Betrieb bestätigt** | Bild 4 |
-| Zustandsempfang und fünf Verbindungsanzeigen | **Im Betrieb bestätigt, Nutzerbericht** | Explizite Rückmeldung nach Lab-Testanleitung |
+| Zustandsempfang und fünf Verbindungsanzeigen | **Im Betrieb bestätigt, Betriebsbericht** | Explizite Rückmeldung nach Lab-Testanleitung |
 | Physisches Relais, Licht oder Homematic-Aktor geschaltet | **Nicht bestätigt** | Lab-Geräte ausdrücklich virtuell |
 | Backup und eigenes Dashboard angelegt | **Geplant** | Keine Rückmeldung über Umsetzung |
 | Korrigierte SDS-YAML | **Bereitgestellt** | Vollständiger historischer Block erhalten |
@@ -675,7 +665,7 @@ Wichtige State-Dateien unter `/var/lib/netcore-iot-gateway/`: `outbox/`, `dedup.
 | Empfang am zweiten Funkgerät | **Unbestätigt** | Eingang und Weiterleitungslog belegen keine Zielquittung |
 | Funk → SDS Router → MQTT → automatische HA-Meldung | **Nicht erfolgreich bestätigt** | Letzte Nutzerantwort: HA empfängt nichts |
 | `DeliverSds`-Lücke im damaligen Build | **Historisch im Code bestätigt** | Alter Dispatcher erneut gelesen |
-| `DeliverSds`-Weiterleitung im heutigen Quellstand | **Implementiert** | Aktueller Code und späterer Diff gelesen |
+| `DeliverSds`-Weiterleitung im geprüften Quellstand | **Implementiert** | Aktueller Code und späterer Diff gelesen |
 | Fix auf damaliger realer TBS installiert | **Offen** | Kein Deploymentnachweis |
 | Outbox-Ursache / Messreihe / Reparatur | **Offen** | Nur Momentaufnahme und vorgeschlagener Diagnoseblock |
 
@@ -691,8 +681,8 @@ Wichtige State-Dateien unter `/var/lib/netcore-iot-gateway/`: `outbox/`, `dedup.
 
 ### Priorität 2: Routingentscheidung und Abnahme vorbereiten
 
-1. Bei altem Binary zunächst einen gesonderten, überprüfbaren Update-/Rollback-Ablauf für die TBS planen. Die vorhandene spätere Quellkorrektur ist Ausgangspunkt; den Fehler nicht erneut als fehlende Implementierung im heutigen Branch melden.
-2. Entscheiden, ob der Test künftig den zentralen SDS-Router verwenden soll oder ob ein zusätzlicher beobachtender Eventpfad für lokal/Brew-verarbeitete SDS benötigt wird. Letzteres ist ein **Architekturvorschlag**, keine im Chat implementierte Spiegelung.
+1. Bei altem Binary zunächst einen gesonderten, überprüfbaren Update-/Rollback-Ablauf für die TBS planen. Die vorhandene spätere Quellkorrektur ist Ausgangspunkt; den Fehler nicht erneut als fehlende Implementierung im geprüften Branch melden.
+2. Entscheiden, ob der Test künftig den zentralen SDS-Router verwenden soll oder ob ein zusätzlicher beobachtender Eventpfad für lokal/Brew-verarbeitete SDS benötigt wird. Letzteres ist ein **Architekturvorschlag**, keine in der Planung implementierte Spiegelung.
 3. Falls zentrale Übergabe gewählt wird, Dispatcher, Node Gateway, Routerverfügbarkeit, lokale Zustellung, Gruppen-/Einzelziel und Ausfallverhalten gemeinsam prüfen. Nicht nur den Konfigurationsschalter setzen und eine zufällige HA-Meldung als Funkabnahme werten.
 4. `4010001` als lokale Steueradresse erhalten. Eine eigene Service-ISSI für eine spätere direkt adressierte HA-Anwendung getrennt planen.
 
@@ -715,7 +705,7 @@ Wichtige State-Dateien unter `/var/lib/netcore-iot-gateway/`: `outbox/`, `dedup.
 
 ## 16. Bildbelege und Anlagen
 
-Die sieben Bilder gehören zum ursprünglichen Chat. Ihre Reihenfolge hier folgt dem technischen Ablauf; die Reihenfolge der drei Dateien im direkten Chatabruf war anders. Dateiherkunft, Abmessungen und SHA-256 stehen im [Bildindex](assets/2026-10-05_homeassistant-mqtt-sds/README.md).
+Die sieben Bilder dokumentieren den ursprünglichen Aufbau. Ihre Reihenfolge folgt dem technischen Ablauf. Dateiherkunft, Abmessungen und SHA-256 stehen im [Bildindex](assets/2026-10-05_homeassistant-mqtt-sds/README.md).
 
 ### Bild 1 – Fehlgeschlagener VM-Start und iPXE-Fallback
 
@@ -747,22 +737,21 @@ Die mittlere Zeile ist eine historische LIP-Meldung, keine für die HA-Automatio
 
 ![Historische IoT-Gateway-Momentaufnahme](assets/2026-10-05_homeassistant-mqtt-sds/07-iot-gateway-outbox.png)
 
-Das über den Chatabruf bereitgestellte Bild hat selbst eine schmale Darstellung. Kleine Tabelleninhalte werden nicht als vollständig lesbare Rohdaten ausgegeben; die erkennbare Statusleiste und die im Chat ausdrücklich ausgewerteten Kennzahlen tragen die Diagnose.
+Das erhaltene Originalbild hat selbst eine schmale Darstellung. Kleine Tabelleninhalte werden nicht als vollständig lesbare Rohdaten ausgegeben; die erkennbare Statusleiste und die in der Planung ausdrücklich ausgewerteten Kennzahlen tragen die Diagnose.
 
 ## 17. Quellenverzeichnis und Verifikation
 
-### Primärquellen des Verlaufs
+### Primärquellen
 
-- [Ursprünglicher Chat „Anleitung Homematic VM erstellen“](https://chatgpt.com/c/6aad5d0c-735c-83eb-b118-b8ea922f4e35): sichtbarer Verlauf einschließlich späterer Korrekturen.
 - [Bildarchiv](assets/2026-10-05_homeassistant-mqtt-sds/README.md): sieben gesicherte Belege, drei bereitgestellte PNG-Dateien und vier gekennzeichnete Ansichtsreproduktionen.
-- `Eingefügter Text.txt`: nicht erneut lesbar; ausschließlich erhaltene Chat-Zitate ausgewertet.
+- `Eingefügter Text.txt`: nicht erneut lesbar; ausschließlich erhaltene Logzitate ausgewertet.
 
 ### Fest gepinnte Repository-Nachweise
 
 - [Geprüfter Archiving-Basisstand 8958a412](https://github.com/JanHG98/netcore-tetra/tree/8958a4120548dbe442b8b1ebd3847ab0dfadc92e).
 - [Historischer TBS-Commit 6a7cf58f](https://github.com/JanHG98/netcore-tetra/commit/6a7cf58fa40e15c676cc9349aa70f406282e605d); Commitnachricht nennt PR #41. Dieser Commit wurde als Objekt gelesen, nicht als Arbeitsbranch verwendet.
 - [Historischer CMCE-Dispatcher](https://github.com/JanHG98/netcore-tetra/blob/6a7cf58fa40e15c676cc9349aa70f406282e605d/crates/tetra-entities/src/cmce/cmce_bs.rs) und [historische SDS-Unterkomponente](https://github.com/JanHG98/netcore-tetra/blob/6a7cf58fa40e15c676cc9349aa70f406282e605d/crates/tetra-entities/src/cmce/subentities/sds_bs.rs).
-- [Späterer Fix-Commit 086a81f](https://github.com/JanHG98/netcore-tetra/commit/086a81fa8820ef579c475a65a38e3d23644c52f0), Commitnachricht `v1.9.0: Integrate NINA/KATWARN and tested rollout fixes (#55)`. Relevant ist der direkt gelesene CMCE-Diff; eine CI- oder Releaseabnahme wurde für diesen Archivauftrag nicht neu durchgeführt.
+- [Späterer Fix-Commit 086a81f](https://github.com/JanHG98/netcore-tetra/commit/086a81fa8820ef579c475a65a38e3d23644c52f0), Commitnachricht `v1.9.0: Integrate NINA/KATWARN and tested rollout fixes (#55)`. Relevant ist der direkt gelesene CMCE-Diff; eine CI- oder Releaseabnahme wurde für diese Quellenprüfung nicht neu durchgeführt.
 - [Aktueller CMCE-Dispatcher](https://github.com/JanHG98/netcore-tetra/blob/8958a4120548dbe442b8b1ebd3847ab0dfadc92e/crates/tetra-entities/src/cmce/cmce_bs.rs).
 - [Aktueller SDS-Empfang und Routing](https://github.com/JanHG98/netcore-tetra/blob/8958a4120548dbe442b8b1ebd3847ab0dfadc92e/crates/tetra-entities/src/cmce/subentities/sds_bs.rs).
 - [SDS-Router-Ereigniserzeugung](https://github.com/JanHG98/netcore-tetra/blob/8958a4120548dbe442b8b1ebd3847ab0dfadc92e/system-backend/sds-router/src/state.rs).
@@ -770,9 +759,9 @@ Das über den Chatabruf bereitgestellte Bild hat selbst eine schmale Darstellung
 - [Gateway-Zustand und Topicbildung](https://github.com/JanHG98/netcore-tetra/blob/8958a4120548dbe442b8b1ebd3847ab0dfadc92e/system-backend/iot-gateway/src/state.rs), [MQTT-Publisher](https://github.com/JanHG98/netcore-tetra/blob/8958a4120548dbe442b8b1ebd3847ab0dfadc92e/system-backend/iot-gateway/src/mqtt.rs) und [Quellen-Poller](https://github.com/JanHG98/netcore-tetra/blob/8958a4120548dbe442b8b1ebd3847ab0dfadc92e/system-backend/iot-gateway/src/poller.rs).
 - [Gateway-Beispielkonfiguration](https://github.com/JanHG98/netcore-tetra/blob/8958a4120548dbe442b8b1ebd3847ab0dfadc92e/system-backend/iot-gateway/config/iot-gateway.example.toml), [systemd-Datei](https://github.com/JanHG98/netcore-tetra/blob/8958a4120548dbe442b8b1ebd3847ab0dfadc92e/system-backend/iot-gateway/systemd/netcore-iot-gateway.service) und [Gateway-README](https://github.com/JanHG98/netcore-tetra/blob/8958a4120548dbe442b8b1ebd3847ab0dfadc92e/system-backend/iot-gateway/README.md).
 
-### Im historischen Chat verwendete externe Dokumentation
+### Im historischen Arbeitsstand verwendete externe Dokumentation
 
-Diese Links wurden aus dem sichtbaren Altchat übernommen. Die Archivierung behauptet damit keine neu getestete Kompatibilität aktueller HA-/Proxmox-Versionen:
+Die folgenden externen Quellen gehören zum historischen Arbeitsstand. Die Kompatibilität neuerer HA-/Proxmox-Versionen wurde nicht erneut getestet:
 
 - [Home Assistant: alternative Installation / virtuelle Maschinen](https://www.home-assistant.io/installation/alternative/).
 - [Home Assistant: MQTT](https://www.home-assistant.io/integrations/mqtt/).
@@ -783,10 +772,8 @@ Diese Links wurden aus dem sichtbaren Altchat übernommen. Die Archivierung beha
 - [Home Assistant: Persistent Notification](https://www.home-assistant.io/integrations/persistent_notification/).
 - [Proxmox: qm-Handbuch](https://pve.proxmox.com/pve-docs/qm.1.html).
 
-### Umfang der Archivprüfung
+### Dokumentationsprüfung
 
-Für die Veröffentlichung sind Pfadbegrenzung auf `Docs/archive/`, Erhalt vorhandener Indexeinträge, relative Bild-/Dateilinks, Bildlesbarkeit, Bildprüfsummen, vollständige Übernahme der korrigierten YAML und der zwei Diagnoseblöcke sowie der Ausschluss enthaltener Zugangsdaten maßgeblich. Es wurden keine Funk-, HA-, MQTT- oder Homematic-Livetests und keine neuen Rust-Builds als Teil dieses Dokumentationsauftrags durchgeführt.
+Die Quellenprüfung umfasst keine erneuten Funk-, HA-, MQTT- oder Homematic-Livetests und keine neuen Rust-Builds.
 
-Die lokale Archivprüfung war erfolgreich: zehn vorgesehene Dateien ausschließlich unter `Docs/archive/`, sieben lesbare Bilder mit passender Dateiendung und dokumentierter SHA-256, drei bytegetreu kopierte PNGs, vorhandene Indexzeilen erhalten und alle relativen Links der neuen Dokumentation aufgelöst. Die korrigierte YAML und beide Diagnoseblöcke stimmen exakt mit dem direkten Chatabruf überein. Die eingebetteten Python-Diagnoseprogramme wurden nur auf Syntax geprüft. Der Suchlauf nach üblichen Token-/Private-Key-Mustern ergab keine Treffer; die Bildinhalte wurden visuell auf Zugangsdaten geprüft.
-
-Die Veröffentlichung erfolgt ausschließlich als Dokumentations-/Bildänderung auf `Archiving`, ohne Force-Push und ohne Merge. Der resultierende Archiv-Commit und der Remote-Stand werden nach dem Push separat verifiziert.
+Die lokalen Dokumentationsprüfungen bestätigten sieben lesbare Bilder, dokumentierte SHA-256, drei bytegetreu kopierte PNGs und auflösbare relative Links. Die korrigierte YAML und beide Diagnoseblöcke entsprechen dem erhaltenen Entwurfsstand. Die eingebetteten Python-Diagnoseprogramme wurden auf Syntax geprüft; ein Test auf den Zielsystemen steht aus.

@@ -1,44 +1,27 @@
-# NetCore-Tetra: WAP-Portal in XHTML/WML und Rust-Testfehler
+# Entwicklungsnotizen: WAP-Portal in XHTML/WML und Rust-Testfehler
 
-## 1. Metadaten und Geltungsbereich
+## 1. Rahmen und Geltungsbereich
 
 | Merkmal | Stand |
 |---|---|
 | Thema | „Hallo Welt“ in mobilen Formaten; vollständig verlinktes NetCore-WAP-Portal; Aktualisierung der Basisstation; SNDCP- und Mehrzellen-Testfehler |
-| Ursprünglicher Chattitel | Nicht im zugänglichen Verlauf enthalten. Der Dokumenttitel ist eine beschreibende Archivbezeichnung. |
-| Ursprünglicher Chatlink | Nicht verfügbar; kein Link rekonstruiert oder erfunden. |
 | Erstellungsdatum | 2026-10-05, Zeitzone Europe/Berlin |
-| Historischer Arbeitsbranch | `swmi`, vom Benutzer als `https://github.com/JanHG98/netcore-tetra/tree/swmi` genannt |
+| Historischer Arbeitsbranch | `swmi`, historisch als `https://github.com/JanHG98/netcore-tetra/tree/swmi` genannt |
 | Historischer Quellcommit | Aus der hochgeladenen ZIP nicht zuverlässig ermittelbar; sie enthält keinen verwertbaren Git-Checkout mit Commitnachweis. |
-| Heutiger geprüfter Hauptbranch | `main` bei [`e5d825b33db2e1fce14bcb2cc23e73c241873a18`](https://github.com/JanHG98/netcore-tetra/commit/e5d825b33db2e1fce14bcb2cc23e73c241873a18) |
+| Geprüfter Hauptbranch | `main` bei [`e5d825b33db2e1fce14bcb2cc23e73c241873a18`](https://github.com/JanHG98/netcore-tetra/commit/e5d825b33db2e1fce14bcb2cc23e73c241873a18) |
 | Geprüfter Archivbranch vor dieser Änderung | `Archiving` bei [`7a98acb0c7520beebbac47d907c01516daa0146b`](https://github.com/JanHG98/netcore-tetra/commit/7a98acb0c7520beebbac47d907c01516daa0146b) |
 | Root-Tree des geprüften Archivstands | `4db14277f7c6d311bfe7488508f5f05ec1756892` |
 | Archivdatei | `Docs/archive/2026-10-05_wap-portal-xhtml-wml-und-rust-testfehler.md` |
-| Änderungsumfang dieses Archivauftrags | Diese Datei und der Eintrag in `Docs/archive/README.md`; keine Programm-, Konfigurations- oder Roadmapänderungen außerhalb des Archivs |
-| Archivierung des Chats | Erfolgt nach Prüfung durch den Benutzer selbst. |
 
-**Wichtige zeitliche Trennung:** Die Erstellung dieses Archivs am 05.10.2026 ist nicht das belegte Datum sämtlicher ursprünglicher Chatbeiträge. Die wiedergefundenen Portaldateien tragen Metadaten vom 30.07.2026; auch die historische Portalvalidierung heißt `WAP_PORTAL_VALIDATION_2026-07-30.md`. Die einzelnen Chatbeiträge liegen ohne vollständige ursprüngliche Zeitstempel vor.
+**Zeitlicher Bezug:** Die Notizen wurden am **05.10.2026** zusammengestellt. Portaldateien und `WAP_PORTAL_VALIDATION_2026-07-30.md` beziehen sich auf **30.07.2026**. Einzelschritte sind nicht lückenlos datiert; das Dokumentationsdatum ist kein Ausführungsnachweis.
 
-### 1.1 Verfügbare Quellen und Grenzen
+### 1.1 Arbeitsgrundlage und offene Nachweise
 
-Ausgewertet wurden:
+Grundlage sind Formatbeispiele, Compilerlogs, `netcore-tetra-swmi(1).zip`, die originalen Portalpakete und Patches sowie die maßgeblichen Repository-Dateien zu WAP, Fragmentierung, Testharness, MLE/CMCE und Deployment. Die Pakete `netcore-tetra-swmi-wap-portal.zip`, `netcore-tetra-swmi-wap-portal-fixed.zip`, `netcore-wap-portal-pages.zip`, `netcore-tetra-wap-portal.patch`, `fragment-borrow-fix.patch` und `netcore-wap-portal-SHA256SUMS.txt` sind erhalten.
 
-- der in diesen Arbeitskontext übergebene Gesprächsverlauf, vom ersten Formatvergleich bis zur letzten Fehlermeldung und der angekündigten, noch nicht abgeschlossenen Testreparatur;
-- die hochgeladene `netcore-tetra-swmi(1).zip`;
-- die wiedergefundenen Originalartefakte `netcore-tetra-swmi-wap-portal.zip`, `netcore-tetra-swmi-wap-portal-fixed.zip`, `netcore-wap-portal-pages.zip`, `netcore-tetra-wap-portal.patch`, `fragment-borrow-fix.patch` und `netcore-wap-portal-SHA256SUMS.txt`;
-- die für WAP, Fragmentierung, Testharness, MLE/CMCE und Deployment maßgeblichen Dateien des oben genannten Repository-Stands;
-- die 25 verfügbaren ETSI-PDF-Anhänge als Inventar anhand Titel-/Versionsseiten und Seitenzahlen; gezielt zusätzlich SNDCP-/WAP-Fundstellen in EN 300 392-2.
+Die 25 ETSI-PDFs wurden anhand Titel, Version und Seitenzahl inventarisiert; SNDCP-/WAP-Stellen in EN 300 392-2 wurden gezielt geprüft. Die gesamte Sammlung, insbesondere die 4.100-seitige `ETSI.pdf`, wurde nicht vollständig fachlich gelesen.
 
-Nicht verfügbar beziehungsweise nicht durchgeführt:
-
-- ein vollständiger Export mit ursprünglichem Chattitel, Chat-ID, Chatlink und Zeitstempel jedes Turns;
-- eine spätere Antwort mit fertig repariertem Mehrzellen-Testbestand oder eine Erfolgsmeldung des Benutzers nach der letzten Fehlermeldung;
-- ein nachgewiesener historischer Push der WAP-Portalpakete; die damalige Abschlussmeldung sagte ausdrücklich, dass nichts direkt nach GitHub gepusht wurde;
-- Zugang zur laufenden Basisstation, zur tatsächlich installierten Binary, zum IP-Gateway-LXC oder zu einem Funkgerät;
-- ein Rust-Build in der Archivierungsumgebung: `cargo` und `rustc` waren nicht verfügbar;
-- eine vollständige fachliche Auswertung aller Seiten der ETSI-Sammlung. Insbesondere die 4.100-seitige `ETSI.pdf` wurde nicht vollständig gelesen.
-
-Andere Projektchats und Profilinformationen wurden nicht als zusätzliche Beschlüsse dieses Chats behandelt. Die Kontextsuche lieferte keinen ursprünglichen Titel/Chatlink und keine eindeutig diesem Verlauf zugehörige spätere Reparaturbestätigung.
+Eine fertige Mehrzellen-Testreparatur und anschließende Erfolgsmeldung fehlen. Bei der Bestandsaufnahme standen `cargo` und `rustc` nicht zur Verfügung; ein neuer Rust-Build war daher nicht möglich.
 
 ### 1.2 Statusbegriffe
 
@@ -55,7 +38,7 @@ Andere Projektchats und Profilinformationen wurden nicht als zusätzliche Beschl
 
 ### 2.1 Ursprüngliche Anfrage
 
-Der Benutzer wollte zunächst „Hallo Welt“ als:
+Ausgangsfrage: „Hallo Welt“ als:
 
 - WML beziehungsweise „WML script“,
 - XHTML,
@@ -63,7 +46,7 @@ Der Benutzer wollte zunächst „Hallo Welt“ als:
 - WBXML,
 - OMA DRM.
 
-Die Antwort stellte Minimalbeispiele bereit und unterschied Auszeichnungssprache, Organisation, Binärkodierung und Rechteobjekt. Anschließend beschränkte der Benutzer den eigentlichen Entwicklungsauftrag ausdrücklich auf **XHTML und WML**:
+Die Minimalbeispiele unterscheiden Auszeichnungssprache, Organisation, Binärkodierung und Rechteobjekt. Der Entwicklungsumfang wurde anschließend auf **XHTML und WML** eingegrenzt:
 
 > Viele unterschiedliche NetCore-Seiten, jede in beiden Formaten, innerhalb des jeweiligen Formats vollständig miteinander verlinkt.
 
@@ -75,20 +58,19 @@ Die hochgeladene Projekt-ZIP enthielt einen lokalen WAP-over-SNDCP-Dienst in der
 
 Der interne Zielendpunkt war `10.0.0.1:9200` über UDP/WDP/WTP/WSP. Das ist der eingebaut beantwortete Paketdatenendpunkt und kein Nachweis eines normalen TCP-HTTP-Servers auf dem IP-Gateway-LXC.
 
-### 2.3 Wesentliche Gesprächsschritte
+### 2.3 Wesentliche Arbeitsschritte
 
 | Reihenfolge | Inhalt | Belegbarer Abschluss |
 |---|---|---|
-| 1 | Formatvergleich und „Hallo Welt“-Beispiele | Beispiele im Chat vorhanden; keine Geräteprüfung belegt. |
+| 1 | Formatvergleich und „Hallo Welt“-Beispiele | Die Beispiele vorhanden; keine Geräteprüfung belegt. |
 | 2 | Beschränkung auf XHTML und WML | Ausdrückliche Benutzerentscheidung. |
 | 3 | Anforderung vieler vollständig verlinkter NetCore-Seiten | Verbindliche Portal-Anforderung. |
 | 4 | Erstellung eines kompakten, eingebauten Portals plus statischer Referenzseiten | In den wiedergefundenen ZIPs/Patches nachprüfbar. |
 | 5 | Frage nach Neuinstallation des IP-Gateways | Antwort: Basisstationssoftware bauen/aktualisieren; kein Neuaufsetzen des IP-Gateway-LXC für dieses lokale Portal. |
 | 6 | Erster Testversuch scheitert mit E0502 in `fragment.rs` | Benutzer-Compilerlog vorhanden. |
-| 7 | Längenwert vor dem veränderlichen Slicezugriff zwischenspeichern | Im korrigierten Paket und im heutigen Repository nachprüfbar; kein erfolgreicher Rust-Testlauf belegt. |
+| 7 | Längenwert vor dem veränderlichen Slicezugriff zwischenspeichern | Im korrigierten Paket und im geprüften Repository nachprüfbar; kein erfolgreicher Rust-Testlauf belegt. |
 | 8 | Weitere Compilerfehler in Mehrzellen-/Restore-Integrationstests | Benutzerlog enthält E0599/E0308 und eine Warnung zu unbenutzten Reexports. |
 | 9 | Ankündigung eines konsistenten Abgleichs zwischen Tests und Implementierungen | Letzter sichtbarer Entwicklungsschritt; eine fertige Reparatur fehlt. |
-| 10 | Technische Archivierung dieses Verlaufs | Dieser Auftrag; ausschließlich Dokumentation unter `Docs/archive/`. |
 
 ## 3. Endgültige Anforderungen und Entscheidungen
 
@@ -110,7 +92,7 @@ Die konkrete Aufteilung auf 19 Seitenthemen, Kurzpfade und die Navigation mit `P
 
 OMA Push, generisches WBXML und OMA DRM wurden nach dem Formatvergleich nicht weiter beauftragt. Ein echter WMLScript-Interpreter oder WMLScript-Programm wurde nicht implementiert. Das erste Beispiel war **WML-Markup**, obwohl die Anfrage „WML script“ sagte; beide Begriffe sind technisch zu unterscheiden.
 
-Die Seiten zu Control Room, Media Library, Recorder und TTS stellen überwiegend kurze Informationsansichten dar. Der Chat belegt keinen Auftrag, darüber vollständige Administrationsoberflächen, Audioübertragung, Recordersteuerung oder TTS-Ausführung auf dem Funkgerät zu realisieren.
+Die Seiten zu Control Room, Media Library, Recorder und TTS sind überwiegend kurze Informationsansichten. Vollständige Administration, Audioübertragung, Recordersteuerung oder TTS-Ausführung auf dem Funkgerät sind nicht beauftragt.
 
 ## 4. Formatvergleich und wiederverwendbare Minimalbeispiele
 
@@ -165,7 +147,7 @@ Der historische generische WBXML-Testvektor lautete:
 
 Aufschlüsselung: Versionbyte `03` für WBXML 1.3, Public Identifier `01`, UTF-8-Kennung `6A`, sechs Byte Stringtabelle `hello\0`, LITERAL-Tag mit Inhalt `44 00`, Inline-String `03`, „Hallo Welt“ mit Nullabschluss und END `01`.
 
-Die im Chat genannte Dateierzeugung war nur vorgeschlagen:
+Die vorgeschlagene Dateierzeugung war nur vorgeschlagen:
 
 ```bash
 printf '%s' '03016A0668656C6C6F0044000348616C6C6F2057656C740001'   | xxd -r -p > hello.wbxml
@@ -177,33 +159,33 @@ Für ein echtes WML-/SI-Dokument wären passende dokumenttypspezifische Token/Co
 
 ### 5.1 Seitenmatrix
 
-Im historischen Paket waren 19 Themen mit jeweils einer XHTML- und einer WML-Referenzdatei enthalten. Die beiden mit „heutige Ergänzung“ bezeichneten Zeilen gehören erst zum zusätzlich geprüften aktuellen Stand.
+Im historischen Paket waren 19 Themen mit jeweils einer XHTML- und einer WML-Referenzdatei enthalten. Die beiden mit „geprüfte Ergänzung“ bezeichneten Zeilen gehören erst zum zusätzlich geprüften aktuellen Stand.
 
 | Thema | XHTML-Alias | WML-Alias | XHTML-Kurzpfad | WML-Kurzpfad | Herkunft |
 |---|---|---|---|---|---|
-| Start | `/index.xhtml` | `/index.wml` | `/x` | `/w` | Historischer Chat |
-| Status | `/status.xhtml` | `/status.wml` | `/x/st` | `/w/st` | Historischer Chat |
-| Teilnehmer | `/subscribers.xhtml` | `/subscribers.wml` | `/x/ms` | `/w/ms` | Historischer Chat |
-| Gruppen | `/groups.xhtml` | `/groups.wml` | `/x/gr` | `/w/gr` | Historischer Chat |
-| Rufe | `/calls.xhtml` | `/calls.wml` | `/x/ca` | `/w/ca` | Historischer Chat |
-| SDS | `/sds.xhtml` | `/sds.wml` | `/x/sd` | `/w/sd` | Historischer Chat |
-| Control Room | `/control-room.xhtml` | `/control-room.wml` | `/x/cr` | `/w/cr` | Historischer Chat |
-| Health | `/health.xhtml` | `/health.wml` | `/x/he` | `/w/he` | Historischer Chat |
-| Funkzelle | `/radio.xhtml` | `/radio.wml` | `/x/ra` | `/w/ra` | Historischer Chat |
-| Paketdaten | `/packet-data.xhtml` | `/packet-data.wml` | `/x/pd` | `/w/pd` | Historischer Chat |
-| IP Gateway | `/gateway.xhtml` | `/gateway.wml` | `/x/gw` | `/w/gw` | Historischer Chat |
-| Dienste | `/services.xhtml` | `/services.wml` | `/x/sv` | `/w/sv` | Historischer Chat |
-| Diagnose | `/diagnostics.xhtml` | `/diagnostics.wml` | `/x/dg` | `/w/dg` | Historischer Chat |
-| Media Library | `/media-library.xhtml` | `/media-library.wml` | `/x/me` | `/w/me` | Historischer Chat |
-| Recorder | `/recorder.xhtml` | `/recorder.wml` | `/x/re` | `/w/re` | Historischer Chat |
-| TTS Piper | `/tts.xhtml` | `/tts.wml` | `/x/tt` | `/w/tt` | Historischer Chat |
-| Tests | `/tests.xhtml` | `/tests.wml` | `/x/te` | `/w/te` | Historischer Chat |
-| Hilfe | `/help.xhtml` | `/help.wml` | `/x/hl` | `/w/hl` | Historischer Chat |
-| Projektinfo | `/about.xhtml` | `/about.wml` | `/x/ab` | `/w/ab` | Historischer Chat |
-| Aufgaben | `/tasks.xhtml` | `/tasks.wml` | `/x/tk` | `/w/tk` | Heutige Ergänzung, Phase 9 |
-| Formulare | `/task-form.xhtml` | `/task-form.wml` | `/x/fm` | `/w/fm` | Heutige Ergänzung, Phase 9 |
+| Start | `/index.xhtml` | `/index.wml` | `/x` | `/w` | Historische Planung |
+| Status | `/status.xhtml` | `/status.wml` | `/x/st` | `/w/st` | Historische Planung |
+| Teilnehmer | `/subscribers.xhtml` | `/subscribers.wml` | `/x/ms` | `/w/ms` | Historische Planung |
+| Gruppen | `/groups.xhtml` | `/groups.wml` | `/x/gr` | `/w/gr` | Historische Planung |
+| Rufe | `/calls.xhtml` | `/calls.wml` | `/x/ca` | `/w/ca` | Historische Planung |
+| SDS | `/sds.xhtml` | `/sds.wml` | `/x/sd` | `/w/sd` | Historische Planung |
+| Control Room | `/control-room.xhtml` | `/control-room.wml` | `/x/cr` | `/w/cr` | Historische Planung |
+| Health | `/health.xhtml` | `/health.wml` | `/x/he` | `/w/he` | Historische Planung |
+| Funkzelle | `/radio.xhtml` | `/radio.wml` | `/x/ra` | `/w/ra` | Historische Planung |
+| Paketdaten | `/packet-data.xhtml` | `/packet-data.wml` | `/x/pd` | `/w/pd` | Historische Planung |
+| IP Gateway | `/gateway.xhtml` | `/gateway.wml` | `/x/gw` | `/w/gw` | Historische Planung |
+| Dienste | `/services.xhtml` | `/services.wml` | `/x/sv` | `/w/sv` | Historische Planung |
+| Diagnose | `/diagnostics.xhtml` | `/diagnostics.wml` | `/x/dg` | `/w/dg` | Historische Planung |
+| Media Library | `/media-library.xhtml` | `/media-library.wml` | `/x/me` | `/w/me` | Historische Planung |
+| Recorder | `/recorder.xhtml` | `/recorder.wml` | `/x/re` | `/w/re` | Historische Planung |
+| TTS Piper | `/tts.xhtml` | `/tts.wml` | `/x/tt` | `/w/tt` | Historische Planung |
+| Tests | `/tests.xhtml` | `/tests.wml` | `/x/te` | `/w/te` | Historische Planung |
+| Hilfe | `/help.xhtml` | `/help.wml` | `/x/hl` | `/w/hl` | Historische Planung |
+| Projektinfo | `/about.xhtml` | `/about.wml` | `/x/ab` | `/w/ab` | Historische Planung |
+| Aufgaben | `/tasks.xhtml` | `/tasks.wml` | `/x/tk` | `/w/tk` | Geprüfte Ergänzung, Phase 9 |
+| Formulare | `/task-form.xhtml` | `/task-form.wml` | `/x/fm` | `/w/fm` | Geprüfte Ergänzung, Phase 9 |
 
-Die aktuelle Existenz der Dateien/Parserzuordnungen in dieser Tabelle ist **nicht** mit ihrer Erreichbarkeit am aktiven eingebauten WSP-Handler gleichzusetzen. Abschnitt 10 beschreibt die heute fehlende Einbindung.
+Die aktuelle Existenz der Dateien/Parserzuordnungen in dieser Tabelle ist **nicht** mit ihrer Erreichbarkeit am aktiven eingebauten WSP-Handler gleichzusetzen. Abschnitt 10 beschreibt die am Prüfstand 05.10.2026 fehlende Einbindung.
 
 ### 5.2 Navigation und Aliase
 
@@ -257,7 +239,7 @@ Der relevante Weg lautet:
 6. Dort werden WTP/WSP beziehungsweise ein einfacher UDP-GET-Testpfad verarbeitet.
 7. Die Antwort wird als IPv4/UDP-N-PDU aufgebaut, bei Bedarf auf die ausgehandelte MTU fragmentiert und zurück über SNDCP gesendet.
 
-Im Portalpaket folgt zwischen WSP-Anfrage und Antwort zusätzlich der Portalparser/-renderer. Im heutigen Repository fehlt diese Einbindung, siehe Abschnitt 10.
+Im Portalpaket folgt zwischen WSP-Anfrage und Antwort zusätzlich der Portalparser/-renderer. Im geprüften Repository fehlt diese Einbindung, siehe Abschnitt 10.
 
 Das weiterführende Paketdatenrouting zum Netzwerk/IP-Gateway ist ein eigener Weg. Die lokale WAP-Antwort wird von der Basisstation erzeugt; die bloße Erweiterung dieses lokalen Portals verlangt keine Neuinstallation des IP-Gateway-LXC.
 
@@ -265,12 +247,12 @@ Das weiterführende Paketdatenrouting zum Netzwerk/IP-Gateway ist ein eigener We
 
 | Komponente/Datei | Aufgabe und Prüfstatus |
 |---|---|
-| `bins/bluestation-bs/` | Basisstations-Binary; kein Build in dieser Archivierungsumgebung. |
+| `bins/bluestation-bs/` | Basisstations-Binary; kein Build bei der Bestandsaufnahme. |
 | `crates/tetra-entities/src/sndcp/sndcp_bs.rs` | PDP-/SNDCP-Verarbeitung, Auswahl des lokalen WAP-Endpunkts, Snapshot und Antwortpfad; aktueller Quelltext geprüft. |
 | `crates/tetra-entities/src/sndcp/wap_ip.rs` | IPv4/UDP, WTP/WSP, URI-/Policy-Behandlung und Antwortaufbau; historische und aktuelle Varianten unterscheiden sich wesentlich. |
-| `crates/tetra-entities/src/sndcp/wap_portal.rs` | `WapMarkup`, `WapPage`, `WapPortalRoute`, `ALL_PAGES`, Parser, Renderer und Portaltests. Im Paket eingebunden; im heutigen Repository als Datei vorhanden, aber nicht im `sndcp/mod.rs` deklariert. |
-| `crates/tetra-entities/src/sndcp/wap_status.rs` | `WapStatusSnapshot`, escaping und alte Statusrenderer; im heutigen aktiven Pfad verwendet. |
-| `crates/tetra-entities/src/sndcp/fragment.rs` | IPv4-Fragmentierung/Reassembly und Regressionstests; historische E0502-Stelle und heutiger Fix geprüft. |
+| `crates/tetra-entities/src/sndcp/wap_portal.rs` | `WapMarkup`, `WapPage`, `WapPortalRoute`, `ALL_PAGES`, Parser, Renderer und Portaltests. Im Paket eingebunden; im geprüften Repository als Datei vorhanden, aber nicht im `sndcp/mod.rs` deklariert. |
+| `crates/tetra-entities/src/sndcp/wap_status.rs` | `WapStatusSnapshot`, escaping und alte Statusrenderer; im geprüften aktiven Pfad verwendet. |
+| `crates/tetra-entities/src/sndcp/fragment.rs` | IPv4-Fragmentierung/Reassembly und Regressionstests; historische E0502-Stelle und geprüfter Fix geprüft. |
 | `crates/tetra-config/src/bluestation/sec_cell.rs` | WAP-/Paketdatenkonfiguration, DTOs und Defaults. |
 | `contrib/wap-portal/xhtml/`, `contrib/wap-portal/wml/` | Statische, vollständige Referenzseiten für einen geeigneten HTTP/WAP-Server und als lesbare Vorlagen. |
 | `contrib/wap-portal/validate.py` | XML-Wohlgeformtheit, Dateizahl, Formatlinks und Erreichbarkeit. |
@@ -324,13 +306,13 @@ Die bereitgestellte EN 300 392-2 V3.8.1 enthält:
 - U-CALL RESTORE in Abschnitt 14.7.2.2, gedruckte Seite 294;
 - WAP im SDS-Kontext in Abschnitt 29.5.8, gedruckte Seite 1220.
 
-Abschnitt 28.1 behandelt PDP-Kontextverwaltung und PDP-Datentransfer. Abschnitt 29.5.8 ist ein anderer Normkontext und kein Nachweis, dass das hier besprochene lokale IPv4/WSP-Portal über SDS transportiert wird. Die tatsächliche Portalzuordnung wurde am Projektcode geprüft. Eine allgemeine ETSI-/OMA-Konformitätszertifizierung wurde weder im Chat noch bei der Archivierung nachgewiesen.
+Abschnitt 28.1 behandelt PDP-Kontextverwaltung und PDP-Datentransfer. Abschnitt 29.5.8 ist ein anderer Normkontext und kein Nachweis, dass das hier besprochene lokale IPv4/WSP-Portal über SDS transportiert wird. Die tatsächliche Portalzuordnung wurde am Projektcode geprüft. Eine allgemeine ETSI-/OMA-Konformitätszertifizierung wurde nicht nachgewiesen.
 
 ## 7. Konfiguration und historisch vorgeschlagene Inbetriebnahme
 
 ### 7.1 Konfigurationsbeispiel
 
-Im Chat wurde für `/etc/netcore/config.toml` vorgeschlagen:
+Vorgeschlagen ist für `/etc/netcore/config.toml` vorgeschlagen:
 
 ```toml
 [cell_info]
@@ -356,7 +338,7 @@ Im historischen Portalpaket bedeuten die Schalter:
 | `accept_status_path` | Weitere XHTML-Portalseiten |
 | `accept_status_wml_path` | Alle WML-Portalseiten einschließlich Start |
 
-Im heutigen aktiven `wap_ip.rs` gelten dagegen weiterhin die alten, engeren Statuspfadprüfungen. Die Schalter allein aktivieren die neuen Portalseiten dort nicht.
+Im geprüften aktiven `wap_ip.rs` gelten dagegen weiterhin die alten, engeren Statuspfadprüfungen. Die Schalter allein aktivieren die neuen Portalseiten dort nicht.
 
 ### 7.2 Paket entpacken und Basisstation aktualisieren
 
@@ -372,17 +354,17 @@ cd netcore-tetra-swmi-wap-portal-review/netcore-tetra-swmi
 python3 contrib/wap-portal/validate.py
 ```
 
-Vor einem tatsächlichen Update müssen die in Abschnitt 8 und 10 beschriebenen Test-/Integrationsprobleme geklärt und der Quellstand festgehalten werden. Danach war im Chat vorgesehen:
+Vor einem tatsächlichen Update müssen die in Abschnitt 8 und 10 beschriebenen Test-/Integrationsprobleme geklärt und der Quellstand festgehalten werden. Danach ist vorgesehen:
 
 ```bash
 sudo bash install/update-basisstation.sh
 ```
 
-Die ZIP ist nicht automatisch ein geprüfter aktueller Checkout. Sie sollte insbesondere wegen ihres alten Projektstands und der vier ausgelassenen Wiki-Dateien nicht ungeprüft einen heutigen Checkout ersetzen.
+Die ZIP ist nicht automatisch ein geprüfter aktueller Checkout. Sie sollte insbesondere wegen ihres alten Projektstands und der vier ausgelassenen Wiki-Dateien nicht ungeprüft einen geprüften Checkout ersetzen.
 
 ### 7.3 Verhalten des vorhandenen Updateskripts
 
-Am historischen Paket und am heutigen Quelltext nachvollziehbar:
+Am historischen Paket und am geprüften Quelltext nachvollziehbar:
 
 1. Ermittelt Repositorypfad, Buildbenutzer und Cargo.
 2. Prüft die Unterstützung der Top-Level-`[media_library]`-Konfiguration.
@@ -402,11 +384,11 @@ Zusätzliche, in der kurzen ursprünglichen Antwort nicht hervorgehobene Wirkung
 
 Das ist daher kein ausschließlich auf WAP beschränktes Kopierskript. Diese Wirkungen vor einem Update am konkreten System prüfen. Der konfigurierte `service_name` hat Vorrang; ansonsten werden nacheinander `tetra.service`, `bluestation.service`, `tetra-bluestation.service` und `bluestation-bs.service` gesucht. Eine vorhandene Unit ist nicht automatisch die gewünschte aktive Unit; bei mehreren Installationen `UNIT` und `BINARY_PATH` ausdrücklich verifizieren.
 
-**Archivierungsprüfung:** `bash -n install/update-basisstation.sh` war erfolgreich. Das Skript wurde weder installiert noch auf einem laufenden Dienst ausgeführt; Rollback und Neustart wurden hier nicht praktisch getestet.
+**Statische Prüfung:** `bash -n install/update-basisstation.sh` war erfolgreich. Das Skript wurde weder installiert noch auf einem laufenden Dienst ausgeführt; Rollback und Neustart wurden hier nicht praktisch getestet.
 
 ### 7.4 Historische Kontrollbefehle und Browserziele
 
-Im Chat vorgeschlagen:
+Vorgeschlagen:
 
 ```bash
 systemctl status bluestation.service --no-pager
@@ -461,7 +443,7 @@ Der damalige automatische Python-Ersatz suchte genau die eingerückte alte Zeile
 
 - Die korrigierte ZIP enthält diesen Fix.
 - Original-Portal-ZIP und „fixed“-ZIP unterscheiden sich inhaltlich ausschließlich in `fragment.rs`.
-- Im heutigen Repository steht derselbe Lösungsansatz mit dem Variablennamen `packet_len`.
+- Im geprüften Repository steht derselbe Lösungsansatz mit dem Variablennamen `packet_len`.
 
 **Nicht belegt:** ein erfolgreich kompilierter Testlauf nach diesem Fix. Die nächste Benutzerantwort enthält weitere Testkompilierungsfehler; sie ist kein Nachweis für einen komplett grünen Build.
 
@@ -498,7 +480,7 @@ cargo test -p tetra-entities sndcp
 
 begrenzen über den Namen, welche Tests laufen sollen. Ohne `--lib` kann Cargo zuvor trotzdem die Integrationstesttargets kompilieren. Außerdem wird `common::two_cell` im gemeinsamen Testmodul eingebunden; dadurch können fehlende APIs weitere Integrationstests blockieren, selbst wenn ein konkreter Test den Harness nicht nutzt.
 
-Für einen abgegrenzten Bibliothekstest wurde bei der Archivierung als **künftiger Diagnosebefehl** festgehalten:
+Für einen abgegrenzten Bibliothekstest wurde bei der Bestandsaufnahme als **künftiger Diagnosebefehl** festgehalten:
 
 ```bash
 cargo test -p tetra-entities --lib sndcp::wap_ip
@@ -511,7 +493,7 @@ Nach Wiederherstellung der Portal-Moduldeklaration:
 cargo test -p tetra-entities --lib sndcp::wap_portal
 ```
 
-Wichtig: Im heutigen Stand kann der letzte Filter wegen der fehlenden Moduldeklaration null Portaltests finden. „0 tests“ ist keine erfolgreiche Portalabnahme. Die Zahl tatsächlich ausgeführter Tests muss im Ergebnis festgehalten werden.
+Wichtig: Im geprüften Stand kann der letzte Filter wegen der fehlenden Moduldeklaration null Portaltests finden. „0 tests“ ist keine erfolgreiche Portalabnahme. Die Zahl tatsächlich ausgeführter Tests muss im Ergebnis festgehalten werden.
 
 ### 8.4 Noch nicht funktionierend bestätigte Reparaturkandidaten
 
@@ -522,7 +504,7 @@ Für eine spätere Implementierungsarbeit zu prüfen:
 - Bei wiederholtem U-CALL RESTORE entweder ein korrekt clonbares PDU-Modell mit geprüften Feldabhängigkeiten bereitstellen oder den Test-PDU erneut konstruieren. Ein unüberprüftes `derive(Clone)` ist hier kein bereits bestätigter Fix.
 - Die Warnung zu Reexports bei Bedarf gezielt behandeln; die Integrationstestfehler bleiben unabhängig davon zu lösen.
 
-Der letzte sichtbare Assistententurn kündigte einen konsistenten Abgleich an. Es folgt keine gelieferte Reparatur, kein weiterer Patch und kein grüner Testbericht. Dieser Arbeitsstand bleibt ausdrücklich **offen**.
+Ein konsistenter Abgleich war als nächster Schritt vorgesehen. Eine gelieferte Reparatur, ein weiterer Patch oder ein grüner Testbericht ist nicht dokumentiert. Dieser Arbeitsstand bleibt ausdrücklich **offen**.
 
 ## 9. Historische Artefakte und erneute Prüfung
 
@@ -538,7 +520,7 @@ Der letzte sichtbare Assistententurn kündigte einen konsistenten Abgleich an. E
 | `fragment-borrow-fix.patch` | Kleiner E0502-Fix | Inhalt geprüft; separate Längenvariable. |
 | `netcore-wap-portal-SHA256SUMS.txt` | Originalprüfsummen der ersten Portal-ZIP, Seiten-ZIP und Portalpatch | Alle drei aufgeführten Prüfsummen stimmen mit den wiedergefundenen Dateien überein. Die fixed-ZIP ist darin nicht aufgeführt. |
 
-Die damaligen `/mnt/data/`-Downloadlinks sind historische Bereitstellungspfade und keine Repository-Dateipfade. Die Dateien konnten für diese Archivierung als gespeicherte Originalartefakte wiedergefunden werden; ihr ursprünglicher lokaler Pfad war dafür nicht erforderlich.
+Die damaligen `/mnt/data/`-Downloadlinks sind historische Bereitstellungspfade und keine Repository-Dateipfade. Die Dateien konnten bei der Bestandsaufnahme als gespeicherte Originalartefakte wiedergefunden werden; ihr ursprünglicher lokaler Pfad war dafür nicht erforderlich.
 
 ### 9.2 SHA-256
 
@@ -570,7 +552,7 @@ Außerdem fehlen im gelieferten Projektpaket vier im Eingangssnapshot vorhandene
 - `wiki/Status‐Messages.md.md`
 - `wiki/Systemd‐Service.md.md`
 
-Dies ist eine tatsächlich beobachtete Packaging-Abweichung, keine im Chat beschlossene Löschung. Die genaue Ursache wurde nicht ermittelt. Bei einer späteren Paketübernahme diese Inhalte erhalten; im Archivauftrag wurden sie nicht im Repository geändert.
+Dies ist eine tatsächlich beobachtete Packaging-Abweichung, keine beschlossene Löschung. Die genaue Ursache wurde nicht ermittelt. Bei einer späteren Paketübernahme diese Inhalte erhalten; bei der Bestandsaufnahme wurden sie nicht im Repository geändert.
 
 ## 10. Zusätzlich geprüfter Repository-Stand vom 05.10.2026
 
@@ -578,7 +560,7 @@ Dies ist eine tatsächlich beobachtete Packaging-Abweichung, keine im Chat besch
 
 `main` und `Archiving` wurden an den in Abschnitt 1 genannten Commits getrennt gelesen. Die entscheidenden WAP-, Fragment-, MLE-/CMCE-BS-, Test- und Konfigurationsdateien haben dort gleiche Blob-SHAs. Die nachstehenden Aussagen gelten für diese geprüften Dateien in beiden Ständen.
 
-Der historische Ref `refs/heads/swmi` lieferte beim Prüfen HTTP 404; die Branchsuche nach `swmi` fand keinen Branch. Der heutige Vergleich erfolgt daher nicht gegen einen vermeintlich noch vorhandenen `swmi`-Head.
+Der historische Ref `refs/heads/swmi` lieferte beim Prüfen HTTP 404; die Branchsuche nach `swmi` fand keinen Branch. Der geprüfte Vergleich erfolgt daher nicht gegen einen vermeintlich noch vorhandenen `swmi`-Head.
 
 Die aktuelle pfadbezogene Commit-Historie für `fragment.rs` und `wap_portal.rs` führte zum Importcommit [`45cd9b6c3f001c99a1516ab86db7f767be806a91`](https://github.com/JanHG98/netcore-tetra/commit/45cd9b6c3f001c99a1516ab86db7f767be806a91) vom 26.09.2026. Dessen Nachricht nennt einen importierten früheren Snapshot; der genaue historische Fix-/Portalcommit wurde darüber nicht separat nachgewiesen.
 
@@ -588,7 +570,7 @@ Die aktuelle pfadbezogene Commit-Historie für `fragment.rs` und `wap_portal.rs`
 
 Nachprüfbare Unterschiede:
 
-| Prüfung | Historische Portal-ZIP | Heutiger Repository-Stand |
+| Prüfung | Historische Portal-ZIP | Geprüfter Repository-Stand |
 |---|---|---|
 | `sndcp/mod.rs` | Enthält `pub mod wap_portal;` | Enthält diese Deklaration nicht. |
 | `wap_ip.rs` | Importiert `WapMarkup`, `WapPage`, Parser und Renderer; benutzt `portal_route`. | Importiert die alten `wap_status`-Renderer; kein Portalimport/-aufruf. |
@@ -598,11 +580,11 @@ Nachprüfbare Unterschiede:
 | Kompilierbare Portaltests | Modul im Paket deklariert; Ausführung dennoch nicht belegt. | Datei mit Tests abgelegt, aber über diesen Modulbaum nicht eingebunden. |
 | Statische Seiten | 19 je Format | 21 je Format, geprüft. |
 
-Damit sind Aussagen wie „alle Portalseiten sind im heutigen TBS-WSP-Pfad erreichbar“ oder „alle Navigation bleibt im aktiven Dienst formatrein“ am geprüften heutigen Code **nicht bestätigt und durch die direkte Handlerprüfung widerlegt**.
+Damit sind Aussagen wie „alle Portalseiten sind im geprüften TBS-WSP-Pfad erreichbar“ oder „alle Navigation bleibt im aktiven Dienst formatrein“ am geprüften geprüften Code **nicht bestätigt und durch die direkte Handlerprüfung widerlegt**.
 
-Das ist eine Archivierungsfeststellung. Die fehlende Einbindung wurde in diesem Auftrag nicht repariert, weil Änderungen außerhalb `Docs/archive/` ausdrücklich nicht autorisiert sind.
+Die fehlende Einbindung ist ein Befund der Quellprüfung. Eine Reparatur ist noch offen.
 
-### 10.3 Heutige Ergänzung um Aufgaben/Formulare
+### 10.3 Geprüfte Ergänzung um Aufgaben/Formulare
 
 Aktuell vorhanden:
 
@@ -614,17 +596,17 @@ Aktuell vorhanden:
 
 Die [Phase-9-Dokumentation](../PHASE_9_WAP_FORMS_STRUCTURED_TASKS.md) beschreibt einen separaten `system-backend/task-workflow/`-Dienst auf Port `8280`, Einstiegspfade `/x` und `/w`, eine Open-Lab-Testidentität per `?issi=4010001`, strukturierte Aufgaben `netcore-task-v1`, REST/MQTT/SDS und Statusübergänge.
 
-Wichtige dokumentierte Trennung: Der kompakte TBS-WSP-Pfad ist **kein Reverse Proxy** zu diesem Dienst. Seine Aufgaben-/Formularseiten sind kurze Hinweise auf Port 8280. Ein Formularsystem im zentralen LXC ist keine durch diesen Chat bestätigte interaktive TBS-Portalumsetzung.
+Wichtige dokumentierte Trennung: Der kompakte TBS-WSP-Pfad ist **kein Reverse Proxy** zu diesem Dienst. Seine Aufgaben-/Formularseiten sind kurze Hinweise auf Port 8280. Ein Formularsystem im zentralen LXC ist keine durch diesen Arbeitsstand bestätigte interaktive TBS-Portalumsetzung.
 
-Das ist ein späterer Repository-Befund, kein nachträglich erfundener Beschluss im historischen Chat. Der Dienst wurde in diesem Archivauftrag nicht gebaut oder live geprüft.
+Dieser spätere Repository-Befund ist vom historischen Portalauftrag getrennt. Der Dienst wurde am Prüftag nicht gebaut oder live geprüft.
 
 ### 10.4 Dokumentationsabweichungen
 
 `Docs/WAP_PORTAL.md` und `Docs/WAP_PORTAL_VALIDATION_2026-07-30.md` beschreiben noch 19 Seiten je Format und eine aktive Portalintegration. Dem stehen aktuell 21 Referenzseiten sowie die fehlende WSP-Einbindung gegenüber.
 
-Die Dokumente sind relevante historische Quellen, aber keine allein ausreichenden Belege für den heutigen Dienst. Eine spätere technische Änderung sollte Code, aktive Modulbindung, Tests und diese Dokumente gemeinsam konsolidieren.
+Die Dokumente sind relevante historische Quellen, aber keine allein ausreichenden Belege für den geprüften Dienst. Eine spätere technische Änderung sollte Code, aktive Modulbindung, Tests und diese Dokumente gemeinsam konsolidieren.
 
-### 10.5 Heutiger Stand der Compilerprobleme
+### 10.5 Geprüfter Stand der Compilerprobleme
 
 - **E0502:** Die fehlerhafte Fragmenttestzeile ist durch `let packet_len = packet.len() as u16;` vor dem Slicezugriff ersetzt. Lösung im Repository vorhanden; hier nicht mit Rust ausgeführt.
 - **MLE-/CMCE-Test-APIs:** Die in den Logs erwarteten öffentlichen Methoden fehlen weiterhin in den geprüften BS-Implementierungen.
@@ -638,13 +620,13 @@ Diese Befunde ergeben sich aus Quelltextprüfung. Sie ersetzen keinen vollständ
 
 ### 11.1 Prüfmatrix
 
-| Prüfung | Historisch im Chat | Erneut bei Archivierung | Grenze |
+| Prüfung | Historisch | Erneute Bestandsaufnahme | Grenze |
 |---|---|---|---|
 | Integrität der ersten Portal-ZIP | Als erfolgreich gemeldet | Erfolgreich mit ZIP-CRC-Prüfung | Kein Build-/Funktionsnachweis. |
 | Integrität der fixed-ZIP und Seiten-ZIP | Paket bereitgestellt | Erfolgreich | Keine Geräteabnahme. |
 | Original-SHA-256-Liste | Bereitgestellt | Alle drei enthaltenen Einträge stimmen | fixed-ZIP separat berechnet. |
 | Statisches historisches Portal | 19 XHTML + 19 WML als gültig/verlinkt gemeldet | Validator erfolgreich: 19 + 19 | XML-Wohlgeformtheit; keine vollständige DTD-/Browser-Konformitätsprüfung. |
-| Statisches aktuelles Portal | Nicht Teil des ursprünglichen Chatabschlusses | Validator erfolgreich: 21 + 21 | Keine aktive WSP-Routenprüfung durch diesen Python-Test. |
+| Statisches aktuelles Portal | Nicht Teil des ursprünglichen Entwurfabschlusses | Validator erfolgreich: 21 + 21 | Keine aktive WSP-Routenprüfung durch diesen Python-Test. |
 | Formatlinks und Erreichbarkeit | Als geprüft gemeldet | Beide statischen Portalstände erfolgreich | Erreichbarkeit im Dateigraphen, nicht über Funk. |
 | Dynamische Bytebudgets | Mit Referenz-Snapshot modelliert dokumentiert | Konstanten/Renderer/Tests im Quelltext geprüft | Keine erneut kompilierte Rust-Messung. |
 | WTP/WSP-Testvektoren | Tests im Paket enthalten | Quelltext geprüft | Tests hier nicht kompiliert ausgeführt. |
@@ -680,33 +662,33 @@ Diese Testnamen sind im Artefakt vorhanden. Ein enthaltenes `#[test]` ist kein a
 |---|---|
 | OMA/WBXML/DRM als weitere „Seitenformate“ | Formatvergleich; Benutzer entscheidet anschließend ausschließlich für XHTML und WML. |
 | „WML script“-Beispiel | Geliefert war WML-Markup, kein WMLScript. |
-| Statischer Websiteordner allein genügt | Historisches Paket erweitert zusätzlich den eingebauten Router. Im heutigen Code ist genau diese Integration wieder abzugleichen. |
-| „38 Seiten insgesamt“ als dauerhafte Projektzahl | Richtig für das historische Portal; heute 42 statische Referenzseiten durch Phase 9. |
+| Statischer Websiteordner allein genügt | Historisches Paket erweitert zusätzlich den eingebauten Router. Im geprüften Code ist genau diese Integration wieder abzugleichen. |
+| „38 Seiten insgesamt“ als dauerhafte Projektzahl | Richtig für das historische Portal; am Prüfstand 05.10.2026 42 statische Referenzseiten durch Phase 9. |
 | „Portal fertig“ | Für das erzeugte Artefakt und die statische Validierung zutreffend; Rust-Build, Deployment und Gerätebetrieb nicht bestätigt. |
 | „fixed“-ZIP löst die Tests | Sie löst ausschließlich die E0502-Stelle, nicht den später gemeldeten Mehrzellen-Testbestand. |
 | Neuen Inhalt durch Neuinstallation des IP-Gateways aktivieren | Für das lokal von der Basisstation beantwortete Portal nicht erforderlich. |
-| Bestehende Accept-Schalter aktivieren automatisch alle heutigen Portalseiten | Gilt für den historischen Portalpatch; nicht für den heute aktiven alten Router. |
-| XHTML/WML überall formatrein | Statische Portale sind geprüft formatrein; heutige alte Statusrenderer wechseln teilweise das Format. |
+| Bestehende Accept-Schalter aktivieren automatisch alle geprüften Portalseiten | Gilt für den historischen Portalpatch; nicht für den am Prüfstand 05.10.2026 aktiven alten Router. |
+| XHTML/WML überall formatrein | Statische Portale sind geprüft formatrein; geprüfte alte Statusrenderer wechseln teilweise das Format. |
 | Update ist nur Binarytausch ohne weitere Wirkung | Skript enthält auch TTS-/Piper-Migration und Media-Library-Prüfungen. |
 | Erfolgsmeldung eines gefilterten Cargo-Laufs reicht | Testanzahl und Targets prüfen; null Portaltests wegen fehlender Modulbindung sind keine Abnahme. |
 
 ## 13. Offene Aufgaben, Roadmap-Kandidaten und Fortsetzung
 
-### 13.1 Bereits aus diesem Chat offene Arbeit
+### 13.1 Bereits aus diesem Arbeitsstand offene Arbeit
 
 | Priorität | Aufgabe | Status und Abhängigkeit |
 |---|---|---|
 | 1 | Quell-/Paketstand auf der echten Basisstation erfassen | Offen; Commit, Binarypfad, Unit und Konfiguration sichern, bevor ein neuer Updateversuch erfolgt. |
-| 1 | Mehrzellen-Testbestand mit MLE-/CMCE-Implementierungen konsistent reparieren | Im letzten Chatturn angekündigt, nicht fertig geliefert; API-/Zustandsabgleich vor breiter Testabnahme. |
+| 1 | Mehrzellen-Testbestand mit MLE-/CMCE-Implementierungen konsistent reparieren | Vorgesehen, noch nicht fertig geliefert; API-/Zustandsabgleich vor breiter Testabnahme. |
 | 1 | LA-Typ und U-CALL-RESTORE-Wiederverwendung reparieren | Konkrete weiterhin relevante Compilerblocker; nicht durch den E0502-Fix erledigt. |
-| 1 | Aktive Portalintegration im heutigen Code herstellen/prüfen | Bei Archivierung entdeckte Voraussetzung für tatsächliche Routen und Testeinbindung. |
+| 1 | Aktive Portalintegration im geprüften Code herstellen/prüfen | Bei Archivierung entdeckte Voraussetzung für tatsächliche Routen und Testeinbindung. |
 | 2 | Rust-Bibliotheks-, Integrationstest- und Releasebuild ausführen | Rust-Toolchain und konsistenter Source erforderlich. |
 | 2 | Basisstation kontrolliert aktualisieren | Erst nach geprüftem Build; Skript-/TTS-Wirkungen und echte Unit/Binary klären. |
 | 2 | XHTML und WML am realen WAP-Terminal abnehmen | URL-/Proxy-/Paketdatenprofil, PDP/PDCH/WSP und Inhaltsanzeige gemeinsam prüfen. |
-| 3 | Heutige 21-Seiten-Dokumentation konsolidieren | Alten 19-Seiten-Stand als historisch kennzeichnen; aktive Integration und Testergebnisse dokumentieren. |
+| 3 | Geprüfte 21-Seiten-Dokumentation konsolidieren | Alten 19-Seiten-Stand als historisch kennzeichnen; aktive Integration und Testergebnisse dokumentieren. |
 | 3 | Packaging-Abweichungen der Wiki-Dateien beseitigen | Keine unbeabsichtigten Dokumentverluste bei Übernahme des historischen Pakets. |
 
-Die numerische Priorisierung ist die bei der Archivierung abgeleitete technische Reihenfolge. Im historischen Verlauf war nur vereinbart, nach den Fehlermeldungen Tests und Implementierungen konsistent abzugleichen; ein vollständiger Prioritätenplan wurde dort nicht ausdrücklich beschlossen.
+Die numerische Priorisierung ist die bei der Bestandsaufnahme abgeleitete technische Reihenfolge. Im historischen Verlauf war nur vereinbart, nach den Fehlermeldungen Tests und Implementierungen konsistent abzugleichen; ein vollständiger Prioritätenplan wurde dort nicht ausdrücklich beschlossen.
 
 ### 13.2 Konkrete spätere Prüfkommandos
 
@@ -728,7 +710,7 @@ Historisch vorgeschlagener größerer Releasebuild:
 cargo build --release   -p bluestation-bs   -p netcore-control-room   -p netcore-control-room-operator   --features "bluestation-bs/asterisk,bluestation-bs/recording,bluestation-bs/audio-player"
 ```
 
-Dieser Befehl wurde im Chat empfohlen, aber nicht als erfolgreich ausgeführt bestätigt. Ein Releasebuild ohne Tests beweist keine erfolgreiche Integrationstestabnahme.
+Dieser Befehl wurde empfohlen, aber nicht als erfolgreich ausgeführt bestätigt. Ein Releasebuild ohne Tests beweist keine erfolgreiche Integrationstestabnahme.
 
 ### 13.3 Geräteabnahme und kleine Nebenideen
 
@@ -743,7 +725,7 @@ Bei der späteren Fortsetzung bleiben relevant:
 - Gateway-/Paketdatenzustände als Informationsanzeige behalten;
 - Aufgaben-/Formularseiten aus der späteren Phase 9 gegebenenfalls einbeziehen; zentrale Formulare und lokalen Kurzrenderer getrennt abnehmen.
 
-OMA Push, WBXML und DRM bleiben lediglich historische Nebenideen. Ihre spätere Umsetzung wurde in diesem Chat ausdrücklich nicht weiterverfolgt.
+OMA Push, WBXML und DRM bleiben lediglich historische Nebenideen. Ihre spätere Umsetzung wurde ausdrücklich nicht weiterverfolgt.
 
 ## 14. Repository-Quellen, Anhänge und Bilder
 
@@ -773,11 +755,11 @@ Relative Links beziehen sich auf das Repository und damit auf den jeweiligen Bra
 - [U-CALL RESTORE](../../crates/tetra-pdus/src/cmce/pdus/u_call_restore.rs)
 - [Basisstations-Update](../../install/update-basisstation.sh)
 
-Für diesen Chat wurde keine zugehörige PR-Nummer oder ein einzelner historischer Portal-/Reparaturcommit nachgewiesen. Andere Projekt-PRs werden diesem Auftrag nicht ohne Beleg zugerechnet.
+Für diesen Arbeitsstand wurde keine zugehörige PR-Nummer oder ein einzelner historischer Portal-/Reparaturcommit nachgewiesen. Andere Projekt-PRs werden diesem Auftrag nicht ohne Beleg zugerechnet.
 
 ### 14.2 Verwandte, eigenständige Archive
 
-Die folgenden Dateien betreffen Nachbarthemen und wurden nicht überschrieben oder mit diesem Chat gleichgesetzt:
+Die folgenden Dateien betreffen Nachbarthemen und wurden nicht überschrieben oder mit diesem Arbeitsstand gleichgesetzt:
 
 - [WAP/SNDCP, IP-Gateway und Multi-PDCH](2026-10-03_wap-sndcp-ip-gateway-multi-pdch-und-control-room.md)
 - [WAP/IP-Mehrgerätebetrieb und Logdiagnose](2026-10-04_codex-wap-ip-mehrgeraetebetrieb-und-logdiagnose.md)
@@ -785,11 +767,7 @@ Die folgenden Dateien betreffen Nachbarthemen und wurden nicht überschrieben od
 
 ### 14.3 Bildbestand
 
-Im zugänglichen Verlauf dieses Chats ist kein eigenständiges Bild oder Screenshot enthalten. Die vorhandenen Benutzer-Compilerlogs sind Text. Die drei historischen erzeugten ZIPs enthalten ebenfalls keine Bilddateien; der hochgeladene Quellsnapshot enthält keine einschlägigen Bildanhänge des Chats.
-
-Die ETSI-PDFs enthalten Normseiten und Abbildungen, sind aber keine separat vom Benutzer im Gespräch geteilten Screenshots. Es wurden keine Normabbildungen als vermeintliche Chatbilder exportiert. Bilder aus anderen Projekt-/Medizinchats wurden nicht zugeordnet.
-
-**Folge für den Auftrag „Bilder des Chats auch hochladen“:** Es konnte kein diesem Chat zugehöriges Originalbild zum Upload ermittelt werden. Falls im nicht übergebenen Originalchat weitere Bilder existierten, fehlen deren Originaldateien/Zuordnung hier. Diese Lücke wurde nicht durch erzeugte Ersatzbilder verdeckt.
+Die Fehlernachweise sind textuelle Compilerlogs. Eigenständige Screenshots oder Bilder dieses Portal-Arbeitsstands sind nicht verfügbar; die drei erzeugten ZIPs enthalten keine Bilddateien. Normabbildungen in den ETSI-PDFs sind fachliche Referenzen, keine Portal- oder Laufzeitnachweise.
 
 ### 14.4 PDF-Anhangsinventar
 
@@ -825,20 +803,19 @@ Die folgenden Dateien waren lokal verfügbar. Titel, Version und Seitenzahlen wu
 
 ### 14.5 Historisch genannte externe Formatquellen
 
-Im ersten Formatvergleich wurden folgende öffentliche Quellen genannt. Sie wurden bei dieser Archivierung nicht erneut als aktueller Standardstand recherchiert; die finale Entwicklung beschränkte sich auf die geprüften XHTML-/WML-Artefakte.
+Im ersten Formatvergleich wurden folgende öffentliche Quellen genannt. Sie wurden bei der Bestandsaufnahme nicht erneut als aktueller Standardstand recherchiert; die finale Entwicklung beschränkte sich auf die geprüften XHTML-/WML-Artefakte.
 
 - [W3C: Introduction to Mobile Web](https://www.w3.org/wiki/Introduction_to_mobile_web)
 - [W3C: XHTML Basic](https://www.w3.org/TR/xhtml-basic/)
 - [W3C: historisches WBXML-Dokument](https://www.w3.org/1999/06/NOTE-wbxml-19990624/)
 - [OMA DRM 1.0 Rights Expression Language](https://www.openmobilealliance.org/release/DRM/V1_0-20040625-A/OMA-Download-DRMREL-V1_0-20040615-A.pdf)
 
-Die damalige OMA-Push-Antwort verlinkte zusätzlich eine Notification-Channel-REST-Spezifikation; der übergebene Link ist abgeschnitten. Das ist kein ausreichend präziser normativer Nachweis für die Service-Indication-Beispielsyntax. Ein vollständiger entsprechender SI-Quellenbeleg bleibt im sichtbaren Verlauf offen.
+Für OMA Push war zusätzlich eine Notification-Channel-REST-Spezifikation verlinkt; der Link ist abgeschnitten. Ein präziser normativer Beleg für die Service-Indication-Beispielsyntax fehlt.
 
-## 15. Abschlussstand für einen neuen Chat
+## 15. Fortsetzungsstand
 
-Der historische Entwicklungsauftrag erzeugte ein **in der ZIP integriertes 19-Themen-Portal in XHTML/WML** und einen **konkreten Borrow-Checker-Fix**. Die statischen Referenzseiten sind erneut erfolgreich geprüft. Der Benutzer erreichte anschließend weitere Compilerfehler; eine vollständige Testreparatur oder erfolgreiche Portalinstallation ist nicht übergeben.
+Der historische Entwicklungsauftrag erzeugte ein **in der ZIP integriertes 19-Themen-Portal in XHTML/WML** und einen **konkreten Borrow-Checker-Fix**. Die statischen Referenzseiten sind erneut erfolgreich geprüft. Anschließend traten weitere Compilerfehler auf; eine vollständige Testreparatur oder erfolgreiche Portalinstallation ist nicht übergeben.
 
-Der zusätzlich geprüfte heutige Repository-Stand enthält **21 Themen/42 statische Seiten**, aber **keine aktive Anbindung des abgelegten Portalrenderers im eingebauten WSP-Handler**. Der E0502-Fix ist vorhanden; die genannten Mehrzellen-Testinkonsistenzen bleiben im geprüften Code bestehen.
+Der zusätzlich geprüfte geprüfte Repository-Stand enthält **21 Themen/42 statische Seiten**, aber **keine aktive Anbindung des abgelegten Portalrenderers im eingebauten WSP-Handler**. Der E0502-Fix ist vorhanden; die genannten Mehrzellen-Testinkonsistenzen bleiben im geprüften Code bestehen.
 
 Eine Fortsetzung sollte zuerst den real installierten Quellstand bestimmen und die fehlende Portal-/Testanbindung konsistent lösen. Erst danach sind Build, kontrolliertes TBS-Update und reale XHTML-/WML-WAP-Abnahme belastbar. Für das lokale Portal ist keine Neuinstallation des IP-Gateway-LXC vereinbart oder erforderlich.
-

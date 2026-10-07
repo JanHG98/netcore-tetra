@@ -1,62 +1,35 @@
-# NetCore Dispatch: IDECS-artiger Arbeitsplatz, Sprache, RBAC und adaptive Bedienoberfläche
+# Brainstorming: NetCore Dispatch – Arbeitsplatz, RBAC, Audio und adaptive Oberfläche
 
-## 1. Metadaten und Ergebnis
+## 1. Rahmen und Ergebnis
 
 | Feld | Wert |
 |---|---|
-| Ursprünglicher Chattitel | **Eigenes IDECS entwickeln** |
-| Chat | [ChatGPT-Gespräch](https://chatgpt.com/c/6aa5e838-753c-83eb-9dad-723340ede061) |
-| Gesprächs-ID | `6aa5e838-753c-83eb-9dad-723340ede061` |
-| Sichtbarer Zeitraum | 13.09.2026 bis 05.10.2026; Programmauftrag am 17.09.2026 |
+| Historischer Zeitraum | 13.09.2026 bis 05.10.2026; Programmauftrag am 17.09.2026 |
 | Erstellt | **05.10.2026**, Europe/Berlin |
 | Repository / Zielbranch | `JanHG98/netcore-tetra` / **`Archiving`** |
 | Geprüfter Ausgangscommit | [`5417f495d305728e113d13eed47ca976913cb635`](https://github.com/JanHG98/netcore-tetra/commit/5417f495d305728e113d13eed47ca976913cb635) |
-| Prüfumfang | Sichtbarer Gesprächszweig, 30 hochgeladene Referenzbilder, zwei erzeugte Entwürfe, gezielter Code-/Dokumentationsabgleich im genannten Commit |
+| Prüfumfang | Fachanforderungen, 30 IDECS-Referenzbilder, zwei erzeugte Entwürfe, gezielter Code-/Dokumentationsabgleich im genannten Commit |
 | Bildablage | [`assets/2026-10-05_eigenes-idecs-6aa5e838/`](assets/2026-10-05_eigenes-idecs-6aa5e838/) |
-| Änderungsumfang dieses Archivs | Nur `Docs/archive/**`; keine Programm-, Konfigurations- oder Deploymentänderung |
 
-**Ergebnis des historischen Chats:** ein umfangreiches fachliches und technisches Konzept für einen eigenen NetCore-Dispatcher-Arbeitsplatz, zwei visualisierte UI-Entwürfe sowie der ausdrückliche Auftrag, einen Prototyp gegen tatsächlich vorhandene Dienste zu bauen. Ein fertiges Programm, ein zuordenbarer Implementierungscommit oder ein erfolgreiches Deployment wurde im ausgewerteten Gespräch nicht geliefert.
+**Historischer Arbeitsstand:** ein umfangreiches fachliches und technisches Konzept für einen eigenen NetCore-Dispatcher-Arbeitsplatz, zwei visualisierte UI-Entwürfe sowie der ausdrückliche Auftrag, einen Prototyp gegen tatsächlich vorhandene Dienste zu bauen. Ein fertiges Programm, ein zuordenbarer Implementierungscommit oder ein erfolgreiches Deployment wurde nicht als Ergebnis belegt.
 
-**Ergebnis des heutigen Repository-Abgleichs:** Control Room, native Control-Room-UI, Fachkerne, Call-/Media-Schnittstellen, Recorder, Media Library und SIP Switch sind vorhanden. Eine eigenständige Implementierung des hier entworfenen `dispatch-core`, einer React-/TypeScript-Dispatch-UI und eines lokalen Workstation Agents wurde im geprüften Branch nicht gefunden. Die zentrale IAM-Roadmap ist ausdrücklich Planung. Vorhandene Quelltexte sind kein Nachweis, dass diese Komponenten auf den realen LXCs laufen oder dass der geplante Bedienplatz Ende zu Ende funktioniert.
+**Ergebnis des geprüften Repository-Abgleichs:** Control Room, native Control-Room-UI, Fachkerne, Call-/Media-Schnittstellen, Recorder, Media Library und SIP Switch sind vorhanden. Eine eigenständige Implementierung des hier entworfenen `dispatch-core`, einer React-/TypeScript-Dispatch-UI und eines lokalen Workstation Agents wurde im geprüften Branch nicht gefunden. Die zentrale IAM-Roadmap ist ausdrücklich Planung. Vorhandene Quelltexte sind kein Nachweis, dass diese Komponenten auf den realen LXCs laufen oder dass der geplante Bedienplatz Ende zu Ende funktioniert.
 
-Die Git-Historie dieser Datei enthält den tatsächlichen Archivcommit. Der oben genannte SHA bezeichnet bewusst den **vor dem Schreiben geprüften Code-Ausgangsstand**, nicht den späteren Commit, der diese Dokumentation hinzufügt.
+## 2. Referenzen und offene Nachweise
 
-## 2. Quellenlage und Auswertungslücken
+Grundlage sind die fachlichen Anforderungen, **30 IDECS-Referenzoberflächen**, **zwei visualisierte NetCore-Entwürfe** und der gezielte Code-/Dokumentationsabgleich am genannten Commit. Bilder 01–30 zeigen Funktionen und Bedienprinzipien der Referenz; Bilder 31–32 sind Designentwürfe und keine implementierte NetCore-Anwendung.
 
-### 2.1 Zugängliche Quellen
+Der Prototypauftrag vom **17.09.2026** ist dokumentiert. Ein daraus entstandener Patch, Build, Implementierungscommit oder Deploymentnachweis fehlt. Auch reale TBS, PBX, AD, NFC-Leser und Dienste wurden bei der Bestandsaufnahme nicht getestet.
 
-Der Gesprächsabruf über `read_thread` lieferte zunächst lediglich die letzten fünf Gesprächsschritte, keine Anhänge und keinen weiteren Cursor. Dieser begrenzte Abruf allein hätte keine vollständige Auswertung erlaubt. Anschließend wurde der verlinkte Chat im Browser bis zum Anfang geladen und der sichtbare Gesprächszweig ausgewertet. Dort waren 13 Nutzerbeiträge mit den zugehörigen Antworten zugänglich, einschließlich der zwei Bildserien und der beiden Bildgenerierungen.
+Die Bildkopien wurden aus sichtbaren Ansichten gewonnen, zugeschnitten und als JPEG gesichert. Detailverluste bestehen; Originaldateinamen, ursprüngliche Formate und Originalhashes sind nicht gesichert. Weitere Programm-, CAD-, ZIP- oder Audioartefakte sind diesem Entwurf nicht eindeutig zugeordnet.
 
-Die Quellen wurden wie folgt getrennt:
-
-| Quelle | Aussagekraft |
-|---|---|
-| Explizite Nutzerbeiträge | Ziele, Ergänzungen, Prioritäten und gewählte Richtung |
-| Assistentenantworten | Vorschläge, Architekturentwürfe, Beispielwerte und behauptete Weitergaben an Work-Chats |
-| Bilder 01–30 | Vom Nutzer bereitgestellte IDECS-Referenzoberflächen; sichtbare Funktionen und Bedienprinzipien |
-| Bilder 31–32 | Erzeugte NetCore-Designentwürfe; keine Screenshots einer implementierten NetCore-Anwendung |
-| Repository am oben genannten SHA | Heutiger überprüfter Quelltext-/Dokumentationsstand, getrennt vom Ergebnis des September-Chats |
-| Projektquellen unter `sources/` | 25 synchronisierte ETSI-PDFs als schreibgeschützte Referenzsammlung; keine zusätzlich diesem Chat zugeschriebenen Uploads |
-
-Im Chat wurden insbesondere `en_30039201v010601p.pdf` und `en_30039205v020701p.pdf` für TETRA-Identitäten angesprochen. Beide sind in der lokalen Referenzsammlung vorhanden. Dieses Archiv führt keine vollständige erneute Normprüfung dieser PDFs durch und erhebt die im Chat genannten Normbezüge nicht zu einer abgenommenen Schnittstellenspezifikation.
-
-### 2.2 Grenzen
-
-- Ausgewertet wurde der aktuell sichtbare Gesprächszweig. Verborgene Antwortalternativen, gelöschte Inhalte oder weitere nicht verlinkte Chats sind damit nicht erfasst.
-- Der Assistent schrieb am 17.09., einen Work-Chat für die Implementierung gestartet zu haben. Im zugänglichen Verlauf fehlen ein belastbarer Zielchat-Verweis, dessen Ergebnisse, ein Patch, ein Buildprotokoll und ein zuordenbarer Commit. Diese Aussage belegt eine angekündigte Weitergabe, keine fertige Implementierung.
-- Entsprechendes gilt für die spätere Aussage, einen Archiv-Work-Chat gestartet zu haben. Der vorliegende Archivauftrag wird anhand seiner eigenen Git-Ergebnisse beurteilt.
-- Alle 32 sichtbaren Bilder wurden betrachtet und als **Ansichtsreproduktionen** gesichert. Die Originaldateien ließen sich über die verfügbaren Downloadwege nicht exportieren. Die gespeicherten PNGs sind Zuschnitte der Browser-Bildvorschau aus einer JPEG-Bildschirmaufnahme, jeweils **924 × 520 Pixel**. Sie sind keine bytegleichen Originaluploads. Der Browser meldete für die 30 Referenzen 1366 × 768 und für die zwei Entwürfe 1672 × 941 Quellpixel.
-- Die Bildinhalte wurden nicht nachgezeichnet oder inhaltlich retuschiert. Browserleisten und andere Chatinhalte wurden ausgeschnitten. JPEG-Verluste und die geringere Detailauflösung bleiben bestehen. Originaldateinamen, Originaldateihashes und ursprüngliche Dateiformate sind nicht gesichert.
-- Weitere eindeutig diesem Gespräch zugeordnete Datei-, CAD-, ZIP-, Audio- oder Programm-Anhänge waren im sichtbaren Verlauf nicht vorhanden. Es wird daraus keine Aussage über möglicherweise andernorts abgelegte Dateien abgeleitet.
-- Keine realen TBS, Funkgeräte, PBX, AD, NFC-Leser oder LXC-Dienste wurden im Rahmen dieses Archivauftrags getestet.
-
-Im Text und im Bildmanifest werden keine Zugangsdaten, Sitzungscookies oder temporären signierten Bild-URLs gespeichert. Sichtbare Teilnehmernummern, Gruppen, Namen, Datumsanzeigen und Ortsangaben in den Referenzbildern bleiben historische Bildinhalte; sie sind keine aktuelle NetCore-Konfiguration.
+Die 25 ETSI-PDFs unter `sources/` sind gemeinsame Projektquellen. EN 300 392-1 und EN 300 392-5 wurden für Identitäten herangezogen; eine vollständige erneute Normprüfung oder abgenommene Schnittstellenspezifikation liegt nicht vor.
 
 ## 3. Statusbegriffe
 
 | Status | Bedeutung in diesem Dokument |
 |---|---|
-| **Idee** | Im Chat vorgeschlagene Option ohne endgültige Festlegung |
+| **Idee** | Vorgeschlagene Option ohne endgültige Festlegung |
 | **Beschlossen/geplant** | Explizit gewünschtes Ziel oder für den Prototyp vorgesehener Umfang; noch kein Umsetzungsnachweis |
 | **Implementiert** | Konkreter Quelltext bzw. Artefakt im überprüften Repository vorhanden; Funktionsumfang und Grenzen werden benannt |
 | **Getestet** | Ein tatsächlich ausgeführter Test mit Ergebnis ist belegt; statische Archivprüfungen gelten nur für das Archiv |
@@ -64,43 +37,42 @@ Im Text und im Bildmanifest werden keine Zugangsdaten, Sitzungscookies oder temp
 
 Die Bildgenerierung ist als Erstellung zweier Designartefakte belegt. Sie ist weder ein UI-Funktionstest noch ein Programmprototyp. Screenshots von IDECS belegen dessen dargestellte Referenzansichten, nicht die Umsetzung entsprechender Funktionen in NetCore.
 
-## 4. Ausgangslage, Ziel und Gesprächsentwicklung
+## 4. Ausgangslage, Ziel und Konzeptentwicklung
 
-Der Nutzer wollte eine eigene Anwendung nach dem funktionalen Vorbild von Selectric IDECS entwickeln. Die erste Serie umfasste 20 Screenshots; zehn weitere ergänzten insbesondere die Hilfe-/Symbolseiten und zusätzliche Funkansichten. Der Zielumfang entwickelte sich vom Funkfrontend zum integrierten Operator-Arbeitsplatz für Funk, Telefonie, SDS, Status, Ortung, Aufzeichnung, Audio, Notruf, Gebäudetechnik und Arbeitsplatzverwaltung.
+Ziel ist eine eigene Anwendung nach dem funktionalen Vorbild von Selectric IDECS. Die erste Serie umfasste 20 Screenshots; zehn weitere ergänzten insbesondere die Hilfe-/Symbolseiten und zusätzliche Funkansichten. Der Zielumfang entwickelte sich vom Funkfrontend zum integrierten Operator-Arbeitsplatz für Funk, Telefonie, SDS, Status, Ortung, Aufzeichnung, Audio, Notruf, Gebäudetechnik und Arbeitsplatzverwaltung.
 
 | Reihenfolge | Inhalt und bleibende Bedeutung |
 |---|---|
 | 1–2, 13.09. | 30 Referenzbilder; permanenter Bedienrahmen, Modulschnitt und Ressourcenmodell erarbeitet |
-| 3 | Nutzer plant ungefähr 15-Zoll-Touchdisplay, selbst gedrucktes Gehäuse, Schwanenhalsmikrofon sowie Anschlüsse für Headset, LAN, Strom und USB |
+| 3 | Hardwareansatz: ungefähr 15-Zoll-Touchdisplay, selbst gedrucktes Gehäuse, Schwanenhalsmikrofon; Headset, LAN, Strom und USB nach außen führen |
 | 4–5 | Dashboard-/Menüentwurf und anschließend Funkansicht als Bilder erzeugt |
-| 6 | Nutzer erkennt verteilte Datenquellen; zentrale Aggregation statt direkter Abhängigkeit jedes Arbeitsplatzes von allen Diensten vorgeschlagen |
-| 7 | Nutzer benennt **Dispatch-Core als Dienst**, Arbeitsplatzverbindung zu diesem Dienst, Sprachidentität und RBAC für unterschiedliche Plätze |
-| 8 | Nutzer ergänzt ausdrücklich **Godmode** |
+| 6 | Verteilte Datenquellen zentral aggregieren; Arbeitsplatzanbindung über einen gemeinsamen Dienst |
+| 7 | **Dispatch-Core als Dienst**, Arbeitsplatzverbindung, Sprachidentität und RBAC für unterschiedliche Plätze |
+| 8 | Zusätzliche Anforderung: **Godmode** |
 | 9 | NFC-/RFID-Anmeldung und AD-Schnittstelle als Erweiterungswunsch |
 | 10 | Umfang als größeres Projekt erkannt; schrittweise Realisierung vorgeschlagen |
-| 11 | Nutzer verlangt Skalierbarkeit von der **5-m-Leinwand bis zum sehr kleinen Display** |
-| 12, 17.09. | Expliziter Programmauftrag gegen den damaligen tatsächlichen Dienstestand; Assistent beschreibt einen ausgelagerten Prototypauftrag |
-| 13, 05.10. | Abschlussdokumentation, Bilder, Repository-Prüfung und Veröffentlichung auf `Archiving` beauftragt |
+| 11 | Anforderung: Skalierbarkeit von der **5-m-Leinwand bis zum sehr kleinen Display** |
+| 12, 17.09. | Prototyp gegen den tatsächlichen Dienstestand beauftragt; Ergebnis noch nicht belegt |
 
-Der Arbeitsname **NetCore Dispatch** wurde vom Assistenten bevorzugt und im weiteren Konzept verwendet. `NetCore Console`, `NetCore Operator`, `NetCore Control` und `BlueStation Dispatch` waren Namensideen; eine separate endgültige Markenentscheidung ist nicht dokumentiert.
+Als Arbeitsname wird **NetCore Dispatch** verwendet. `NetCore Console`, `NetCore Operator`, `NetCore Control` und `BlueStation Dispatch` waren Namensideen; eine separate endgültige Markenentscheidung ist nicht dokumentiert.
 
 ## 5. Endgültige Anforderungen und Vorrang späterer Ergänzungen
 
 1. Ein gemeinsamer Bedienplatz soll vorhandene NetCore-Dienste nutzbar machen. Es soll kein zweiter TETRA-Stack neben den bestehenden Fachkernen entstehen.
 2. Der Arbeitsplatz verbindet sich mit einem **`dispatch-core`** als zentraler Fassade. Dieser bündelt Zustände, Berechtigungen, Sessions, Arbeitsplatzprofile und gezieltes Command Routing.
 3. Benutzeridentität, physischer Arbeitsplatz und TETRA-Sprachidentität müssen getrennt modelliert werden. Welche ID tatsächlich zugeteilt wird, blieb offen.
-4. RBAC soll verschiedene Nutzer, Plätze und Ressourcenbereiche abbilden; Godmode ist ein ausdrücklicher Nutzerwunsch. Die Details des Rechtekatalogs und der zeitweisen Rechteerhöhung sind Vorschläge.
+4. RBAC soll verschiedene Nutzer, Plätze und Ressourcenbereiche abbilden; Godmode ist eine ausdrückliche Anforderung. Die Details des Rechtekatalogs und der zeitweisen Rechteerhöhung sind Vorschläge.
 5. Sprache, lokale Audiohardware und PTT müssen als eigener kritischer Integrationspfad behandelt werden. Ein hübsches Audio-Panel allein genügt nicht.
 6. Der Zielarbeitsplatz umfasst die genannte Touchkonsole; zugleich muss die Oberfläche stark unterschiedliche Größen, Auflösungen und Bedienarten unterstützen.
 7. NFC/RFID und AD sollen später anschließbar sein. Der angekündigte erste Prototyp sollte dafür zunächst Schnittstellen vorbereiten.
-8. Die Integration soll ausschließlich gegen tatsächlich vorhandene APIs bzw. Topics erfolgen. Im Chat erfundene Beispielendpunkte sind keine vorhandenen Verträge.
-9. Installations-/Update-Schritte für betroffene LXC-Dienste waren Teil des angekündigten Prototypumfangs. Der Chat lieferte dafür keine ausgeführten Deploymentabläufe.
+8. Die Integration soll ausschließlich gegen tatsächlich vorhandene APIs bzw. Topics erfolgen. Beispielendpunkte des Entwurfs sind keine vorhandenen Verträge.
+9. Zum Prototypumfang gehören Installations-/Update-Schritte der betroffenen LXCs. Ausgeführte Deploymentabläufe fehlen.
 
 **Spätere Präzisierungen:** Die anfängliche Formulierung einer stets vollständig sichtbaren rechten Seitenleiste wird durch die spätere adaptive Anforderung eingeschränkt: Auf kleinen Displays dürfen Spalten in Tabs oder kompakte Ansichten übergehen. Die Informationshierarchie sowie schnell erreichbare PTT-, Ruf- und Alarmfunktionen bleiben erhalten. Der frühe Phasenplan schob Godmode in einen späteren Ausbau; der spätere Prototypauftrag nennt Godmode bereits im Grundgerüst. Die zuletzt beschriebene Prototypliste hat hier Vorrang.
 
 ## 6. Fachlicher Modul- und Bedienumfang
 
-Die folgende Matrix beschreibt den Zielumfang aus Chat und Bildern, nicht eine Liste bereits fertiggestellter NetCore-Funktionen.
+Die folgende Matrix beschreibt den Zielumfang aus Anforderungen und Referenzbildern. Sie ist keine Liste bereits fertiggestellter NetCore-Funktionen.
 
 | Modul | Vorgesehene Funktionen | Bild-/Konzeptbezug |
 |---|---|---|
@@ -148,7 +120,7 @@ Arbeitsplatz-UI <--- lokaler WebSocket ---> Workstation Agent
                                            | später NFC / GPIO-Bedienteile
 ```
 
-`dispatch-gateway`, `operator-api`, `dispatch-config` und `dispatch-session` waren frühe Namens-/Aufteilungsvorschläge; zeitweise wurde auch ein kompakter `control-room-api` erwogen. Der Nutzer wählte anschließend den Dienstgedanken **Dispatch-Core**. Eine verpflichtende Aufteilung in drei neue LXCs wurde nicht beschlossen. Die vorgeschlagenen Pfade `services/dispatch-core` und `apps/dispatch-ui` sind Entwurfsnamen und keine im geprüften Branch vorhandenen Paketpfade.
+`dispatch-gateway`, `operator-api`, `dispatch-config` und `dispatch-session` waren frühe Namens-/Aufteilungsvorschläge; zeitweise wurde auch ein kompakter `control-room-api` erwogen. Gewählte Richtung ist ein eigener Dienst **Dispatch-Core**. Eine verpflichtende Aufteilung in drei neue LXCs wurde nicht beschlossen. Die vorgeschlagenen Pfade `services/dispatch-core` und `apps/dispatch-ui` sind Entwurfsnamen und keine im geprüften Branch vorhandenen Paketpfade.
 
 | Fachquelle | Geplante Rolle in der zusammengeführten Darstellung |
 |---|---|
@@ -167,7 +139,7 @@ Fachdaten verbleiben im jeweiligen Kern. „Gruppe auf AP-01 links oben als Favo
 
 Ein generisches Ressourcenobjekt wurde mit `id`, `type`, `display_name`, `state`, `capabilities` und `bindings` vorgeschlagen. Genannte Typen: `radio`, `group`, `phone`, `console`, `gate`, `recorder`, `map-layer`. Physische Geräte, virtuelle Funkmittel, Audioquellen/-senken, Arbeitsplätze, Telefonleitungen, Gebäudeobjekte und Kartenlayer sollen so einheitlich referenzierbar werden.
 
-Das Gruppen-View-Model aus dem Chat kombinierte beispielsweise `id: group:3100`, GSSI 3100, Namen, Verfügbarkeit, 18 Mitglieder/15 Registrierte, einen aktiven Ruf samt Sprecher und Startzeit, zwei TBS sowie `recording: true`. Diese Zahlen und Kennungen sind **Demodaten**. Es gab keine bestätigte Vergabe oder Messung dieser Werte.
+Das Gruppen-View-Model aus den Entwicklungsnotizen kombinierte beispielsweise `id: group:3100`, GSSI 3100, Namen, Verfügbarkeit, 18 Mitglieder/15 Registrierte, einen aktiven Ruf samt Sprecher und Startzeit, zwei TBS sowie `recording: true`. Diese Zahlen und Kennungen sind **Demodaten**. Es gab keine bestätigte Vergabe oder Messung dieser Werte.
 
 ### Geplanter UI-Vertrag, noch nicht vorhandene API
 
@@ -189,7 +161,7 @@ emergency.started               location.updated
 recording.started               resource.failed
 ```
 
-Das sind Normalisierungsideen, keine nachgewiesenen MQTT-Topics oder vorhandenen NetCore-Eventnamen. Auch MQTT, gRPC/API und WebSocket im ersten Architekturdiagramm waren mögliche Adapterwege. Für jeden Adapter ist der reale Vertrag zu prüfen. Die im Chat genannte Reaktion „innerhalb weniger Millisekunden“ ist ein Zielbild ohne Messung oder festgelegtes Latenzbudget.
+Das sind Normalisierungsideen, keine nachgewiesenen MQTT-Topics oder vorhandenen NetCore-Eventnamen. Auch MQTT, gRPC/API und WebSocket im ersten Architekturdiagramm waren mögliche Adapterwege. Für jeden Adapter ist der reale Vertrag zu prüfen. Die vorgeschlagene Reaktion „innerhalb weniger Millisekunden“ ist ein Zielbild ohne Messung oder festgelegtes Latenzbudget.
 
 ## 8. Sprachidentität, PTT und Medienpfad
 
@@ -201,7 +173,7 @@ Das sind Normalisierungsideen, keine nachgewiesenen MQTT-Topics oder vorhandenen
 | Arbeitsplatz, z. B. `AP-01` | Physische oder logische Konsole mit Profil und Hardware |
 | Virtuelle Line Station, z. B. `vLS-AP01` | Provisionierter TETRA-Endpunkt mit eigener Netzidentität für Sprache |
 
-Für den Funkruf wurde eine eigene, provisionierte ITSI/ISSI aus einem Leitstellenbereich vorgeschlagen, getrennt von der Benutzeranmeldung. Das Rufziel wäre beispielsweise eine GSSI. Weder konkrete Nummern noch ein verbindliches vLS-Provisionierungsmodell wurden beschlossen. Die Begriffe MS/LS, TSI/ITSI und 24-Bit-SSI wurden im Chat mit den erwähnten ETSI-PDFs begründet; ihre komplette Abbildung auf die vorhandenen NetCore-Verträge ist noch zu spezifizieren.
+Für den Funkruf wurde eine eigene, provisionierte ITSI/ISSI aus einem Leitstellenbereich vorgeschlagen, getrennt von der Benutzeranmeldung. Das Rufziel wäre beispielsweise eine GSSI. Weder konkrete Nummern noch ein verbindliches vLS-Provisionierungsmodell wurden beschlossen. Die Begriffe MS/LS, TSI/ITSI und 24-Bit-SSI wurden anhand der erwähnten ETSI-PDFs eingeordnet; ihre komplette Abbildung auf die vorhandenen NetCore-Verträge ist noch zu spezifizieren.
 
 Eine einzelne anonyme Leitstellen-ID für alle Nutzer sowie eine unkontrollierte Übernahme persönlicher Teilnehmer-IDs wurden als ungünstige Ansätze diskutiert. Auch bei privilegierten Nutzern soll nur eine tatsächlich provisionierte vLS-/ISSI-Zuordnung verwendet werden.
 
@@ -218,13 +190,13 @@ PTT_UP / Abbruch
   -> Floor freigeben, TX stoppen, Zustand aktualisieren
 ```
 
-`PTT_DOWN`, `FLOOR_REQUEST`, `FLOOR_GRANTED`, `TX_GRANTED` und `FLOOR_RELEASE` waren Begriffe des Chatentwurfs. Sie dürfen nicht ungeprüft als existierende JSON-Nachrichten an Backend-Endpunkte gesendet werden. Die tatsächlichen Call-Control-Routen und das Route-Ready-Verfahren stehen in Abschnitt 13.
+`PTT_DOWN`, `FLOOR_REQUEST`, `FLOOR_GRANTED`, `TX_GRANTED` und `FLOOR_RELEASE` waren Begriffe des Entwurfs. Sie dürfen nicht ungeprüft als existierende JSON-Nachrichten an Backend-Endpunkte gesendet werden. Die tatsächlichen Call-Control-Routen und das Route-Ready-Verfahren stehen in Abschnitt 13.
 
 ### 8.3 Geplanter Audiotransport und offene Codec-Grenze
 
 Vorgeschlagen wurden zunächst RTP/SRTP und PCM mit **8 kHz, 16 Bit, mono**. Das entspricht 128 kbit/s reinen PCM-Nutzdaten, ohne Transport- und Verschlüsselungs-Overhead. Für entfernte Arbeitsplätze wurde Opus als spätere Option genannt. PipeWire/ALSA, Hardwarezuordnung, lokale Pegel, Audio-Routing und schnelles PTT sollten der native Agent übernehmen.
 
-Der skizzierte Weg „Mikrofon → Workstation Agent → Media Switch → TETRA-Codec → Funk“ ist am geprüften Repository **nicht als fertiger Live-Mikrofoneingang nachgewiesen**. Der heutige Media Switch transportiert bereits codierte 35-Byte-TETRA-ACELP-Frames. Codec-Ort, PCM-/RTP-Annahme, Taktung, Quellenidentität, Floor-Synchronisation und Rückweg zum Lautsprecher bleiben zu entwerfen. Ein vorhandener Inject-Endpunkt ist kein Beleg für beliebige PCM-Einspeisung.
+Der skizzierte Weg „Mikrofon → Workstation Agent → Media Switch → TETRA-Codec → Funk“ ist am geprüften Repository **nicht als fertiger Live-Mikrofoneingang nachgewiesen**. Der geprüfte Media Switch transportiert bereits codierte 35-Byte-TETRA-ACELP-Frames. Codec-Ort, PCM-/RTP-Annahme, Taktung, Quellenidentität, Floor-Synchronisation und Rückweg zum Lautsprecher bleiben zu entwerfen. Ein vorhandener Inject-Endpunkt ist kein Beleg für beliebige PCM-Einspeisung.
 
 Es gibt bereits Datei-Audio: Der native TBS-Audio-Player bereitet WAV/MP3 vor und sendet über die TBS; die Media Library orchestriert diesen Pfad oder speist vorbereitete TACELP-Frames in bestehende Media-Sessions ein. Diese Wiederverwendungsoption ist relevant, ersetzt aber keinen kontinuierlichen Live-Sprechstellenpfad.
 
@@ -254,13 +226,13 @@ dispatch.takeover    dispatch.monitor      system.admin
 
 Diese Bezeichner sind Entwurfswerte. Der existierende Control Room verwendet derzeit eine andere, gröbere Rollenhierarchie; siehe Abschnitt 13.
 
-Der Nutzer verlangte zusätzlich „mein Godmode“. Der Assistent schlug `ROLE_GODMODE` bzw. `ROOT_DISPATCH` vor: berechtigter netzweiter Zugriff über Arbeitsplatz-/Organisations-/Ressourcengrenzen hinweg, einschließlich Provisionierung und Administration. Gleichzeitig sollen Protokollkonsistenz, gültige Identitäten, Floor-/Call-Zustand und technische Integritätsregeln bestehen bleiben. Godmode bedeutet damit keine beliebige Sender-ID und kein Senden ohne korrekt aufgebauten Rufpfad.
+Zusätzliche Anforderung: **Godmode**. Vorgeschlagene Rollenbezeichnung: `ROLE_GODMODE` bzw. `ROOT_DISPATCH`: berechtigter netzweiter Zugriff über Arbeitsplatz-/Organisations-/Ressourcengrenzen hinweg, einschließlich Provisionierung und Administration. Gleichzeitig sollen Protokollkonsistenz, gültige Identitäten, Floor-/Call-Zustand und technische Integritätsregeln bestehen bleiben. Godmode bedeutet damit keine beliebige Sender-ID und kein Senden ohne korrekt aufgebauten Rufpfad.
 
 Zur Bedienung wurden eine sichtbare Krone, eine eindeutige Root-Override-Anzeige und Audit-Einträge sowohl für eine reguläre Ablehnung als auch die anschließend erlaubte Ausnahme vorgeschlagen. Als zusätzliche Option wurden Begründung und zeitliche Erhöhung, beispielhaft 15 Minuten, beschrieben. Eine frühe Lab-Option `godmode.require_elevation=false` war kein abschließend gewählter Produktionswert. In der späteren NFC-Diskussion wurde die bewusste Aktivierung nach der normalen Anmeldung bevorzugt, gegebenenfalls mit NFC plus PIN. Dauer, MFA-Verfahren, Notzugang und endgültige Policy blieben offen.
 
 ## 10. NFC/RFID, AD und persönliche Arbeitsplatzprofile
 
-Der Nutzer wünschte eine Anmeldung über Karte und eine AD-Schnittstelle. Als Kette wurde vorgeschlagen:
+Gewünscht sind Kartenanmeldung und AD-Schnittstelle. Als Kette wurde vorgeschlagen:
 
 ```text
 NFC-/RFID-Leser per USB
@@ -275,11 +247,11 @@ AD-Gruppen sollten grobe Rollen liefern, während NetCore die feinen Aktions-/Re
 
 Persönliche Ergonomie soll von Rechten getrennt werden: `preferred_audio_device`, `speaker_volume`, `favorite_groups`, `radio_layout`, `quick_actions`, `map_layers`, Kurzwahlen und Audio-Routing. Beim Nutzerwechsel kann dadurch das vertraute Profil erscheinen, ohne automatisch zusätzliche Rechte zu vergeben. Der NFC-Leser wurde vorne unter einer Glas-/Kunststofffläche mit beleuchtetem Symbol vorgeschlagen.
 
-Der heutige IAM-Entwurf vom 03.10. sieht einen übergreifenden Identity Provider und eine gemeinsame NetCore-Integration vor. Bei der Fortsetzung ist die historische direkte AD-Anbindung im Dispatch-Core mit dieser neueren Planung abzugleichen; eine zweite unabhängige Benutzerverwaltung sollte nicht versehentlich entstehen. Keycloak ist dort ein Kandidat, keine durch diesen Chat getroffene Produktentscheidung.
+Der geprüfte IAM-Entwurf vom 03.10. sieht einen übergreifenden Identity Provider und eine gemeinsame NetCore-Integration vor. Bei der Fortsetzung ist die historische direkte AD-Anbindung im Dispatch-Core mit dieser neueren Planung abzugleichen; eine zweite unabhängige Benutzerverwaltung sollte nicht versehentlich entstehen. Keycloak ist dort ein Kandidat, keine durch diesen Arbeitsstand getroffene Produktentscheidung.
 
 ## 11. Adaptive Oberfläche: Konsole, Desktop, Wand und Kleindisplay
 
-| Modus | Ziel und Darstellung im Chatentwurf |
+| Modus | Ziel und Darstellung im Entwurf |
 |---|---|
 | Wall / 5-m-Leinwand | Große Schrift und Statusflächen; Lagekarte, Calls, Alarme; wenig Detailbedienung |
 | Console / 15–24 Zoll | Voller Dispatcherplatz mit Ressourcen, Arbeitsfläche, Queue und PTT |
@@ -289,13 +261,13 @@ Der heutige IAM-Entwurf vom 03.10. sieht einen übergreifenden Identity Provider
 
 Vorgeschlagen wurden CSS Grid, Container Queries und beispielsweise `font-size: clamp(14px, 1.2vw, 24px)`. Das ist ein Implementierungsansatz, keine getestete Stylesheet-Regel des aktuellen Programms. Auflösung allein reicht nicht: 1920 × 1080 Pixel auf einem 7-Zoll-Gerät und einem 55-Zoll-Display verlangen unterschiedliche physische Bediengrößen und Betrachtungsabstände.
 
-Als Profilfelder wurden `class`, `diagonal`, `touch`, `density` und `ui_scale` genannt. Beispiele: Konsole mit 15,6 Zoll, Touch, hoher Dichte, Faktor 1,15; Wandprofil mit `diagonal: 196`, ohne Touch und Faktor 2,8. „5 m“ wurde nicht verbindlich als Breite oder Diagonale definiert. Die 196-Zoll-Angabe ist ein Chatbeispiel und kein fertiges Displaymaß.
+Als Profilfelder wurden `class`, `diagonal`, `touch`, `density` und `ui_scale` genannt. Beispiele: Konsole mit 15,6 Zoll, Touch, hoher Dichte, Faktor 1,15; Wandprofil mit `diagonal: 196`, ohne Touch und Faktor 2,8. „5 m“ wurde nicht verbindlich als Breite oder Diagonale definiert. Die 196-Zoll-Angabe ist ein Entwurfsbeispiel und kein fertiges Displaymaß.
 
 Touchziele wurden in einer Größenordnung von 44–56 CSS-Pixeln vorgeschlagen, PTT deutlich größer. Die endgültige Abnahme muss Gerät, Skalierung und tatsächliche Nutzung berücksichtigen. Geplante Module: `ActiveCallsPanel`, `ResourceList`, `AudioPanel`, `MapPanel`, `QueuePanel`. Beispielaufteilung an der Wand: 60 % Karte, 20 % aktive Rufe, 20 % Alarme; auf kleinem Display aktive Rufe, PTT und Tabs. Eine Codebasis sollte Tischpult, Monitor, ELW-Tablet, Laptop, Ultrawide, Videowand und Service-Display bedienen.
 
 ## 12. Physische Konsole
 
-**Expliziter Nutzerplan:** ungefähr 15 Zoll Touch, selbst gedrucktes Gehäuse, Schwanenhalsmikrofon und Außenanschlüsse für Headset, LAN, Strom und USB.
+**Geplanter Aufbau:** ungefähr 15 Zoll Touch, selbst gedrucktes Gehäuse, Schwanenhalsmikrofon und Außenanschlüsse für Headset, LAN, Strom und USB.
 
 Alle weitergehenden Hardwaredetails waren Vorschläge:
 
@@ -320,7 +292,7 @@ Alle folgenden Aussagen beziehen sich auf `Archiving` bei `5417f495d305728e113d1
 
 ### 13.1 Vorhandene Komponenten und Grenzen
 
-| Komponente | Verifizierter Befund | Abgrenzung zum Chatentwurf |
+| Komponente | Verifizierter Befund | Abgrenzung zum Entwurf |
 |---|---|---|
 | Control Room | [`Readme.md`](../../system-backend/control-room/Readme.md), [`http.rs`](../../bins/netcore-control-room/src/http.rs), [`config.rs`](../../bins/netcore-control-room/src/config.rs): Browser-WebUI, aggregiertes Lagebild, Dienststatus, Incidents, Schichtbuch, HTTP-API, `/node`-/`/ui`-WebSockets, typisierte Kommandos | Bereits vorhandene Integrations-/Bedienebene; kein Nachweis des neu entworfenen Dispatch-Core-Vertrags |
 | Native Control-Room-UI | [`Cargo.toml`](../../system-backend/control-room/ui/Cargo.toml) und [`main.rs`](../../system-backend/control-room/ui/src/main.rs): Rust/eframe/egui, eigenes Standalone-Workspace, Module, getrennte OS-Fenster, Kartenansicht und `/api/locations` | Kein React-/TypeScript-/PWA-Prototyp aus den Entwurfsbildern; vorhandene Desktop-UI sinnvoll weiter berücksichtigen |
@@ -343,7 +315,7 @@ Alle folgenden Aussagen beziehen sich auf `Archiving` bei `5417f495d305728e113d1
 | Bestehende Anmeldung | `POST /api/login`, `GET /api/me` | Vorhandener Control-Room-Vertrag; Wirksamkeit hängt vom Auth-Modus ab |
 | Call Control | `GET /api/v1/calls`; `POST /api/v1/calls/group`, `/api/v1/calls/individual`, `/api/v1/calls/{id}/floor`, `/api/v1/calls/{id}/floor/release`, `/api/v1/calls/{id}/release` | Reale Call-/Floor-Operationen; Request-Schemas vor Integration direkt im Code/OpenAPI prüfen |
 | Medienbereitschaft | `POST /api/v1/media/route-ready` | Medienroute wird revisionsbezogen bestätigt; Floor-/Ruflogik muss die Bereitschaft berücksichtigen |
-| Call-/Media-Ereignisse | WebSocket `/ws/media`; `call_created`, `leg_ready`, `floor_changed`, `call_updated`, `call_released` | Tatsächliche Ereignisnamen unterscheiden sich von den UI-Beispielen im Chat |
+| Call-/Media-Ereignisse | WebSocket `/ws/media`; `call_created`, `leg_ready`, `floor_changed`, `call_updated`, `call_released` | Tatsächliche Ereignisnamen unterscheiden sich von den UI-Entwurfsbeispielen |
 | Media Switch | `GET /api/v1/sessions`, `/api/v1/streams`, `/api/v1/buffers`, `/api/v1/taps`, `/api/v1/recorder/taps?after=<seq>&limit=<n>`; Session-Operationen einschließlich Inject | Bereits codierte Medien; Recorder-Tap besitzt begrenztes Replay und kann Lücken melden |
 | SDS Router | `GET`/`POST /api/v1/messages`; Detail-/Retry-/Requeue-/Cancel-Routen | Vorhandener Nachrichtenvertrag, keine automatische Bestätigung jedes gewünschten Flash-/CallOut-/UI-Workflows |
 | Recorder | `GET /api/v1/active`, `/api/v1/recordings`, `/api/v1/recordings/{id}`, `.../export`, `.../audio.tacelp`; `POST .../verify`, `.../retention`, `.../hold`, `.../finalize`, `.../delete` | Verwaltung und Rohframeexport; Berechtigungen für Export/Löschen gesondert planen |
@@ -385,11 +357,11 @@ Wichtige vorhandene Pfade:
 
 ## 14. Befehle, Installation und Deployment: was tatsächlich geschah
 
-### Historischer Chat
+### Historische Planung
 
-Es gibt im zugänglichen IDECS-Chat keine erfolgreich ausgeführte Installation, kein protokolliertes Cargo-/Frontend-Build, keinen LXC-Neustart und keinen Funk-Sprachtest des neuen Programms. Skizzen, JSON-Beispiele und CSS waren Vorschläge. Der Auftrag, ein Programm zu bauen, wurde mit der Behauptung eines gestarteten Work-Chats beantwortet; ein Ergebnis dieses Builds liegt hier nicht vor.
+Für das neue Dispatch-Programm sind weder erfolgreiche Installation noch Cargo-/Frontend-Build, LXC-Neustart oder Funk-Sprachtest dokumentiert. Skizzen, JSON und CSS sind Entwurfsbausteine. Das Build-Ergebnis des Prototypauftrags bleibt offen.
 
-### Heutige Repository-Sichtung
+### Geprüfte Repository-Sichtung
 
 Die vorhandenen Skripte [`install.sh`](../../system-backend/control-room/install/install.sh) und [`update.sh`](../../system-backend/control-room/install/update.sh) wurden gelesen, **nicht ausgeführt**. Der Updatepfad baut den Control Room, stoppt den Dienst, installiert Binary/Unit, konfiguriert den LXC-Endpunkt, setzt Konfigurationsrechte, startet neu und prüft Dienststatus sowie HTTP-Liveness. Ein vollständiger eigener Backup-/Rollback-Ablauf ist in diesem Skript nicht belegt. Vor einer realen Anwendung müssen Zielsystem, Konfiguration, Persistenz, Unit und Rückrollpfad separat gesichert werden.
 
@@ -418,7 +390,7 @@ Ein Liveness-Erfolg allein wäre weiterhin kein Beleg für Medienfluss, wirksame
 
 ### Tatsächlich ausgeführte Archivarbeiten
 
-Ein separater Checkout des bestehenden Branches wurde verwendet. Ausgangszustand, Remote-HEAD, vorhandene Archive und Index wurden geprüft; es wurde keine eindeutig zu diesem Chat gehörende ältere Archivdatei gefunden. Chat, Bilder und relevante Implementierungen wurden ausgewertet. Die Bilddateien wurden lokal dekodiert, vollständig visuell geprüft und mit SHA-256 inventarisiert. Veröffentlichung und Remote-Rückprüfung betreffen ausschließlich diese Archivdateien und werden mit dem tatsächlichen Git-Ergebnis abgeschlossen.
+Die Referenzbilder wurden einzeln visuell geprüft und als Reproduktionen mit SHA-256 inventarisiert. Der Repository-Abgleich erfasst die relevanten Implementierungen am oben genannten Commit; eine Prototypabnahme folgt daraus nicht.
 
 ## 15. Fehler, Korrekturen und verworfene Ansätze
 
@@ -426,31 +398,30 @@ Ein separater Checkout des bestehenden Branches wurde verwendet. Ausgangszustand
 |---|---|
 | Jeder Browser fragt sämtliche Dienste ab | Zentrale Fassade plus normalisierte Zustände vorgesehen; Fachdaten bleiben in den Kernen |
 | Alles nur im Browser, einschließlich Hardware-Audio | Nativer Agent für Audio/HID/Hardware vorgeschlagen; Implementierung offen |
-| Beliebige PCM-Daten direkt in heutigen Media Switch | Unbelegt; tatsächlicher Switch arbeitet mit codierten TETRA-Frames. Codec-/Ingress-Vertrag fehlt |
+| Beliebige PCM-Daten direkt in geprüften Media Switch | Unbelegt; tatsächlicher Switch arbeitet mit codierten TETRA-Frames. Codec-/Ingress-Vertrag fehlt |
 | Neue Anwendung mit bereits vorhandenem Control Room gleichsetzen | Vorhandene Integration und native UI getrennt inventarisiert; kein Nachweis des neuen Designprototyps |
 | Godmode umgeht jede technische Regel | Im Konzept auf administrative Berechtigungen begrenzt; gültige Identitäten und Ruf-/Floor-Zustände bleiben erforderlich |
 | Karte allein als starke Anmeldung | UID ist kein Passwort; kryptografischer Nachweis, Sessionbindung und privilegierte Erhöhung noch festlegen |
 | Allein anhand der Pixelbreite skalieren | Physische Größe, Touch und Betrachtungsart in Profile aufnehmen |
 | Rechte Seitenleiste auf jedem Kleinstdisplay fest erzwingen | Spätere adaptive Modi erlauben Umordnung; kritische Funktionen behalten Priorität |
-| Beendete Calls wachsen unbegrenzt weiter | Lifecycle und Historie vorgeschlagen; keine belegte Fehlerreproduktion oder Reparatur im IDECS-Chat |
-| Positions-SDS im ersten Chatbeispiel | Bild 09 enthält einen als LIP bezeichneten Rohtext. Die anschließend beispielhaft genannten Kartenkoordinaten wurden nicht nachvollziehbar daraus dekodiert. Keine getestete LIP-Konvertierung behaupten |
+| Beendete Calls wachsen unbegrenzt weiter | Lifecycle und Historie vorgeschlagen; keine belegte Fehlerreproduktion oder Reparatur im Dispatch-Entwurf |
+| Positions-SDS im ersten Entwurfsbeispiel | Bild 09 enthält einen als LIP bezeichneten Rohtext. Die anschließend beispielhaft genannten Kartenkoordinaten wurden nicht nachvollziehbar daraus dekodiert. Keine getestete LIP-Konvertierung behaupten |
 | Erzeugte Bilder sehen funktionsfähig aus | Reine Mockups; die dargestellten Dienste, ISDN-Anzeigen, Sprecher, Aufnahmen und Einsätze sind kein Betriebsbeweis |
-| Begrenzter Gesprächsabruf | Letzte fünf Schritte per Chatwerkzeug; zusätzliche ältere Inhalte und Bilder über den sichtbaren Browserchat gewonnen |
 | Originalbildexport schlägt fehl | Reguläre Downloadversuche lieferten keine Datei. Als funktionierender Ersatz wurden 32 vollständige Bildansichten aufgenommen, auf den Bildinhalt zugeschnitten und als PNG gespeichert |
 
-Es sind keine projektspezifischen Compilerfehler oder erfolgreich reparierten Deploymentfehler dieses neuen Programms dokumentiert. Solche Ergebnisse dürfen aus anderen Chats oder heutigen Dateien nicht rückwirkend diesem Gespräch zugeschrieben werden.
+Projektspezifische Compiler- oder Deploymentfehler des neuen Programms sind nicht dokumentiert. Befunde anderer Komponenten gelten nicht automatisch für den Dispatch-Prototyp.
 
 ## 16. Erreichter Stand und Tests
 
 | Gegenstand | Idee / Planung | Implementierungsbeleg | Test / Betrieb |
 |---|---|---|---|
-| Fachliche Spezifikation und Bedienkonzept | Ausführlich vorhanden | Dieses Archiv bewahrt den Entwurf | Inhaltlich gegen Gespräch/Bilder geprüft |
+| Fachliche Spezifikation und Bedienkonzept | Ausführlich vorhanden | Dieses Archiv bewahrt den Entwurf | Inhaltlich gegen Anforderungen/Bilder geprüft |
 | Zwei NetCore-UI-Entwürfe | Erzeugt und sichtbar | Bildartefakte vorhanden | Keine Funktionsprüfung eines Programms |
 | Dispatch-Core, neue WebUI, Workstation Agent | Geplant bzw. ausdrücklich beauftragt | Im geprüften Branch nicht gefunden | Kein Build-/Integrations-/Live-Beleg |
 | Arbeitsplatzgebundene vLS und Live-Mikrofonpfad | Entworfen | Durchgängiger Pfad nicht nachgewiesen | Keine Ende-zu-Ende-Abnahme |
 | Feingranulares RBAC/Godmode/NFC/AD | Gewünscht; Detailpolicy offen | Vorhandene Control-Room-Rollen und IAM-Planung nur Teilgrundlagen | Keine Abnahme dieses Zielmodells |
 | Adaptive Modi und 15-Zoll-Konsole | Gewünscht | Keine Implementierung/CAD-Abnahme dieses Entwurfs | Keine Touch-, DPI-, Wand- oder Hardwaretests |
-| Bestehende NetCore-Backend-Bausteine | Bereits vorhanden | Gezielt an Code und Doku überprüft | In diesem Auftrag weder gebaut noch auf realen Zielen geprüft |
+| Bestehende NetCore-Backend-Bausteine | Bereits vorhanden | Gezielt an Code und Doku überprüft | Bei der Bestandsaufnahme weder gebaut noch auf realen Zielen geprüft |
 | Archiv und Bilddateien | Angelegt | Markdown, Indexzeile, 32 PNGs und Manifest | Statische Datei-, Link-, Hash- und Git-Umfangsprüfungen; Remote-Prüfung nach Push |
 
 Vorhandene Testsuiten oder Testanleitungen im Repository wurden nicht als hier erfolgreich ausgeführte Tests gezählt. Ebenso ersetzt die visuelle Prüfung der Bilder keine Messung von Audio-Latenz, Rufzustand, RF-Aussendung oder Benutzerrechten.
@@ -461,11 +432,11 @@ Vorhandene Testsuiten oder Testanleitungen im Repository wurden nicht als hier e
 
 ### 17.1 Historischer Phasenplan
 
-Der Assistent schlug sieben Stufen vor: (1) Core/Login/RBAC/Profile, (2) Funk/Gruppen/PTT/Calls, (3) Audio, (4) SDS/Status/Ortung/Recorder, (5) Telefon/Konferenzen/Nachbarplatz, (6) NFC/AD/Haustechnik/Workflows/Godmode, (7) physische Konsole. Dies war eine Reihenfolgeempfehlung ohne Terminplan. Der spätere Prototypumfang nimmt Godmode und Grundansichten bereits früher auf.
+Vorgeschlagener Phasenplan: (1) Core/Login/RBAC/Profile, (2) Funk/Gruppen/PTT/Calls, (3) Audio, (4) SDS/Status/Ortung/Recorder, (5) Telefon/Konferenzen/Nachbarplatz, (6) NFC/AD/Haustechnik/Workflows/Godmode, (7) physische Konsole. Die Reihenfolge hat keinen Terminplan; der spätere Prototypumfang zieht Godmode und Grundansichten vor.
 
-### 17.2 Konkrete Fortsetzung auf dem heutigen Stand
+### 17.2 Konkrete Fortsetzung auf dem geprüften Stand
 
-1. **Implementierungsauftrag auffinden oder neu konkretisieren:** Ergebnis des angekündigten Work-Chats sichern, falls vorhanden. Andernfalls von den hier belegten Anforderungen ausgehen; keine vermeintlich fertige Dispatch-Implementierung voraussetzen.
+1. **Implementierungsauftrag auffinden oder neu konkretisieren:** Vorhandene Prototypergebnisse sichern, falls auffindbar. Andernfalls von den hier belegten Anforderungen ausgehen; keine vermeintlich fertige Dispatch-Implementierung voraussetzen.
 2. **Bestehende Komponenten entscheiden:** Vorhandenen Control Room, native UI und neue WebUI fachlich abgrenzen; Dienst-/Paketpfad für Dispatch-Core und seine Abhängigkeiten festlegen. Bestehende Funktionen wiederverwenden.
 3. **Verträge inventarisieren:** Für jede Ansicht Datenquelle, aktuelle API, Eventtyp, Rechteprüfung, Zustandsversion, Fehler-/Reconnect-Verhalten und verfügbare Tests dokumentieren. Bootstrap und UI-Events erst danach verbindlich spezifizieren.
 4. **Identität und IAM zusammenführen:** Benutzer/Arbeitsplatz/vLS trennen; Nummernplan, Provisionierung, Rollen/Scopes, Audit und Godmode-Elevation festlegen; mit `NETCORE-IAM-01` abstimmen. Kein zweites unabhängiges AD-/Passwortsystem ohne Entscheidung.
@@ -492,7 +463,7 @@ Der Assistent schlug sieben Stufen vor: (1) Core/Login/RBAC/Profile, (2) Funk/Gr
 
 ## 18. Bildarchiv und visuelle Quellen
 
-Die Nummerierung folgt der Reihenfolge im sichtbaren Chat: **01–20 erster Upload, 21–30 Nachlieferung, 31 Dashboardentwurf, 32 Funkentwurf**. Alle Bilder wurden einzeln gesichert und visuell ausgewertet. Die folgenden Abbildungen sind die oben beschriebenen Ansichtsreproduktionen; Statusanzeigen, Uhrzeiten und Adressen dürfen nicht als aktuelle NetCore-Betriebsdaten übernommen werden.
+Die Nummerierung folgt den beiden Referenzserien und den anschließenden Entwürfen: **01–20 erster Upload, 21–30 Nachlieferung, 31 Dashboardentwurf, 32 Funkentwurf**. Alle Bilder wurden einzeln gesichert und visuell ausgewertet. Die folgenden Abbildungen sind die oben beschriebenen Ansichtsreproduktionen; Statusanzeigen, Uhrzeiten und Adressen dürfen nicht als aktuelle NetCore-Betriebsdaten übernommen werden.
 
 Das [`manifest.json`](assets/2026-10-05_eigenes-idecs-6aa5e838/manifest.json) hält Herkunft, Zuordnung, gemeldete Quellgröße, gespeicherte Größe, Dateigröße und SHA-256 jeder **gespeicherten Reproduktion** fest. Die Hashes beziehen sich nicht auf die unzugänglichen Originaldateien.
 
@@ -703,11 +674,10 @@ Gewählte Gruppe, Sprecheraktivität, Ruf-/Scan-/Mithör-/SDS-/Status-/Alarm-/Ko
 
 ![Bild 32: Erzeugter NetCore-Funkentwurf](assets/2026-10-05_eigenes-idecs-6aa5e838/32-netcore-funk-entwurf-ansicht.png)
 
-
 ## 19. Belegstellen und Archivgrenze
 
 Die verlinkten Repository-Dateien sind im geprüften Ausgangscommit vorhanden. Für einen unveränderlichen Vergleich kann im GitHub-Link der Branch durch `5417f495d305728e113d13eed47ca976913cb635` ersetzt werden. Die in der IAM-Roadmap selbst genannte ältere `main`-Prüfbasis ist die Herkunft jener Roadmap und wird nicht als Prüfcommit dieses Archivs ausgegeben.
 
-Ergänzende vorhandene Archive sind die [Control-Room-Dokumentation](2026-10-03_control-room-windows-ui-rbac-status-tableau-directory-api.md), das [Archiv zum Gesprächssimulator und zur lokalen Mikrofon-/PTT-Sprechstelle](2026-10-03_gespraechssimulator-issi-und-lokale-mikrofon-ptt-sprechstelle.md) und der [ISSI-Nummernplan mit RBAC](2026-10-04_issi-nummernplan-rbac-und-vergaberichtlinie.md). Sie sind Fortsetzungsquellen; ihre Aussagen und Tests werden nicht rückwirkend dem IDECS-Chat zugeschrieben.
+Ergänzende vorhandene Archive sind die [Control-Room-Dokumentation](2026-10-03_control-room-windows-ui-rbac-status-tableau-directory-api.md), das [Archiv zum Gesprächssimulator und zur lokalen Mikrofon-/PTT-Sprechstelle](2026-10-03_gespraechssimulator-issi-und-lokale-mikrofon-ptt-sprechstelle.md) und der [ISSI-Nummernplan mit RBAC](2026-10-04_issi-nummernplan-rbac-und-vergaberichtlinie.md). Sie sind Fortsetzungsquellen; ihre Aussagen und Tests werden nicht rückwirkend dem Dispatch-Entwurf zugeschrieben.
 
-Zu diesem Chat wurde kein Implementierungs-PR und kein belastbarer historischer Programmcommit identifiziert. Dieses Archiv erzeugt keine solche Zuordnung. Verbindlich bleiben der konkrete geprüfte Repository-Stand, die einzeln gekennzeichneten Gesprächsentscheidungen und die ausdrücklich offenen Aufgaben.
+Zu diesem Arbeitsstand wurde kein Implementierungs-PR und kein belastbarer historischer Programmcommit identifiziert. Dieses Archiv erzeugt keine solche Zuordnung. Verbindlich bleiben der konkrete geprüfte Repository-Stand, die einzeln gekennzeichneten Festlegungen und die ausdrücklich offenen Aufgaben.
