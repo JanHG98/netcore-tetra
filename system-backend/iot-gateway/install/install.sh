@@ -57,7 +57,7 @@ if [[ ! -f "${CONFIG}" ]]; then
 fi
 
 CONFIG="${CONFIG}" EXAMPLE="${REPO_ROOT}/system-backend/iot-gateway/config/iot-gateway.example.toml" \
-  "${REPO_ROOT}/system-backend/iot-gateway/install/migrate-phase5-config.sh"
+  bash "${REPO_ROOT}/system-backend/iot-gateway/install/migrate-phase5-config.sh"
 
 install -m 0644 \
   system-backend/iot-gateway/systemd/netcore-iot-gateway.service \
@@ -76,5 +76,5 @@ echo "OPEN LAB: keine Anmeldung, keine Tokens, kein TLS und anonymer MQTT-Zugrif
 echo "Phase 5: Home Assistant MQTT Discovery ist aktiv; reale HA-/Homematic-Schreibzugriffe bleiben standardmäßig gesperrt."
 echo "WebUI: http://<LXC-IP>:8240/"
 echo "MQTT:  <LXC-IP>:1883 (wenn lokaler Broker installiert wurde)"
-echo "Vor dem Quelltest die vier source.url-Einträge in ${CONFIG} auf die echten LXC-Adressen setzen.
-echo "Home Assistant verbindet sich testweise anonym mit diesem MQTT-Broker und übernimmt die Discovery-Topics automatisch.""
+echo "Vor dem Quelltest die vier source.url-Einträge in ${CONFIG} auf die echten LXC-Adressen setzen."
+echo "Home Assistant verbindet sich testweise anonym mit diesem MQTT-Broker und übernimmt die Discovery-Topics automatisch."

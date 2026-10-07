@@ -201,6 +201,27 @@ class HttpApiTests(unittest.TestCase):
         self.assertNotIn(CONTROL_PASSWORD, combined)
         self.assertNotIn("control_room_password", combined)
 
+    def test_public_monitoring_contract_and_openapi_preserve_token_protection(self):
+        status, headers, body = self.request("GET", "/openapi.json", token=None)
+        self.assertEqual(status, 200)
+        document = json.loads(body)
+        self.assertEqual(document["openapi"], "3.0.3")
+        self.assertEqual(document["paths"]["/api/v1/status"]["get"]["security"], [{"bearerAuth": []}])
+        self.assertEqual(headers["X-NetCore-Security-Mode"], "token")
+        self.assertNotIn(TOKEN.encode(), body)
+        self.assertNotIn(CONTROL_PASSWORD.encode(), body)
+        status, headers, body = self.request("GET", "/metrics", token=None)
+        self.assertEqual(status, 200)
+        self.assertIn("text/plain", headers["Content-Type"])
+        self.assertIn(b"netcore_alert_ready 0\n", body)
+        self.service.last_cycle = timestamp()
+        self.assertIn(b"netcore_alert_ready 1\n", self.request("GET", "/metrics", token=None)[2])
+        self.service.errors["upstream"] = "private-upstream-secret"
+        body = self.request("GET", "/metrics", token=None)[2]
+        self.assertIn(b"netcore_alert_ready 0\n", body)
+        self.assertNotIn(b"private-upstream-secret", body)
+        self.assertEqual(self.request("GET", "/api/v1/status", token=None)[0], 401)
+
 
 class ConfigTests(unittest.TestCase):
     def setUp(self):

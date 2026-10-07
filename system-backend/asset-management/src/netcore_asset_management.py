@@ -832,7 +832,7 @@ html[data-netcore-ui] :where(.core-main, .core-side, .core-detail) { min-width: 
   html[data-netcore-ui] .nc-service-logo-wordmark { width: 108px; height: 16px; }
   html[data-netcore-ui] .nc-service-logo-wordmark img { width: 142px; left: -16.6px; top: -92.5px; }
   html[data-netcore-ui] .nc-service-name { font-size: 14px; padding-left: 10px; }
-  html[data-netcore-ui] .nc-service-tools { margin-left: 0; width: 100%; justify-content: flex-end; }
+  html[data-netcore-ui] .nc-service-tools { margin-left: 0; width: 100%; justify-content: flex-end; flex-wrap: wrap; }
   html[data-netcore-ui] .nc-service-access { margin-right: auto; }
   html[data-netcore-ui] .nc-service-nav { padding: 0 14px 8px; }
   html[data-netcore-ui] :where(body > main, body > .wrap, body > .container, body > .layout > main) { padding: 16px 14px; }
@@ -900,6 +900,25 @@ function formObj(form){const f=new FormData(form),o={};for(const [k,v] of f.entr
     const access = make("span", "nc-service-access", accessLabels[config.access] || "NetCore Dienst");
     access.dataset.access = String(config.access || "");
     tools.append(access);
+    // Opening discovery is an explicit operator action; rendering the shell
+    // never probes the agent or starts a scan. Login pages can opt out.
+    if (config.discovery !== false && document.body.dataset.ncDiscovery !== "disabled" &&
+        /^https?:$/.test(window.location.protocol)) {
+      const discovery = make("a", "button nc-discovery-link", "Auto Discovery ↗");
+      const agent = new URL(window.location.href);
+      agent.protocol = "http:";
+      agent.port = "8321";
+      agent.pathname = "/";
+      agent.search = "?scan=1";
+      agent.hash = "";
+      agent.username = "";
+      agent.password = "";
+      discovery.href = agent.href;
+      discovery.dataset.netcoreDiscovery = "";
+      discovery.target = "_blank";
+      discovery.rel = "noopener";
+      tools.append(discovery);
+    }
     const theme = make("button", "nc-theme-toggle");
     theme.type = "button";
     const themeKey = "netcore-theme";

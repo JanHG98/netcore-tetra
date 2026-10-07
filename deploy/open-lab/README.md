@@ -10,6 +10,7 @@ $EDITOR deploy/open-lab/inventory.toml
 python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.toml validate
 python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.toml plan
 python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.toml render
+python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.toml check-generated
 ```
 
 `render` rewrites service-to-service URLs by management port, creates the service catalog, `/etc/hosts` example, CSV port list and Graphviz dependency graph.
@@ -39,7 +40,15 @@ When services are installed manually, every installer detects the IPv4 address c
 
 The tool intentionally does not store passwords, tokens, TLS keys, KMF master material or connector secrets.
 
-`apply` installs rendered configuration templates over existing host configuration. For updates that must preserve local alert settings, delivery history and credentials, use `system-backend/alert-service/install/update.sh` as described in the guide. Adding the alert service to the inventory does not enable warning delivery automatically.
+`apply` retains existing host configuration and the alert installer's separate token EnvironmentFile. It snapshots an existing config before invoking its installer and restores that file afterwards or on installer failure. New installations receive the rendered dependency URLs. To intentionally replace a host config, use `apply --replace-config`; the old file is retained beside it as `<config>.pre-netcore-<UTC timestamp>-<pid>`. Restore that copy, restart the service and check `/health/ready` to undo a configuration replacement. Application/database recovery uses each service's documented backup procedure.
+
+After each service restart, `apply` waits at most `ready_timeout_secs` (default 60) for `/health/ready`. A timeout stops the run with exit status 1 before dependent installers run. The `health_timeout_secs` setting bounds each individual request. `--dry-run` does not probe or change remote hosts.
+
+The example declares 26 backend services, including the token-protected alert API and the Deployment/Discovery controller. The controller and Imagebuilder require a full Ubuntu VM; the other listed backend hosts use LXCs. These are source/configuration declarations, not a measured live service count. Example addresses must be adapted to the actual management network.
+
+The repository's existing TBS `config.toml` uses Node Gateway `10.0.1.179:8080/ws/node`, while the backend inventory example uses `10.0.20.10:8080`. Inventory `[tbs_site]` explicitly records the retained site mapping, and the audit checks `config.toml` against that field separately from backend example URLs. Before a live deployment, adapt both mappings and verify that the TBS address reaches the intended Node Gateway and its service-health matrix. Passing the static audit does not establish that the two addresses refer to the same host or a reachable route.
+
+Run `python3 tools/check_z01_integration.py` for the shared offline registry, generated-catalog, matrix, E2E-selection and static audit gate. `check-generated` fails on drift without rewriting the checked files. After changing examples deliberately, run `render` and then the gate. Adding the alert service does not enable warning delivery automatically.
 
 ## Cross-LXC E2E validation
 

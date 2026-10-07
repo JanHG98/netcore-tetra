@@ -29,6 +29,7 @@ class Cfg:
 class App:
     def __init__(self,cfg):
         self.cfg=cfg; self.lock=threading.RLock(); self.devices={}; self.events=[]; self.started=now(); self.stop=False
+        self.mqtt_lock=threading.Lock(); self.mqtt_process=None
         self.state_path=Path(cfg.storage['state_file']); self.event_path=Path(cfg.storage['event_log'])
         self.state_path.parent.mkdir(parents=True,exist_ok=True); self._load()
     def _load(self):
@@ -122,14 +123,34 @@ class App:
     def mqtt_loop(self):
         m=self.cfg.mqtt; topic=f"{m['topic_prefix']}/hardware/+/telemetry"
         while not self.stop:
-            p=subprocess.Popen(['mosquitto_sub','-h',m['host'],'-p',str(m['port']),'-v','-t',topic],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True)
-            while not self.stop and p.poll() is None:
-                line=p.stdout.readline()
-                if not line: break
-                try:
-                    t,msg=line.rstrip().split(' ',1); self.ingest(json.loads(msg),f'mqtt:{t}')
-                except Exception: pass
-            p.terminate(); time.sleep(2)
+            with self.mqtt_lock:
+                if self.stop: return
+                p=subprocess.Popen(['mosquitto_sub','-h',m['host'],'-p',str(m['port']),'-v','-t',topic],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True)
+                self.mqtt_process=p
+            try:
+                while not self.stop and p.poll() is None:
+                    line=p.stdout.readline()
+                    if not line: break
+                    try:
+                        t,msg=line.rstrip().split(' ',1); self.ingest(json.loads(msg),f'mqtt:{t}')
+                    except Exception: pass
+            finally:
+                p.terminate()
+                try: p.wait(timeout=3)
+                except subprocess.TimeoutExpired: p.kill(); p.wait()
+                p.stdout.close()
+                with self.mqtt_lock:
+                    if self.mqtt_process is p: self.mqtt_process=None
+            if not self.stop: time.sleep(2)
+
+    def close(self):
+        with self.mqtt_lock:
+            self.stop=True
+            p=self.mqtt_process
+        if p is not None:
+            p.terminate()
+            try: p.wait(timeout=3)
+            except subprocess.TimeoutExpired: p.kill(); p.wait()
 
 # BEGIN NETCORE GENERATED HTML
 HTML = r"""<!doctype html>
@@ -295,7 +316,7 @@ html[data-netcore-ui] :where(.core-main, .core-side, .core-detail) { min-width: 
   html[data-netcore-ui] .nc-service-logo-wordmark { width: 108px; height: 16px; }
   html[data-netcore-ui] .nc-service-logo-wordmark img { width: 142px; left: -16.6px; top: -92.5px; }
   html[data-netcore-ui] .nc-service-name { font-size: 14px; padding-left: 10px; }
-  html[data-netcore-ui] .nc-service-tools { margin-left: 0; width: 100%; justify-content: flex-end; }
+  html[data-netcore-ui] .nc-service-tools { margin-left: 0; width: 100%; justify-content: flex-end; flex-wrap: wrap; }
   html[data-netcore-ui] .nc-service-access { margin-right: auto; }
   html[data-netcore-ui] .nc-service-nav { padding: 0 14px 8px; }
   html[data-netcore-ui] :where(body > main, body > .wrap, body > .container, body > .layout > main) { padding: 16px 14px; }
@@ -363,6 +384,25 @@ r();setInterval(r,3000);
     const access = make("span", "nc-service-access", accessLabels[config.access] || "NetCore Dienst");
     access.dataset.access = String(config.access || "");
     tools.append(access);
+    // Opening discovery is an explicit operator action; rendering the shell
+    // never probes the agent or starts a scan. Login pages can opt out.
+    if (config.discovery !== false && document.body.dataset.ncDiscovery !== "disabled" &&
+        /^https?:$/.test(window.location.protocol)) {
+      const discovery = make("a", "button nc-discovery-link", "Auto Discovery ↗");
+      const agent = new URL(window.location.href);
+      agent.protocol = "http:";
+      agent.port = "8321";
+      agent.pathname = "/";
+      agent.search = "?scan=1";
+      agent.hash = "";
+      agent.username = "";
+      agent.password = "";
+      discovery.href = agent.href;
+      discovery.dataset.netcoreDiscovery = "";
+      discovery.target = "_blank";
+      discovery.rel = "noopener";
+      tools.append(discovery);
+    }
     const theme = make("button", "nc-theme-toggle");
     theme.type = "button";
     const themeKey = "netcore-theme";
@@ -495,6 +535,17 @@ def main():
     app=App(cfg); H.app=app
     threading.Thread(target=app.watchdog,daemon=True).start(); threading.Thread(target=app.mqtt_loop,daemon=True).start()
     host,port=cfg.bind; srv=ThreadingHTTPServer((host,port),H)
-    signal.signal(signal.SIGTERM,lambda *_:(setattr(app,'stop',True),srv.shutdown()))
-    srv.serve_forever()
+    def stop(*_):
+        if not app.stop:
+            app.stop=True
+            # shutdown waits for serve_forever: calling it in the signal's
+            # main thread deadlocks every systemctl stop/restart.
+            threading.Thread(target=srv.shutdown,daemon=True).start()
+    signal.signal(signal.SIGTERM,stop)
+    signal.signal(signal.SIGINT,stop)
+    try:
+        srv.serve_forever()
+    finally:
+        app.close()
+        srv.server_close()
 if __name__=='__main__': main()

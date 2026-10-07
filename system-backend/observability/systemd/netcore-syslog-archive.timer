@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily NetCore syslog archive (02:15 UTC)
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+Persistent=true
+RandomizedDelaySec=5min
+Unit=netcore-syslog-archive.service
+
+[Install]
+WantedBy=timers.target

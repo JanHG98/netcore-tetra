@@ -1,0 +1,85 @@
+name: OpenLab deployment and discovery
+on:
+  workflow_dispatch:
+  push:
+    branches: ['feature/z01-deployment-consolidation', 'main']
+    paths: ['system-backend/**', 'deploy/open-lab/**', 'tests/e2e/**', 'bins/**', 'crates/**', 'install/**', 'contrib/**', 'tetra-codec-master/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/deployment-discovery-tests.yml']
+  pull_request:
+    paths: ['system-backend/**', 'deploy/open-lab/**', 'tests/e2e/**', 'bins/**', 'crates/**', 'install/**', 'contrib/**', 'tetra-codec-master/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/deployment-discovery-tests.yml']
+permissions:
+  contents: read
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Discovery, API, Git pinning and persistence
+        run: python3 -m unittest discover -s system-backend/deployment-core/tests -v
+      - name: Installer and existing Python UI syntax
+        run: |
+          for script in system-backend/deployment-core/install/*.sh system-backend/deployment-core/image/*.sh; do bash -n "$script"; done
+          bash -n system-backend/shared/install/lxc-network.sh
+          python3 -m compileall -q system-backend
+          node --check system-backend/deployment-core/static/app.js
+      - name: Install browser for actual UI integration
+        run: |
+          npm install --prefix /tmp/netcore-browser playwright
+          /tmp/netcore-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: WebUI actions and responsive layout
+        env:
+          NODE_PATH: /tmp/netcore-browser/node_modules
+        run: node system-backend/deployment-core/tests/browser.cjs
+      - name: Save UI verification screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-ui-preview
+          path: /tmp/netcore-deployment-*.png
+          if-no-files-found: ignore
+  image-engine:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Space for the real VM install and image
+        run: |
+          # Disposable runner only: these preinstalled SDKs are unused by this job.
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet
+          df -h /
+      - name: Complete VM installation and repeat installation
+        run: |
+          sudo bash system-backend/deployment-core/install/install-vm.sh --node-id ci-deploy --advertise-url http://127.0.0.1:8320
+          /usr/bin/python3 system-backend/deployment-core/tests/vm_install_smoke.py
+          sudo bash system-backend/deployment-core/install/install-vm.sh
+          /usr/bin/python3 system-backend/deployment-core/tests/vm_install_smoke.py
+      - name: Native Ubuntu Python compatibility
+        run: /usr/bin/python3 -m unittest discover -s system-backend/deployment-core/tests -v
+      - name: Real Raspberry Pi OS image and ARM64 personalization
+        run: sudo unshare --mount --pid --fork --kill-child --propagation private python3 system-backend/deployment-core/tests/image_smoke.py
+      - name: Service logs on failure
+        if: failure()
+        run: sudo journalctl -u netcore-deployment -u netcore-image-builder -u systemd-binfmt --no-pager -n 150
+  rust-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Native build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsoapysdr-dev libgsm1-dev pkg-config cmake
+          cmake -S tetra-codec-master -B /tmp/netcore-codec -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib
+          cmake --build /tmp/netcore-codec
+          sudo cmake --install /tmp/netcore-codec
+          sudo ldconfig
+      - name: Build affected backend UI strings
+        run: cargo check --locked --workspace
+      - name: Link the default-feature TBS binary used in images
+        run: cargo build --locked -p bluestation-bs

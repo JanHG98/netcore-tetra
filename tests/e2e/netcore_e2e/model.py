@@ -18,6 +18,7 @@ class Service:
     unit: str
     user: str
     depends_on: tuple[str, ...] = ()
+    security_mode: str = "open_lab"
 
     # Was: Führt den Arbeitsschritt `base_url` für base url aus.
     # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.

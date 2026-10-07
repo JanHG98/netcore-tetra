@@ -1,0 +1,14 @@
+[Unit]
+Description=NetCore image identity and SD expansion
+After=local-fs.target
+Before=ssh.service netcore-discovery.service tetra.service
+ConditionPathExists=!/var/lib/netcore-firstboot.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/netcore-image/firstboot.py
+RemainAfterExit=yes
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

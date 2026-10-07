@@ -62,12 +62,14 @@ def scenario_contracts(ctx: E2EContext) -> None:
 
         # Was: Führt den Arbeitsschritt `status` für Status aus.
         # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-        def status(base_url: str = base) -> dict[str, Any]:
-            response = ctx.client.get(base_url + "/api/v1/status")
+        def status(base_url: str = base, security_mode: str = service.security_mode) -> dict[str, Any]:
+            # Protected services are checked for access control without reading or
+            # persisting local API tokens in inventory or test artifacts.
+            response = ctx.client.get(base_url + "/api/v1/status", expected=(401,) if security_mode == "token" else (200,))
             value = response.json()
             if not isinstance(value, dict):
                 raise AssertionError("status endpoint did not return a JSON object")
-            return {"status": value}
+            return {"status": value, "token_required": security_mode == "token"}
 
         ctx.check(f"{service.name}: status contract", status, scenario=scenario, service=service.name)
 
@@ -97,13 +99,13 @@ def scenario_contracts(ctx: E2EContext) -> None:
 
         # Was: Führt den Arbeitsschritt `webui` für Weboberfläche aus.
         # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-        def webui(base_url: str = base) -> dict[str, Any]:
+        def webui(base_url: str = base, security_mode: str = service.security_mode) -> dict[str, Any]:
             response = ctx.client.get(base_url + "/")
             content_type = response.headers.get("content-type", "")
             if "html" not in content_type.lower():
                 raise AssertionError(f"WebUI root is not HTML: {content_type}")
             mode = _security_header(response.headers)
-            if mode and mode != "open-lab":
+            if mode and mode != security_mode.replace("_", "-"):
                 raise AssertionError(f"unexpected security mode header: {mode}")
             return {"content_type": content_type, "security_header": mode, "bytes": len(response.body)}
 

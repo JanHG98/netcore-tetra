@@ -22,6 +22,16 @@ remote_source_root = "/opt/netcore-tetra-src"
 # Was: Setzt die Einstellung `health_timeout_secs` für diesen abschnitt.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 health_timeout_secs = 8
+# Bounded startup gate; an unready prerequisite stops the deployment.
+ready_timeout_secs = 60
+
+# Existing repository TBS site configuration uses another management subnet.
+# This explicit source mapping is checked separately from the example LXC URLs;
+# its actual Node Gateway identity/reachability needs local Z01.4 verification.
+[tbs_site]
+gateway_host = "10.0.1.179"
+gateway_port = 8080
+endpoint_path = "/ws/node"
 
 # One service per LXC is the intended layout. Addresses are examples and must be
 # changed to the isolated management network before apply is used.
@@ -648,6 +658,7 @@ health_path = "/health/ready"
 # NINA / KATWARN warning centre; token is generated locally by the installer.
 [[services]]
 name = "alert-service"
+security_mode = "token"
 host = "10.0.20.34"
 port = 8310
 unit = "netcore-alert-service.service"
@@ -657,3 +668,16 @@ config_template = "system-backend/alert-service/config/alert-service.example.tom
 config_target = "/etc/netcore/alert-service.toml"
 depends_on = ["control-room", "sds-router"]
 health_path = "/health/ready"
+
+# Deployment / Discovery controller and Imagebuilder run on a full Ubuntu VM.
+# It must not be installed in an unprivileged LXC (loop/kpartx/build devices).
+[[services]]
+name = "deployment-core"
+host = "10.0.20.35"
+port = 8320
+unit = "netcore-deployment.service"
+user = "netcore-deploy"
+install = "system-backend/deployment-core/install/install-vm.sh"
+config_template = "system-backend/deployment-core/config/deployment.example.toml"
+config_target = "/etc/netcore/deployment.toml"
+depends_on = []

@@ -22,6 +22,7 @@ def load_inventory(path: Path) -> Inventory:
             unit=str(item["unit"]),
             user=str(item.get("user", "netcore")),
             depends_on=tuple(str(value) for value in item.get("depends_on", [])),
+            security_mode=str(item.get("security_mode", "open_lab")),
         )
         for item in raw.get("services", [])
     )

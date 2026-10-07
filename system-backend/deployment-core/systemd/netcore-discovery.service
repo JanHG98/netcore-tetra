@@ -1,0 +1,23 @@
+[Unit]
+Description=NetCore OpenLab Discovery and Deployment Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# The agent executes fixed package installers and systemctl operations.
+User=root
+ExecStart=/usr/bin/python3 /usr/local/lib/netcore-deployment/main.py --config /etc/netcore/discovery.toml
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+StateDirectory=netcore-discovery
+StateDirectoryMode=0755
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=15
+UMask=0022
+
+[Install]
+WantedBy=multi-user.target

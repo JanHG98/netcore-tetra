@@ -133,6 +133,13 @@
   const recordingStart=Array.from(audio.children).find(node=>node.classList.contains('section-label')&&node.textContent.includes('AUFZEICHNUNGEN'));
   if(recordingStart){let node=recordingStart;while(node){const next=node.nextElementSibling;byId('page-recordings').append(node);node=next;}}
   byId('page-services').append(byId('core-services-card'));
+  const discoveryLink=make('a','btn btn-sm','Auto Discovery ↗');
+  const discoveryUrl=new URL(window.location.href);
+  discoveryUrl.protocol='http:';discoveryUrl.port='8321';discoveryUrl.pathname='/';
+  discoveryUrl.search='?scan=1';discoveryUrl.hash='';discoveryUrl.username='';discoveryUrl.password='';
+  discoveryLink.href=discoveryUrl.href;discoveryLink.target='_blank';discoveryLink.rel='noopener';
+  discoveryLink.dataset.netcoreDiscovery='';discoveryLink.hidden=true;
+  byId('core-services-card').querySelector('.card-actions').prepend(discoveryLink);
   byId('page-neighbors').innerHTML='<div class="card"><div class="card-head"><div><div class="card-title">Konfigurierte Nachbarzellen</div><p class="card-sub">Konfigurationswerte · Verfügbarkeit und Handover werden hier nicht gemessen.</p></div><span class="pill pill-info" id="nc-neighbor-count">—</span></div><div class="table-wrap"><table><thead><tr><th>Zellkennung</th><th>Hauptträger</th><th>MCC / MNC</th><th>Location Area</th><th>Synchronisiert</th><th>Konfigurierte Zelllast</th></tr></thead><tbody id="nc-neighbor-rows"><tr><td colspan="6">Warte auf Konfiguration…</td></tr></tbody></table></div></div><p class="help-text">Änderungen erfolgen weiterhin in der Konfiguration. Live-Detailansichten und weitere Mobilitätsfunktionen sind für eine spätere Erweiterung vorgesehen.</p>';
   byId('page-help').innerHTML='<div class="nc-placeholder"><span class="pill pill-info">In Vorbereitung</span><h2 style="margin-top:18px">Hilfe zur Basisstation</h2><p>Die ausführlichen Hilfetexte werden später ergänzt. Die folgenden Bereiche führen bereits zu den vorhandenen Einstellungen und Diagnoseansichten.</p><div class="nc-help-grid"><div class="nc-help-topic"><h3>Funkbetrieb</h3><p>Teilnehmer, Rufe und TX-DSP-Messwerte.</p><button class="nc-link" onclick="showPage(\'stations\')">Funkgeräte öffnen →</button></div><div class="nc-help-topic"><h3>Diagnose</h3><p>Systemzustand, Protokoll und zentrale Dienste.</p><button class="nc-link" onclick="showPage(\'health\')">Systemzustand öffnen →</button></div><div class="nc-help-topic"><h3>Verwaltung</h3><p>Konfiguration, Host und angebundene Dienste.</p><button class="nc-link" onclick="showPage(\'config\')">Konfiguration öffnen →</button></div></div></div>';
 
@@ -258,13 +265,14 @@
   const originalPublic=window.enterPublicMode;
   window.enterPublicMode=function(){
     document.body.classList.add('nc-public');
+    discoveryLink.hidden=true;
     originalPublic();
     byId('topbar-title').textContent=pages.public[0];byId('nc-page-description').textContent=pages.public[1];
     byId('chip-bs').style.display='none';byId('chip-brew').style.display='none';
     byId('nc-home-radios').replaceChildren();
   };
   byId('nc-refresh').addEventListener('click',()=>showPage(currentPage));
-  window.netcoreSessionReady=function(){sessionReady=true;mainNav.querySelectorAll('button').forEach(button=>button.disabled=false);showPage(hiddenIntegrationsVisible&&HIDDEN_INTEGRATIONS.includes(requestedHiddenPage)?requestedHiddenPage:'home');};
+  window.netcoreSessionReady=function(){sessionReady=true;discoveryLink.hidden=false;mainNav.querySelectorAll('button').forEach(button=>button.disabled=false);showPage(hiddenIntegrationsVisible&&HIDDEN_INTEGRATIONS.includes(requestedHiddenPage)?requestedHiddenPage:'home');};
   // A cheap state update for timers/disconnects; no additional network requests.
   setInterval(()=>{if(sessionReady&&!document.hidden&&!document.body.classList.contains('nc-public')){renderHome();if(currentPage==='stations'&&selectedRadio)renderRadioDetail();}},2000);
   syncRadios();renderHome();

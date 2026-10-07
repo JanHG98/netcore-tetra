@@ -21,6 +21,32 @@ from store import timestamp
 STATIC = Path(__file__).parent / "static"
 
 
+def is_ready(service):
+    return (service.last_cycle is not None
+            and timestamp() - service.last_cycle < max(120, service.config["netcore"].get("poll_seconds", 5) * 3)
+            and not service.errors)
+
+
+def openapi_document():
+    """Public interface description contains no settings, alerts or credentials."""
+    paths = {}
+    for path in ("/health/live", "/health/ready", "/metrics", "/openapi.json",
+                 "/api/v1/status", "/api/v1/alerts", "/api/v1/deliveries", "/api/v1/devices"):
+        paths[path] = {"get": {"responses": {"200": {"description": "Successful response"}}}}
+        if path.startswith("/api/"):
+            paths[path]["get"]["security"] = [{"bearerAuth": []}]
+            paths[path]["get"]["responses"]["401"] = {"description": "Bearer token required"}
+    paths["/health/ready"]["get"]["responses"]["503"] = {"description": "Dependencies or polling unavailable"}
+    paths["/api/v1/alerts"]["post"] = {"security": [{"bearerAuth": []}],
+        "responses": {"201": {"description": "Manual warning created"}, "400": {"description": "Invalid warning"}, "401": {"description": "Bearer token required"}},
+        "requestBody": {"required": True, "content": {"application/json": {"schema": {"type": "object"}}}}}
+    paths["/api/v1/alerts/{id}"] = {"delete": {"security": [{"bearerAuth": []}],
+        "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "string"}}],
+        "responses": {"200": {"description": "Removed; delivery history retained"}, "401": {"description": "Bearer token required"}, "404": {"description": "Unknown warning"}}}}
+    return {"openapi": "3.0.3", "info": {"title": "NetCore Alert Service", "version": "1.0"},
+            "paths": paths, "components": {"securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer"}}}}
+
+
 def load_config(path):
     with open(path, "rb") as stream:
         cfg = tomllib.load(stream)
@@ -89,6 +115,7 @@ def handler_for(service):
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("X-NetCore-Security-Mode", "open-lab" if service.config["server"].get("allow_unauthenticated", False) else "token")
             # OSM requires a valid Referer; send only our origin cross-site, never
             # tokens (which are headers only) or application paths.
             self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
@@ -124,8 +151,16 @@ def handler_for(service):
             if path == "/health/live":
                 return self.send(200, {"status": "live"})
             if path == "/health/ready":
-                ready = service.last_cycle is not None and timestamp() - service.last_cycle < max(120, service.config["netcore"].get("poll_seconds", 5) * 3) and not service.errors
+                ready = is_ready(service)
                 return self.send(200 if ready else 503, {"status": "ready" if ready else "degraded"})
+            if path == "/openapi.json":
+                return self.send(200, openapi_document())
+            if path == "/metrics":
+                metrics = ("# TYPE netcore_alert_ready gauge\n"
+                           f"netcore_alert_ready {int(is_ready(service))}\n"
+                           "# TYPE netcore_alert_delivery_enabled gauge\n"
+                           f"netcore_alert_delivery_enabled {int(service.config['delivery']['enabled'])}\n")
+                return self.send(200, metrics.encode("utf-8"), "text/plain; version=0.0.4; charset=utf-8")
             if path.startswith("/api/"):
                 if not self.authorized():
                     return self.send(401, {"error": "Zugriffsschlüssel erforderlich"})

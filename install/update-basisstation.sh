@@ -117,6 +117,7 @@ fi
 
 if [[ -z "$UNIT" ]]; then
     for candidate in \
+        netcore-tbs.service \
         tetra.service \
         bluestation.service \
         tetra-bluestation.service \
@@ -130,6 +131,9 @@ if [[ -z "$UNIT" ]]; then
 fi
 
 [[ -n "$UNIT" ]] || die "Keine Basisstations-Unit gefunden. Beispiel: UNIT=tetra.service sudo -E $0"
+[[ "$(systemctl show "$UNIT" -p LoadState --value 2>/dev/null || true)" == loaded &&
+   -n "$(systemctl show "$UNIT" -p FragmentPath --value 2>/dev/null || true)" ]] \
+    || die "Die Basisstations-Unit $UNIT ist nicht installiert. Kein Build oder Austausch gestartet."
 log "Systemd-Unit: $UNIT"
 
 # Determine the executable that is REALLY running. This is the core of this fix.

@@ -2,6 +2,9 @@
 # NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
 # Rust build artifacts
+__pycache__/
+*.py[cod]
+
 target/
 **/target/
 

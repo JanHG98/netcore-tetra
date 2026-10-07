@@ -17,6 +17,7 @@ use crate::state::{MetricPointInput, SharedObservability, StackProbe, TargetReco
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct ScrapeResult {
     pub target_id: String,
+    pub base_url: String,
     pub timestamp: chrono::DateTime<Utc>,
     pub live: bool,
     pub ready: bool,
@@ -115,6 +116,7 @@ pub fn scrape_target(config: &ObservabilityConfig, target: &TargetRecord) -> Scr
     };
     ScrapeResult {
         target_id: target.target_id.clone(),
+        base_url: target.base_url.clone(),
         timestamp: Utc::now(),
         live,
         ready,
@@ -169,14 +171,14 @@ fn join_url(base: &str, path: &str) -> String {
 
 // Was: Bündelt die zusammengehörigen Werte für HTTP result in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
-struct HttpResult {
-    status: u16,
-    body: Vec<u8>,
+pub(crate) struct HttpResult {
+    pub(crate) status: u16,
+    pub(crate) body: Vec<u8>,
 }
 
 // Was: Führt den Arbeitsschritt `http_get` für HTTP get aus.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-fn http_get(url: &str, timeout_ms: u64, max_bytes: usize) -> Result<HttpResult, String> {
+pub(crate) fn http_get(url: &str, timeout_ms: u64, max_bytes: usize) -> Result<HttpResult, String> {
     let parsed = ParsedUrl::parse(url)?;
     let mut addresses = (parsed.host.as_str(), parsed.port)
         .to_socket_addrs()

@@ -1,0 +1,20 @@
+{
+  "state_dir": "/var/lib/netcore-observability/logs",
+  "inventory": "/etc/netcore/openlab-hosts.json",
+  "allowed_networks": [
+    "10.0.20.0/24",
+    "127.0.0.0/8"
+  ],
+  "collector_id": "observability-openlab",
+  "archive_mount": "/mnt/nfs-share",
+  "archive_directory": "Logs/NetCore",
+  "archive_days": 90,
+  "archive_max_bytes": 21474836480,
+  "archive_min_free_bytes": 1073741824,
+  "local_max_bytes": 2147483648,
+  "local_min_free_bytes": 536870912,
+  "segment_bytes": 16777216,
+  "max_record_bytes": 16384,
+  "preview_records": 5000,
+  "nms_url": "http://127.0.0.1:8210"
+}

@@ -1,0 +1,10 @@
+[Unit]
+Description=Check NetCore VPN policy periodically
+
+[Timer]
+OnBootSec=20
+OnUnitActiveSec=15
+AccuracySec=2
+
+[Install]
+WantedBy=timers.target

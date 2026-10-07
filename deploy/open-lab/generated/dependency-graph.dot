@@ -117,4 +117,8 @@ digraph netcore_open_lab {
   "sip-switch" [label="sip-switch\n10.0.20.33:8300"];
   "iot-gateway" -> "sip-switch";
   "mobility-core" -> "sip-switch";
+  "alert-service" [label="alert-service\n10.0.20.34:8310"];
+  "control-room" -> "alert-service";
+  "sds-router" -> "alert-service";
+  "deployment-core" [label="deployment-core\n10.0.20.35:8320"];
 }

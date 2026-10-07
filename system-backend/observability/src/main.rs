@@ -7,6 +7,7 @@ mod collector;
 // Was: Bindet das Untermodul Konfiguration in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod config;
+mod discovery;
 // Was: Bindet das Untermodul HTTP in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod http;
@@ -57,6 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("Observability WebUI/API bind={} scrape_interval={}s", config.server.bind, config.collection.scrape_interval_secs);
 
     let observability = SharedObservability::load(config.clone())?;
+    let _discovery = discovery::spawn(config.clone(), observability.clone());
     let _collector = collector::spawn_collector(config.clone(), observability.clone());
     let server = http::spawn_http_server(config, observability)?;
     server.join().map_err(|_| -> Box<dyn std::error::Error> { "Observability HTTP server thread panicked".into() })?;

@@ -124,6 +124,9 @@ const fixtures = {
     '/api/v1/metrics/series': [{ name: 'netcore_observability_target_up', target_id: 'recorder-01',
       labels: { service: 'recorder', target_id: 'recorder-01' }, last_value: 1, last_at: now, samples: [{ value: 1, at: now }] }],
     '/api/v1/config': {}, '/api/v1/logs': [], '/api/v1/traces': [], '/api/v1/audit': [], '/api/v1/diagnostics': [],
+    '/api/v1/discovery': { enabled: false, controller_url: 'http://10.0.20.35:8320',
+      last_success: null, error: null, using_cache: true },
+    '/api/v1/syslog': { receiver: null, archive: null },
   },
   'provisioning-core': {
     '/api/v1/dashboard': { subscribers: [subscriber], groups: [group], memberships: [membership],
@@ -317,6 +320,8 @@ try {
     }
     if (service === 'observability') {
       await page.locator('.nc-service-nav button').filter({ hasText: /^Targets$|^Scrape Targets$/ }).click();
+      assert.match(await page.locator('#discoveryStatus').innerText(), /Discovery deaktiviert/); checks++;
+      assert.match(await page.locator('#syslogStatus').innerText(), /Syslog-Empfänger noch nicht installiert/); checks++;
       await page.locator('#targetsTable button').filter({ hasText: 'Monitoring aus' }).click(); await page.waitForTimeout(50);
       assert.equal(writes.findLast(w => w.service === service).path, '/api/v1/targets/recorder-01/disable'); checks++;
       assert.equal(await page.locator('#overviewTargets').innerText().then(x => x.includes('up')), true); checks++;

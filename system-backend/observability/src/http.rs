@@ -71,6 +71,25 @@ fn route(request: HttpRequest, config: ObservabilityConfig, observability: Share
         ("GET", "/health/ready") => { let status = observability.status(); json_response(if status.ready {200} else {503}, &status) }
         ("GET", "/api/v1/status") => json_response(200, &observability.status()),
         ("GET", "/api/v1/config") => json_response(200, &config),
+        ("GET", "/api/v1/syslog") => {
+            let root = config.storage.state_path.parent().unwrap_or_else(|| std::path::Path::new("."));
+            let read = |name: &str| -> serde_json::Value {
+                std::fs::read(root.join("logs").join(name)).ok().and_then(|v| serde_json::from_slice(&v).ok()).unwrap_or(serde_json::Value::Null)
+            };
+            json_response(200, &json!({"receiver": read("receiver-status.json"), "archive": read("archive-status.json")}))
+        },
+        ("GET", "/api/v1/targets/prometheus") => {
+            let values: Vec<_> = observability.targets_for_scrape().iter().map(|t| json!({
+                "targets": [t.base_url.trim_start_matches("http://")],
+                "labels": {"service": t.service, "target_id": t.target_id, "__metrics_path__": t.metrics_path}
+            })).collect();
+            json_response(200, &values)
+        },
+        ("GET", "/api/v1/discovery") => json_response(200, &observability.discovery_status()),
+        ("POST", "/api/v1/discovery/sync") => match crate::discovery::sync(&config, &observability) {
+            Ok(_) => json_response(200, &observability.discovery_status()),
+            Err(error) => { observability.discovery_failed(error); json_response(503, &observability.discovery_status()) }
+        },
         ("GET", "/api/v1/targets") => json_response(200, &observability.targets()),
         ("POST", "/api/v1/targets") => match parse_json::<TargetCreateInput>(&request.body).and_then(|input| observability.create_target(input)) { Ok(value) => json_response(201,&value), Err(error) => conflict(error) },
         ("GET", "/api/v1/stack") => json_response(200, &observability.stack()),
@@ -157,6 +176,10 @@ fn openapi() -> Value { json!({
         "/api/v1/metrics/catalog":{"get":{"summary":"Metric catalog"}},
         "/api/v1/metrics/series":{"get":{"summary":"Query bounded time series"}},
         "/api/v1/logs":{"get":{"summary":"Search logs"}},
+        "/api/v1/discovery":{"get":{"summary":"Discovery and cached endpoint status"}},
+        "/api/v1/discovery/sync":{"post":{"summary":"Refresh endpoints from deployment VM"}},
+        "/api/v1/syslog":{"get":{"summary":"Syslog buffers, sources, drops and archive status"}},
+        "/api/v1/targets/prometheus":{"get":{"summary":"Prometheus HTTP service discovery"}},
         "/api/v1/logs/ingest":{"post":{"summary":"Ingest NetCore JSON logs"}},
         "/api/v1/traces":{"get":{"summary":"Search trace spans"}},
         "/api/v1/traces/ingest":{"post":{"summary":"Ingest NetCore JSON spans"}},

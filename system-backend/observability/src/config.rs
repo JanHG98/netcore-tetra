@@ -22,6 +22,7 @@ pub struct ObservabilityConfig {
     pub collection: CollectionConfig,
     pub retention: RetentionConfig,
     pub stack: StackConfig,
+    pub discovery: crate::discovery::DiscoveryConfig,
     pub targets: Vec<TargetConfig>,
     pub alert_rules: Vec<AlertRuleConfig>,
 }
@@ -39,6 +40,7 @@ impl Default for ObservabilityConfig {
             collection: CollectionConfig::default(),
             retention: RetentionConfig::default(),
             stack: StackConfig::default(),
+            discovery: crate::discovery::DiscoveryConfig::default(),
             targets: default_targets(),
             alert_rules: default_rules(),
         }
@@ -435,6 +437,9 @@ fn default_targets() -> Vec<TargetConfig> {
         target("asset-management", "Asset Management", "asset-management", 8290),
         target("sip-switch", "NetCore SIP Switch", "sip-switch", 8300),
         target("control-room", "Control Room", "control-room", 9010),
+        target("observability", "Observability", "observability", 8210),
+        target("deployment-core", "Deployment Core", "deployment-core", 8320),
+        target("alert-service", "Alert Service", "alert-service", 8310),
     ]
 }
 

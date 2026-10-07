@@ -1,0 +1,19 @@
+[Unit]
+Description=NetCore syslog preview and receiver status
+After=netcore-observability.service netcore-syslog.service
+
+[Service]
+User=netcore-observability
+Group=netcore-observability
+ExecStart=/usr/bin/python3 /opt/netcore-observability/logging/log_store.py bridge
+Restart=on-failure
+RestartSec=5
+UMask=0027
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/netcore-observability/logs
+
+[Install]
+WantedBy=multi-user.target

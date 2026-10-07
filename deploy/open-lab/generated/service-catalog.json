@@ -14,7 +14,8 @@
       "health_ready": "http://10.0.20.10:8080/health/ready",
       "metrics": "http://10.0.20.10:8080/metrics",
       "unit": "netcore-node-gateway.service",
-      "depends_on": []
+      "depends_on": [],
+      "security_mode": "open_lab"
     },
     {
       "name": "mobility-core",
@@ -28,7 +29,8 @@
       "unit": "netcore-mobility-core.service",
       "depends_on": [
         "node-gateway"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "subscriber-core",
@@ -42,7 +44,8 @@
       "unit": "netcore-subscriber-core.service",
       "depends_on": [
         "node-gateway"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "group-core",
@@ -57,7 +60,8 @@
       "depends_on": [
         "node-gateway",
         "subscriber-core"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "call-control",
@@ -74,7 +78,8 @@
         "subscriber-core",
         "group-core",
         "mobility-core"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "media-switch",
@@ -89,7 +94,8 @@
       "depends_on": [
         "node-gateway",
         "call-control"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "recorder",
@@ -103,7 +109,8 @@
       "unit": "netcore-recorder.service",
       "depends_on": [
         "media-switch"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "sds-router",
@@ -120,7 +127,8 @@
         "subscriber-core",
         "group-core",
         "mobility-core"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "packet-core",
@@ -136,7 +144,8 @@
         "node-gateway",
         "subscriber-core",
         "mobility-core"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "ip-gateway",
@@ -150,7 +159,8 @@
       "unit": "netcore-ip-gateway.service",
       "depends_on": [
         "packet-core"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "security-core",
@@ -165,7 +175,8 @@
       "depends_on": [
         "node-gateway",
         "subscriber-core"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "kmf",
@@ -179,7 +190,8 @@
       "unit": "netcore-kmf.service",
       "depends_on": [
         "security-core"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "transit",
@@ -196,7 +208,8 @@
         "call-control",
         "media-switch",
         "sds-router"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "application-gateway",
@@ -210,7 +223,8 @@
       "unit": "netcore-application-gateway.service",
       "depends_on": [
         "sds-router"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "media-library",
@@ -226,7 +240,8 @@
         "media-switch",
         "recorder",
         "application-gateway"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "control-room",
@@ -261,7 +276,8 @@
         "task-workflow",
         "asset-management",
         "sip-switch"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "observability",
@@ -297,7 +313,8 @@
         "asset-management",
         "sip-switch",
         "control-room"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "iot-gateway",
@@ -314,7 +331,8 @@
         "mobility-core",
         "call-control",
         "sds-router"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "hardware-gateway",
@@ -328,7 +346,8 @@
       "unit": "netcore-hardware-gateway.service",
       "depends_on": [
         "iot-gateway"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "rf-monitor",
@@ -342,7 +361,8 @@
       "unit": "netcore-rf-monitor.service",
       "depends_on": [
         "iot-gateway"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "alarm-workflow",
@@ -359,7 +379,8 @@
         "sds-router",
         "hardware-gateway",
         "rf-monitor"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "task-workflow",
@@ -374,7 +395,8 @@
       "depends_on": [
         "iot-gateway",
         "sds-router"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "asset-management",
@@ -391,7 +413,8 @@
         "subscriber-core",
         "mobility-core",
         "task-workflow"
-      ]
+      ],
+      "security_mode": "open_lab"
     },
     {
       "name": "sip-switch",
@@ -406,7 +429,37 @@
       "depends_on": [
         "iot-gateway",
         "mobility-core"
-      ]
+      ],
+      "security_mode": "open_lab"
+    },
+    {
+      "name": "alert-service",
+      "host": "10.0.20.34",
+      "port": 8310,
+      "base_url": "http://10.0.20.34:8310",
+      "webui": "http://10.0.20.34:8310/",
+      "health_live": "http://10.0.20.34:8310/health/live",
+      "health_ready": "http://10.0.20.34:8310/health/ready",
+      "metrics": "http://10.0.20.34:8310/metrics",
+      "unit": "netcore-alert-service.service",
+      "depends_on": [
+        "control-room",
+        "sds-router"
+      ],
+      "security_mode": "token"
+    },
+    {
+      "name": "deployment-core",
+      "host": "10.0.20.35",
+      "port": 8320,
+      "base_url": "http://10.0.20.35:8320",
+      "webui": "http://10.0.20.35:8320/",
+      "health_live": "http://10.0.20.35:8320/health/live",
+      "health_ready": "http://10.0.20.35:8320/health/ready",
+      "metrics": "http://10.0.20.35:8320/metrics",
+      "unit": "netcore-deployment.service",
+      "depends_on": [],
+      "security_mode": "open_lab"
     }
   ]
 }

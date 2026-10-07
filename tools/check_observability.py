@@ -19,6 +19,7 @@ REQUIRED=[
     "system-backend/observability/src/collector.rs",
     "system-backend/observability/src/state.rs",
     "system-backend/observability/src/http.rs",
+    "system-backend/observability/src/discovery.rs",
     "system-backend/observability/web-ui/index.html",
     "system-backend/observability/config/observability.example.toml",
     "system-backend/observability/systemd/netcore-observability.service",
@@ -31,6 +32,15 @@ REQUIRED=[
     "system-backend/observability/stack/promtail/promtail.yml",
     "system-backend/observability/stack/grafana/dashboards/netcore-overview.json",
     "system-backend/observability/tests/observability_reference.py",
+    "system-backend/observability/tests/test_syslog.py",
+    "system-backend/observability/tests/test_syslog_wire.py",
+    "system-backend/observability/tests/native-syslog-smoke.py",
+    "system-backend/observability/logging/log_store.py",
+    "system-backend/observability/logging/log_client.py",
+    "system-backend/observability/logging/receiver.rsyslog.conf",
+    "system-backend/observability/config/syslog.example.json",
+    "system-backend/observability/config/log-client.example.json",
+    "system-backend/observability/config/openlab-hosts.json",
     "Docs/SWMI_CORE_1_PACKAGE_M_OBSERVABILITY.md",
 ]
 MARKERS={
@@ -41,6 +51,11 @@ MARKERS={
     "system-backend/observability/src/state.rs":"netcore_observability_target_up",
     "system-backend/observability/src/state.rs#2":"diagnostic.create",
     "system-backend/observability/src/http.rs":"/api/v1/logs/ingest",
+    "system-backend/observability/src/http.rs#2":"/api/v1/syslog",
+    "system-backend/observability/src/http.rs#3":"/api/v1/targets/prometheus",
+    "system-backend/observability/src/http.rs#4":"service_design::render",
+    "system-backend/observability/src/discovery.rs":"netcore.discovery.v1",
+    "system-backend/observability/web-ui/index.html#2":"syslogStatus",
     "system-backend/observability/web-ui/index.html":"OPEN LAB",
     "system-backend/services.toml":"management_port = 8210",
     "Cargo.toml":"system-backend/observability",
@@ -130,10 +145,30 @@ def main():
         if c['server']['bind'].split(':')[-1]!='8210':errors.append('management port must be 8210')
         if len(c.get('targets',[]))<15:errors.append('example must contain all implemented service targets')
         if len(c.get('alert_rules',[]))<3:errors.append('example must contain baseline alert rules')
-    except Exception:pass
+        inventory = tomllib.loads((ROOT/'deploy/open-lab/inventory.example.toml').read_text())['services']
+        expected = {s['name']: f"http://{s['host']}:{s['port']}" for s in inventory}
+        targets = c.get('targets', [])
+        actual = {t['service']: t['base_url'] for t in targets}
+        if actual != expected or len(targets) != len(expected):
+            errors.append('Observability example targets/addresses differ from the deployment inventory')
+        controller = expected['deployment-core']
+        if c['discovery']['controller_url'] != controller:
+            errors.append('Observability discovery controller differs from the deployment inventory')
+        client = json.loads((ROOT/'system-backend/observability/config/log-client.example.json').read_text())
+        if client['controller_url'] != controller or client['fallback_host'] != expected['observability'].split('//', 1)[1].rsplit(':', 1)[0]:
+            errors.append('Log client example differs from the deployment inventory')
+        hosts = json.loads((ROOT/'system-backend/observability/config/openlab-hosts.json').read_text())
+        if hosts['controller_url'] != controller or hosts['observability_url'] != expected['observability']:
+            errors.append('Log host inventory endpoints differ from the deployment inventory')
+        sys.path.insert(0, str(ROOT/'system-backend/observability/logging'))
+        from log_store import load_config
+        load_config(ROOT/'system-backend/observability/config/syslog.example.json')
+        if {h['address'] for h in hosts['hosts']} != {s['host'] for s in inventory}:
+            errors.append('Log host example differs from the deployment inventory')
+    except Exception as e:errors.append(f'invalid Observability/deployment example contract: {e}')
     # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
     # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
-    for rel in ["system-backend/observability/src/main.rs","system-backend/observability/src/config.rs","system-backend/observability/src/collector.rs","system-backend/observability/src/protocol.rs","system-backend/observability/src/state.rs","system-backend/observability/src/http.rs"]:
+    for rel in ["system-backend/observability/src/main.rs","system-backend/observability/src/config.rs","system-backend/observability/src/collector.rs","system-backend/observability/src/protocol.rs","system-backend/observability/src/state.rs","system-backend/observability/src/http.rs","system-backend/observability/src/discovery.rs"]:
         err=rust_balanced(ROOT/rel)
         if err:errors.append(f"{rel}: {err}")
     # Was: Führt einen fehleranfälligen Abschnitt mit geregelter Fehlerbehandlung aus.

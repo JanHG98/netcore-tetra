@@ -1,12 +1,12 @@
 # Projektstand und Nachweisgrenzen
 
-**Bezugsstand:** Repository [`JanHG98/netcore-tetra`, Branch `main`, Commit `d518c97`](https://github.com/JanHG98/netcore-tetra/tree/d518c9733b6d0474021792d4883206dc42035c2d), abgerufen am 26.09.2026. Das Wiki dokumentiert diesen Quellstand, keine automatisch ermittelte Live-Installation.
+**Z01-Bezugsstand 07.10.2026:** main vor Integration `dae9363062a1442664a083e1fc32e6944b3be9a6`, historische Quelle `bbf039729b9b05f8d623b11195ca24a124f68d16`. Z01.1–Z01.3 sind auf `feature/z01-deployment-consolidation` dokumentiert/implementiert und lokal geprüft; [Nachweise und offene Grenzen](../Docs/integration/Z01-2026-10-07/README.md). PR-/CI-Ergebnisse vor Übernahme prüfen. Keine automatisch ermittelte Live-Installation. Die vorherige Wiki-Momentaufnahme vom 26.09. (`d518c97`) wird dadurch im Z01-Umfang aktualisiert.
 
 | Aussage | Beleg im Repository | Was offen bleibt |
 |---|---|---|
 | Lokale TBS mit SDR, Dashboard, Medien und Integrationen | `bins/bluestation-bs`, `crates/tetra-*`, [sanitisiertes Konfigurationsbeispiel](https://github.com/JanHG98/netcore-tetra/blob/main/Docs/basisstation.config.sanitized.example.toml) | SDR-Timing, Endgeräteverhalten und tatsächliche Version am Standort |
-| 24 Dienste im Open-Lab-Deployment | [Inventory](https://github.com/JanHG98/netcore-tetra/blob/main/deploy/open-lab/inventory.example.toml), Installer und Service-Verzeichnisse | keine Bestätigung, dass alle 24 LXCs aktuell laufen oder integriert abgenommen sind |
-| Provisioning Core als Zusatzdienst | `system-backend/provisioning-core`, Beispielport 8125 | nicht Teil des 24er-Inventories; Vorlagen können alte Branch- und IP-Beispiele enthalten |
+| 26 deklarierte Dienste im konsolidierten Open-Lab-Deployment | [Inventory](https://github.com/JanHG98/netcore-tetra/blob/main/deploy/open-lab/inventory.example.toml), Installer und Service-Verzeichnisse | keine Live-Flottenabnahme; Deployment-Core benötigt eine volle VM, übrige Rollen haben eigene Installationsnachweise |
+| Provisioning Core als Zusatzdienst | `system-backend/provisioning-core`, Beispielport 8125 | nicht Teil des regulären 26er-Inventories; Vorlagen können alte Branch- und IP-Beispiele enthalten |
 | Directory, Piper, separater Brew-Server | `system-backend/directory`, `system-backend/tts`, `misc/brew-server` | jeweils eigene Einrichtung und Kompatibilitätsprüfung |
 | MQTT und Home Assistant | `system-backend/iot-gateway` und [MQTT-Vertrag](https://github.com/JanHG98/netcore-tetra/blob/main/system-backend/iot-gateway/docs/mqtt-contract.md) | SDS-Ende-zu-Ende bis HA an der konkreten Anlage ist nicht allein durch verbundene MQTT-Clients belegt |
 | SIP Switch mit lokalem TBS-Asterisk | [SIP-Architektur](https://github.com/JanHG98/netcore-tetra/blob/main/system-backend/sip-switch/docs/architecture.md) | Rufsignalisierung und bidirektionales RTP je Standort prüfen |
@@ -23,7 +23,7 @@ Eine der ersten beiden Stufen darf im Wiki nicht stillschweigend als vierte ausg
 
 ## Offene technische Punkte
 
-- **Konfigurationsdrift:** Die eingecheckte TBS-Konfiguration und das Beispiel-Inventory können unterschiedliche Node-Gateway-Adressen enthalten. Vor dem Start die installierte `[control_room]`-Adresse mit dem echten Gateway abgleichen; Port und Pfad allein reichen nicht.
+- **Konfigurationsdrift:** Der strenge `[tbs_site]`-Abgleich erhält die eingecheckte TBS-Adresse `10.0.1.179:8080/ws/node`; das Backend-Beispielinventory verwendet `10.0.20.10`. Vor dem Start die installierte `[control_room]`-Adresse mit dem echten Gateway abgleichen; Port und Pfad allein reichen nicht.
 - **Dual Carrier:** Der zweite Träger beweist keinen zweiten selbstständigen Kontrollkanal. Slotbelegung und MS-Verhalten messen. [[Dual-Carrier]]
 - **Mehrzellenbetrieb:** Teile von Mobility/Restore liegen im Code; vollständiger Handover eines laufenden Rufs im MAIN-COMPAT-Pfad ist nicht als abgenommen dokumentiert. [[Mehrzellenbetrieb]]
 - **IoT:** Reale HA-/Homematic-Schreibaktionen sind in der Open-Lab-Vorlage standardmäßig gesperrt. [[MQTT-und-Home-Assistant]]

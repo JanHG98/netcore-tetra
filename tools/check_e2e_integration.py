@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tomllib
 from pathlib import Path
+from deployment_inventory import runtime_registry, registry_inventory_errors
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_FILES = [
@@ -42,30 +43,7 @@ EXECUTABLE_FILES = [
     "deploy/open-lab/netcore-deploy.py",
     "tools/check_e2e_integration.py",
 ]
-EXPECTED_SERVICES = {
-    "node-gateway",
-    "mobility-core",
-    "subscriber-core",
-    "group-core",
-    "call-control",
-    "media-switch",
-    "recorder",
-    "sds-router",
-    "packet-core",
-    "ip-gateway",
-    "security-core",
-    "kmf",
-    "transit",
-    "application-gateway",
-    "media-library",
-    "control-room",
-    "observability",
-    "iot-gateway",
-    "hardware-gateway",
-    "rf-monitor",
-    "alarm-workflow",
-    "task-workflow", "asset-management", "sip-switch",
-}
+EXPECTED_SERVICES = set(runtime_registry())
 EXPECTED_SCENARIOS = {
     "contracts",
     "node-gateway",
@@ -117,6 +95,7 @@ def main() -> int:
         with inventory_path.open("rb") as handle:
             inventory = tomllib.load(handle)
         names = {str(service.get("name")) for service in inventory.get("services", [])}
+        errors.extend(registry_inventory_errors({item["name"]: item for item in inventory.get("services", [])}))
         if names != EXPECTED_SERVICES:
             errors.append(f"inventory services differ: missing={sorted(EXPECTED_SERVICES - names)} extra={sorted(names - EXPECTED_SERVICES)}")
         if inventory.get("contract_version") != "netcore.v1":
@@ -168,20 +147,20 @@ def main() -> int:
     run([sys.executable, "deploy/open-lab/netcore-deploy.py", "test", "--profile", "full", "--validate-only"], errors)
     run([sys.executable, "tests/e2e/validate_on_air_evidence.py"], errors)
     run([sys.executable, "deploy/open-lab/netcore-deploy.py", "validate"], errors)
-    run([sys.executable, "deploy/open-lab/netcore-deploy.py", "render"], errors)
+    run([sys.executable, "deploy/open-lab/netcore-deploy.py", "check-generated"], errors)
 
-    pdfs = list(ROOT.rglob("*.pdf"))
-    if pdfs:
-        errors.append(f"repository package contains PDF files: {len(pdfs)}")
-    caches = [path for path in ROOT.rglob("__pycache__") if path.is_dir()]
-    pyc = list(ROOT.rglob("*.pyc"))
+    # Source documentation PDFs are allowed; test_deploy_gate verifies that
+    # deployment archives still exclude PDFs, build output and Python caches.
+    tracked = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split("\0")
+    caches = [path for path in tracked if "__pycache__" in Path(path).parts]
+    pyc = [path for path in tracked if path.endswith(".pyc")]
     if caches or pyc:
         errors.append(f"runtime Python caches present: directories={len(caches)} pyc={len(pyc)}")
 
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1
-    print(f"Cross-LXC E2E integration package check: OK (24 services, {len(EXPECTED_SCENARIOS)} scenarios)")
+    print(f"Cross-LXC E2E integration package check: OK ({len(EXPECTED_SERVICES)} declared services, {len(EXPECTED_SCENARIOS)} scenarios)")
     return 0
 
 

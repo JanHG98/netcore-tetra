@@ -36,6 +36,25 @@
     const access = make("span", "nc-service-access", accessLabels[config.access] || "NetCore Dienst");
     access.dataset.access = String(config.access || "");
     tools.append(access);
+    // Opening discovery is an explicit operator action; rendering the shell
+    // never probes the agent or starts a scan. Login pages can opt out.
+    if (config.discovery !== false && document.body.dataset.ncDiscovery !== "disabled" &&
+        /^https?:$/.test(window.location.protocol)) {
+      const discovery = make("a", "button nc-discovery-link", "Auto Discovery ↗");
+      const agent = new URL(window.location.href);
+      agent.protocol = "http:";
+      agent.port = "8321";
+      agent.pathname = "/";
+      agent.search = "?scan=1";
+      agent.hash = "";
+      agent.username = "";
+      agent.password = "";
+      discovery.href = agent.href;
+      discovery.dataset.netcoreDiscovery = "";
+      discovery.target = "_blank";
+      discovery.rel = "noopener";
+      tools.append(discovery);
+    }
     const theme = make("button", "nc-theme-toggle");
     theme.type = "button";
     const themeKey = "netcore-theme";

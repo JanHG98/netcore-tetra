@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tomllib
 from pathlib import Path
+from deployment_inventory import registry_inventory_errors
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
@@ -56,8 +57,14 @@ def main() -> int:
     # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
     # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for service in services:
-        if service.get("security_mode") != "open_lab" or service.get("token_auth") or service.get("tls"):
-            errors.append(f"{service['name']}: current package must remain explicit open_lab without token/TLS")
+        mode = service.get("security_mode")
+        if mode not in {"open_lab", "token"} or service.get("tls"):
+            errors.append(f"{service['name']}: unsupported management security mode")
+        if bool(service.get("token_auth")) != (mode == "token"):
+            errors.append(f"{service['name']}: token_auth differs from declared security mode")
+    with (ROOT / "deploy/open-lab/inventory.example.toml").open("rb") as handle:
+        inventory = tomllib.load(handle)
+    errors.extend(registry_inventory_errors({item["name"]: item for item in inventory["services"]}))
 
     # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
     # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
@@ -71,7 +78,7 @@ def main() -> int:
 
     commands = [
         [sys.executable, "deploy/open-lab/netcore-deploy.py", "validate"],
-        [sys.executable, "deploy/open-lab/netcore-deploy.py", "render"],
+        [sys.executable, "deploy/open-lab/netcore-deploy.py", "check-generated"],
         [sys.executable, "tests/integration/open_lab_contract_test.py"],
         ["node", "--check", "system-backend/shared/web-ui/assets/netcore.js"],
     ]
@@ -95,9 +102,8 @@ def main() -> int:
         if not script.stat().st_mode & 0o111:
             errors.append(f"not executable: {script.relative_to(ROOT)}")
 
-    pdfs = list(ROOT.rglob("*.pdf"))
-    if pdfs:
-        errors.append(f"repository package contains PDF files: {len(pdfs)}")
+    # Documentation/ETSI source PDFs belong in the repository; the deployment
+    # bundle excludes them and has a separate negative regression for that rule.
 
     if errors:
         print("\n".join(errors), file=sys.stderr)

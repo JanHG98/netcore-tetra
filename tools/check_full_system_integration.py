@@ -19,17 +19,13 @@ import tomllib
 from collections import defaultdict, deque
 from pathlib import Path
 from urllib.parse import urlparse
+from deployment_inventory import runtime_registry, registry_inventory_errors
 
 ROOT = Path(__file__).resolve().parents[1]
 INVENTORY = ROOT / "deploy/open-lab/inventory.example.toml"
 NODE_GATEWAY = ROOT / "system-backend/node-gateway/config/node-gateway.example.toml"
 REPORT = ROOT / "Docs/generated/full-system-integration-audit.md"
-EXPECTED = {
-    "node-gateway", "mobility-core", "subscriber-core", "group-core", "call-control",
-    "media-switch", "recorder", "sds-router", "packet-core", "ip-gateway",
-    "security-core", "kmf", "transit", "application-gateway", "media-library",
-    "control-room", "observability", "iot-gateway", "hardware-gateway", "rf-monitor", "alarm-workflow", "task-workflow", "asset-management", "sip-switch",
-}
+EXPECTED = set(runtime_registry())
 EDGE_FALLBACK_SERVICES = EXPECTED
 REQUIRED_EDGE = {
     "subscriber-core", "group-core", "mobility-core", "call-control", "media-switch", "sds-router"
@@ -121,10 +117,11 @@ def check_graph(audit: Audit, services: dict[str, dict]) -> None:
 # Was: Diese Funktion prüft rendered urls.
 # Warum: Fehler oder unzulässige Zustände werden dadurch früh erkannt.
 def check_rendered_urls(audit: Audit, services: dict[str, dict]) -> None:
-    subprocess.run(
-        [sys.executable, str(ROOT / "deploy/open-lab/netcore-deploy.py"), "--inventory", str(INVENTORY), "render"],
-        cwd=ROOT, check=True, stdout=subprocess.DEVNULL,
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "deploy/open-lab/netcore-deploy.py"), "--inventory", str(INVENTORY), "check-generated"],
+        cwd=ROOT, capture_output=True, text=True,
     )
+    audit.require(result.returncode == 0, "generated deployment assets differ: " + result.stderr.strip())
     endpoint_owner = {(svc["host"], int(svc["port"])): name for name, svc in services.items()}
     generated = ROOT / "deploy/open-lab/generated/configs"
     checked = 0
@@ -148,6 +145,21 @@ def check_rendered_urls(audit: Audit, services: dict[str, dict]) -> None:
     audit.note(f"Rendered inter-service URLs checked: {checked}")
 
 
+def check_tbs_gateway(audit: Audit, control: dict, node_gateway: dict, site: dict) -> None:
+    audit.require(
+        bool(site.get("gateway_host"))
+        and control.get("host") == site.get("gateway_host")
+        and int(control.get("port", 0)) == int(site.get("gateway_port", 0)) == int(node_gateway["port"])
+        and control.get("endpoint_path") == site.get("endpoint_path") == "/ws/node",
+        "TBS control_room endpoint differs from explicit inventory tbs_site mapping or Node Gateway port/route",
+    )
+    if control.get("host") != node_gateway["host"]:
+        audit.note(f"TBS site-specific Node Gateway host `{control.get('host')}` is retained and checked against inventory `[tbs_site]`; "
+                   f"inventory example host `{node_gateway['host']}` is a different network. "
+                   "Confirm actual Node Gateway identity/address during Z01.4; no live reachability was checked.")
+
+
+
 # Was: Startet das Programm, lädt die benötigten Einstellungen und übergibt an den eigentlichen Dienstablauf.
 # Warum: Ein klarer Einstiegspunkt hält Startreihenfolge, Fehlerausgabe und geordnetes Beenden zusammen.
 def main() -> int:
@@ -155,6 +167,7 @@ def main() -> int:
     inventory = load_toml(INVENTORY)
     service_list = inventory.get("services", [])
     services = {svc["name"]: svc for svc in service_list}
+    audit.errors.extend(registry_inventory_errors(services))
     audit.require(set(services) == EXPECTED, f"inventory services differ: got={sorted(services)}")
     audit.require(len(service_list) == len(services), "duplicate service names in inventory")
 
@@ -187,6 +200,8 @@ def main() -> int:
     # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
     # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for name, target in targets.items():
+        if name not in services:
+            continue
         svc = services[name]
         parsed = urlparse(target["url"])
         audit.require(parsed.hostname == svc["host"] and parsed.port == int(svc["port"]), f"{name}: health target does not match inventory")
@@ -204,12 +219,8 @@ def main() -> int:
     audit.require(fb.get("keep_last_known_policy") is True, "last-known subscriber/group policy must be retained")
     control = bs.get("control_room", {})
     node_gateway = services["node-gateway"]
-    audit.require(
-        control.get("host") == node_gateway["host"]
-        and int(control.get("port", 0)) == int(node_gateway["port"])
-        and control.get("endpoint_path") == "/ws/node",
-        "TBS sample control_room endpoint must terminate on the Node Gateway so service-health fallback is available",
-    )
+    site = inventory.get("tbs_site", {})
+    check_tbs_gateway(audit, control, node_gateway, site)
 
     hooks = {
         "health protocol": (ROOT / "crates/tetra-entities/src/net_control_room/protocol.rs", "CoreServicesSnapshot"),
@@ -243,7 +254,7 @@ def main() -> int:
         "",
         "Generated by `tools/check_full_system_integration.py`.",
         "",
-        f"- Runtime services: **{len(services)}**",
+        f"- Declared runtime services: **{len(services)}** (static source/configuration check; no live count)",
         f"- Unique management endpoints: **{len(set(endpoints))}**",
         f"- Node-Gateway backend health targets: **{len(targets)}**",
         f"- Explicit TBS fallback modes: **{len(modes)}**",

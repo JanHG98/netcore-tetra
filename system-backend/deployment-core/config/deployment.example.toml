@@ -1,0 +1,21 @@
+# OpenLab: no login, management tokens, TLS or client certificates.
+mode = "open_lab"
+role = "controller"
+bind = "0.0.0.0"
+port = 8320
+environment = "netcore-openlab"
+state_dir = "/var/lib/netcore-deployment"
+repository = "https://github.com/JanHG98/netcore-tetra.git"
+ref = "main"
+poll_seconds = 3600
+multicast_group = "239.192.84.82"
+discovery_port = 48320
+interface = "0.0.0.0"
+interval = 15
+lease_seconds = 90
+allowed_networks = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"]
+seeds = []
+# For multiple interfaces / VPN, optionally set the reachable controller address:
+# advertise_url = "http://10.0.1.50:8320"
+[bindings]
+# node-gateway = "netcore-gateway-01"

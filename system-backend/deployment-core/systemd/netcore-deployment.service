@@ -1,0 +1,25 @@
+[Unit]
+Description=NetCore OpenLab Deployment Core
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=netcore-deploy
+Group=netcore-deploy
+ExecStart=/usr/bin/python3 /usr/local/lib/netcore-deployment/main.py --config /etc/netcore/deployment.toml
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+StateDirectory=netcore-deployment
+StateDirectoryMode=0750
+Restart=on-failure
+RestartSec=5
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/netcore-deployment
+
+[Install]
+WantedBy=multi-user.target

@@ -2,6 +2,8 @@
 
 **Aktuelle Gesamtfolge / nächster Schritt:** [Zentrale Roadmap NETCORE-MASTER-01](https://github.com/JanHG98/netcore-tetra/blob/main/ROADMAP.md). Sie führt die Prioritäten und Abnahmebedingungen; diese Seite ergänzt die Vorhaben und offenen Entscheidungen. Für neue Status- / Fortsetzungsfragen zuerst die zentrale Roadmap mit dem aktuellen Repositorystand abgleichen.
 
+**Z01-Fortschritt 07.10.2026:** Z01.1 abgeschlossen; Z01.2/01.3 auf `feature/z01-deployment-consolidation` implementiert und lokal geprüft. [Quellvergleich, Pakete, Tests und Rückwege](../Docs/integration/Z01-2026-10-07/README.md). Nach PR-/CI-Prüfung folgt Z01.4; keine Betreiberinstallation durch diesen Auftrag.
+
 Hier stehen Vorhaben, die aus Projektplanung und Gesprächen hervorgehen. **Ein Ziel in dieser Liste ist keine zugesicherte Funktion des aktuellen Builds.** Für vorhandene Dienste und Tests siehe [[Projektstand]] und [[Dienstkatalog]].
 
 | Vorhaben | Geplanter Nutzen | Vor einer Zusage zu klären |

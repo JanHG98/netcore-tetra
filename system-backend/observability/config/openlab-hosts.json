@@ -1,0 +1,137 @@
+{
+  "note": "Example inventory only; customize for the actual lab before installation.",
+  "controller_url": "http://10.0.20.35:8320",
+  "observability_url": "http://10.0.20.26:8210",
+  "hosts": [
+    {
+      "name": "Node-Gateway",
+      "address": "10.0.20.10",
+      "kind": "LXC"
+    },
+    {
+      "name": "Mobility Core",
+      "address": "10.0.20.11",
+      "kind": "LXC"
+    },
+    {
+      "name": "Subscriber Core",
+      "address": "10.0.20.12",
+      "kind": "LXC"
+    },
+    {
+      "name": "Group Core",
+      "address": "10.0.20.13",
+      "kind": "LXC"
+    },
+    {
+      "name": "Call Control",
+      "address": "10.0.20.14",
+      "kind": "LXC"
+    },
+    {
+      "name": "Media Switch",
+      "address": "10.0.20.15",
+      "kind": "LXC"
+    },
+    {
+      "name": "Recorder",
+      "address": "10.0.20.16",
+      "kind": "LXC"
+    },
+    {
+      "name": "Sds Router",
+      "address": "10.0.20.17",
+      "kind": "LXC"
+    },
+    {
+      "name": "Packet Core",
+      "address": "10.0.20.18",
+      "kind": "LXC"
+    },
+    {
+      "name": "Ip Gateway",
+      "address": "10.0.20.19",
+      "kind": "LXC"
+    },
+    {
+      "name": "Security Core",
+      "address": "10.0.20.20",
+      "kind": "LXC"
+    },
+    {
+      "name": "Kmf",
+      "address": "10.0.20.21",
+      "kind": "LXC"
+    },
+    {
+      "name": "Transit",
+      "address": "10.0.20.22",
+      "kind": "LXC"
+    },
+    {
+      "name": "Application Gateway",
+      "address": "10.0.20.23",
+      "kind": "LXC"
+    },
+    {
+      "name": "Media Library",
+      "address": "10.0.20.24",
+      "kind": "LXC"
+    },
+    {
+      "name": "Control Room",
+      "address": "10.0.20.25",
+      "kind": "LXC"
+    },
+    {
+      "name": "Observability",
+      "address": "10.0.20.26",
+      "kind": "LXC"
+    },
+    {
+      "name": "Iot Gateway",
+      "address": "10.0.20.27",
+      "kind": "LXC"
+    },
+    {
+      "name": "Hardware Gateway",
+      "address": "10.0.20.28",
+      "kind": "LXC"
+    },
+    {
+      "name": "Rf Monitor",
+      "address": "10.0.20.29",
+      "kind": "LXC"
+    },
+    {
+      "name": "Alarm Workflow",
+      "address": "10.0.20.30",
+      "kind": "LXC"
+    },
+    {
+      "name": "Task Workflow",
+      "address": "10.0.20.31",
+      "kind": "LXC"
+    },
+    {
+      "name": "Asset Management",
+      "address": "10.0.20.32",
+      "kind": "LXC"
+    },
+    {
+      "name": "Sip Switch",
+      "address": "10.0.20.33",
+      "kind": "LXC"
+    },
+    {
+      "name": "Alert Service",
+      "address": "10.0.20.34",
+      "kind": "LXC"
+    },
+    {
+      "name": "Deployment Core",
+      "address": "10.0.20.35",
+      "kind": "VM"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Dienstkatalog
 
-Die [aktuelle Open-Lab-Inventoryvorlage](https://github.com/JanHG98/netcore-tetra/blob/main/deploy/open-lab/inventory.example.toml) listet **24 deploybare Backend-Dienste**. Die Tabelle nennt jeweils den fachlichen Zweck und den TCP-Beispielport für Management/API/WebUI. Die reale Installation kann andere Hosts oder Ports verwenden. Installationsdateien, Endpunkte und Tests liegen unter dem verlinkten Dienstordner.
+Die [aktuelle Open-Lab-Inventoryvorlage](https://github.com/JanHG98/netcore-tetra/blob/main/deploy/open-lab/inventory.example.toml) listet **26 deklarierte deploybare Backend-Dienste im konsolidierten Z01-Arbeitsstand**. Die Z01-Umsetzung liegt zunächst auf `feature/z01-deployment-consolidation`; PR-/CI-Übernahme und reale Installation sind getrennt. Die Tabelle nennt jeweils den fachlichen Zweck und den TCP-Beispielport für Management/API/WebUI. Die reale Installation kann andere Hosts oder Ports verwenden. Installationsdateien, Endpunkte und Tests liegen unter dem verlinkten Dienstordner.
 
 | Dienst | Aufgabe und Datenhoheit | Port | Quellort |
 |---|---|---:|---|
@@ -28,18 +28,20 @@ Die [aktuelle Open-Lab-Inventoryvorlage](https://github.com/JanHG98/netcore-tetr
 | Asset Management | Funkgeräte, Ausgabe, Rückgabe, Wartungsakte | 8290 | [asset-management](https://github.com/JanHG98/netcore-tetra/tree/main/system-backend/asset-management) |
 | SIP Switch | PBX-Trunk und Routing zur aktuellen TBS | 8300 | [sip-switch](https://github.com/JanHG98/netcore-tetra/tree/main/system-backend/sip-switch) |
 | Control Room | Operatoren, Arbeitsplatzansicht, Befehle | 9010 | [control-room](https://github.com/JanHG98/netcore-tetra/tree/main/system-backend/control-room) |
+| Alert Service | Warnquellen, Meldungen und kontrollierte Zustellung; Token-Verwaltung | 8310 | [alert-service](https://github.com/JanHG98/netcore-tetra/tree/main/system-backend/alert-service) |
+| Deployment Core | Discovery, Rollout und Imagebuilder auf voller Ubuntu-VM | 8320 | [deployment-core](https://github.com/JanHG98/netcore-tetra/tree/main/system-backend/deployment-core) |
 
 ## Daneben betreibbare Komponenten
 
 | Komponente | Rolle | Einordnung |
 |---|---|---|
-| `bluestation-bs` | Funkkante mit eigenem Dashboard | kein LXC-Eintrag des 24er-Inventories |
+| `bluestation-bs` | Funkkante mit eigenem Dashboard | kein Backend-Eintrag des 26er-Inventories |
 | Provisioning Core | Teilnehmer/Gruppen per Subscriber/Group Core anlegen | zusätzlicher Dienst, Beispielport 8125; [[Provisioning]] |
 | NetCore Directory | Namen, Bezeichnungen, Statusgruppen und lokale Metadaten | Python/SQLite, Beispielport 8095; [[NetCore-Directory]] |
 | NetCore Piper | TTS-WAV-Erzeugung | separater HTTP-Dienst, Beispielport 5005; [[Audio-Zentrale]] |
 | lokaler TBS-Asterisk und vorhandene PBX | SIP-/RTP-Edge und Telefonanlage | Rollen getrennt vom zentralen SIP Switch; [[SIP-und-Brew]] |
 | Brew-Server | optionaler externer TETRA/Brew-Peer | eigene Konfiguration und Ruf-/SDS-Grenze; [[SIP-und-Brew]] |
 
-**24 Einträge im Inventory sind keine 24 auf einem Host laufenden Prozesse.** Die Vorlage sieht einen Dienst pro LXC vor. [`system-backend/services.toml`](https://github.com/JanHG98/netcore-tetra/blob/main/system-backend/services.toml) führt darüber hinaus Provisioning Core und zeigt Ziel-/Kontraktinformationen; für die konkrete Bereitstellung zählen das gerenderte Inventory und die installierten TOML-Dateien. Die ältere [17-Dienst-Anleitung](https://github.com/JanHG98/netcore-tetra/blob/main/Docs/NetCore-Tetra-Komplettguide.md) ist eine ältere Ausbauphase.
+**26 Einträge im Inventory sind keine 26 laufenden oder abgenommenen Instanzen.** Deployment-Core ist eine volle Ubuntu-VM; andere Backendrollen folgen ihren jeweiligen LXC-/Betriebsverfahren. `system-backend/services.toml` und Inventory werden einschließlich Ports/Security-Modus gemeinsam geprüft; tatsächliche Bereitstellung richtet sich nach gerendertem Inventory und installierten TOMLs. Der Agentenkatalog enthält zusätzlich TBS und den optionalen Provisioning Core, während Controller-/VM-Update einen eigenen Pfad haben. Ältere 17-/24-Dienst-Anleitungen sind historische Momentaufnahmen.
 
-Alle Dienste stellen im Open-Lab-Paket Fach-WebUIs und APIs bereit; die [WebUI-Matrix](https://github.com/JanHG98/netcore-tetra/blob/main/Docs/BACKEND_WEBUI_SERVICE_MATRIX.md) beschreibt Verwaltungsaktionen. [[Bedienoberflaechen]] trennt die Oberflächen, [[Netzwerk-und-Ports]] die Transportschicht und [[Security-and-Operations]] die Netzgrenze.
+Die Dienste stellen Fach-WebUIs und APIs bereit; Alert-Verwaltung bleibt tokenpflichtig, übrige Open-Lab-Netzgrenzen gelten weiter; die [WebUI-Matrix](https://github.com/JanHG98/netcore-tetra/blob/main/Docs/BACKEND_WEBUI_SERVICE_MATRIX.md) beschreibt Verwaltungsaktionen. [[Bedienoberflaechen]] trennt die Oberflächen, [[Netzwerk-und-Ports]] die Transportschicht und [[Security-and-Operations]] die Netzgrenze.
