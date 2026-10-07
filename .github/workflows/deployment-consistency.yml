@@ -68,9 +68,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y rsyslog rsyslog-relp
+          # The packaged daemon's AppArmor profile excludes temporary test configs.
+          # Stage the same binary for fixtures; keep the system daemon/profile intact.
+          install -m 0755 /usr/sbin/rsyslogd "$RUNNER_TEMP/z01-rsyslogd"
           npm install --prefix "$RUNNER_TEMP/z01-browser" --no-save playwright@1.62.1
           "$RUNNER_TEMP/z01-browser/node_modules/.bin/playwright" install --with-deps chromium
       - name: Sender validation, TCP UDP RELP and receiver reconnect
+        env:
+          RSYSLOGD: ${{ runner.temp }}/z01-rsyslogd
         run: python3 -m unittest discover -s system-backend/observability/tests -p 'test_syslog*.py' -v
       - name: Real hardware process terminates with a quiet MQTT subscriber
         run: python3 -m unittest discover -s system-backend/hardware-gateway/tests -v

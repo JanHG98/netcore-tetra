@@ -3,7 +3,7 @@
 | Feld | Wert |
 | --- | --- |
 | Roadmap-ID | NETCORE-MASTER-01 |
-| Erstellt / aktualisiert | 2026-10-05 / 2026-10-07, Europe/Berlin |
+| Erstellt / aktualisiert | 2026-10-05 / 2026-10-08, Europe/Berlin |
 | Geltungsbereich | Gesamtes NetCore-Tetra-Repository: TBS / Funkstack, Core, Deployment, Betrieb, IAM, Drive, Plugins und weitere Integrationen |
 | Geprüfter Ausgangsstand | Z01: `main@dae9363062a1442664a083e1fc32e6944b3be9a6`, historische Quelle `bbf039729b9b05f8d623b11195ca24a124f68d16`; Integration `67b2f0d6e2fbcbf7013ee9b0dae9b2a25c2d9315` auf `feature/z01-deployment-consolidation` |
 | Ergänzende Gruppenprüfung | `main@07609fb56f412ebe6e36655323e8fc6359cf90ec`, 2026-10-05; statischer Befund für Z02.5 |
@@ -20,6 +20,8 @@
 Z01.1 ist abgeschlossen: die vollständigen Bäume `main@dae9363` und `bbf0397` wurden direkt verglichen (2.655 Pfade, 75 historisch fehlende Dateien, 72 unterschiedliche gemeinsame Dateien). Übernahmepakete, Inhaltskonflikte, konkrete Konfigurationsentscheidungen, Tests und Rückwege stehen im [Z01-Integrationsbericht](Docs/integration/Z01-2026-10-07/README.md), einschließlich vollständiger Datei-/SHA-Tabellen.
 
 Z01.2 ist auf `feature/z01-deployment-consolidation` implementiert und lokal geprüft: Deployment/Discovery/Imagebuilder/Pi-VPN sowie Syslog aufgenommen, aktuelle UI/Fachänderungen erhalten. Z01.3 vereinheitlicht 26 Inventardienste, Katalog/Registry/Health/Fallback, erzwingt semantische Readiness vor Folgepaketen und bewahrt vorhandene Konfigurationen. Gemeinsames Quellgate und isolierte Unit-/HTTP-/Wire-/Native-/Browserprüfungen bestehen. Die [Nachweise](Docs/integration/Z01-2026-10-07/validation.json) nennen Umfang, übersprungenen Unix-Workertransport und offene Grenzen.
+
+[PR #62](https://github.com/JanHG98/netcore-tetra/pull/62) ist veröffentlicht. Am ersten PR-Commit bestehen das gemeinsame Inventar-/Ready-/Driftgate, alle 50 Deploymenttests einschließlich echtem Unix-Workertransport, die Deployment-WebUI sowie Workspacecheck und TBS-Link. Ein Ubuntu-Profilkonflikt im temporären Syslog-Testaufbau wurde gezielt korrigiert; Wiederholung und weitere native Jobs sind am aktuellen PR-Commit zu prüfen. Details stehen im [CI-Nachtrag](Docs/integration/Z01-2026-10-07/ci.md).
 
 **Vor einer Anlageninstallation:** PR-Übernahme und GitHub-CI am tatsächlichen Commit prüfen. Quell-/Branchabschluss bedeutet keine bereits erfolgte main-Übernahme, keine installierte 26-Dienst-Flotte und keinen vollständigen ARM64-/Pi-/NAS-/On-Air-Nachweis. Native Ubuntu-VM-/Image-Personalisierungssmokes und Unix-Workertransport sind gesondert in CI vorgesehen; tatsächlicher ARM64-NetCore-Imagebuild und physischer Pi/SXceiver bleiben Z01.4.
 
@@ -71,7 +73,7 @@ Arbeitsorganisation: Z01 / Z02 zuerst fokussiert abschließen; IAM-Inventur und 
 
 ### Z01 – konsistenten Gesamtstand herstellen
 
-| Aufgabe | Status am 2026-10-05 | Ergebnis / Abnahme |
+| Aufgabe | Aktueller Status / Nachweis | Ergebnis / Abnahme |
 | --- | --- | --- |
 | Z01.1 · vollständiger Quellvergleich und Integrationsplan | Erledigt gemäß Quellabnahme 2026-10-07 | [Vollständiger Vergleich, Entscheidungen und Plan](Docs/integration/Z01-2026-10-07/README.md) mit beiden SHAs und Grenzen; gültigen Vergleich nicht erneut durchführen |
 | Z01.2 · fehlende Entwicklung kontrolliert übernehmen | Implementiert / lokal geprüft auf Z01-Arbeitsbranch; PR-/native CI-Abnahme separat | Deployment / Discovery, Imagebuilder / VPN und Syslog aufgenommen; aktuelle UI und Standortwerte erhalten; lokale Tests bestanden, Anlageninstallation offen |

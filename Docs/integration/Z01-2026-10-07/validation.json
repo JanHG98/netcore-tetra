@@ -36,7 +36,7 @@
   },
   "pending": [
     "GitHub CI results at the published PR commit",
-    "native Unix-socket/VM/ARM64-personalization smoke in suitable environment",
+    "native VM/ARM64-personalization smoke and corrected syslog fixture job in suitable environment",
     "Z01.4 operator installations, actual network mapping, NAS, full ARM64 image and physical Pi/SXceiver boot",
     "radio end-to-end and on-air acceptance"
   ],
@@ -48,5 +48,20 @@
     "date": "2026-10-08",
     "method": "connected GitHub Git-data API",
     "tree_matches_reviewed_local_commit": "fa04962a799882df75214edfc2f9ee2ca3e069a2"
+  },
+  "github_ci_initial": {
+    "head_sha": "e5ae2cd5e94c32df0e9b2573e207f9d48b0c1f26",
+    "pr": 62,
+    "source_consistency": "PASS",
+    "deployment": {
+      "passed": 50,
+      "skipped": 0,
+      "real_unix_worker_transport": "PASS",
+      "webui": "PASS"
+    },
+    "locked_workspace_check_and_tbs_link": "PASS",
+    "warning_service": "PASS",
+    "syslog_runtime": "FAIL before execution: packaged rsyslogd denied temporary fixture configs; scoped binary staging fix applied; rerun required",
+    "report": "ci.md"
   }
 }

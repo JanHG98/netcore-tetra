@@ -133,6 +133,8 @@ CI-Verträge:
 
 Ein lokales PASS wird nicht als durchgelaufene GitHub-CI ausgegeben. CI-Lauf-SHA und Ergebnis beim PR prüfen; native Unix-Socket-/VM-/Image-Nachweise sind getrennt von den hier ausführbaren Tests. Der reale vollständige NetCore-ARM64-Imagebuild und physische Pi/SXceiver-Boot bleiben Z01.4, auch wenn ein Personalisierungssmoke grün ist.
 
+Der [GitHub-CI-Nachtrag](ci.md) dokumentiert die ersten echten PR-Ergebnisse und die Korrektur des temporären rsyslog-Testaufbaus. Maßgeblich für die Freigabe bleibt die CI am aktuellen PR-Commit.
+
 ## 6. Nächster Übergang
 
 Nach Review/Übernahme dieses gemeinsamen Standes folgt **Z01.4: Installation, Upgrade und Recovery**. Benötigt werden die tatsächliche Hostzuordnung, Quell-/Binaryversionen und Konfigurationen, eine geeignete Deployment-VM, ein Pi/SXceiver sowie die echte NAS-Freigabe. Gezielte P0-Arbeiten aus Z02 bleiben parallel möglich. Dieser Auftrag zieht keine IAM-/Drive-/Handover-Großbaustelle vor.
