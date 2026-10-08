@@ -86,3 +86,4 @@ jobs:
           cargo test --locked -p netcore-observability
           cargo build --locked -p netcore-observability
           python3 system-backend/observability/tests/native-syslog-smoke.py --browser
+          python3 system-backend/observability/tests/native-syslog-loopback.py
