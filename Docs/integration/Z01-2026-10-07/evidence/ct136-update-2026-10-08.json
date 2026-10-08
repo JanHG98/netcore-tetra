@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-08",
+  "timezone": "Europe/Berlin",
+  "evidence_kind": "operator_provided_output",
+  "assistant_direct_host_access": false,
+  "ctid": 136,
+  "hostname": "Observability",
+  "source_commit": "3d96a9a4d9d2c0cdc8cd814970b076a551fcbfe2",
+  "source_checkout": "/var/tmp/netcore-obs-source.VCkhk2",
+  "update_state": "/var/tmp/netcore-obs-update.xDnYZ2",
+  "binary": "/opt/netcore-observability/bin/netcore-observability",
+  "package": "netcore-observability",
+  "package_version": "1.3.0",
+  "build_profile": "release",
+  "build_duration": "3m26s",
+  "checks": {
+    "host_config_and_idle_jobs_before_build": "passed",
+    "host_config_and_idle_jobs_after_build": "passed",
+    "old_binary_hash_before_exchange": "passed",
+    "both_http_ready": "passed",
+    "management_bind_preserved": "passed",
+    "observability_toml_sha256_after_restart": "passed",
+    "syslog_json_sha256_after_restart": "passed"
+  },
+  "preview": {
+    "preview_pending": 0,
+    "preview_error": null,
+    "updated_at": "2026-10-08T12:07:14.133121+00:00"
+  },
+  "result": "passed",
+  "boundaries": {
+    "tcp_marker_delivery": "not yet tested",
+    "gzip_archive": "not yet tested",
+    "lab_controller_runtime_fix": "not updated by this binary-only change"
+  }
+}

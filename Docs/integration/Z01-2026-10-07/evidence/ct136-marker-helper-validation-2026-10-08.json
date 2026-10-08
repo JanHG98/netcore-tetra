@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-08",
+  "timezone": "Europe/Berlin",
+  "script": "Docs/integration/Z01-2026-10-07/ct136-syslog-acceptance.py",
+  "script_sha256": "86f6b5d0e0a434f1bbb927c3186c14c07a5f6d80e6e1a82e7821b7e57aae2e3b",
+  "kind": "isolated_driver_simulation",
+  "production_access": false,
+  "syntax": "passed",
+  "real_fixture_io": [
+    "temporary raw files",
+    "gzip stream through EOF",
+    "atomic checkpoint result files"
+  ],
+  "mocked_interfaces": [
+    "fixed host",
+    "systemd state and start",
+    "TCP send",
+    "HTTP API",
+    "real network mount guard"
+  ],
+  "scenarios": [
+    {
+      "name": "happy flow",
+      "result": "passed",
+      "tcp_sends": 1,
+      "archive_starts": 1
+    },
+    {
+      "name": "archive already active at preflight",
+      "result": "passed",
+      "tcp_sends": 0,
+      "archive_starts": 0
+    },
+    {
+      "name": "archive still activating after deadline",
+      "result": "passed",
+      "tcp_sends": 1,
+      "archive_starts": 1,
+      "raw_retained": true
+    },
+    {
+      "name": "stale prior unit success",
+      "result": "passed",
+      "outcome": "rejected"
+    },
+    {
+      "name": "wrong gzip record",
+      "result": "passed",
+      "outcome": "rejected"
+    },
+    {
+      "name": "truncated gzip footer/CRC",
+      "result": "passed",
+      "outcome": "rejected"
+    }
+  ],
+  "checkpoint_mode": "0700",
+  "result_mode": "0600",
+  "configuration_unchanged": true,
+  "actual_ct136_marker_run": "pending"
+}

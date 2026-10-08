@@ -11,7 +11,7 @@ Quellprüfung an `main@c85d56f91e358f361d738acebdbf46ca306186f6`; der installier
 | Host / Netz | CT136 `Observability`, IPv4 `10.0.1.143/24`, Python3.13.3 |
 | Dienst | Discovery-Launcher → `/opt/netcore-observability/bin/netcore-observability`; Dienstbenutzer `netcore-observability` |
 | Benutzer / LXC-Abbildung | UID999 / GID989; Map0→100000 über65536 IDs, daher Host-UID100999 / GID100989 |
-| HTTP | `10.0.1.143:8210` bereit; `127.0.0.1:8210` Connection refused |
+| HTTP beim ursprünglichen Befund | `10.0.1.143:8210` bereit; `127.0.0.1:8210` Connection refused; nach Update beide bereit (siehe Nachtrag) |
 | Logging | Receiver, Preview und Archivtimer aktiv; Aktivität beweist noch keine Zustellung |
 | Syslog | `nms_url=http://127.0.0.1:8210`, Collector `observability-10.0.1.143`, Allowlist10.0.1.0/24 +127.0.0.0/8 |
 | NAS | nfs4/rw, `/mnt/nfs-share` → `10.0.1.148:/mnt/MassStorage/SRV-M-TBS-01`; Schreiben/fsync/Lesen/Entfernen als Dienstbenutzer999:989 im eigenen Collector-Ordner bestanden |
@@ -50,6 +50,14 @@ Der Betreiber hat den echten NFS-Export über die installierte Mountprüfung ge�
 
 PR #64 ist auf `main@96db88d74d3d9f8ffc9f977e231b7ad9a3f19155` übernommen. Der [gezielte Updateblock](ct136-update.sh) baut ausschließlich das vorhandene Observability-Paket mit einem Buildjob und ersetzt den Binarybuild atomisch. Er prüft Standort/Unit, offene Agentaufträge, unveränderte Konfigurations-/Binary-Prüfsummen und Berechtigungen vor dem Austausch. Der vorhandene Agent heißt `netcore-discovery.service`; die Prüfung umfasst diesen und einen gegebenenfalls vorhandenen Controller. Quellcheckout und Buildzustand liegen getrennt von der Agent-Arbeitskopie. Bei fehlgeschlagenem Start/Prüfung oder gefangenem Signal stellt er den vorherigen Build wieder her und prüft dessen Management-Readiness. SIGKILL, Stromausfall und ein neu eintreffender Deploymentauftrag zwischen Vorprüfung und Austausch sind damit nicht ausgeschlossen; die Vorprüfung ist keine serverseitige Auftragssperre.
 
-Shellsyntax, Verweigerung auf einem anderen Host und ein isolierter Dateisystem-Rücknahmelauf sind geprüft. Der Updateblock ist noch nicht auf CT136 ausgeführt.
+Shellsyntax, Verweigerung auf einem anderen Host und ein isolierter Dateisystem-Rücknahmelauf sind geprüft. Der Updateblock ist inzwischen auf CT136 wie im folgenden Nachtrag tatsächlich ausgeführt.
 
-**Status:** Bestand und NAS-Dateizugriff im Lab bestätigt, Quellkorrektur übernommen / native CI bestanden; tatsächlicher CT136-Rollout und Logmarker bis zum gzip-NAS-Archiv offen.
+## Tatsächlicher Binary-Update-Nachweis
+
+Der Betreiber hat `ct136-update.sh` aus `3d96a9a4d9d2c0cdc8cd814970b076a551fcbfe2` auf CT136 ausgeführt. Vollständiger Releasebuild des Observability-Pakets in3m26s bestanden; Vorprüfung vor/nach dem Build, Prüfung des alten Binarys und unveränderter Originalkonfiguration bestanden. Der atomische Austausch und Neustart enden mit beiden bereiten HTTP-Adressen und erhaltenem Management-Bind. `/etc/netcore/observability.toml` und `/etc/netcore/syslog.json` bestehen die vollständige SHA-256-Prüfung nach dem Neustart. [Strukturierter Betreiberbefund](evidence/ct136-update-2026-10-08.json).
+
+Der gelesene Previewstatus vom2026-10-08T12:07:14.133121Z meldet `preview_pending=0` und `preview_error=null`. Dies bestätigt keine Markerzustellung, keinen Sender und kein tatsächliches gzip-Archiv. Quellcheckout auf CT136: `/var/tmp/netcore-obs-source.VCkhk2`; vorheriges Binary / Prüfsummen / Buildzustand: `/var/tmp/netcore-obs-update.xDnYZ2`. Eine Rücknahme war bei diesem erfolgreichen Lauf nicht erforderlich.
+
+Der nächste [Markerhelfer](ct136-syslog-acceptance.py) sendet genau einen eindeutigen RFC5424-Marker an den tatsächlichen TCP514-Empfänger, verfolgt ihn über die NMS-Vorschau und prüft nach einem einmal ausgelösten echten Archivdienstlauf denselben Record im eigenen gzip-Archiv. Er benötigt keinen Observability-/Receiver-Neustart. Ein nicht abgeschlossener Archivlauf führt zu STOP mit bestehendem Nachweis, nicht zu einem weiteren Archivstart. Syntax und sechs isolierte Prüfungen am tatsächlichen Helfer bestehen: normaler Ablauf, bereits aktiver Archiver, über60s laufender Auftrag mit erhaltenen Rohdaten, veralteter Unit-Erfolg, falscher gzip-Datensatz sowie abgeschnittener gzip-Footer/CRC. Die Fixtures verwenden echte temporäre Raw-/gzip-/Nachweisdateien; Host, systemd, TCP, HTTP und Mountprüfung sind simuliert. [Prüfbericht](evidence/ct136-marker-helper-validation-2026-10-08.json). Die echte CT136-Ausführung bleibt offen.
+
+**Status:** Bestand, NAS-Dateizugriff und Binary-/API-Update im Lab bestanden; Logmarker über den Empfänger bis zum tatsächlichen gzip-NAS-Archiv noch offen.
