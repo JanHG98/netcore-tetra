@@ -1,6 +1,6 @@
 # Z01.1–Z01.3: Quellvergleich, Integration und gemeinsames Prüfgate
 
-Stand: 07.10.2026, Europe/Berlin. Auftrag: vollständiger Vergleich, kontrollierte Übernahme von Deployment/Discovery/Imagebuilder/Pi-VPN/Syslog, Inventar- und Readiness-Korrektur, Tests und Rückwege. Arbeitszweig: `feature/z01-deployment-consolidation`. Geprüfter Implementierungscommit: `67b2f0d6e2fbcbf7013ee9b0dae9b2a25c2d9315`.
+Quell-/Prüfbericht: 07.10.2026; Statusnachtrag: 08.10.2026, Europe/Berlin. Auftrag: vollständiger Vergleich, kontrollierte Übernahme von Deployment/Discovery/Imagebuilder/Pi-VPN/Syslog, Inventar- und Readiness-Korrektur, Tests und Rückwege. Arbeitszweig: `feature/z01-deployment-consolidation`. Geprüfter Implementierungscommit: `67b2f0d6e2fbcbf7013ee9b0dae9b2a25c2d9315`.
 
 ## Ergebnis und Nachweisgrenze
 
@@ -9,9 +9,9 @@ Stand: 07.10.2026, Europe/Berlin. Auftrag: vollständiger Vergleich, kontrollier
 | Z01.1 | Vollständige Tip-Bäume verglichen; Konflikte, Pakete, Übernahmeentscheidungen und Rückwege dokumentiert | Quellen, Dateiinhalte und Verträge geprüft |
 | Z01.2 | Fehlende Entwicklung integriert; aktuelle UI/Fachänderungen erhalten; funktionale Fehler zusätzlich korrigiert | Implementierung und gezielte lokale Unit-/HTTP-/Wire-/Native-/Browserprüfungen |
 | Z01.3 | Registry/Inventory/generierte Assets/Health/Fallback konsistent; Ready-Gates und gemeinsame CI ergänzt | Gemeinsames Quell-/Konfigurationsgate bestanden; eigene CI-/Betriebsnachweise separat |
-| Z01.4 | Weiter offen | Reale Neu-/Wiederholungsinstallation, Upgrade/Recovery, vollständiger ARM64-Build, physischer Pi/SXceiver, Standortnetz und NAS |
+| Z01.4 | In Arbeit; CT150-Installation / Readiness / Recovery und CT136-TCP-/Vorschau-/NAS-Pfad samt isoliertem Mountfehler bestanden | Reale Teilabnahmen dokumentiert; vollständiger ARM64-Build, Pi/SXceiver, VPN und weitere Ausfälle / Versionswechsel offen |
 
-Die Umsetzung liegt zunächst auf dem oben genannten Arbeitszweig. Ein Branch-/PR-Nachweis bedeutet noch keine Übernahme in `main` und keine Installation. Es wurde kein Betreiberhost kontaktiert, kein Dienst auf der Anlage geändert und kein Funkversuch durchgeführt. Ein statischer Audit-PASS bestätigt Verträge und Quellanschlüsse, keine funktionierende Gesamtflotte.
+Die ursprüngliche Umsetzung entstand auf dem oben genannten Arbeitszweig und wurde mit [PR #62](https://github.com/JanHG98/netcore-tetra/pull/62) nach main übernommen (`c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf`). Der aktuelle geprüfte Quellstand ist `001fb84ac566bb0f95e18d22439ee664fe0093e4`; beide zugehörigen main-Workflows bestehen. [Gesicherter Fortsetzungsstand vom 08.10.2026](checkpoint-2026-10-08.md), [Laufzeitnachtrag](runtime-z014.md) und [Imagebuilder-Nachtrag](imagebuilder-vm119.md) ergänzen die späteren Betreiberbefunde. Die Assistenz hat keinen direkten Zugriff auf die Anlage; tatsächliche Teilabnahmen beruhen auf den bereitgestellten Betreiber-Ausgaben. Der folgende Quellvergleich und seine datierten lokalen Prüfergebnisse bleiben als ursprünglicher Bericht erhalten. Ein statischer Audit-PASS bestätigt Verträge und Quellanschlüsse, keine funktionierende Gesamtflotte.
 
 ## 1. Beide vollständigen Quellstände
 
@@ -133,8 +133,8 @@ CI-Verträge:
 
 Ein lokales PASS wird nicht als durchgelaufene GitHub-CI ausgegeben. CI-Lauf-SHA und Ergebnis beim PR prüfen; native Unix-Socket-/VM-/Image-Nachweise sind getrennt von den hier ausführbaren Tests. Der reale vollständige NetCore-ARM64-Imagebuild und physische Pi/SXceiver-Boot bleiben Z01.4, auch wenn ein Personalisierungssmoke grün ist.
 
-Der [GitHub-CI-Nachtrag](ci.md) dokumentiert die ersten echten PR-Ergebnisse und die Korrektur des temporären rsyslog-Testaufbaus. Maßgeblich für die Freigabe bleibt die CI am aktuellen PR-Commit.
+Der [GitHub-CI-Nachtrag](ci.md) dokumentiert die ersten echten PR-Ergebnisse und die Korrektur des temporären rsyslog-Testaufbaus. Aktuelle main-CI und ihre Quell-SHAs stehen ebenfalls in diesem Nachtrag; historische PR-Ergebnisse bleiben entsprechend datiert.
 
 ## 6. Nächster Übergang
 
-Nach Review/Übernahme dieses gemeinsamen Standes folgt **Z01.4: Installation, Upgrade und Recovery**. Benötigt werden die tatsächliche Hostzuordnung, Quell-/Binaryversionen und Konfigurationen, eine geeignete Deployment-VM, ein Pi/SXceiver sowie die echte NAS-Freigabe. Gezielte P0-Arbeiten aus Z02 bleiben parallel möglich. Dieser Auftrag zieht keine IAM-/Drive-/Handover-Großbaustelle vor.
+**Z01.4 ist in Arbeit.** VM119 und die isolierten CT150-/CT136-Piloten sind zugeordnet; ihre bestandenen Teilabnahmen und Grenzen stehen im [Fortsetzungsstand](checkpoint-2026-10-08.md). Nächster Nachweis ist die tatsächliche Übernahme des Gast-APT-Fixes001fb84 auf VM119 und ein vollständiger ARM64-Build mit verifiziertem Image / Manifest / SHA-256. Anschließend folgen physischer Pi-/SXceiver-Boot und VPN-Wechsel. Einen bereits laufenden Build über den bestehenden Auftrag verfolgen. Gezielte P0-Arbeiten aus Z02 bleiben parallel möglich; die bisherigen Befunde schließen Z01.4 insgesamt noch nicht ab.

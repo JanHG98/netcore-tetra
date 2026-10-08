@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-08T15:03:54Z",
+  "timezone": "Europe/Berlin",
+  "repository": "JanHG98/netcore-tetra",
+  "checked_ref": "main",
+  "head_sha": "001fb84ac566bb0f95e18d22439ee664fe0093e4",
+  "source": "GitHub Actions API; operator runtime results are referenced separately",
+  "workflows": [
+    {
+      "id": 37795951602,
+      "name": "Deployment inventory and source gate",
+      "head_sha": "001fb84ac566bb0f95e18d22439ee664fe0093e4",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-08T14:51:49Z",
+      "updated_at": "2026-10-08T14:53:08Z",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37795951602"
+    },
+    {
+      "id": 37795951576,
+      "name": "OpenLab deployment and discovery",
+      "head_sha": "001fb84ac566bb0f95e18d22439ee664fe0093e4",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-08T14:51:49Z",
+      "updated_at": "2026-10-08T14:59:02Z",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37795951576"
+    }
+  ],
+  "scope": "Current guest APT fix source and CI; documentation checkpoint",
+  "runtime_confirmation": {
+    "vm119_jobs_fix": "unconfirmed_since_preflight",
+    "vm119_guest_apt_fix": "unconfirmed",
+    "latest_proven_build_id": "2dce020e97d745408fe5221453ad63ac",
+    "latest_proven_outcome": "failed_at_dpkg_conffile_prompt",
+    "full_arm64_build": "not_yet_proven",
+    "image_artifact_and_manifest": "not_yet_proven",
+    "physical_pi_sxceiver": "not_yet_proven",
+    "vpn_switch": "not_yet_proven"
+  },
+  "limits": [
+    "No direct host access or new deployment performed for this checkpoint.",
+    "Build IDs in operator log excerpts do not establish the corresponding image job IDs.",
+    "CI success does not certify VM119 installation or a complete ARM64 image / physical boot."
+  ]
+}

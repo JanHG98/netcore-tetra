@@ -1,8 +1,19 @@
-# GitHub-CI-Nachtrag: PR #62
+# GitHub-CI-Nachträge: PR #62 und aktueller Imagebuilder-Fix
 
 Stand: 08.10.2026, Europe/Berlin. PR: https://github.com/JanHG98/netcore-tetra/pull/62. Erster geprüfter PR-Commit: `e5ae2cd5e94c32df0e9b2573e207f9d48b0c1f26`. Die Veröffentlichung wurde durch den Nutzer ausdrücklich freigegeben; der vollständige Git-Baum entspricht dem lokalen Prüfling einschließlich Dateimodi.
 
-## Bereits beobachtete CI-Ergebnisse
+## Aktueller CI-Zwischenstand vom 08.10.2026, 17:03 Europe/Berlin
+
+Geprüftes main: `001fb84ac566bb0f95e18d22439ee664fe0093e4` (Gast-APT-Konfigurationsrückfragen). Die tatsächlichen GitHub-Ergebnisse sind abgeschlossen / erfolgreich:
+
+| Workflow | Ergebnis / Abschluss UTC |
+| --- | --- |
+| [Deployment inventory and source gate](https://github.com/JanHG98/netcore-tetra/actions/runs/37795951602) | success, 2026-10-08T14:53:08Z |
+| [OpenLab deployment and discovery](https://github.com/JanHG98/netcore-tetra/actions/runs/37795951576) | success, 2026-10-08T14:59:02Z |
+
+[Maschinenlesbarer CI-Beleg](evidence/checkpoint-ci-2026-10-08.json), [Fortsetzungsstand](checkpoint-2026-10-08.md). Diese CI bestätigt keinen vollständigen ARM64-NetCore-Build, keine VM119-Hotfixinstallation und keinen physischen Pi-/VPN-Test. Die folgenden PR-#62-Angaben bleiben als historischer Nachtrag erhalten; deren damalige Laufzustände sind keine aktuellen Blocker.
+
+## Bereits beobachtete CI-Ergebnisse (historischer PR-Stand)
 
 | Workflow / Job | Ergebnis am genannten Commit |
 | --- | --- |
