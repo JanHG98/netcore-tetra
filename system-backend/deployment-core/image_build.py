@@ -32,6 +32,17 @@ def output(args):
     return subprocess.check_output([str(x) for x in args], text=True, timeout=30).strip()
 
 
+def guest_dns(root):
+    """Check the resolver as APT's download user, before any package work."""
+    print('DNS im ARM64-Gast als APT-Benutzer _apt prüfen.', flush=True)
+    command(['chroot', root, '/usr/sbin/runuser', '-u', '_apt', '--',
+             '/usr/bin/test', '-r', '/etc/resolv.conf'], timeout=10)
+    for host in ('deb.debian.org', 'archive.raspberrypi.com'):
+        command(['chroot', root, '/usr/sbin/runuser', '-u', '_apt', '--',
+                 '/usr/bin/timeout', '--kill-after=2s', '15s',
+                 '/usr/bin/getent', 'ahostsv4', host], timeout=20)
+
+
 def sha256(path):
     digest = hashlib.sha256()
     with Path(path).open('rb') as source:
@@ -172,6 +183,8 @@ class Disk:
         if resolver.exists() or resolver.is_symlink():
             resolver.rename(saved)
         resolver.write_text(Path('/etc/resolv.conf').read_text())
+        # The worker's UMask=0077 must not hide DNS from APT's _apt sandbox.
+        resolver.chmod(0o644)
         policy = self.root / 'usr/sbin/policy-rc.d'
         old_policy = policy.read_bytes() if policy.exists() else None
         policy.write_text('#!/bin/sh\nexit 101\n')
@@ -303,6 +316,7 @@ def build(state, key):
                 disk.rootfs()
                 install_support(root)
                 with disk.guest():
+                    guest_dns(root)
                     print('ARM64-Build auf der VM: Pakete, SoapySX, Codec, NetCore. Der erste Build kann mehrere Stunden dauern.', flush=True)
                     command(['chroot', root, '/bin/bash', '/usr/local/lib/netcore-image/build-guest.sh',
                              REPOSITORY, req['commit'], BASE['soapy_repository'], BASE['soapy_commit']], timeout=22 * 3600)

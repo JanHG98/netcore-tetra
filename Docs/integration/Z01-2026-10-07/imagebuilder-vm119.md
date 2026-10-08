@@ -1,6 +1,6 @@
 # Z01.4 – VM119 Imagebuilder-Vorprüfung
 
-Stand: 2026-10-08. CT150-Readiness/Recovery und CT136-TCP-/Vorschau-/NAS-Erfolgspfad einschließlich isoliertem Fehlermount sind als Betreiberbefunde dokumentiert. Die tatsächliche Vorprüfung auf `VM-H-DEPLOY-01`, VM119, `10.0.1.131`, besteht. Vor dem vollständigen Build wird die bereits geprüfte SQLite-Korrektur für die gemeinsame Auftragsverwaltung übernommen.
+Stand: 2026-10-08. CT150-Readiness/Recovery und CT136-TCP-/Vorschau-/NAS-Erfolgspfad einschließlich isoliertem Fehlermount sind als Betreiberbefunde dokumentiert. Die tatsächliche Vorprüfung auf `VM-H-DEPLOY-01`, VM119, `10.0.1.131`, besteht. Ein vollständiger Buildversuch scheitert anschließend beim Gast-Paketdownload an DNS. Der reproduzierte Dateirechtefehler im Builder ist korrigiert; die Übernahme auf VM119 und der erneute vollständige Build bleiben offen.
 
 ## Operatorblock
 
@@ -121,3 +121,23 @@ Nach bestandener Updateprüfung `http://10.0.1.131:8320` öffnen, Abschnitt **Vo
 Das EEPROM lässt sich aus der SXceiver-Platinenversion allein nicht ableiten. WLAN und VPN für einen ersten LAN/DHCP-Build bei Bedarf leer lassen; für die VPN-Abnahme das echte Inline-OpenVPN-Profil und die vertrauten lokalen SSIDs angeben. **Image erstellen →** genau einmal anklicken, danach unter **Builds & Downloads** / **Buildprotokoll** verfolgen. Nach Erfolg **Image ↓**, **SHA256** und **Manifest** herunterladen.
 
 Der eigene OS-Hostname ändert nicht die Stationsidentität: Agent-node_id und Funkkennungen stammen aus dem ausgewählten Profil. Ein reiner Imagebuild beeinflusst keine laufende Station; der spätere physische Parallelboot benötigt eine bewusst gewählte Stationsidentität. Quellen: `static/index.html`, `static/app.js`, `image/personalize.py`, `image/check-hardware.py`.
+
+## Tatsächlicher ARM64-Buildabbruch: Gast-DNS
+
+[Betreiber-Logbefund vom 08.10.2026](evidence/vm119-imagebuilder-dns-2026-10-08.json): Build-ID `98a096a050284d6e952bdff78eff6caa` erreicht ARM64-chroot/Paketdownload; `deb.debian.org` und `archive.raspberrypi.com` melden wiederholt `Temporary failure resolving`. APT/chroot endet100, äußerer unshare-Aufruf1. Der Auszug dokumentiert sämtliche Unmounts und Detach von `/dev/loop20`. Ein Artefakterfolg oder eine Bestätigung des vorausgehenden jobs.py-Austauschs ist darin nicht enthalten.
+
+**Konkreter Quellfehler:** Die Builder-Unit setzt `UMask=0077`. `Disk.guest()` schreibt die temporäre `/etc/resolv.conf` neu, ohne ihren Modus festzulegen; dadurch entsteht root-eigenes 0600. Ein tatsächlicher lokaler Datei-/UMask-Repro bestätigt diesen Modus. APT 2.6.1 verwendet für Netzwerkabrufe standardmäßig `_apt`, der diese Datei nicht lesen kann. Primärquellen: [APT-Benutzer](https://sources.debian.org/src/apt/2.6.1/apt-pkg/init.cc/), [Privilegienwechsel](https://sources.debian.org/src/apt/2.6.1/methods/aptmethod.h/). Dies erklärt den Logbefund; der damalige Gast wurde nicht direkt auf Rechte/effektive Unit/DNS untersucht.
+
+**Gezielte Korrektur:** Der temporäre Gastresolver erhält explizit 0644; die originale Datei oder ihr Symlink wird nach dem Gastkontext wiederhergestellt. Worker-UMask 0077 und Hostresolver bleiben erhalten. Vor dem Paketbuild prüft `guest_dns()` als tatsächlicher Benutzer `_apt` die Lesbarkeit und IPv4-Auflösung beider Paketserver, mit begrenzten Zeitlimits. Die Prüfung läuft im realen ARM64-chroot beim nächsten Betreiberbuild. Der Builder teilt das Netz der VM; der Host-Stub 127.0.0.53 muss deshalb nicht pauschal ersetzt werden.
+
+[vm119-image-dns-update.py](vm119-image-dns-update.py) verwendet die bereits geprüften Host-/Idle-/Dateierhalt-/Rückweg-Guards und ersetzt ausschließlich `/usr/local/lib/netcore-deployment/image_build.py`, mit festen vorher/nachher-SHA-256-Werten. Der bestehende Jobs-Helfer wurde dafür nur allgemein beschriftet. Kein Installer-, Paket-, Unit-, Host-DNS- oder Konfigurationswechsel. Ausführen als jhoffmeister auf VM119 nach Checkout des bereitgestellten vollständigen Korrekturcommits:
+
+```bash
+sudo python3 -B "$NC_SRC/Docs/integration/Z01-2026-10-07/vm119-image-dns-update.py"
+```
+
+Danach die WebUI neu laden und **einen neuen Build** mit demselben gewünschten Profil und dem vollständigen Korrekturcommit im Feld **Branch, Tag oder Commit** anlegen. Der bisherige fehlgeschlagene Auftrag wird nicht erneut abgesendet oder manuell weiterbearbeitet. Die geprüfte komprimierte OS-Basis kann aus dem Downloadcache verwendet werden; der neue Buildercode ändert automatisch den Recipekey. Der Logauszug liefert keinen Grund für manuelle Mount-, Loop- oder Cache-Bereinigung.
+
+Lokale Regressionen verwenden echte Dateien, Umask, Gastkontext und SQLite-Dateien, simulieren aber Mounts/Geräteknoten, Dienste und externe DNS-Aufrufe. Temporäres 0644, Inhalt/Originalmodus, dangling Symlink, fehlender Resolver sowie Wiederherstellung bei Fehler sind geprüft. DNS-Tests prüfen `_apt`, beide Hosts, Zeitlimits und sofortigen Abbruch auf Lesbarkeits-/Auflösungsfehler. Der tatsächliche ARM64-DNS-/APT-Erfolg und der vollständige Imagebuild bleiben bis zur Betreiber-Ausgabe offen.
+
+Validierung des finalen Korrekturstands: Deployment-Core-Suite 62 Tests, 61 bestanden/ein erwarteter Unix-Socket-Skip; VM119-Update-Suite 11/11 bestanden. Syntax und unabhängiger Review bestehen. [Gastregression](../../../system-backend/deployment-core/tests/test_image_guest.py), [Update-/Rückwegregression](../../../tests/integration/test_vm119_image_dns_update.py).

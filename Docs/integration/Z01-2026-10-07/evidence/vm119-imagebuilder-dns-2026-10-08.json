@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-08",
+  "source": "Hochgeladener Betreiber-Logauszug Eingefügtes Markdown.md, kein direkter Hostzugriff",
+  "log_excerpt_sha256": "f3181fe93899c4861a8fed740916709bb962536f28f560a8b9f471bbe05db55e",
+  "phase": "full_build_failed_at_guest_package_download",
+  "build_id": "98a096a050284d6e952bdff78eff6caa",
+  "errors": [
+    "Temporary failure resolving deb.debian.org",
+    "Temporary failure resolving archive.raspberrypi.com",
+    "RuntimeError: Command exited with 100: chroot",
+    "RuntimeError: Command exited with 1: unshare"
+  ],
+  "cleanup_reported": {
+    "unmounted": [
+      "run",
+      "dev/shm",
+      "dev/pts",
+      "dev",
+      "sys",
+      "proc",
+      "boot/firmware",
+      "root"
+    ],
+    "loop_detached": "/dev/loop20"
+  },
+  "reviewed_source_commit": "86e16fbbafb84b56137b07b651dbe3ff6f64a049",
+  "source_diagnosis": {
+    "worker_umask": "0077",
+    "guest_resolver_creation": "Path.write_text without explicit chmod",
+    "reproduced_resolver_mode": "0600",
+    "resolver_owner": "root",
+    "apt_default_network_user": "_apt",
+    "network_namespace": "shared with VM; private mount and PID only",
+    "assessment": "Konkreter reproduzierter Quellfehler erklärt APT-DNSfehler; Berechtigungen/effektive Unit und DNS im realen fehlgeschlagenen Gast wurden nicht direkt erfasst."
+  },
+  "fix": {
+    "runtime_file": "system-backend/deployment-core/image_build.py",
+    "before_sha256": "5a2db0699d6bb8ebc7e7915e7eca911ee0c810f24b9f1035c871a2b3d4a2f294",
+    "after_sha256": "13aab8659a09bfddbe6aab3dce2bd193e8d5f62f9afcad3cfdce054a6dd61e61",
+    "temporary_resolver_mode": "0644",
+    "pre_apt_checks_as": "_apt",
+    "pre_apt_hosts": [
+      "deb.debian.org",
+      "archive.raspberrypi.com"
+    ]
+  },
+  "limits": [
+    "Keine Bestätigung des vorherigen jobs.py-Austauschs aus diesem Logauszug.",
+    "Keine tatsächliche DNS-Korrektur oder erneuter vollständiger ARM64-Erfolg auf VM119 bis zur Betreiber-Ausgabe.",
+    "Lokale Tests simulieren Mounts/Geräteknoten/Dienststeuerung und DNS-Aufrufe; kein realer ARM64-chroot oder UID-Wechsel in diesem Executor.",
+    "Kein physischer Pi-/SXceiver-Boot, VPN-Wechsel oder On-Air-Nachweis."
+  ],
+  "local_validation": {
+    "deployment_suite": {
+      "tests": 62,
+      "passed": 61,
+      "skipped": 1,
+      "skip": "Unix-Socket-Transport im lokalen Executor nicht verfügbar"
+    },
+    "vm119_update_suite": {
+      "tests": 11,
+      "passed": 11
+    },
+    "independent_review": "Keine Blocker",
+    "runtime_validation": "Real ARM64-DNS/APT on VM119 remains open"
+  }
+}

@@ -97,7 +97,7 @@ def ready():
 
 def update(state, protected):
     original, metadata, source = TARGET.read_bytes(), TARGET.stat(), SOURCE.read_bytes()
-    require(not TARGET.is_symlink() and stat.S_ISREG(metadata.st_mode), 'jobs.py ist keine reguläre Datei.')
+    require(not TARGET.is_symlink() and stat.S_ISREG(metadata.st_mode), TARGET.name + ' ist keine reguläre Datei.')
     old_sha = hashlib.sha256(original).hexdigest()
     require(hashlib.sha256(source).hexdigest() == NEW_SHA, 'Quellfingerprint ist nicht der geprüfte Fix.')
     require(old_sha in (OLD_SHA, NEW_SHA), 'Installierter Quellstand ist unerwartet.')
@@ -109,7 +109,7 @@ def update(state, protected):
     database_idle(state)
     database_idle(BUILD_STATE)
     if old_sha == NEW_SHA:
-        print('PASS: Geprüfter Jobs-Fix bereits installiert; kein Neustart.')
+        print('PASS: Geprüfter Fix für ' + TARGET.name + ' bereits installiert; kein Neustart.')
         return
     changed, stopping = False, False
     try:
@@ -137,13 +137,13 @@ def update(state, protected):
                 require(time.monotonic() < deadline, 'Dienste nach Update nicht bereit.')
                 time.sleep(1)
         require(snapshot(protected) == baseline and TARGET.read_bytes() == source,
-                'Dateierhalt oder Jobs-Fingerprint nach Update falsch.')
+                'Dateierhalt oder Fingerprint für ' + TARGET.name + ' nach Update falsch.')
         require_jobs_idle(api('/api/v1/jobs'), allow_checks=True)
         database_idle(state, allow_checks=True)
         require_jobs_idle(builder_status()['jobs'])
         database_idle(BUILD_STATE)
-        print(json.dumps({'phase': 'passed', 'jobs_sha256_before': old_sha,
-                          'jobs_sha256_after': NEW_SHA, 'protected_sha256': baseline}, indent=2))
+        print(json.dumps({'phase': 'passed', 'file': str(TARGET), 'sha256_before': old_sha,
+                          'sha256_after': NEW_SHA, 'protected_sha256': baseline}, indent=2))
     except BaseException:
         if stopping:
             try:
@@ -156,7 +156,7 @@ def update(state, protected):
                     replace(original, metadata)
                 command('systemctl', 'start', BUILDER)
                 command('systemctl', 'start', CONTROLLER)
-                print('Rückweg: ursprüngliche Jobs-Bytes wieder eingesetzt und Dienste gestartet.', file=sys.stderr)
+                print('Rückweg: ursprüngliche ' + TARGET.name + '-Bytes wieder eingesetzt und Dienste gestartet.', file=sys.stderr)
             except BaseException as rollback_error:
                 print('Rückweg nicht vollständig: ' + str(rollback_error), file=sys.stderr)
         raise
