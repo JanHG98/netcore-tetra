@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-08",
+  "timezone": "Europe/Berlin",
+  "evidence_kind": "operator_provided_output",
+  "assistant_direct_host_access": false,
+  "ctid": 136,
+  "hostname": "Observability",
+  "service_uid": 999,
+  "service_gid": 989,
+  "collector_directory": "/mnt/nfs-share/Logs/NetCore/observability-10.0.1.143",
+  "mount_guard": "installed log_store.open_share",
+  "checks": {
+    "exclusive_create": "passed",
+    "write": "passed",
+    "file_fsync": "passed",
+    "readback": "passed",
+    "unlink_own_file": "passed",
+    "directory_fsync": "passed"
+  },
+  "cargo": "1.97.1 (c980f4866 2026-06-30)",
+  "rustc": "1.97.1 (8bab26f4f 2026-07-14)",
+  "rootfs": {
+    "size": "10G",
+    "used": "2.2G",
+    "available": "7.9G",
+    "used_percent": 22
+  },
+  "boundaries": {
+    "observability_binary_update": "not yet executed",
+    "preview_marker": "not yet tested",
+    "gzip_archive": "not yet tested"
+  }
+}

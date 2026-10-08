@@ -14,7 +14,7 @@ Quellprüfung an `main@c85d56f91e358f361d738acebdbf46ca306186f6`; der installier
 | HTTP | `10.0.1.143:8210` bereit; `127.0.0.1:8210` Connection refused |
 | Logging | Receiver, Preview und Archivtimer aktiv; Aktivität beweist noch keine Zustellung |
 | Syslog | `nms_url=http://127.0.0.1:8210`, Collector `observability-10.0.1.143`, Allowlist10.0.1.0/24 +127.0.0.0/8 |
-| NAS | nfs4/rw, `/mnt/nfs-share` → `10.0.1.148:/mnt/MassStorage/SRV-M-TBS-01`; Schreibrechte als Dienstbenutzer offen |
+| NAS | nfs4/rw, `/mnt/nfs-share` → `10.0.1.148:/mnt/MassStorage/SRV-M-TBS-01`; Schreiben/fsync/Lesen/Entfernen als Dienstbenutzer999:989 im eigenen Collector-Ordner bestanden |
 | Anlagenstatus | 24 Targets up,21 ready;4 firing Alerts;0/4 Stackdienste ready;0 Logs in der bereitgestellten Antwort |
 
 Die bereits vorhandene Standortkonfiguration passt zum Netz. Die Ursache der drei nicht bereiten Targets und der vier Stackdienste ist aus dieser Ausgabe nicht bestimmbar; sie wird nicht durch den Preview-Fix als erledigt erklärt.
@@ -44,4 +44,12 @@ NAS-Schreibprüfung als Dienstbenutzer mit eigenem temporärem Ordner ausschlie�
 
 Vor einem Austausch den vorhandenen Binarypfad und die Konfigurationsprüfsummen festhalten. Ein Rückweg ersetzt ausschließlich den betroffenen Binarybuild bei gestopptem Observability-Dienst und startet denselben Dienst erneut. Rohsegmente, SQLite, Vorschauzustand, Receiver-Queues, Cursor und NAS-Archive erhalten. Der vorherige Build bringt auch den bekannten lokalen Preview-Fehler zurück; NAS- und RF-Abnahme bleiben eigene Aufgaben.
 
-**Status:** Bestand im Lab bestätigt, Quellkorrektur und gezielte native CI bestanden; tatsächlicher CT136-Rollout / Marker-/NAS-Abnahme offen.
+## Ergänzender Betreiberbefund: NAS und Build-Werkzeuge
+
+Der Betreiber hat den echten NFS-Export über die installierte Mountprüfung geöffnet und als `netcore-observability` (UID999/GID989) eine exklusive eigene Datei im Collector-Verzeichnis geschrieben, per fsync persistiert, gelesen und entfernt. Die abschließende Verzeichnis-fsync besteht. [Nachweis](evidence/ct136-nas-write-2026-10-08.json). Cargo1.97.1 / Rust1.97.1 sind vorhanden; Rootfs10GiB,2.2GiB verwendet,7.9GiB verfügbar. Dieser Nachweis ist ein tatsächlicher Dateizugriff, noch kein gzip-Archivlauf der Logpipeline.
+
+PR #64 ist auf `main@96db88d74d3d9f8ffc9f977e231b7ad9a3f19155` übernommen. Der [gezielte Updateblock](ct136-update.sh) baut ausschließlich das vorhandene Observability-Paket mit einem Buildjob und ersetzt den Binarybuild atomisch. Er prüft Standort/Unit, offene Agentaufträge, unveränderte Konfigurations-/Binary-Prüfsummen und Berechtigungen vor dem Austausch. Der vorhandene Agent heißt `netcore-discovery.service`; die Prüfung umfasst diesen und einen gegebenenfalls vorhandenen Controller. Quellcheckout und Buildzustand liegen getrennt von der Agent-Arbeitskopie. Bei fehlgeschlagenem Start/Prüfung oder gefangenem Signal stellt er den vorherigen Build wieder her und prüft dessen Management-Readiness. SIGKILL, Stromausfall und ein neu eintreffender Deploymentauftrag zwischen Vorprüfung und Austausch sind damit nicht ausgeschlossen; die Vorprüfung ist keine serverseitige Auftragssperre.
+
+Shellsyntax, Verweigerung auf einem anderen Host und ein isolierter Dateisystem-Rücknahmelauf sind geprüft. Der Updateblock ist noch nicht auf CT136 ausgeführt.
+
+**Status:** Bestand und NAS-Dateizugriff im Lab bestätigt, Quellkorrektur übernommen / native CI bestanden; tatsächlicher CT136-Rollout und Logmarker bis zum gzip-NAS-Archiv offen.
