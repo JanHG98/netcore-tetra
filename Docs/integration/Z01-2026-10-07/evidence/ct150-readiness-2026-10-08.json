@@ -1,0 +1,44 @@
+{
+  "recorded_date": "2026-10-08",
+  "timezone": "Europe/Berlin",
+  "evidence_kind": "operator-provided console output; no direct assistant host access",
+  "helper_commit": "b2c020801a069daefdb70d1532c237371068260a",
+  "agent_fix_commit": "31829fc920e751c3d59acb78fc0157814ca0beb7",
+  "operator_result_path": "/var/tmp/netcore-z014-readiness-c45a2ec1/result.json",
+  "result": {
+    "node_id": "z014-test-hw",
+    "hardware_commit": "c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf",
+    "http_get_errors": 2,
+    "job_poll_get_errors": 0,
+    "job_poll_http500": 0,
+    "phase": "passed",
+    "original_mode": 420,
+    "hardware_sha256": "ff5bcb8b78386e810e1ec47a6c8907080b57cadff484a5d96466a8a80e997264",
+    "agent_sha256": "c229c475a91ed1c054bcd20e9d8bb7ae8fff016c90b4ad8d884b12aa9133381f",
+    "previous_job_ids": [
+      "b094841cf2e348c48e842182c902c5fb",
+      "f133536132a441eeac5f84240f27ca49",
+      "d31da0151d8644139cb1a55c137d683a"
+    ],
+    "negative_job_id": "b094841cf2e348c48e842182c902c5fb",
+    "negative_status": "failed",
+    "negative_marker": {
+      "service": "hardware-gateway",
+      "commit": "",
+      "previous_commit": "c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf",
+      "requested_commit": "c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf",
+      "state": "installing"
+    },
+    "negative_live": true,
+    "negative_hardware_unchanged": true,
+    "negative_accepted": true,
+    "recovery_job_id": "3bdd68552b8c4e1e99b060a90b027978",
+    "recovery_status": "succeeded",
+    "recovery_marker": {
+      "commit": "c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf",
+      "service": "hardware-gateway",
+      "state": "installed",
+      "deployed_at": 1791458217.237583
+    }
+  }
+}
