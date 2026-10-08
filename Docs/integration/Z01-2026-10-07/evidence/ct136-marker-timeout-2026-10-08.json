@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-08",
+  "evidence_kind": "operator_provided_output",
+  "assistant_direct_host_access": false,
+  "ctid": 136,
+  "hostname": "Observability",
+  "helper_source_commit": "8b7bc1e3748828556a7a61255d7da0a9171aa72f",
+  "checkpoint": "/var/tmp/netcore-ct136-syslog-oggg829q/result.json",
+  "stopped_checkpoint": {
+    "phase": "stopped",
+    "started_at": "2026-10-08T12:23:24.341574+00:00",
+    "config_sha256": {
+      "/etc/netcore/observability.toml": "1dd0d221c4a4ff7251dfd49e345091e83de9911fde1c44d2763e418c8cf066ed",
+      "/etc/netcore/syslog.json": "38304051d70d70f01a57d0d9bc688f5e9d79b3849795f40f7c5465be3cef081a"
+    },
+    "marker": "Z014-SYSLOG-9266c5bd5685499081a00becb5553559",
+    "marker_sent_at": "2026-10-08T12:23:25.414079+00:00",
+    "archive_before": {
+      "Type": "oneshot",
+      "Result": "success",
+      "ExecMainStartTimestampMonotonic": "340378969906",
+      "ExecMainCode": "1",
+      "ExecMainStatus": "0",
+      "ExecStart": "{ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /opt/netcore-observability/logging/log_store.py archive ; ignore_errors=no ; start_time=[Thu 2026-10-08 02:19:25 UTC] ; stop_time=[Thu 2026-10-08 02:19:28 UTC] ; pid=35086 ; code=exited ; status=0 }",
+      "User": "netcore-observability",
+      "Group": "netcore-observability",
+      "LoadState": "loaded",
+      "ActiveState": "inactive",
+      "InvocationID": "270a2a244e0f4d5ebc4384bb43849521"
+    },
+    "tcp_attempts": 1,
+    "updated_at": "2026-10-08T12:23:46.544713+00:00",
+    "failed_phase": "preview_pending",
+    "error": "TimeoutError: timed out"
+  },
+  "receiver_after_stop": {
+    "updated_at": "2026-10-08T12:27:03.268708+00:00",
+    "preview_pending": 0,
+    "preview_error": null,
+    "local_bytes": 373,
+    "counters": {
+      "received_records": 2
+    }
+  },
+  "listeners": {
+    "10.0.1.143:8210": 110843,
+    "127.0.0.1:8210": 110843,
+    "0.0.0.0:514": 468
+  },
+  "units": {
+    "netcore-observability.service": "active/running/success",
+    "netcore-syslog.service": "active/running/success",
+    "netcore-syslog-preview.service": "active/running/success",
+    "netcore-syslog-archive.service": "inactive/dead/success (previous 02:19 run)"
+  },
+  "journal": {
+    "warning": "Observability HTTP connection failed: Broken pipe (os error 32)",
+    "observed_range_utc": [
+      "2026-10-08T12:25:24Z",
+      "2026-10-08T12:27:21Z"
+    ]
+  },
+  "findings": {
+    "tcp_sendall_returned": true,
+    "basis": "Helper saves preview_pending only after its single sendall returns. This alone does not prove matching server record.",
+    "stop_in_preview_get": true,
+    "http_call_timeout_seconds": 5,
+    "archive_start_attempted_by_helper": false,
+    "marker_preview_identity_confirmed": false,
+    "marker_gzip_confirmed": false
+  },
+  "performance_assessment": {
+    "status": "source-based hypothesis; not runtime-profiled",
+    "risk": "One state mutex is held during whole-state JSON serialization and atomic write/fsync. Logs GET takes the same mutex; every scrape and log ingest persists state.",
+    "broken_pipe_meaning": "Client connection closed before response write; underlying delay not established."
+  },
+  "next_step": "Resume the saved marker, verify matching preview/raw identity, start archive at most once, verify concrete gzip. Preserve original checkpoint history; no TCP resend.",
+  "result": "stopped; marker-specific acceptance remains open"
+}

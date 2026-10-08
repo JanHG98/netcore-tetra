@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Guarded CT136 TCP receiver, local preview and real NAS archive acceptance."""
+import argparse
 import datetime as dt
+import fcntl
 import gzip
 import hashlib
 import importlib.util
@@ -14,6 +16,7 @@ import tempfile
 import time
 import tomllib
 import urllib.parse
+import urllib.error
 import urllib.request
 import uuid
 
@@ -24,6 +27,9 @@ BASES = ('http://127.0.0.1:8210', 'http://10.0.1.143:8210')
 ARCHIVE_UNIT = 'netcore-syslog-archive.service'
 CHECKPOINT_ROOT = '/var/tmp'
 HTTP = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+GET_DEADLINE = None
+GET_RESULT = None
+GET_DIRECTORY = None
 PROPERTIES = ('LoadState', 'ActiveState', 'User', 'Group', 'Type', 'ExecStart',
               'InvocationID', 'ExecMainStartTimestampMonotonic',
               'ExecMainCode', 'ExecMainStatus', 'Result')
@@ -35,8 +41,37 @@ def require(condition, message):
 
 
 def api(base, path):
-    with HTTP.open(base + path, timeout=5) as response:
-        return json.load(response)
+    deadline = GET_DEADLINE if GET_DEADLINE is not None else time.monotonic() + 300
+    while True:
+        remaining = deadline - time.monotonic()
+        require(remaining > 0, 'HTTP-GET-Prüfbudget von 300s verbraucht.')
+        started = time.monotonic()
+        error = None
+        try:
+            with HTTP.open(base + path, timeout=min(20, remaining)) as response:
+                value = json.load(response)
+        except urllib.error.HTTPError as caught:
+            if caught.code not in (408, 429, 500, 502, 503, 504):
+                raise
+            error = caught
+        except (urllib.error.URLError, OSError) as caught:
+            error = caught
+        elapsed = time.monotonic() - started
+        if GET_RESULT is not None:
+            stats = GET_RESULT.setdefault('http_get', {'attempts': 0, 'errors': [], 'max_seconds': 0})
+            stats['attempts'] += 1
+            stats['max_seconds'] = max(stats['max_seconds'], round(elapsed, 3))
+            stats['last_seconds'] = round(elapsed, 3)
+            if error:
+                stats['errors'].append({'path': base + path, 'seconds': round(elapsed, 3),
+                                        'error': f'{type(error).__name__}: {error}'})
+            save(GET_DIRECTORY, GET_RESULT)
+        require(time.monotonic() <= deadline,
+                'HTTP-GET-Prüfbudget von 300s verbraucht.')
+        if error is None:
+            return value
+        print('GET erneut für denselben Prüfwert:', type(error).__name__, flush=True)
+        time.sleep(min(1, max(0, deadline - time.monotonic())))
 
 
 def unit(name, timeout=10):
@@ -73,7 +108,8 @@ def save(directory, result, phase=None):
             os.unlink(temporary)
 
 
-def run(directory, result):
+def run(directory, result, resume=False):
+    global GET_DEADLINE, GET_RESULT, GET_DIRECTORY
     require(os.geteuid() == 0 and socket.gethostname() == 'Observability',
             'Nur root im CT136 Observability darf diesen Test ausführen.')
     cfg = json.loads(LOG_CONFIG.read_text())
@@ -87,6 +123,8 @@ def run(directory, result):
     require(tomllib.loads(OBS_CONFIG.read_text())['server']['bind'] == '10.0.1.143:8210',
             'Unerwarteter Observability-Bind.')
     hashes = {str(path): fingerprint(path) for path in (OBS_CONFIG, LOG_CONFIG)}
+    if resume:
+        require(result['config_sha256'] == hashes, 'Gesicherte Konfigurationsidentität geändert.')
     result['config_sha256'] = hashes
     spec = importlib.util.spec_from_file_location('ct136_log_store', LOG_STORE)
     module = importlib.util.module_from_spec(spec)
@@ -105,23 +143,36 @@ def run(directory, result):
             and before['Type'] == 'oneshot'
             and 'argv[]=/usr/bin/python3 ' + str(LOG_STORE) + ' archive ;' in before['ExecStart'],
             'Archiver läuft bereits oder seine Unit ist unerwartet.')
+    if resume:
+        original = result['archive_before']
+        require(all(before[key] == original[key] for key in
+                    ('InvocationID', 'ExecMainStartTimestampMonotonic', 'ExecStart')),
+                'Archivlauf seit dem ursprünglichen TCP-Test geändert; kein neuer Start.')
+        before = original
+    GET_DEADLINE, GET_RESULT, GET_DIRECTORY = time.monotonic() + 300, result, directory
     for base in BASES:
         require(api(base, '/health/ready')['ready'] is True, base + ' ist nicht bereit.')
         require(api(base, '/api/v1/config')['server']['bind'] == '10.0.1.143:8210',
                 'HTTP-Konfiguration passt nicht: ' + base)
-    marker = 'Z014-SYSLOG-' + uuid.uuid4().hex
-    sent_at = dt.datetime.now(dt.timezone.utc)
-    result.update(marker=marker, marker_sent_at=sent_at.isoformat(),
-                  archive_before=before, tcp_attempts=1)
-    save(directory, result, 'tcp_send_started')
-    print('Marker:', marker, flush=True)
-    timestamp = sent_at.isoformat().replace('+00:00', 'Z')
-    payload = f'<134>1 {timestamp} Observability z014-syslog - - - {marker}\n'.encode()
-    with socket.create_connection(('127.0.0.1', 514), timeout=5) as connection:
-        connection.sendall(payload)  # Exactly one attempt; never resend after ambiguity.
+    if resume:
+        marker = result['marker']
+        sent_at = dt.datetime.fromisoformat(result['marker_sent_at'])
+        print('Fortsetzung mit vorhandenem Marker:', marker, flush=True)
+    else:
+        marker = 'Z014-SYSLOG-' + uuid.uuid4().hex
+        sent_at = dt.datetime.now(dt.timezone.utc)
+        result.update(marker=marker, marker_sent_at=sent_at.isoformat(),
+                      archive_before=before, tcp_attempts=1)
+        save(directory, result, 'tcp_send_started')
+        print('Marker:', marker, flush=True)
+        timestamp = sent_at.isoformat().replace('+00:00', 'Z')
+        payload = f'<134>1 {timestamp} Observability z014-syslog - - - {marker}\n'.encode()
+        with socket.create_connection(('127.0.0.1', 514), timeout=5) as connection:
+            connection.sendall(payload)  # Never resend after an ambiguous outcome.
+        result['tcp_completed'] = True
     save(directory, result, 'preview_pending')
     query = '/api/v1/logs?' + urllib.parse.urlencode({'contains': marker, 'limit': 20})
-    deadline, notice = time.monotonic() + 300, time.monotonic() + 30
+    deadline, notice = GET_DEADLINE, time.monotonic() + 30
     while True:
         matches = [row for row in api(BASES[0], query) if marker in row.get('message', '')]
         if matches:
@@ -214,18 +265,98 @@ def run(directory, result):
     print('PASS: TCP-Empfang, beide Vorschau-APIs und NAS-gzip mit demselben Marker.', flush=True)
 
 
-def main():
-    directory = Path(tempfile.mkdtemp(prefix='netcore-ct136-syslog-', dir=CHECKPOINT_ROOT))
-    os.chmod(directory, 0o700)
-    result = {'phase': 'created', 'started_at': dt.datetime.now(dt.timezone.utc).isoformat()}
+def checkpoint_lock(value):
+    directory = Path(value)
+    require(os.geteuid() == 0 and socket.gethostname() == 'Observability', 'Falscher Resume-Host.')
+    require(directory.is_absolute() and directory.parent == Path(CHECKPOINT_ROOT)
+            and re.fullmatch('netcore-ct136-syslog-[A-Za-z0-9_-]+', directory.name)
+            and not directory.is_symlink() and directory.is_dir(), 'Ungültiger Checkpointpfad.')
+    metadata = directory.stat()
+    require(metadata.st_uid == 0 and metadata.st_mode & 0o777 == 0o700,
+            'Checkpoint ist nicht privat und root-eigen.')
+    fd = os.open(directory / 'resume.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BaseException:
+        os.close(fd)
+        raise
+    return fd
+
+
+def resume_checkpoint(value):
+    directory = Path(value)
+    require(os.geteuid() == 0 and socket.gethostname() == 'Observability', 'Falscher Resume-Host.')
+    require(directory.is_absolute() and directory.parent == Path(CHECKPOINT_ROOT)
+            and re.fullmatch('netcore-ct136-syslog-[A-Za-z0-9_-]+', directory.name)
+            and not directory.is_symlink() and directory.is_dir(), 'Ungültiger Checkpointpfad.')
+    report = directory / 'result.json'
+    require(not report.is_symlink() and report.is_file(), 'Ungültige Nachweisdatei.')
+    for path, mode in ((directory, 0o700), (report, 0o600)):
+        metadata = path.stat()
+        require(metadata.st_uid == 0 and metadata.st_mode & 0o777 == mode,
+                'Checkpoint ist nicht privat und root-eigen.')
+    original = report.read_bytes()
+    result = json.loads(original)
+    require(result.get('phase') == 'stopped' and result.get('failed_phase') == 'preview_pending'
+            and type(result.get('tcp_attempts')) is int and result['tcp_attempts'] == 1
+            and result.get('tcp_completed', True) is True,
+            'Kein nachweislich abgeschlossener einmaliger TCP-Test zum Fortsetzen.')
+    require(type(result.get('archive_start_attempts', 0)) is int
+            and result.get('archive_start_attempts', 0) == 0, 'Archivstart unklar; Resume verweigert.')
+    require(re.fullmatch('Z014-SYSLOG-[0-9a-f]{32}', result.get('marker', '')),
+            'Ungültige Markeridentität.')
+    sent_at = dt.datetime.fromisoformat(result['marker_sent_at'])
+    require(sent_at.utcoffset() == dt.timedelta(0), 'Ungültige TCP-Zeitidentität.')
+    expected = {str(path): fingerprint(path) for path in (OBS_CONFIG, LOG_CONFIG)}
+    require(result.get('config_sha256') == expected, 'Gesicherte Konfigurationsidentität geändert.')
+    before = result['archive_before']
+    require(isinstance(before, dict) and before.get('ActiveState') in ('inactive', 'failed')
+            and int(before['ExecMainStartTimestampMonotonic']) >= 0
+            and isinstance(before['InvocationID'], str), 'Archiv-Ausgangsnachweis fehlt.')
+    history = directory / ('result.before-resume-' + uuid.uuid4().hex + '.json')
+    fd = os.open(history, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, 'wb') as output:
+        output.write(original)
+        output.flush()
+        os.fsync(output.fileno())
+    result.setdefault('resume_history', []).append(str(history))
+    result['resume_attempts'] = result.get('resume_attempts', 0) + 1
+    result.pop('error', None)
+    result.pop('failed_phase', None)
+    result['tcp_completed'] = True  # Legacy preview_pending is saved only after sendall.
+    save(directory, result, 'preview_pending')
+    return directory, result
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--resume', help='Vorhandenen gestoppten Vorschautest ohne neues TCP fortsetzen.')
+    args = parser.parse_args(argv)
+    lock_fd = None
+    try:
+        if args.resume:
+            lock_fd = checkpoint_lock(args.resume)
+            directory, result = resume_checkpoint(args.resume)
+        else:
+            directory = Path(tempfile.mkdtemp(prefix='netcore-ct136-syslog-', dir=CHECKPOINT_ROOT))
+            os.chmod(directory, 0o700)
+            result = {'phase': 'created', 'started_at': dt.datetime.now(dt.timezone.utc).isoformat()}
+    except BaseException as error:
+        if lock_fd is not None:
+            os.close(lock_fd)
+        print('STOP: Resume verweigert:', error, flush=True)
+        return 1
     print('Nachweis:', directory / 'result.json', flush=True)
     try:
-        run(directory, result)
+        run(directory, result, resume=bool(args.resume))
     except BaseException as error:
         result.update(failed_phase=result['phase'], error=f'{type(error).__name__}: {error}')
         save(directory, result, 'stopped')
         print('STOP:', result['error'], flush=True)
         return 1
+    finally:
+        if lock_fd is not None:
+            os.close(lock_fd)
     return 0
 
 

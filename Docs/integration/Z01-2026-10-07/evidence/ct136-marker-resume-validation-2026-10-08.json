@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-08",
+  "kind": "isolated_helper_resume_regression",
+  "production_access": false,
+  "script": "Docs/integration/Z01-2026-10-07/ct136-syslog-acceptance.py",
+  "script_sha256": "657efac570bdd5de45e3218a9f0c8235109b027c50d67207ecb344c81665c500",
+  "syntax": "passed",
+  "commands": [
+    "python3 -m unittest discover -s tests/integration -p test_ct136_syslog_acceptance.py -v"
+  ],
+  "committed_suite": {
+    "path": "tests/integration/test_ct136_syslog_acceptance.py",
+    "methods": 7,
+    "scenarios": 11,
+    "result": "passed"
+  },
+  "resume_scenarios": [
+    "same legacy marker, no new TCP, one archive start",
+    "six-second GET response succeeds with 20s call timeout",
+    "GET TimeoutError then HTTP503 recover",
+    "300s GET budget exhausted, no archive start, raw retained",
+    "original archive identity changed, no archive start",
+    "invalid marker leaves original report unchanged",
+    "ambiguous TCP phase leaves report unchanged",
+    "multiple saved TCP attempts rejected",
+    "existing archive attempt rejected",
+    "changed configuration rejected before GET/start",
+    "second simultaneous resume rejected by real nonblocking checkpoint flock, no GET/TCP/archive start or report change"
+  ],
+  "prior_fresh_run_regressions": {
+    "scenarios": 8,
+    "result": "passed",
+    "cases": [
+      "normal TCP/preview/raw/gzip flow",
+      "archiver active before test",
+      "archive exceeds 60s, raw retained",
+      "stale previous unit success rejected",
+      "wrong gzip record rejected",
+      "truncated gzip CRC/footer rejected",
+      "ambiguous TCP outcome not resent",
+      "timer changes archive identity before manual start"
+    ]
+  },
+  "independent_review_fixture": {
+    "scenarios": 15,
+    "result": "passed",
+    "note": "Eight fresh-run cases and seven overlapping resume cases; not a separate live site test."
+  },
+  "real_fixture_io": [
+    "temporary raw records",
+    "gzip full stream/CRC",
+    "private checkpoints and original byte-for-byte history"
+  ],
+  "mocked_interfaces": [
+    "host/root identity",
+    "systemd state/start",
+    "HTTP/TCP/network",
+    "NFS/CIFS mount check"
+  ],
+  "checks": {
+    "resume_tcp_sends": 0,
+    "configuration_preserved": true,
+    "original_marker_preserved": true,
+    "original_archive_before_preserved": true,
+    "old_report_history_preserved": true,
+    "get_retries_bounded": true,
+    "parallel_resume_locked": true
+  },
+  "site_run": "stopped original run documented separately; real resumed preview/gzip acceptance pending",
+  "performance": "No runtime latency/root-cause confirmation; simulated time advances only.",
+  "runtime_binary_changed": false
+}
