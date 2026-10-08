@@ -1,6 +1,6 @@
 # Z01.4: erster Anlagenpilot und SQLite-Korrektur
 
-Stand: 08.10.2026, Europe/Berlin. Quellstand des Anlagenpilots: `c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf` (PR #62, main). Korrekturzweig: `fix/z014-job-database-lock`, auf diesem Quellstand. Betreiberbefunde stammen aus den bereitgestellten Konsolenausgaben; die Assistenz hat keinen direkten Zugriff auf die Anlage.
+Stand: 08.10.2026, Europe/Berlin. Quellstand des Anlagenpilots: `c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf` (PR #62, main). Korrekturcommit: `31829fc920e751c3d59acb78fc0157814ca0beb7` (PR #63), übernommen mit `main@ad7dd054730cfb38930ba41689369f4deb9bfb90`. Betreiberbefunde stammen aus den bereitgestellten Konsolenausgaben; die Assistenz hat keinen direkten Zugriff auf die Anlage.
 
 ## Übernahme und CI
 
@@ -10,7 +10,7 @@ PR #62 ist übernommen. Am Mergecommit sind diese main-Workflows abgeschlossen u
 - [OpenLab deployment and discovery](https://github.com/JanHG98/netcore-tetra/actions/runs/37696847450).
 - [Warning service](https://github.com/JanHG98/netcore-tetra/actions/runs/37696847442).
 
-Die CI des Korrekturzweigs ist gesondert am neuen Commit zu prüfen; ein älterer CI-PASS bestätigt diesen nicht.
+Am Korrekturcommit 31829fc sind auch alle drei PR-Workflows erfolgreich abgeschlossen: [Deployment-/Quellgate](https://github.com/JanHG98/netcore-tetra/actions/runs/37766382339), [Deployment/Discovery](https://github.com/JanHG98/netcore-tetra/actions/runs/37766382241) und [NetCore service WebUIs](https://github.com/JanHG98/netcore-tetra/actions/runs/37766382141). PR #63 ist gemerged. Diese Ergebnisse bestätigen den genannten Quellstand, nicht die nachfolgende Anlagenprüfung.
 
 ## Tatsächlich beobachtete Anlagenbefunde
 
@@ -23,6 +23,7 @@ Die CI des Korrekturzweigs ist gesondert am neuen Commit zu prüfen; ein ältere
 | Hardware-Neuinstallation | Controllerjob `b6c2fe6d36214030b20e68d0fe659147`, Remotejob `d31da0151d8644139cb1a55c137d683a`: succeeded, Commit c45a2ec, live/ready true | HTTP-/Installationsabnahme; kein MQTT-, Aktor- oder RF-Nachweis |
 | Hardware-Wiederholungsupdate | Controllerjob `5c21cacdf0e14fc4935f6820ad9284e0`, Remotejob `f133536132a441eeac5f84240f27ca49`: succeeded, Commit c45a2ec, live/ready true | Derselbe Commit, kein Versionswechsel des Hardware-Dienstes |
 | Konfigurationserhalt | Original-TOML-SHA256 `ff5bcb8b78386e810e1ec47a6c8907080b57cadff484a5d96466a8a80e997264` vor/nach Update gleich; Original und Runtime-TOML `heartbeat_timeout_secs=37`, `outputs_enabled=false`; Betreiber-Skript meldet PASS | Keine physischen Ausgänge aktiviert |
+| Installation der Agentkorrektur | Betreiber installiert 31829fc auf CT150; Quellvergleich und Hardware-Konfigurationsprüfung im Befehlsblock durchlaufen, Management-Readiness true nach Neustart | Noch kein neuer laufender Update-/Fehlerauftrag unter der Korrektur; erster curl-Verbindungsfehler durch Startup-Retry überwunden |
 | Temporärer Statusausfall | Controller protokolliert GET-Timeout/HTTP500 und verfolgt dieselbe Remote-ID weiter bis succeeded | Kein erneuter Installations-POST als Fehlerbehandlung; Ursache des dokumentierten HTTP500 siehe unten |
 | NAS-Einbindung CT136 | Hostpfad `/mnt/netcore-nfs/SRV-M-TBS-01`, CT-Pfad `/mnt/nfs-share`: tatsächlich nfs4/rw von `10.0.1.148:/mnt/MassStorage/SRV-M-TBS-01` | Kein Dienstbenutzer-Schreibtest, Archiv-/Ausfallnachweis |
 
@@ -53,9 +54,11 @@ Mit unveränderter jobs.py aus c45a2ec reproduziert der erste Test HTTP500 / `da
 
 ## Nächster Betriebsnachweis und Rückweg
 
-1. Testagent CT150 nach Abschluss seiner Aufträge auf den gepinnten Korrekturcommit aktualisieren. Hardware-TOML und Wert37 prüfen; anschließend bei einem kontrollierten Auftrag Statusabfragen und Agentjournal auf den zuvor beobachteten SQLite-Fehler prüfen.
-2. Nur auf CT150 einen bewusst nicht vorhandenen Hardware-Ready-Pfad konfigurieren. Erwartung: Auftrag failed, Deployment-Commitmarker nicht erfolgreich bestätigt, benutzerdefinierte Hardware-Konfiguration erhalten. Dann ursprüngliche Agentkonfiguration wiederherstellen und gültigen Auftrag bis ready/succeeded prüfen.
+1. Agentkorrektur auf CT150 installiert. Jetzt bei den kontrollierten Negativ-/Recovery-Aufträgen Statusabfragen und Agentjournal auf den zuvor beobachteten SQLite-Fehler prüfen.
+2. Nur auf CT150 einen bewusst nicht vorhandenen Hardware-Ready-Pfad konfigurieren. Der [Operatorhelfer](../../../tools/z014-readiness-acceptance.py) führt dazu direkte lokale Agent-Aufträge aus; er prüft nicht erneut die Controller-Fehlerweitergabe. Erwartung: Auftrag failed, Deployment-Commitmarker nicht erfolgreich bestätigt, benutzerdefinierte Hardware-Konfiguration erhalten. Dann ursprüngliche Agentkonfiguration wiederherstellen und gültigen Auftrag bis ready/succeeded prüfen.
 3. Observability/Syslog auf CT136 mit tatsächlichen Schreibrechten und NAS-Archiv/Fehlerfall abnehmen. Bekannter Quellbefund: LXC-Installer setzt Observability auf die Management-IP, der lokale Syslog-Preview erwartet jedoch exakt `http://127.0.0.1:8210`; diese Bindung ist vor dem dortigen Rollout zu korrigieren.
 4. Vollständigen ARM64-NetCore-Imagebuild, echten Pi/SXceiver-Boot und VPN-Wechsel durchführen. Controllerausfall / Wiederkehr, NAS-Ausfall und echter Hardware-Versionswechsel bleiben eigene offene Nachweise.
+
+Der Operatorhelfer ist auf root / Hostname `z014-test-hw`, leeres Dienstmanifest und deaktivierte Hardware-Ausgänge begrenzt. Er legt die ursprüngliche Agent-TOML und Phasen-/Auftragsnachweise privat unter `/var/tmp/netcore-z014-readiness-c45a2ec1` ab, speichert die POST-Absicht vor dem Anlegen jedes Auftrags und wiederholt keinen POST. Bei einer unklaren Antwort oder einem noch offenen Auftrag hält er an; einen bestehenden Teststand überschreibt er nicht. Nach einem bekannten terminalen Negativauftrag stellt er zuerst die Agent-TOML wieder her. Erfolgreiche Abnahme erfordert anschließend einen gültigen Auftrag, den bestätigten Commitmarker und unveränderte Original-/Runtime-Konfiguration mit Wert37. Startup-Verbindungsfehler werden getrennt von Fehlern beim Polling der Job-ID gezählt; ein neuer HTTP500 dort verhindert ein Gesamt-PASS. Syntax und simulierte Zustands-/Fehlerabläufe sind geprüft; die Live-Ausführung ist der nächste Betreiberauftrag.
 
 Der Agent-Code kann bei abgeschlossenen Aufträgen über denselben Installer aus c45a2ec zurückgesetzt werden. Die Korrektur benötigt keine Datenbankmigration; Jobs, Logs, Marker, Cache und Hardware-Konfiguration bleiben bestehen. Agent-Neustart mit einem offenen Auftrag ist kein Rückweg: er markiert laufende/queued Jobs als interrupted. Bei `remote_uncertain` zuerst den bestehenden Agentauftrag klären.
