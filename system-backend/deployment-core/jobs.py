@@ -1,4 +1,5 @@
 """Durable, serialized jobs. Interrupted jobs never restart themselves."""
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -23,6 +24,7 @@ class Jobs:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.execute = execute
         self.lock = threading.Lock()
+        self.db_lock = threading.Lock()
         self.queue = queue.Queue(maxsize=64)
         with self.connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, created REAL, updated REAL, '
@@ -31,8 +33,17 @@ class Jobs:
         os.chmod(self.path, 0o600)
         threading.Thread(target=self._work, daemon=True).start()
 
+    @contextmanager
     def connect(self):
-        return sqlite3.connect(self.path, timeout=10)
+        # Serialize only short database operations, never installers or polling.
+        # Connection.__exit__ commits/rolls back but does not close the handle.
+        with self.db_lock:
+            db = sqlite3.connect(self.path, timeout=10)
+            try:
+                with db:
+                    yield db
+            finally:
+                db.close()
 
     def submit(self, request):
         with self.lock:
@@ -51,13 +62,17 @@ class Jobs:
             row = db.execute('SELECT * FROM jobs WHERE id=?', (key,)).fetchone()
         if not row:
             raise KeyError(key)
+        return self._decode(row)
+
+    @staticmethod
+    def _decode(row):
         return dict(id=row[0], created=row[1], updated=row[2], status=row[3],
                     request=json.loads(row[4]), log=row[5], result=json.loads(row[6]))
 
     def list(self):
         with self.connect() as db:
-            rows = db.execute('SELECT id FROM jobs ORDER BY created DESC LIMIT 100').fetchall()
-        return [self.get(r[0]) for r in rows]
+            rows = db.execute('SELECT * FROM jobs ORDER BY created DESC LIMIT 100').fetchall()
+        return [self._decode(row) for row in rows]
 
     def log(self, key, line):
         with self.connect() as db:
