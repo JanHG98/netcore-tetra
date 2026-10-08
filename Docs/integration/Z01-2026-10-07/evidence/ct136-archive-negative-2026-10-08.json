@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-08",
+  "timezone": "Europe/Berlin",
+  "evidence_kind": "operator_provided_output",
+  "assistant_direct_host_access": false,
+  "ctid": 136,
+  "hostname": "Observability",
+  "helper_source_commit": "13923e3daffcb697f7ee7f30e116c587b850b488",
+  "checkpoint": "/var/tmp/netcore-ct136-archive-negative-3dcor89e/result.json",
+  "operator_result": {
+    "phase": "passed",
+    "fixture": "/var/tmp/netcore-ct136-archive-negative-3dcor89e",
+    "production_sha256_before": {
+      "/etc/netcore/observability.toml": "1dd0d221c4a4ff7251dfd49e345091e83de9911fde1c44d2763e418c8cf066ed",
+      "/etc/netcore/syslog.json": "38304051d70d70f01a57d0d9bc688f5e9d79b3849795f40f7c5465be3cef081a"
+    },
+    "identity": [
+      999,
+      989
+    ],
+    "marker": "Z014-ARCHIVE-NEGATIVE-74f27dfce60a43f59b7ddaf1d921a2c5",
+    "log_store_path": "/opt/netcore-observability/logging/log_store.py",
+    "log_store_sha256": "0f90ec8b924edcabb8944d9914ee5b0af3af886aac18ab5b7f7006ca99e741d4",
+    "raw_record_id": "fc44ffe813b54369ade5f5aff9f6a8dc",
+    "raw_file": "/var/tmp/netcore-ct136-archive-negative-3dcor89e/state/raw/20261008T130056-5b18fc6406ac4ac8899b6f561a34a15f.jsonl",
+    "raw_sha256_before": "143cfbf451f248901790e2f4c85042cdad0c8345ba06a0b66f1ebc93482b0580",
+    "raw_sha256_after": "143cfbf451f248901790e2f4c85042cdad0c8345ba06a0b66f1ebc93482b0580",
+    "archive_status": {
+      "last_attempt": "2026-10-08T13:00:57.772080+00:00",
+      "archived_segments": 0,
+      "error": "Network share is not mounted at /var/tmp/netcore-ct136-archive-negative-3dcor89e/local-not-a-share"
+    },
+    "preview_pending": 1,
+    "local_target_empty": true,
+    "production_sha256_after": {
+      "/etc/netcore/observability.toml": "1dd0d221c4a4ff7251dfd49e345091e83de9911fde1c44d2763e418c8cf066ed",
+      "/etc/netcore/syslog.json": "38304051d70d70f01a57d0d9bc688f5e9d79b3849795f40f7c5465be3cef081a"
+    }
+  },
+  "checks": {
+    "actual_service_identity": "passed (999:989)",
+    "genuine_installed_mount_guard": "passed",
+    "isolated_local_target_rejected": "passed",
+    "raw_byte_and_sha256_preservation": "passed",
+    "preview_outbox_retained": "passed (one isolated record)",
+    "no_local_fallback_archive": "passed",
+    "original_configuration_hashes": "passed"
+  },
+  "result": "passed",
+  "boundaries": {
+    "real_nfs_unmount_outage_stall": "not tested",
+    "production_sender_or_outbox_failure": "not tested",
+    "full_arm64_build": "pending",
+    "physical_pi_sxceiver_vpn": "pending"
+  },
+  "next_step": "VM119 Imagebuilder preflight, then full ARM64 image build."
+}
