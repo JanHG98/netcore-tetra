@@ -1,0 +1,47 @@
+# Z01.4 – Observability-/Syslog-Befund CT136, 2026-10-08
+
+## Tatsächlicher Betreiberbefund
+
+Quelle: bereitgestellte Ausgabe von `pct exec 136`, kein direkter Zugriff des Assistenten.
+Quellprüfung an `main@c85d56f91e358f361d738acebdbf46ca306186f6`; der installierte Rust-Commit ist nicht erhoben.
+[Strukturierter Befund](evidence/ct136-stocktake-2026-10-08.json).
+
+| Gegenstand | Befund |
+| --- | --- |
+| Host / Netz | CT136 `Observability`, IPv4 `10.0.1.143/24`, Python3.13.3 |
+| Dienst | Discovery-Launcher → `/opt/netcore-observability/bin/netcore-observability`; Dienstbenutzer `netcore-observability` |
+| Benutzer / LXC-Abbildung | UID999 / GID989; Map0→100000 über65536 IDs, daher Host-UID100999 / GID100989 |
+| HTTP | `10.0.1.143:8210` bereit; `127.0.0.1:8210` Connection refused |
+| Logging | Receiver, Preview und Archivtimer aktiv; Aktivität beweist noch keine Zustellung |
+| Syslog | `nms_url=http://127.0.0.1:8210`, Collector `observability-10.0.1.143`, Allowlist10.0.1.0/24 +127.0.0.0/8 |
+| NAS | nfs4/rw, `/mnt/nfs-share` → `10.0.1.148:/mnt/MassStorage/SRV-M-TBS-01`; Schreibrechte als Dienstbenutzer offen |
+| Anlagenstatus | 24 Targets up,21 ready;4 firing Alerts;0/4 Stackdienste ready;0 Logs in der bereitgestellten Antwort |
+
+Die bereits vorhandene Standortkonfiguration passt zum Netz. Die Ursache der drei nicht bereiten Targets und der vier Stackdienste ist aus dieser Ausgabe nicht bestimmbar; sie wird nicht durch den Preview-Fix als erledigt erklärt.
+
+## Zugeordneter Fehler und gezielte Korrektur
+
+Der gemeinsame LXC-Installer setzt die konkrete Management-IP als HTTP-Bind.
+Der Python-Preview-Vertrag verlangt dagegen genau `http://127.0.0.1:8210`.
+Rust nahm bisher nur Verbindungen am konfigurierten Bind an. Die bereitgestellte Ausgabe bestätigt den Widerspruch in der Anlage.
+
+`spawn_http_server` bindet bei einer konkreten IPv4-Adresse zusätzlich `127.0.0.1` auf demselben tatsächlichen Port. Beide Listener bedienen denselben Router und denselben Zustand. Management-Bind, API-Konfiguration, vorhandene TOML, Syslog-URL, Discovery und UI bleiben erhalten. Bei Port0 wird der tatsächlich zugeteilte Port verwendet. Bei0.0.0.0 und genau127.0.0.1 gibt es keinen doppelten Listener. IPv6-Verhalten ist unverändert; dafür wird keine Preview-Kompatibilität behauptet.
+
+Beide Bind-Vorgänge erfolgen vor dem Start der HTTP-Threads. Ein belegter lokaler Port verhindert den Serverstart und gibt den zuvor geöffneten Management-Listener frei. Der Fehler wird nicht als funktionierende Preview verschluckt.
+
+## Regression und Nachweisstufen
+
+- Drei Rust-Tests öffnen echte TCP-Listener: getrennte Management-/Loopback-Adresse auf demselben Port, Wildcard/localhost ohne Doppelbindung, belegter Previewport mit Bereinigung.
+- `tests/native-syslog-loopback.py` startet das echte Binary an127.0.0.2:8210. Es lädt die Syslog-Datei über den strikten Validator, schreibt in den echten SQLite-/Rohpuffer, leitet einen Marker über127.0.0.1 weiter und liest denselben Marker über die Management-Adresse. Konfigurationsdatei und API-Bind bleiben unverändert.
+- Der bestehende native Smoke-/Browsertest bleibt erhalten. Der neue Test läuft danach im bestehenden `syslog-runtime`-CI-Job.
+- Lokale Python-Suite:20 Tests,18 bestanden,2 Wiretests wegen fehlendem rsyslog ausdrücklich übersprungen. Rust-Toolchain fehlt in der lokalen Arbeitsumgebung; echte Rust-/Native-/Wire-/Browserergebnisse müssen über CI nachgetragen werden.
+
+## Betriebsabnahme und Rückweg
+
+Nach erfolgreicher nativer Prüfung den konkreten Build auf CT136 installieren. Beide HTTP-Adressen prüfen und einen eindeutigen Marker über TCP514 senden. Der Marker muss in der NMS-Vorschau erscheinen und nach einem tatsächlichen Archivlauf im gzip-Archiv wiedergefunden werden. Ein erfolgreicher leerer Archivlauf allein ist kein Nachweis.
+
+NAS-Schreibprüfung als Dienstbenutzer mit eigenem temporärem Ordner ausschließlich im Collector-Verzeichnis `/mnt/nfs-share/Logs/NetCore/observability-10.0.1.143`; nur eigene Testdatei lesen und entfernen. Keine rekursiven Rechteänderungen und kein Unmount des gemeinsam genutzten Exports. Ein fehlender Mount wird mit separatem Testzustand geprüft, nicht durch Unterbrechung der Anlage.
+
+Vor einem Austausch den vorhandenen Binarypfad und die Konfigurationsprüfsummen festhalten. Ein Rückweg ersetzt ausschließlich den betroffenen Binarybuild bei gestopptem Observability-Dienst und startet denselben Dienst erneut. Rohsegmente, SQLite, Vorschauzustand, Receiver-Queues, Cursor und NAS-Archive erhalten. Der vorherige Build bringt auch den bekannten lokalen Preview-Fehler zurück; NAS- und RF-Abnahme bleiben eigene Aufgaben.
+
+**Status:** Bestand im Lab bestätigt, Quellkorrektur implementiert; native CI und tatsächlicher CT136-Rollout / Marker-/NAS-Abnahme separat offen.

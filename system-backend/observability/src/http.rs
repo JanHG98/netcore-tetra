@@ -6,7 +6,7 @@ mod service_design;
 
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use std::thread;
 
 use serde::de::DeserializeOwned;
@@ -24,25 +24,54 @@ use crate::state::SharedObservability;
 // Was: Diese Funktion startet HTTP server.
 // Warum: Länger laufende Arbeit blockiert dadurch nicht den aufrufenden Ablauf.
 pub fn spawn_http_server(config: ObservabilityConfig, observability: SharedObservability) -> std::io::Result<thread::JoinHandle<()>> {
-    let listener = TcpListener::bind(config.server.bind)?;
+    let (listener, preview) = bind_http_listeners(config.server.bind)?;
     tracing::info!("Observability WebUI/API listening on http://{}", config.server.bind);
+    if let Some(local) = &preview {
+        tracing::info!("Observability local preview/API listening on http://{}", local.local_addr()?);
+    }
     Ok(thread::spawn(move || {
-        // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-        // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-        for stream in listener.incoming() {
-            // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-            // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-            match stream {
-                Ok(stream) => {
-                    let config = config.clone(); let observability = observability.clone();
-                    thread::spawn(move || {
-                        if let Err(error) = handle_connection(stream, config, observability) { tracing::warn!("Observability HTTP connection failed: {}", error); }
-                    });
-                }
-                Err(error) => tracing::warn!("Observability HTTP accept failed: {}", error),
-            }
+        if let Some(local) = preview {
+            let local_config = config.clone();
+            let local_observability = observability.clone();
+            thread::spawn(move || serve_listener(local, local_config, local_observability));
         }
+        serve_listener(listener, config, observability);
     }))
+}
+
+fn bind_http_listeners(bind: SocketAddr) -> std::io::Result<(TcpListener, Option<TcpListener>)> {
+    let listener = TcpListener::bind(bind)?;
+    let actual = listener.local_addr()?;
+    // Specific IPv4 management binds need the existing localhost syslog bridge.
+    // Wildcard/localhost already cover it; leave IPv6 binding semantics unchanged.
+    let preview = match actual {
+        SocketAddr::V4(address)
+            if !address.ip().is_unspecified() && *address.ip() != Ipv4Addr::LOCALHOST =>
+        {
+            Some(TcpListener::bind((Ipv4Addr::LOCALHOST, address.port()))?)
+        }
+        _ => None,
+    };
+    // Both binds finish before any server thread starts; conflicts fail startup.
+    Ok((listener, preview))
+}
+
+fn serve_listener(listener: TcpListener, config: ObservabilityConfig, observability: SharedObservability) {
+    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
+    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
+    for stream in listener.incoming() {
+        // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
+        // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
+        match stream {
+            Ok(stream) => {
+                let config = config.clone(); let observability = observability.clone();
+                thread::spawn(move || {
+                    if let Err(error) = handle_connection(stream, config, observability) { tracing::warn!("Observability HTTP connection failed: {}", error); }
+                });
+            }
+            Err(error) => tracing::warn!("Observability HTTP accept failed: {}", error),
+        }
+    }
 }
 
 // Was: Bündelt die zusammengehörigen Werte für HTTP request in einem Datentyp.
@@ -250,3 +279,48 @@ fn download(name:&str,content_type:&'static str,body:Vec<u8>)->HttpResponse{Http
 // Was: Legt den festen Wert `INDEX_HTML` für index html fest.
 // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const INDEX_HTML: &str = include_str!("../web-ui/index.html");
+
+#[cfg(test)]
+mod listener_tests {
+    use super::bind_http_listeners;
+    use std::io::ErrorKind;
+    use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
+    use std::time::Duration;
+
+    #[test]
+    fn specific_ipv4_accepts_management_and_local_preview_on_same_actual_port() {
+        let configured: SocketAddr = "127.0.0.2:0".parse().unwrap();
+        let (management, preview) = bind_http_listeners(configured).unwrap();
+        let address = management.local_addr().unwrap();
+        let preview = preview.expect("Specific IPv4 bind needs localhost preview");
+        let local = preview.local_addr().unwrap();
+        assert_eq!(address.ip(), Ipv4Addr::new(127, 0, 0, 2));
+        assert_ne!(address.port(), 0);
+        assert_eq!(local, SocketAddr::from((Ipv4Addr::LOCALHOST, address.port())));
+
+        let _management_client = TcpStream::connect_timeout(&address, Duration::from_secs(1)).unwrap();
+        let _preview_client = TcpStream::connect_timeout(&local, Duration::from_secs(1)).unwrap();
+        assert_eq!(management.accept().unwrap().0.local_addr().unwrap(), address);
+        assert_eq!(preview.accept().unwrap().0.local_addr().unwrap(), local);
+    }
+
+    #[test]
+    fn wildcard_and_localhost_accept_preview_without_a_duplicate_listener() {
+        for bind in ["0.0.0.0:0", "127.0.0.1:0"] {
+            let (listener, preview) = bind_http_listeners(bind.parse().unwrap()).unwrap();
+            assert!(preview.is_none());
+            let local = SocketAddr::from((Ipv4Addr::LOCALHOST, listener.local_addr().unwrap().port()));
+            let _client = TcpStream::connect_timeout(&local, Duration::from_secs(1)).unwrap();
+            assert_eq!(listener.accept().unwrap().0.local_addr().unwrap(), local);
+        }
+    }
+
+    #[test]
+    fn occupied_preview_port_fails_and_releases_the_management_listener() {
+        let occupied = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let management = SocketAddr::from((Ipv4Addr::new(127, 0, 0, 2), occupied.local_addr().unwrap().port()));
+        let error = bind_http_listeners(management).expect_err("Preview conflict must fail startup");
+        assert_eq!(error.kind(), ErrorKind::AddrInUse);
+        let _released = TcpListener::bind(management).expect("Failed startup must release management port");
+    }
+}

@@ -63,8 +63,8 @@ Damit sind die isolierten Agent-Readiness-/Recovery-Prüfungen tatsächlich im L
 
 ## Nächster Betriebsnachweis und Rückweg
 
-1. **Jetzt CT136 erfassen:** tatsächliche OS-/Python-Version, Observability-/Syslog-Units und ExecStart/User, aktiver API-Bind, lokale/Management-Readiness, Syslog-Archivkonfiguration und NFS-Einbindung. Die bereits bestätigte nfs4/rw-Einbindung ersetzt keinen Schreibtest als Dienstbenutzer.
-2. Den vorhandenen IP-only-Bind / lokalen Syslog-Preview-Vertrag vor dem Observability-Rollout korrigieren: Shared-LXC-Installer setzt Management-IP, `log_store.py` verlangt exakt `http://127.0.0.1:8210`. Die vorhandene Management-Bindung soll erhalten bleiben und der lokale Preview-Pfad tatsächlich erreichbar werden; `nms_url` nicht auf die Management-IP ändern.
+1. **CT136 erfasst:** Python3.13.3, tatsächliche Units/ExecStart/User, Management-API bereit, localhost:8210 verweigert Verbindungen, Standort-Syslogkonfiguration und nfs4/rw-Einbindung bestätigt. [CT136-Nachtrag](observability-ct136.md). Die Einbindung ersetzt keinen Schreibtest als Dienstbenutzer.
+2. Die implementierte lokale HTTP-Annahme vor dem Observability-Rollout nativ prüfen und anschließend ausrollen: Shared-LXC-Installer setzt Management-IP, `log_store.py` verlangt exakt `http://127.0.0.1:8210`. Die vorhandene Management-Bindung soll erhalten bleiben und der lokale Preview-Pfad tatsächlich erreichbar werden; `nms_url` nicht auf die Management-IP ändern.
 3. Observability/Syslog auf CT136 mit tatsächlichen Schreibrechten, Markerzustellung, NAS-Archiv und isoliertem Archiv-Fehlerfall abnehmen.
 4. Vollständigen ARM64-NetCore-Imagebuild, echten Pi/SXceiver-Boot und VPN-Wechsel durchführen. Controllerausfall / Wiederkehr, NAS-Ausfall, Controller-Fehlerweitergabe und echter Hardware-Versionswechsel bleiben eigene offene Nachweise.
 

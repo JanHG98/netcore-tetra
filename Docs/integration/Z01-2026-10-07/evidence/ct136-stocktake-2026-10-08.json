@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-08",
+  "timezone": "Europe/Berlin",
+  "evidence_kind": "operator_provided_output",
+  "assistant_direct_host_access": false,
+  "host": "SRV-H-PVE-01",
+  "ctid": 136,
+  "hostname": "Observability",
+  "python_version": "3.13.3",
+  "ipv4": "10.0.1.143/24",
+  "service_user": {
+    "name": "netcore-observability",
+    "uid": 999,
+    "gid": 989,
+    "host_uid": 100999,
+    "host_gid": 100989
+  },
+  "id_maps": {
+    "uid": [
+      0,
+      100000,
+      65536
+    ],
+    "gid": [
+      0,
+      100000,
+      65536
+    ]
+  },
+  "units": {
+    "netcore-observability.service": "active",
+    "netcore-syslog.service": "active",
+    "netcore-syslog-preview.service": "active",
+    "netcore-syslog-archive.timer": "active"
+  },
+  "observability": {
+    "binary": "/opt/netcore-observability/bin/netcore-observability",
+    "launcher": "/usr/local/lib/netcore-deployment/launch.py",
+    "bind": "10.0.1.143:8210",
+    "config_sha256": "1dd0d221c4a4ff7251dfd49e345091e83de9911fde1c44d2763e418c8cf066ed"
+  },
+  "syslog": {
+    "collector_id": "observability-10.0.1.143",
+    "nms_url": "http://127.0.0.1:8210",
+    "state_dir": "/var/lib/netcore-observability/logs",
+    "inventory": "/etc/netcore/openlab-hosts.json",
+    "allowed_networks": [
+      "10.0.1.0/24",
+      "127.0.0.0/8"
+    ],
+    "archive_mount": "/mnt/nfs-share",
+    "archive_directory": "Logs/NetCore"
+  },
+  "mount": {
+    "target": "/mnt/nfs-share",
+    "source": "10.0.1.148:/mnt/MassStorage/SRV-M-TBS-01",
+    "fstype": "nfs4",
+    "mode": "rw"
+  },
+  "checks": {
+    "localhost_ready": {
+      "ok": false,
+      "error": "Connection refused"
+    },
+    "management_ready": {
+      "ready": true,
+      "targets_total": 24,
+      "targets_up": 24,
+      "targets_ready": 21,
+      "logs": 0,
+      "alerts_firing": 4,
+      "alerts_pending": 1,
+      "stack_ready": 0,
+      "stack_total": 4
+    }
+  },
+  "boundaries": {
+    "runtime_source_commit": "unknown",
+    "service_user_nas_write": "not yet tested",
+    "marker_delivery": "not yet tested",
+    "nas_archive": "not yet tested"
+  }
+}
