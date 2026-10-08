@@ -1,6 +1,6 @@
 # Z01.4 – VM119 Imagebuilder-Vorprüfung
 
-Stand: 2026-10-08. CT150-Readiness/Recovery und CT136-TCP-/Vorschau-/NAS-Erfolgspfad einschließlich isoliertem Fehlermount sind als Betreiberbefunde dokumentiert. Die tatsächliche Vorprüfung auf `VM-H-DEPLOY-01`, VM119, `10.0.1.131`, besteht. Der zweite Build erreicht nach der DNS-Korrektur die ARM64-Paketkonfiguration und scheitert an einer unbeantworteten dpkg-Konfigurationsrückfrage. Die gezielte Gast-APT-Korrektur ist auf `main@001fb84` übernommen und beide main-Workflows bestehen; tatsächliche VM119-Übernahme, vollständiger Build und physische Abnahme bleiben offen.
+Stand: 2026-10-08. CT150-Readiness/Recovery und CT136-TCP-/Vorschau-/NAS-Erfolgspfad einschließlich isoliertem Fehlermount sind als Betreiberbefunde dokumentiert. Die tatsächliche Vorprüfung auf `VM-H-DEPLOY-01`, VM119, `10.0.1.131`, besteht. Der dritte Betreiberbuild passiert nach DNS-/Conffile-Korrektur die bisherige Rückfrage und erreicht Kernel-Initramfs-Erzeugung. Dort scheitert die Rootgeräteerkennung der Buildumgebung. Eigene Initramfs-Treiberauswahl `MODULES=most` vor Gast-APT wird ergänzt; vollständiger ARM64-Build, Artefakte und physische Abnahme bleiben offen. Der gesicherte Stand von17:03 bleibt unten ausdrücklich datierte Historie.
 
 ## Operatorblock
 
@@ -169,3 +169,23 @@ Der vollständige Gast-APT-Korrekturcommit ist `001fb84ac566bb0f95e18d22439ee664
 Der bereitgestellte Operatorbefehl verwendet diesen Commit und `vm119-image-apt-update.py`; im Imageformular gehört derselbe vollständige SHA in **Branch, Tag oder Commit**. Ein globaler Controller-Ref-Wechsel ist dafür nicht erforderlich. Zum Zeitpunkt dieser Sicherung fehlt eine neue Betreiber-Ausgabe zur Gastrezept-Übernahme und zum erneuten vollständigen Build. Der jobs.py-Fix auf VM119 ist ebenfalls nicht durch einen neuen Runtime-Fingerprint bestätigt. Bereits gestartete Builds über ihren bestehenden Auftrag verfolgen; diese Dokumentationssicherung erfordert keinen weiteren Build oder Dienstneustart.
 
 Bei einem Erfolg zuerst `/api/v1/images`, den bestehenden Imagejob, Artefakt und Manifest auswerten und den Download gegen die SHA-256 prüfen. Imagejob-ID und `request.build_id` sind verschiedene Kennungen; Controller-`/api/v1/jobs/<id>` ist kein Imagejob-Statuspfad. Das Manifest darf bis zur tatsächlichen physischen Abnahme weiterhin `boot_tested=false` melden. Erst danach folgen Pi-/SXceiver-Boot und VPN-Wechsel. [Gesamter Fortsetzungsstand](checkpoint-2026-10-08.md).
+
+## Dritter ARM64-Build: Rootgeräteerkennung beim Initramfs
+
+[Betreiberbefund vom 08.10.2026](evidence/vm119-imagebuilder-initramfs-2026-10-08.json), Build-ID `fb5683fe496740deae2916551451e69c`: `initramfs-tools-core` übernimmt die vorhandene initramfs.conf unbeaufsichtigt (`Keeping old config file as default`). Der bisherige Conffile-Abbruch ist damit überwunden. Bei den Kernel-Postinst-Skripten für 6.12.109 Pi-v8 und Pi2712 sowie beim Trigger des bisherigen 6.12.25-Kernels endet mkinitramfs nun mit `failed to determine device for /`; der Log nennt selbst `MODULES=most` als Ausweg. Nachfolgende Kernel-/Header-Abhängigkeitsfehler sind Folgefehler. Unmounts und Detach von `/dev/loop20` sind dokumentiert.
+
+**Quellanschluss:** Der Debian-Bookworm-Code ruft im Zweig `MODULES=dep` die laufzeitbezogene Rootgeräteerkennung auf. `MODULES=most` verwendet die breite Treiberauswahl für ein portables Image. Das ist für das ARM64-Image im Build-chroot passend; die tatsächliche Gastkonfiguration wurde nicht separat ausgelesen. [Initramfs-Konfiguration](https://manpages.debian.org/bookworm/initramfs-tools-core/initramfs.conf.5.en.html), [mkinitramfs](https://sources.debian.org/src/initramfs-tools/0.142%2Bdeb12u3/mkinitramfs/), [Geräteerkennung](https://sources.debian.org/src/initramfs-tools/0.142%2Bdeb12u3/hook-functions/).
+
+**Gezielte Korrektur:** Vor der ersten APT-Operation erstellt das Gastrezept `/etc/initramfs-tools/conf.d/zz-netcore-image.conf` mit `MODULES=most`, explizit0644 auch unter Worker-Umask0077. conf.d wird nach der Hauptdatei geladen; die vorhandene initramfs.conf bleibt bytegleich erhalten. Die neue Datei bleibt Bestandteil des Pi-Images, damit spätere Kernelupdates dieselbe portable Auswahl verwenden. Normale Kernel-/Initramfs-Erzeugung und alle bisherigen Conffile-/DNS-Korrekturen bleiben aktiv. Die Initramfs kann durch die breitere Treiberauswahl größer werden.
+
+[vm119-image-initramfs-update.py](vm119-image-initramfs-update.py) verwendet unverändert die bestehenden Host-/Idle-/Dateierhalt-/Rückweg-Guards und ersetzt ausschließlich `/usr/local/lib/netcore-deployment/image/build-guest.sh`. Die Ausführung erfolgt als jhoffmeister auf VM119 nach Checkout des bereitgestellten vollständigen Korrekturcommits:
+
+```bash
+sudo python3 -B "$NC_SRC/Docs/integration/Z01-2026-10-07/vm119-image-initramfs-update.py"
+```
+
+Danach einen neuen Build mit demselben gewünschten Profil und dem vollständigen Korrekturcommit im Imageformular anlegen. Die bisherige Build-ID benennt den gescheiterten Lauf; seine Imagejob-ID und der vollständige Request-/Quellcommit sind im Auszug nicht enthalten. Das neue Gastrezept ändert den Recipekey automatisch, die feste komprimierte OS-Basis kann aus dem Downloadcache wiederverwendet werden. Der aufgeräumte fehlgeschlagene Gast benötigt keine manuelle Paket-, Mount- oder Loopreparatur.
+
+Die lokale Regression führt den echten Rezeptanfang im isolierten Testverzeichnis aus und prüft die wirksame Initramfs-Konfiguration vor den Paketaufrufen, Konfigurationserhalt, Rechte und Fehlerabbruch. Externe APT-Aufrufe sind isoliert. Eine tatsächliche ARM64-Initramfs wird in dieser Umgebung nicht erzeugt; der vollständige Betreiberbuild und der physische Pi-/SXceiver-/VPN-Test bleiben die nächsten Nachweise.
+
+Validierung des finalen Initramfs-Korrekturstands: Deployment-Core68 Tests /67 bestanden /1 erwarteter Unix-Socket-Skip; VM119-Operator26/26 bestanden; sechs betroffene Gast-Pakettests bestanden; Bash-Syntax und unabhängiger Review ohne Blocker. [Gastregression](../../../system-backend/deployment-core/tests/test_build_guest_packages.py), [Update-/Rückwegtests](../../../tests/integration/test_vm119_image_initramfs_update.py). Die neue main-CI war beim Erstellen des Belegs noch nicht beobachtet.

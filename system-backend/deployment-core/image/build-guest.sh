@@ -8,6 +8,10 @@ SOAPY_REPOSITORY=${3:?}
 SOAPY_COMMIT=${4:?}
 export DEBIAN_FRONTEND=noninteractive
 export LC_ALL=C
+# Build portable Pi initramfs images instead of detecting the VM's root device.
+mkdir -p /etc/initramfs-tools/conf.d
+printf '# NetCore portable Pi image\nMODULES=most\n' > /etc/initramfs-tools/conf.d/zz-netcore-image.conf
+chmod 0644 /etc/initramfs-tools/conf.d/zz-netcore-image.conf
 # dpkg conffile prompts are separate from debconf; preserve the guest's config.
 NC_APT=(apt-get -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold)
 "${NC_APT[@]}" -o APT::Update::Error-Mode=any update

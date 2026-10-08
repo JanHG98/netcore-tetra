@@ -1,8 +1,10 @@
 """Execute the real guest recipe's package phase with isolated command fixtures.
 
-The normal tests simulate APT download/conffile outcomes. The native test also
-uses real dpkg packages and a temporary --root, never the host package database.
-All runs stop at a fake install command before the software build can mutate /opt.
+The recipe's fixed guest config path is redirected to a temporary directory; its
+Bash writes and config loading are real. APT download/initramfs outcomes are
+simulated. The native test also uses real dpkg packages and a temporary --root,
+never the host package database. All runs stop at a fake install command before
+the software build can mutate /opt. No complete initramfs generation is claimed.
 """
 import json
 import os
@@ -23,9 +25,24 @@ CONFIG = 'etc/netcore-image-conffile-test.conf'
 APT_STUB = '''import json, os, pathlib, subprocess, sys
 args = sys.argv[1:]
 operation = next(a for a in args if a in ('update', 'dist-upgrade', 'install'))
+load_config = ''' + repr('''MODULES=dep
+[ ! -f "$1/initramfs.conf" ] || . "$1/initramfs.conf"
+for fragment in "$1"/conf.d/*; do
+    [ ! -f "$fragment" ] || . "$fragment"
+done
+printf '%s\\n' "$MODULES"
+''') + '''
+loaded = subprocess.run([os.environ['NC_TEST_BASH'], '-c', load_config,
+                         'load-initramfs-config', os.environ['NC_TEST_INITRAMFS']],
+                        capture_output=True, text=True, check=True)
+modules = loaded.stdout.strip()
 with open(os.environ['NC_TEST_LOG'], 'a') as log:
     log.write(json.dumps({'operation': operation, 'args': args,
-                          'frontend': os.environ.get('DEBIAN_FRONTEND')}) + '\\n')
+                          'frontend': os.environ.get('DEBIAN_FRONTEND'),
+                          'modules': modules}) + '\\n')
+if operation != 'update' and modules != 'most':
+    print('mkinitramfs: failed to determine device for /', file=sys.stderr)
+    sys.exit(100)
 options = [args[i + 1] for i, value in enumerate(args[:-1]) if value == '-o']
 failure = os.environ.get('NC_TEST_FAILURE')
 if failure == operation:
@@ -53,11 +70,17 @@ class GuestPackageTests(unittest.TestCase):
         self.bin = self.root / 'bin'
         self.bin.mkdir()
         self.log = self.root / 'apt-calls.jsonl'
+        self.initramfs = self.root / 'initramfs-tools'
+        (self.initramfs / 'conf.d').mkdir(parents=True)
+        self.original_initramfs = b'MODULES=dep\nCOMPRESS=gzip\n'
+        (self.initramfs / 'initramfs.conf').write_bytes(self.original_initramfs)
+        (self.initramfs / 'conf.d/raspi-firmware.conf').write_text('MODULES=dep\n')
         self.write_stub('dpkg', "import sys\nprint('arm64') if sys.argv[1:] == ['--print-architecture'] else sys.exit(2)\n")
         self.write_stub('apt-get', APT_STUB)
         self.write_stub('install', "import sys\nsys.exit(97)\n")
         self.environment = dict(os.environ, PATH=str(self.bin) + os.pathsep + os.environ['PATH'],
-                                NC_TEST_LOG=str(self.log))
+                                NC_TEST_LOG=str(self.log), NC_TEST_BASH=BASH,
+                                NC_TEST_INITRAMFS=str(self.initramfs))
         for key in ('NC_TEST_FAILURE', 'NC_TEST_NATIVE_ROOT', 'NC_TEST_DPKG', 'NC_TEST_UPGRADE'):
             self.environment.pop(key, None)
 
@@ -67,13 +90,39 @@ class GuestPackageTests(unittest.TestCase):
         path.chmod(0o755)
 
     def run_recipe(self, **environment):
-        return subprocess.run([BASH, str(RECIPE), 'https://example.invalid/netcore.git',
+        fixture_recipe = self.root / 'build-guest.sh'
+        fixture_recipe.write_text(RECIPE.read_text().replace('/etc/initramfs-tools', str(self.initramfs)))
+        return subprocess.run([BASH, '-c', 'umask 077; exec "$@"', 'guest-test',
+                               BASH, str(fixture_recipe), 'https://example.invalid/netcore.git',
                                'a' * 40, 'https://example.invalid/soapy.git', 'b' * 40],
                               env={**self.environment, **environment}, stdin=subprocess.DEVNULL,
                               capture_output=True, text=True, timeout=30)
 
     def calls(self):
-        return [json.loads(line) for line in self.log.read_text().splitlines()]
+        return [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
+
+    def test_initramfs_most_is_loaded_before_apt_without_changing_main_config(self):
+        result = self.run_recipe()
+        self.assertEqual(result.returncode, 97, result.stderr)
+        self.assertTrue(all(call['modules'] == 'most' for call in self.calls()))
+        self.assertEqual((self.initramfs / 'initramfs.conf').read_bytes(), self.original_initramfs)
+        self.assertEqual((self.initramfs / 'conf.d/raspi-firmware.conf').read_text(), 'MODULES=dep\n')
+        policy = self.initramfs / 'conf.d/zz-netcore-image.conf'
+        original_policy = policy.read_bytes()
+        self.assertEqual(policy.stat().st_mode & 0o777, 0o644)
+        self.log.unlink()
+        repeated = self.run_recipe()
+        self.assertEqual(repeated.returncode, 97, repeated.stderr)
+        self.assertEqual(policy.read_bytes(), original_policy)
+        self.assertTrue(all(call['modules'] == 'most' for call in self.calls()))
+
+    def test_initramfs_policy_write_error_stops_before_apt(self):
+        (self.initramfs / 'conf.d/zz-netcore-image.conf').mkdir()
+        result = self.run_recipe()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotEqual(result.returncode, 97)
+        self.assertEqual(self.calls(), [])
+        self.assertEqual((self.initramfs / 'initramfs.conf').read_bytes(), self.original_initramfs)
 
     def test_all_package_operations_handle_conffiles_without_stdin(self):
         result = self.run_recipe()

@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-08",
+  "source": "Neuer hochgeladener Betreiber-Logauszug Eingefügtes Markdown.md; kein direkter Hostzugriff",
+  "log_excerpt_sha256": "199bef5301434e565c48504fc502238dc23f8e37cb837b1b1485a076c11d6782",
+  "phase": "full_build_failed_at_guest_initramfs_root_detection",
+  "build_id": "fb5683fe496740deae2916551451e69c",
+  "reviewed_repository_base": "79e226f802467af62f4c67181b6ae5534322dbb9",
+  "previous_conffile_progress": {
+    "package": "initramfs-tools-core",
+    "conffile": "/etc/initramfs-tools/initramfs.conf",
+    "reported_decision": "Keeping old config file as default.",
+    "assessment": "The former interactive conffile abort is passed; the main configuration is retained according to the operator log."
+  },
+  "primary_error": {
+    "operation": "Kernel post-install / initramfs-tools trigger",
+    "message": "mkinitramfs: failed to determine device for /",
+    "suggested_workaround_in_log": "MODULES=most",
+    "kernels": [
+      "6.12.109+rpt-rpi-v8",
+      "6.12.109+rpt-rpi-2712",
+      "6.12.25+rpt-rpi-v8"
+    ]
+  },
+  "dependent_package_errors": [
+    "linux-image-6.12.109+rpt-rpi-v8",
+    "linux-image-rpi-v8",
+    "linux-image-6.12.109+rpt-rpi-2712",
+    "linux-headers-6.12.109+rpt-rpi-2712",
+    "linux-headers-6.12.109+rpt-rpi-v8",
+    "linux-image-rpi-2712",
+    "linux-headers-rpi-2712",
+    "linux-headers-rpi-v8",
+    "initramfs-tools"
+  ],
+  "exit_errors": [
+    "E: Sub-process /usr/bin/dpkg returned an error code (1)",
+    "RuntimeError: Command exited with 100: chroot",
+    "RuntimeError: Command exited with 1: unshare"
+  ],
+  "cleanup_reported": {
+    "unmounted": [
+      "run",
+      "dev/shm",
+      "dev/pts",
+      "dev",
+      "sys",
+      "proc",
+      "boot/firmware",
+      "root"
+    ],
+    "loop_detached": "/dev/loop20"
+  },
+  "source_diagnosis": {
+    "assessment": "The corresponding Debian Bookworm MODULES=dep branch attempts root-device detection of the running environment. MODULES=most uses the portable broad-driver branch instead.",
+    "inference_boundary": "The log reproduces the exact dependency-device detection error; the effective guest initramfs configuration was not separately read.",
+    "primary_sources": [
+      "https://manpages.debian.org/bookworm/initramfs-tools-core/initramfs.conf.5.en.html",
+      "https://sources.debian.org/src/initramfs-tools/0.142%2Bdeb12u3/mkinitramfs/",
+      "https://sources.debian.org/src/initramfs-tools/0.142%2Bdeb12u3/hook-functions/"
+    ]
+  },
+  "fix": {
+    "repository_file": "system-backend/deployment-core/image/build-guest.sh",
+    "vm_runtime_target": "/usr/local/lib/netcore-deployment/image/build-guest.sh",
+    "before_sha256": "84b8d4070730b2fe94c4ddf4514411fadd08f19f72bfb3ce0adc86f14d1d8c3c",
+    "after_sha256": "4ecd8daeaff314d63da00407f49c994f3bff0569755dbd95640aef96289a8e68",
+    "guest_dropin": "/etc/initramfs-tools/conf.d/zz-netcore-image.conf",
+    "guest_policy": "MODULES=most",
+    "guest_mode": "0644",
+    "timing": "Before the first guest APT operation, including dist-upgrade.",
+    "persistence": "Retained in the portable Pi image; main initramfs.conf is not edited.",
+    "operator_helper": "Docs/integration/Z01-2026-10-07/vm119-image-initramfs-update.py",
+    "operator_helper_sha256": "29253d64a7f58666f8f52b68326f142d618a1a11df1879a3cdd7ca0f07798e18"
+  },
+  "validation": {
+    "deployment_suite": {
+      "tests": 68,
+      "passed": 67,
+      "skipped": 1,
+      "duration_seconds": 21.227,
+      "skip": "Unix sockets are unavailable in the local executor; native CI transport remains separate."
+    },
+    "vm119_operator_suite": {
+      "tests": 26,
+      "passed": 26
+    },
+    "affected_guest_package_tests": {
+      "tests": 6,
+      "passed": 6
+    },
+    "regression_scope": "Actual guest Bash recipe writes under umask0077 and real configuration sourcing in private fixture; most before each APT operation, untouched main config / other drop-in, repeated execution, 0644, write failure prevents APT. Existing real native dpkg conffile fixture still passes.",
+    "simulated": "APT network and initramfs outcomes; no actual ARM64 initramfs generated.",
+    "bash_syntax": "passed",
+    "independent_review": "No blockers",
+    "new_commit_ci": "Not yet observed at evidence creation."
+  },
+  "limits": [
+    "No image job ID, complete build request or requested commit appears in this log excerpt.",
+    "VM119 jobs.py fix remains unconfirmed since the older preflight fingerprint.",
+    "The new guest initramfs policy has not yet been executed by the operator in a complete ARM64 image build.",
+    "Full image, manifest, checksum, physical Pi/SXceiver boot and VPN switch remain unproven.",
+    "Broad MODULES=most selection can increase initramfs size; host kernel and host initramfs configuration are unaffected."
+  ]
+}

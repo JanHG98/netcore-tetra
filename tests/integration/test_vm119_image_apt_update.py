@@ -28,13 +28,28 @@ def load_wrapper():
 
 
 class ImageAptUpdateTests(unittest.TestCase):
-    def test_only_guest_script_is_selected_with_reviewed_pin(self):
+    def test_historical_wrapper_keeps_its_reviewed_target_and_pins(self):
         driver = load_wrapper().UPDATER
         self.assertEqual(driver.TARGET, Path('/usr/local/lib/netcore-deployment/image/build-guest.sh'))
         self.assertEqual(driver.SOURCE, REPO / 'system-backend/deployment-core/image/build-guest.sh')
-        self.assertRegex(driver.OLD_SHA, r'^[0-9a-f]{64}$')
-        self.assertEqual(hashlib.sha256(driver.SOURCE.read_bytes()).hexdigest(), driver.NEW_SHA)
+        self.assertEqual(driver.OLD_SHA, 'de425150d67bb9e778ffdff9c10f1c548a1ca68a396b00955cc20f0ccf9fb40b')
+        self.assertEqual(driver.NEW_SHA, '84b8d4070730b2fe94c4ddf4514411fadd08f19f72bfb3ce0adc86f14d1d8c3c')
         driver.validate_source(driver.SOURCE.read_bytes())
+
+    def test_historical_source_mismatch_refused_before_units_or_file_change(self):
+        driver = load_wrapper().UPDATER
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            driver.TARGET = directory / 'installed.sh'
+            driver.SOURCE = directory / 'unreviewed.sh'
+            original = b'#!/bin/bash\necho original\n'
+            driver.TARGET.write_bytes(original)
+            driver.SOURCE.write_bytes(b'#!/bin/bash\necho unreviewed\n')
+            with mock.patch.object(driver, 'command') as command:
+                with self.assertRaisesRegex(RuntimeError, 'Quellfingerprint'):
+                    driver.update(directory, [])
+                command.assert_not_called()
+            self.assertEqual(driver.TARGET.read_bytes(), original)
 
     def test_image_client_uses_library_root_for_nested_script_target(self):
         driver = load_wrapper().UPDATER
@@ -56,7 +71,12 @@ class ImageAptUpdateTests(unittest.TestCase):
             self.assertFalse(marker.exists())
 
     def exercise(self, kind):
-        with mock.patch.object(FIXTURE, 'load_wrapper', load_wrapper):
+        def fixture_wrapper():
+            wrapper = load_wrapper()
+            # Atomic-swap fixtures exercise the guard; historical production pins stay unchanged.
+            wrapper.UPDATER.NEW_SHA = hashlib.sha256(wrapper.UPDATER.SOURCE.read_bytes()).hexdigest()
+            return wrapper
+        with mock.patch.object(FIXTURE, 'load_wrapper', fixture_wrapper):
             FIXTURE.ImageDnsUpdateTests.exercise(self, kind)
 
     def test_atomic_real_script_swap_preserves_permissions_and_configs(self):
