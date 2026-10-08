@@ -1,11 +1,14 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import socket
+import sqlite3
 import sys
 import tempfile
 import threading
 import time
 import unittest
+from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -94,6 +97,60 @@ class HTTPTests(unittest.TestCase):
         self.assertIn('netcore_deployment_peers{state="online"} 0\n', metrics)
         self.assertIn('netcore_deployment_jobs{status="failed"} 0\n', metrics)
         self.assertNotIn('never-publish-this-secret', metrics + json.dumps(spec))
+
+    def test_job_status_http_waits_for_concurrent_database_write(self):
+        app, url = self.app('agent')
+        calls = []
+        app.jobs.execute = lambda request, log: calls.append(request) or {'ready': True}
+        key = app.jobs.submit({'service': 'hardware-gateway'})['id']
+        self.wait_for(lambda: app.jobs.get(key)['status'] == 'succeeded')
+        locked, release = threading.Event(), threading.Event()
+        entered_get, entered_list = threading.Event(), threading.Event()
+        original_connect = sqlite3.connect
+        original_get, original_list = app.jobs.get, app.jobs.list
+
+        def short_timeout(*args, **kwargs):
+            kwargs['timeout'] = .02
+            return original_connect(*args, **kwargs)
+
+        def write():
+            with app.jobs.connect() as db:
+                db.execute('BEGIN EXCLUSIVE')
+                db.execute('UPDATE jobs SET log=? WHERE id=?', ('committed log', key))
+                locked.set()
+                if not release.wait(5):
+                    raise RuntimeError('reader setup timed out')
+
+        def get(key):
+            entered_get.set()
+            return original_get(key)
+
+        def listing():
+            entered_list.set()
+            return original_list()
+
+        # Real SQLite lock contention and real HTTP, with a short busy timeout
+        # so the former HTTP 500 is reproduced without a ten-second test delay.
+        with patch('jobs.sqlite3.connect', side_effect=short_timeout), \
+                patch.object(app.jobs, 'get', side_effect=get), \
+                patch.object(app.jobs, 'list', side_effect=listing), \
+                ThreadPoolExecutor(max_workers=3) as pool:
+            writer = pool.submit(write)
+            try:
+                self.assertTrue(locked.wait(3))
+                detail = pool.submit(request_json, url + '/api/v1/jobs/' + key)
+                overview = pool.submit(request_json, url + '/api/v1/jobs')
+                self.assertTrue(entered_get.wait(3))
+                self.assertTrue(entered_list.wait(3))
+                time.sleep(.08)
+                self.assertFalse(detail.done(), 'status read bypassed database serialization')
+                self.assertFalse(overview.done(), 'listing bypassed database serialization')
+            finally:
+                release.set()
+            writer.result(timeout=3)
+            self.assertEqual(detail.result(timeout=3)['log'], 'committed log')
+            self.assertEqual(overview.result(timeout=3)[0]['log'], 'committed log')
+        self.assertEqual(len(calls), 1)
 
     def test_controller_plan_remote_job_and_commit_pinning(self):
         controller,curl=self.app('controller','controller')
