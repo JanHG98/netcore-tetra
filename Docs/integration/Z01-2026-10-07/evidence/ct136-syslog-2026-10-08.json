@@ -1,0 +1,122 @@
+{
+  "date": "2026-10-08",
+  "timezone": "Europe/Berlin",
+  "evidence_kind": "operator_provided_output",
+  "assistant_direct_host_access": false,
+  "ctid": 136,
+  "hostname": "Observability",
+  "helper_source_commit": "c5279c7748ccdd6b96650e4fef2cb1e280e08232",
+  "runtime_binary_source_commit": "3d96a9a4d9d2c0cdc8cd814970b076a551fcbfe2",
+  "checkpoint": "/var/tmp/netcore-ct136-syslog-oggg829q/result.json",
+  "operator_result": {
+    "phase": "passed",
+    "started_at": "2026-10-08T12:23:24.341574+00:00",
+    "config_sha256": {
+      "/etc/netcore/observability.toml": "1dd0d221c4a4ff7251dfd49e345091e83de9911fde1c44d2763e418c8cf066ed",
+      "/etc/netcore/syslog.json": "38304051d70d70f01a57d0d9bc688f5e9d79b3849795f40f7c5465be3cef081a"
+    },
+    "marker": "Z014-SYSLOG-9266c5bd5685499081a00becb5553559",
+    "marker_sent_at": "2026-10-08T12:23:25.414079+00:00",
+    "archive_before": {
+      "Type": "oneshot",
+      "Result": "success",
+      "ExecMainStartTimestampMonotonic": "340378969906",
+      "ExecMainCode": "1",
+      "ExecMainStatus": "0",
+      "ExecStart": "{ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /opt/netcore-observability/logging/log_store.py archive ; ignore_errors=no ; start_time=[Thu 2026-10-08 02:19:25 UTC] ; stop_time=[Thu 2026-10-08 02:19:28 UTC] ; pid=35086 ; code=exited ; status=0 }",
+      "User": "netcore-observability",
+      "Group": "netcore-observability",
+      "LoadState": "loaded",
+      "ActiveState": "inactive",
+      "InvocationID": "270a2a244e0f4d5ebc4384bb43849521"
+    },
+    "tcp_attempts": 1,
+    "updated_at": "2026-10-08T12:43:08.968569+00:00",
+    "resume_history": [
+      "/var/tmp/netcore-ct136-syslog-oggg829q/result.before-resume-c4d5aa4d84a444929630e9f3355b3d8d.json"
+    ],
+    "resume_attempts": 1,
+    "tcp_completed": true,
+    "http_get": {
+      "attempts": 6,
+      "errors": [],
+      "max_seconds": 4.952,
+      "last_seconds": 4.952
+    },
+    "syslog_id": "d7b42f8bfb384a3b8613bc04a220828b",
+    "preview_record": {
+      "log_id": "b90d0c42-d241-49d7-b579-a42093c6c2c1",
+      "timestamp": "2026-10-08T12:23:37.711382Z",
+      "received_at": "2026-10-08T12:23:40.527522414Z",
+      "service": "z014-syslog",
+      "node": "127.0.0.1",
+      "level": "info",
+      "message": "Z014-SYSLOG-9266c5bd5685499081a00becb5553559",
+      "correlation_id": null,
+      "trace_id": null,
+      "fields": {
+        "facility": "local0",
+        "hostname": "Observability",
+        "source_ip": "127.0.0.1",
+        "syslog_id": "d7b42f8bfb384a3b8613bc04a220828b",
+        "syslog_timestamp": "2026-10-08T12:23:25.414079Z",
+        "transport": "imtcp"
+      }
+    },
+    "raw_segment": "/var/lib/netcore-observability/logs/raw/20261008T122337-5111148c4bf844b78d7f1b846f37fa49.open",
+    "raw_record": {
+      "timestamp": "2026-10-08T12:23:25.414079Z",
+      "hostname": "Observability",
+      "program": "z014-syslog",
+      "severity": "info",
+      "facility": "local0",
+      "source_ip": "127.0.0.1",
+      "transport": "imtcp",
+      "message": "Z014-SYSLOG-9266c5bd5685499081a00becb5553559",
+      "received_at": "2026-10-08T12:23:37.711382+00:00",
+      "id": "d7b42f8bfb384a3b8613bc04a220828b",
+      "inventory_name": "127.0.0.1"
+    },
+    "archive_file": "/mnt/nfs-share/Logs/NetCore/observability-10.0.1.143/2026-10-08/20261008T122337-5111148c4bf844b78d7f1b846f37fa49.jsonl.gz",
+    "archive_start_attempts": 1,
+    "archive_unit": {
+      "Type": "oneshot",
+      "Result": "success",
+      "ExecMainStartTimestampMonotonic": "377789276383",
+      "ExecMainCode": "1",
+      "ExecMainStatus": "0",
+      "ExecStart": "{ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /opt/netcore-observability/logging/log_store.py archive ; ignore_errors=no ; start_time=[Thu 2026-10-08 12:42:56 UTC] ; stop_time=[Thu 2026-10-08 12:43:05 UTC] ; pid=115748 ; code=exited ; status=0 }",
+      "User": "netcore-observability",
+      "Group": "netcore-observability",
+      "LoadState": "loaded",
+      "ActiveState": "inactive",
+      "InvocationID": "c086b84efcc242978c6f899052435a1f"
+    },
+    "archive_status": {
+      "last_attempt": "2026-10-08T12:42:58.806513+00:00",
+      "archived_segments": 1,
+      "error": null,
+      "last_success": "2026-10-08T12:43:03.079562+00:00"
+    },
+    "archive_decompressed_sha256": "3d6500514a7a43e90f6276308731cf7bc49e611ff4be312aabfff49b8d8a42e6"
+  },
+  "checks": {
+    "same_tcp_marker_received": "passed",
+    "both_preview_apis_same_syslog_id": "passed",
+    "one_fresh_archive_run_as_service_user": "passed",
+    "matching_raw_record_in_full_gzip_stream": "passed",
+    "gzip_footer_crc": "passed",
+    "archived_raw_segment_removed": "passed",
+    "original_configuration_hashes": "passed",
+    "tcp_resends": 0
+  },
+  "result": "passed",
+  "boundaries": {
+    "fleet_sender_journald": "not tested by loopback marker",
+    "installed_missing_mount_failure": "pending",
+    "real_nfs_outage_or_stall": "not tested",
+    "http_latency": "six successful GETs, max4.952s; underlying delay not resolved",
+    "full_arm64_image": "pending",
+    "physical_pi_sxceiver_and_vpn": "pending"
+  }
+}

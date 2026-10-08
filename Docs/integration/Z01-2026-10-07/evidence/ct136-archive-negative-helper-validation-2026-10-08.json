@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-08",
+  "kind": "isolated_real_mount_guard_validation",
+  "production_access": false,
+  "script": "Docs/integration/Z01-2026-10-07/ct136-archive-negative.py",
+  "script_sha256": "ba9e85babf6b3b4ddf1b6bc533e17df101ced145eed5705abfa485da2e33564e",
+  "syntax": "passed",
+  "local_identity": [
+    0,
+    0
+  ],
+  "operator_identity": [
+    999,
+    989
+  ],
+  "operator_cli_identity_override": false,
+  "source": "workspace copy of system-backend/observability/logging/log_store.py",
+  "mount_guard": "actual open_share via /proc/self/mountinfo; not mocked",
+  "checks": {
+    "local_target_rejected_with_exact_not_mounted_error": "passed",
+    "raw_open_sealed_to_jsonl": "passed",
+    "raw_bytes_and_sha256_unchanged": "passed",
+    "original_marker_retained": "passed",
+    "preview_pending_one_retained": "passed",
+    "archive_segments_zero": "passed",
+    "local_target_remains_empty": "passed",
+    "wrong_default_service_identity_rejected": "passed",
+    "stdin_worker_without_checkout_permission_change": "passed by implementing agent"
+  },
+  "independent_reviews": [
+    "implementing agent genuine worker test",
+    "native reviewer genuine exercise",
+    "root genuine exercise"
+  ],
+  "site_run": "pending operator execution on CT136",
+  "boundaries": [
+    "Not a live NFS outage or stall test",
+    "Actual UID999/GID989 execution not performed in local environment",
+    "Production configuration, service units, receiver, timer and network mounts untouched"
+  ]
+}
