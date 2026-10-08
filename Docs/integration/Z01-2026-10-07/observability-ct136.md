@@ -34,7 +34,7 @@ Beide Bind-Vorgänge erfolgen vor dem Start der HTTP-Threads. Ein belegter lokal
 - Drei Rust-Tests öffnen echte TCP-Listener: getrennte Management-/Loopback-Adresse auf demselben Port, Wildcard/localhost ohne Doppelbindung, belegter Previewport mit Bereinigung.
 - `tests/native-syslog-loopback.py` startet das echte Binary an127.0.0.2:8210. Es lädt die Syslog-Datei über den strikten Validator, schreibt in den echten SQLite-/Rohpuffer, leitet einen Marker über127.0.0.1 weiter und liest denselben Marker über die Management-Adresse. Konfigurationsdatei und API-Bind bleiben unverändert.
 - Der bestehende native Smoke-/Browsertest bleibt erhalten. Der neue Test läuft danach im bestehenden `syslog-runtime`-CI-Job.
-- Lokale Python-Suite:20 Tests,18 bestanden,2 Wiretests wegen fehlendem rsyslog ausdrücklich übersprungen. Rust-Toolchain fehlt in der lokalen Arbeitsumgebung; echte Rust-/Native-/Wire-/Browserergebnisse müssen über CI nachgetragen werden.
+- Lokale Python-Suite:20 Tests,18 bestanden,2 Wiretests wegen fehlendem rsyslog ausdrücklich übersprungen. Rust-Toolchain fehlt in der lokalen Arbeitsumgebung. Die native CI an Quellcommit `56eb6068465015c4a7e95c6b172a0347202026fb` besteht:20/20 Syslogtests einschließlich realem TCP/UDP/RELP und Reconnect,10/10 Rusttests einschließlich drei neuer Listenerprüfungen, bestehender nativer Browsertest und neue IP-only-/localhost-/SQLite-Regression. [Nachweis](evidence/ct136-preview-ci-2026-10-08.json).
 
 ## Betriebsabnahme und Rückweg
 
@@ -44,4 +44,4 @@ NAS-Schreibprüfung als Dienstbenutzer mit eigenem temporärem Ordner ausschlie�
 
 Vor einem Austausch den vorhandenen Binarypfad und die Konfigurationsprüfsummen festhalten. Ein Rückweg ersetzt ausschließlich den betroffenen Binarybuild bei gestopptem Observability-Dienst und startet denselben Dienst erneut. Rohsegmente, SQLite, Vorschauzustand, Receiver-Queues, Cursor und NAS-Archive erhalten. Der vorherige Build bringt auch den bekannten lokalen Preview-Fehler zurück; NAS- und RF-Abnahme bleiben eigene Aufgaben.
 
-**Status:** Bestand im Lab bestätigt, Quellkorrektur implementiert; native CI und tatsächlicher CT136-Rollout / Marker-/NAS-Abnahme separat offen.
+**Status:** Bestand im Lab bestätigt, Quellkorrektur und gezielte native CI bestanden; tatsächlicher CT136-Rollout / Marker-/NAS-Abnahme offen.

@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-08",
+  "timezone": "Europe/Berlin",
+  "repository": "JanHG98/netcore-tetra",
+  "pull_request": 64,
+  "code_commit": "56eb6068465015c4a7e95c6b172a0347202026fb",
+  "workflow_run": 37772202495,
+  "native_job": 113294257590,
+  "syslog_tests": 20,
+  "rust_tests": 10,
+  "native_browser": "passed",
+  "native_loopback_sqlite": "passed",
+  "ct136_runtime_update": "pending",
+  "workflow_url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37772202495",
+  "job_url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37772202495/job/113294257590",
+  "code_file": "system-backend/observability/src/http.rs",
+  "boundaries": [
+    "Operator stocktake is real lab evidence",
+    "CI is isolated runner evidence",
+    "Actual CT136 update and NAS/marker acceptance still pending"
+  ]
+}
