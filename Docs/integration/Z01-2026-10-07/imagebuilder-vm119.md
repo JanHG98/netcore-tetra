@@ -1,6 +1,6 @@
 # Z01.4 – VM119 Imagebuilder-Vorprüfung
 
-Stand: 2026-10-08. CT150-Readiness/Recovery und CT136-TCP-/Vorschau-/NAS-Erfolgspfad einschließlich isoliertem Fehlermount sind als Betreiberbefunde dokumentiert. Die tatsächliche Vorprüfung auf `VM-H-DEPLOY-01`, VM119, `10.0.1.131`, besteht. Ein vollständiger Buildversuch scheitert anschließend beim Gast-Paketdownload an DNS. Der reproduzierte Dateirechtefehler im Builder ist korrigiert; die Übernahme auf VM119 und der erneute vollständige Build bleiben offen.
+Stand: 2026-10-08. CT150-Readiness/Recovery und CT136-TCP-/Vorschau-/NAS-Erfolgspfad einschließlich isoliertem Fehlermount sind als Betreiberbefunde dokumentiert. Die tatsächliche Vorprüfung auf `VM-H-DEPLOY-01`, VM119, `10.0.1.131`, besteht. Der zweite Build erreicht nach der DNS-Korrektur die ARM64-Paketkonfiguration und scheitert an einer unbeantworteten dpkg-Konfigurationsrückfrage. Die gezielte Gast-APT-Korrektur ist vorbereitet; vollständiger Build und physische Abnahme bleiben offen.
 
 ## Operatorblock
 
@@ -141,3 +141,23 @@ Danach die WebUI neu laden und **einen neuen Build** mit demselben gewünschten 
 Lokale Regressionen verwenden echte Dateien, Umask, Gastkontext und SQLite-Dateien, simulieren aber Mounts/Geräteknoten, Dienste und externe DNS-Aufrufe. Temporäres 0644, Inhalt/Originalmodus, dangling Symlink, fehlender Resolver sowie Wiederherstellung bei Fehler sind geprüft. DNS-Tests prüfen `_apt`, beide Hosts, Zeitlimits und sofortigen Abbruch auf Lesbarkeits-/Auflösungsfehler. Der tatsächliche ARM64-DNS-/APT-Erfolg und der vollständige Imagebuild bleiben bis zur Betreiber-Ausgabe offen.
 
 Validierung des finalen Korrekturstands: Deployment-Core-Suite 62 Tests, 61 bestanden/ein erwarteter Unix-Socket-Skip; VM119-Update-Suite 11/11 bestanden. Syntax und unabhängiger Review bestehen. [Gastregression](../../../system-backend/deployment-core/tests/test_image_guest.py), [Update-/Rückwegregression](../../../tests/integration/test_vm119_image_dns_update.py).
+
+## Zweiter ARM64-Build: dpkg-Konfigurationsrückfrage
+
+[Betreiberbefund vom 08.10.2026](evidence/vm119-imagebuilder-conffile-2026-10-08.json), Build-ID `2dce020e97d745408fe5221453ad63ac`: ARM64-Pakete werden entpackt/konfiguriert. Der korrigierte Builder erreicht den Gast-Paketbuild nach seiner DNS-Vorprüfung; im neuen Auszug fehlen die vorherigen DNS-Abbrüche. Die beiden main-Workflows des DNS-Fixes 8359f75 bestehen inzwischen. Dies bestätigt Fortschritt über den früheren DNSfehler, keinen vollständigen Imageerfolg.
+
+**Primärfehler:** `initramfs-tools-core` fordert eine Entscheidung für die im Raspberry-Pi-Basisimage bereits angepasste `/etc/initramfs-tools/initramfs.conf`. Der unbeaufsichtigte Build hat keinen Eingabestrom; dpkg endet mit `end of file on stdin at conffile prompt`. Die weiteren Initramfs-/Kernel-/Header-Fehler folgen aus diesem nicht konfigurierten Paket. Die Meldungen `policy-rc.d denied execution` entsprechen dagegen dem absichtlich unterdrückten Dienststart im Gast. Unmounts und Loopdetach sind laut Auszug durchgelaufen.
+
+**Korrektur nur im Gastrezept:** Alle drei Paketoperationen nutzen `Dpkg::Options::=--force-confdef` und `Dpkg::Options::=--force-confold`, neben `DEBIAN_FRONTEND=noninteractive`. Damit entscheidet dpkg unbeaufsichtigt anhand des Defaults und behält bei fehlendem Default die vorhandene Konfiguration bei. [Primärquelle dpkg](https://manpages.debian.org/bookworm/dpkg/dpkg.1.en.html). `apt-get update` erhält zusätzlich `APT::Update::Error-Mode=any`, damit fehlgeschlagene Indexabrufe nicht still mit alten Listen weiterlaufen. Die bereits korrigierten DNS-Dateirechte bleiben erhalten. Die VM selbst erhält kein Paket-/Kernel- oder Standortkonfigurationsupdate.
+
+[vm119-image-apt-update.py](vm119-image-apt-update.py) ersetzt ausschließlich `/usr/local/lib/netcore-deployment/image/build-guest.sh` mit festen SHA-256-Pins. Der wiederverwendete VM119-Guard prüft die Bash-Syntax, aktive Dienste, untätige Aufträge, Standort-Dateierhalt und Rücknahme. Seine Standard-Pythonprüfung bleibt für die bisherigen Jobs-/DNS-Wrapper erhalten; der ImageClient wird aus dem festen Deployment-Laufzeitverzeichnis geladen.
+
+Als jhoffmeister auf VM119 nach Checkout des bereitgestellten vollständigen Korrekturcommits:
+
+```bash
+sudo python3 -B "$NC_SRC/Docs/integration/Z01-2026-10-07/vm119-image-apt-update.py"
+```
+
+Danach **einen neuen Build** mit demselben gewünschten Profil und dem vollständigen neuen Quellcommit im Imageformular anlegen. Der fehlgeschlagene, bereits aufgeräumte Gast wird nicht manuell repariert. Der Rezeptcode ändert den Recipekey automatisch; die feste komprimierte OS-Basis kann weiterhin aus dem Downloadcache genutzt werden. Tatsächlicher erneuter ARM64-Paket-/NetCore-Erfolg sowie Manifest/SHA-256 und physischer Pi-/SXceiver-/VPN-Nachweis bleiben offen.
+
+Validierung des finalen APT-Korrekturstands: Deployment-Core 66 Tests, 65 bestanden/ein erwarteter Unix-Socket-Skip; VM119-Operator 18/18 bestanden; Bash-Syntax und unabhängiger Review bestehen. Die [Paketregression](../../../system-backend/deployment-core/tests/test_build_guest_packages.py) führt den tatsächlichen Bash-Rezeptanfang über einen isolierten APT-Harness aus und verarbeitet echte private Testpakete mit `dpkg --root`: Ohne Optionen EOF reproduziert, mit Rezeptoptionen Version 2 erfolgreich konfiguriert und eigene Datei bytegleich erhalten. [Skript-Austausch-/Rückwegtests](../../../tests/integration/test_vm119_image_apt_update.py). Dies ist ein nativer isolierter dpkg-Test, kein vollständiger ARM64-/Repository-Build.

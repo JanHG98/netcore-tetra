@@ -18,6 +18,7 @@ import urllib.request
 OLD_SHA = '30ce8b0f936383f9c20ddb5ffda244c4065b1de1a567ddf3fbda360058d17e64'
 NEW_SHA = '905e5fc4d257e5d1ad56542cbaef38d2f42a00af357240c0e5c92ea7facc2c21'
 TARGET = Path('/usr/local/lib/netcore-deployment/jobs.py')
+LIBRARY = Path('/usr/local/lib/netcore-deployment')
 SOURCE = Path(__file__).resolve().parents[3] / 'system-backend/deployment-core/jobs.py'
 CONFIG = Path('/etc/netcore/deployment.toml')
 BUILD_STATE = Path('/var/lib/netcore-image-builder')
@@ -40,7 +41,7 @@ def api(path):
 
 
 def builder_status():
-    sys.path.insert(0, str(TARGET.parent))
+    sys.path.insert(0, str(LIBRARY))
     from image_client import ImageClient
     return ImageClient().request('/status')
 
@@ -95,13 +96,17 @@ def ready():
     require(builder_status().get('available') is True, 'Builder nicht verfügbar.')
 
 
+def validate_source(body):
+    compile(body, str(SOURCE), 'exec')
+
+
 def update(state, protected):
     original, metadata, source = TARGET.read_bytes(), TARGET.stat(), SOURCE.read_bytes()
     require(not TARGET.is_symlink() and stat.S_ISREG(metadata.st_mode), TARGET.name + ' ist keine reguläre Datei.')
     old_sha = hashlib.sha256(original).hexdigest()
     require(hashlib.sha256(source).hexdigest() == NEW_SHA, 'Quellfingerprint ist nicht der geprüfte Fix.')
     require(old_sha in (OLD_SHA, NEW_SHA), 'Installierter Quellstand ist unerwartet.')
-    compile(source, str(SOURCE), 'exec')
+    validate_source(source)
     baseline = snapshot(protected)
     ready()
     require_jobs_idle(api('/api/v1/jobs'))

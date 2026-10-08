@@ -8,9 +8,11 @@ SOAPY_REPOSITORY=${3:?}
 SOAPY_COMMIT=${4:?}
 export DEBIAN_FRONTEND=noninteractive
 export LC_ALL=C
-apt-get update
-apt-get -y dist-upgrade
-apt-get install -y --no-install-recommends \
+# dpkg conffile prompts are separate from debconf; preserve the guest's config.
+NC_APT=(apt-get -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold)
+"${NC_APT[@]}" -o APT::Update::Error-Mode=any update
+"${NC_APT[@]}" -y dist-upgrade
+"${NC_APT[@]}" install -y --no-install-recommends \
   git ca-certificates curl python3 python3-soapysdr build-essential pkg-config cmake \
   libssl-dev libsqlite3-dev libsoapysdr-dev soapysdr-tools libasound2-dev libgsm1-dev \
   alsa-utils device-tree-compiler ffmpeg jq sqlite3 nfs-common network-manager \

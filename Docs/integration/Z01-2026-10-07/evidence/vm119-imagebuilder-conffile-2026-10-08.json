@@ -1,0 +1,103 @@
+{
+  "date": "2026-10-08",
+  "source": "Hochgeladener Betreiber-Logauszug Eingefügtes Markdown.md; kein direkter Hostzugriff",
+  "log_excerpt_sha256": "b97e7dd2f17645344e83c0ff8ffbd3b947c3dd80383cf5505e3ca3f8089c1d64",
+  "phase": "full_build_failed_at_guest_conffile_upgrade",
+  "build_id": "2dce020e97d745408fe5221453ad63ac",
+  "progress_reported": [
+    "ARM64-Pakete werden entpackt und konfiguriert.",
+    "Der neue Auszug erreicht dist-upgrade nach der DNS-Vorprüfung im korrigierten Builder."
+  ],
+  "primary_error": {
+    "package": "initramfs-tools-core",
+    "conffile": "/etc/initramfs-tools/initramfs.conf",
+    "prompt": "*** initramfs.conf (Y/I/N/O/D/Z) [default=N] ?",
+    "error": "end of file on stdin at conffile prompt"
+  },
+  "secondary_failures": [
+    "initramfs-tools",
+    "linux-image-6.12.109+rpt-rpi-v8",
+    "linux-image-rpi-v8",
+    "linux-image-6.12.109+rpt-rpi-2712",
+    "linux-headers-6.12.109+rpt-rpi-2712",
+    "linux-headers-6.12.109+rpt-rpi-v8",
+    "linux-image-rpi-2712",
+    "linux-headers-rpi-2712",
+    "linux-headers-rpi-v8"
+  ],
+  "exit_errors": [
+    "E: Sub-process /usr/bin/dpkg returned an error code (1)",
+    "RuntimeError: Command exited with 100: chroot",
+    "RuntimeError: Command exited with 1: unshare"
+  ],
+  "cleanup_reported": {
+    "unmounted": [
+      "run",
+      "dev/shm",
+      "dev/pts",
+      "dev",
+      "sys",
+      "proc",
+      "boot/firmware",
+      "root"
+    ],
+    "loop_detached": "/dev/loop20"
+  },
+  "reviewed_source_commit": "8359f75adee77bb169ef2513121f098138080b40",
+  "source_diagnosis": {
+    "recipe": "system-backend/deployment-core/image/build-guest.sh",
+    "debconf_frontend": "noninteractive",
+    "missing_dpkg_options": [
+      "--force-confdef",
+      "--force-confold"
+    ],
+    "assessment": "Explizite dpkg-Konfigurationsrückfrage ohne stdin ist der Primärfehler; nachfolgende Kernel-/Initramfs-Fehler sind Abhängigkeitensymptome."
+  },
+  "previous_dns_fix_ci": [
+    {
+      "workflow": "Deployment inventory and source gate",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37787667254"
+    },
+    {
+      "workflow": "OpenLab deployment and discovery",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37787667359"
+    }
+  ],
+  "limits": [
+    "Logauszug enthält keine image_job-ID oder vollständigen Request/Artefaktstatus.",
+    "Kein vollständiger NetCore-/ARM64-Build oder physischer Pi-/SXceiver-/VPN-Erfolg nachgewiesen.",
+    "Kein Host-dpkg-/Kernel-/Standortkonfigurationseingriff vorgesehen."
+  ],
+  "fix": {
+    "runtime_file": "system-backend/deployment-core/image/build-guest.sh",
+    "before_sha256": "de425150d67bb9e778ffdff9c10f1c548a1ca68a396b00955cc20f0ccf9fb40b",
+    "after_sha256": "84b8d4070730b2fe94c4ddf4514411fadd08f19f72bfb3ce0adc86f14d1d8c3c",
+    "dpkg_options": [
+      "--force-confdef",
+      "--force-confold"
+    ],
+    "apt_update_error_mode": "any",
+    "operator_helper": "Docs/integration/Z01-2026-10-07/vm119-image-apt-update.py"
+  },
+  "local_validation": {
+    "deployment_suite": {
+      "tests": 66,
+      "passed": 65,
+      "skipped": 1,
+      "skip": "Unix-Socket-Transport im lokalen Executor nicht verfügbar"
+    },
+    "vm119_operator_suite": {
+      "tests": 18,
+      "passed": 18
+    },
+    "native_conffile_regression": {
+      "implementation": "Tatsächlicher Bash-Rezeptanfang mit APT-Harness, echtes dpkg/dpkg-deb mit isoliertem --root und privaten .deb-Testpaketen",
+      "without_options": "EOF-Konfigurationsprompt wie Betreiberfehler reproduziert",
+      "with_options": "Version2 vollständig konfiguriert, eigene Konfiguration bytegleich erhalten",
+      "network_apt_and_arm64": "Kein realer APT-Repository-/ARM64-Build; Netzwerkaufrufe und Restpipeline isoliert"
+    },
+    "independent_review": "Keine Blocker"
+  }
+}
