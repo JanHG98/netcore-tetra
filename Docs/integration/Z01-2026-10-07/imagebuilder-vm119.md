@@ -1,6 +1,6 @@
 # Z01.4 – VM119 Imagebuilder-Vorprüfung
 
-Stand: 2026-10-08. CT150-Readiness/Recovery und CT136-TCP-/Vorschau-/NAS-Erfolgspfad einschließlich isoliertem Fehlermount sind als Betreiberbefunde dokumentiert. Der nächste ausführbare Auftrag ist die Imagebuilder-Vorprüfung auf `VM-H-DEPLOY-01`, VM119, `10.0.1.131`.
+Stand: 2026-10-08. CT150-Readiness/Recovery und CT136-TCP-/Vorschau-/NAS-Erfolgspfad einschließlich isoliertem Fehlermount sind als Betreiberbefunde dokumentiert. Die tatsächliche Vorprüfung auf `VM-H-DEPLOY-01`, VM119, `10.0.1.131`, besteht. Vor dem vollständigen Build wird die bereits geprüfte SQLite-Korrektur für die gemeinsame Auftragsverwaltung übernommen.
 
 ## Operatorblock
 
@@ -69,10 +69,55 @@ PY
 
 - Builder erreichbar: `available=true`, kein Fehler. Offene Image-/Deploymentaufträge oder `remote_uncertain` vor dem Build anhand ihrer bestehenden ID zuordnen.
 - Standort-TOML mit `net_info`, `cell_info`, `phy_io` vorhanden und parsebar; TBS-Profile mit Name/MCC/MNC/ISSI/LA/CC erfasst. Vorhandene Standortwerte erhalten.
-- Installiertes `image_build.preflight()` prüft root, erforderliche Buildwerkzeuge, ARM64-binfmt mit F-Flag und mindestens32GiB frei. Die Prüfung benötigt keinen Rust-Compiler auf der VM; Gast-Buildwerkzeuge werden innerhalb des ARM64-Images eingerichtet.
+- Installiertes `image_build.preflight()` prüft root, erforderliche Buildwerkzeuge, ARM64-binfmt mit F-Flag und mindestens 32 GiB frei. Die Prüfung benötigt keinen Rust-Compiler auf der VM; Gast-Buildwerkzeuge werden innerhalb des ARM64-Images eingerichtet.
 - Cacheanzeige bestätigt ausschließlich Dateiexistenz. Der Build prüft die feste OS-Basis-SHA-256 und lädt bei Bedarf automatisch das in `image_spec.BASE` definierte Raspberry-Pi-OS-ARM64-Basisimage.
 - Den Fingerprint von installiertem `jobs.py` mit dem gemeinsamen Quellstand vergleichen: Der zuletzt bekannte VM119-Rollout war c45a2ec; die später korrigierte SQLite-Auftragsverwaltung wurde in dieser Sitzung bislang auf CT150 installiert. Der Fingerprint ermöglicht die Zuordnung vor dem langen Build.
 - Danach vorhandenes Profil, vollständigen gemeinsamen Quellcommit, Hostname und Betriebssystem-Zugang (SSH-Public-Key oder Passwort) wählen; passendes HAT-Overlay festlegen. Für die VPN-Abnahme gültiges Inline-OpenVPN-Profil und vertraute SSIDs lokal angeben. Zugangsdaten im Betrieb eingeben, nicht im Repo ablegen.
 - Ein voller ARM64-NetCore-Build erzeugt ein Artefakt samt Manifest/Prüfsumme. Die physische Pi-/SXceiver- und VPN-Abnahme folgt anschließend; `boot_tested=false` bleibt bis zur tatsächlichen Hardwareprüfung maßgeblich.
 
-Primärquellen: `system-backend/deployment-core/main.py`, `common.py`, `image_worker.py`, `image_spec.py`, `image_build.py`. Der Operatorblock ist gegen diese Quellschnittstellen geprüft und syntaktisch validiert. Die tatsächliche VM119-Vorprüfung bleibt bis zur Betreiber-Ausgabe offen.
+Primärquellen: `system-backend/deployment-core/main.py`, `common.py`, `image_worker.py`, `image_spec.py`, `image_build.py`. Der Operatorblock ist gegen diese Quellschnittstellen geprüft und syntaktisch validiert. Die tatsächliche VM119-Vorprüfung besteht gemäß nachfolgendem Betreiberbefund.
+
+## Tatsächliche Vorprüfung am 2026-10-08
+
+[Betreiberbefund](evidence/vm119-imagebuilder-preflight-2026-10-08.json): Controller 0.3.0, Builder verfügbar ohne Fehler, ARM64-Emulation und Buildwerkzeuge geprüft, 84.586.332.160 Bytes / rund 78,78 GiB frei. Alle drei Template-Sektionen vorhanden; Profile SRV-M-TBS-01/02/03 mit MCC 901/MNC 1510 und ihren vorhandenen ISSI-/LA-/CC-Werten erfasst. Keine Imagejobs, Artefakte oder kritischen Deploymentaufträge. Die OS-Basisdatei ist noch nicht im Cache; der tatsächliche Build lädt und prüft sie automatisch.
+
+Der Quellabgleich mit c45a2ec und main 0cf6df0 ordnet die installierte `jobs.py` eindeutig zu:
+
+| Datei | SHA-256 | Stand |
+| --- | --- | --- |
+| Installierte `jobs.py` | `30ce8b0f936383f9c20ddb5ffda244c4065b1de1a567ddf3fbda360058d17e64` | Bytegleich mit c45a2ec, SQLite-Korrektur fehlt auf VM119 |
+| Korrigierte `jobs.py` | `905e5fc4d257e5d1ad56542cbaef38d2f42a00af357240c0e5c92ea7facc2c21` | Bytegleich zwischen Fix 31829fc und main 0cf6df0 |
+
+Controller und Imageworker importieren dieselbe installierte Datei. Zwischen c45a2ec und main 0cf6df0 ist sie die einzige geänderte Laufzeitdatei des Deployment-Core; weitere Änderungen dort betreffen Tests. Die API-Versionsnummer allein bestätigt diese Korrektur nicht.
+
+## Eng begrenzte Übernahme vor dem Build
+
+[vm119-jobs-update.py](vm119-jobs-update.py) ersetzt ausschließlich `/usr/local/lib/netcore-deployment/jobs.py` mit geprüftem Fingerprint und startet die beiden vorher untätigen Dienste neu. Kein Installer-, Paket-, Unit- oder Datenbankmigrationslauf. Hostname/Root, aktive Dienste, Controller- und Imageaufträge sowie unveränderte Deployment-Konfiguration, Settings, Profile und Standorttemplate werden geprüft; bei Fehler wird die vorherige Datei aus dem Arbeitsspeicher zurückgesetzt. Ein neuer automatischer Git-Prüfauftrag nach Controllerneustart ist zulässig. Der Helfer startet keinen Imagebuild.
+
+Als jhoffmeister auf VM119 den Checkout auf den bereitgestellten vollständigen Quellcommit setzen, dann `sudo python3 -B "$NC_SRC/Docs/integration/Z01-2026-10-07/vm119-jobs-update.py"` ausführen. Der tatsächliche Austausch und die Nachprüfung auf VM119 bleiben bis zur Betreiber-Ausgabe offen.
+
+Lokale Helperprüfung: Syntax und sechs Testmethoden mit elf isolierten Szenarien bestehen, einschließlich tatsächlichem Dateiaustausch / Rücktausch, Eigentümer-/Moduserhalt, unveränderten Konfigurationsbytes, echten SQLite-Dateien, aktiven / ungeklärten Aufträgen und automatischem Git-Check nach Start. Dienststeuerung und HTTP sind dabei simuliert; dies ersetzt keine VM119-Ausführung. Reproduktion: `python3 -B -m unittest discover -s tests/integration -p test_vm119_jobs_update.py -v`. [Tests](../../../tests/integration/test_vm119_jobs_update.py).
+
+## Erster vollständiger Build
+
+Vorhandenes Profil SRV-M-TBS-01 ist die vorgeschlagene erste Auswahl; die anderen Profile bleiben auswählbar. Einen eindeutigen Testhostname und einen aktuellen vollständigen Quell-SHA pro Build angeben, der die SQLite-Korrektur enthält. Dafür muss der globale Controllerref c45a2ec nicht geändert werden. SSH-Public-Key oder Betriebssystem-Passwort sowie gegebenenfalls WLAN-/OpenVPN-Daten lokal eingeben; keine Geheimnisse in Chat, Repo oder Diagnoseausgabe übernehmen.
+
+Den Build genau einmal über `/api/v1/images/build` oder die Imagebuilder-WebUI absenden. Bei unklarer Antwort anhand der bestehenden Builds prüfen und den POST nicht wiederholen. Imagejobs werden über `/api/v1/images` unter `jobs[]` verfolgt; Controller-Job-URLs gehören zu einer anderen Auftragsdatenbank. `job.id` und `request.build_id` sind unterschiedliche IDs. Nach `succeeded` ist `request.build_id` beziehungsweise `result.id` die Artefakt-ID; Image, SHA-256 und Manifest sind unter `/api/v1/images/<Artefakt-ID>/image`, `/sha256`, `/manifest` abrufbar. Manifestcommit und Dateiprüfsumme vergleichen. Die anschließende physische Pi-/SXceiver- und VPN-Abnahme bleibt getrennt; `boot_tested=false` ist bis dahin korrekt.
+
+### Bestehende WebUI bedienen
+
+Nach bestandener Updateprüfung `http://10.0.1.131:8320` öffnen, Abschnitt **Vom Profil zur Basisstation.**:
+
+| Feld | Erste Auswahl |
+| --- | --- |
+| TBS-Profil | SRV-M-TBS-01 |
+| Branch, Tag oder Commit | Vollständiger aktueller Quell-SHA aus dem Operatorauftrag; gilt nur für diesen Build |
+| Adresse dieser VM | http://10.0.1.131:8320 |
+| Hostname des Pi | z014-pi-01 |
+| Benutzer auf dem Pi / Zeitzone | jan / Europe/Berlin |
+| SSH-Public-Key / Oder: Betriebssystem-Passwort | Lokal vollständigen Public-Key oder eigenes Passwort eingeben |
+| SXceiver-HAT | EEPROM-Auswahl bei programmiertem HAT-EEPROM; andernfalls SX1255-Overlay aus dem Image |
+
+Das EEPROM lässt sich aus der SXceiver-Platinenversion allein nicht ableiten. WLAN und VPN für einen ersten LAN/DHCP-Build bei Bedarf leer lassen; für die VPN-Abnahme das echte Inline-OpenVPN-Profil und die vertrauten lokalen SSIDs angeben. **Image erstellen →** genau einmal anklicken, danach unter **Builds & Downloads** / **Buildprotokoll** verfolgen. Nach Erfolg **Image ↓**, **SHA256** und **Manifest** herunterladen.
+
+Der eigene OS-Hostname ändert nicht die Stationsidentität: Agent-node_id und Funkkennungen stammen aus dem ausgewählten Profil. Ein reiner Imagebuild beeinflusst keine laufende Station; der spätere physische Parallelboot benötigt eine bewusst gewählte Stationsidentität. Quellen: `static/index.html`, `static/app.js`, `image/personalize.py`, `image/check-hardware.py`.

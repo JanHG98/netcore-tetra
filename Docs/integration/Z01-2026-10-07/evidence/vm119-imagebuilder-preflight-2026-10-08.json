@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-08",
+  "source": "Betreiber-Ausgabe auf VM-H-DEPLOY-01; keine direkte Fernprüfung durch Codex",
+  "phase": "preflight_passed",
+  "controller": {
+    "node_id": "VM-H-DEPLOY-01",
+    "role": "controller",
+    "version": "0.3.0",
+    "advertise_url": "http://10.0.1.131:8320",
+    "has_template": true
+  },
+  "runtime_jobs_sha256": "30ce8b0f936383f9c20ddb5ffda244c4065b1de1a567ddf3fbda360058d17e64",
+  "ref": "c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf",
+  "checked_commit": "c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf",
+  "template_sections": {
+    "net_info": true,
+    "cell_info": true,
+    "phy_io": true
+  },
+  "profiles": [
+    {
+      "name": "SRV-M-TBS-03",
+      "mcc": 901,
+      "mnc": 1510,
+      "issi": 4010003,
+      "la": 3,
+      "cc": 1
+    },
+    {
+      "name": "SRV-M-TBS-01",
+      "mcc": 901,
+      "mnc": 1510,
+      "issi": 4010001,
+      "la": 1,
+      "cc": 1
+    },
+    {
+      "name": "SRV-M-TBS-02",
+      "mcc": 901,
+      "mnc": 1510,
+      "issi": 4010002,
+      "la": 2,
+      "cc": 1
+    }
+  ],
+  "builder": {
+    "available": true,
+    "error": null,
+    "base": {
+      "id": "raspios-bookworm-arm64",
+      "label": "Raspberry Pi OS Lite · Bookworm 64 Bit · Pi 4 / 5",
+      "url": "https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2025-05-13/2025-05-13-raspios-bookworm-arm64-lite.img.xz",
+      "sha256": "62d025b9bc7ca0e1facfec74ae56ac13978b6745c58177f081d39fbb8041ed45",
+      "soapy_repository": "https://github.com/tejeez/sxxcvr.git",
+      "soapy_commit": "9705147dd8c189625071f3f163ea56119bda4a05"
+    },
+    "free_bytes": 84586332160
+  },
+  "image_jobs": [],
+  "artifacts": [],
+  "critical_deployments": [],
+  "preflight_result": "PASS: Buildwerkzeuge, ARM64-Emulation und mindestens 32 GiB frei.",
+  "base_file_cached": false,
+  "source_assignment": {
+    "compared_main": "0cf6df0ef76dcdc2f24e6c73f05e14b46da11b56",
+    "installed_jobs_matches_commit": "c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf",
+    "corrected_jobs_source_commit": "31829fc920e751c3d59acb78fc0157814ca0beb7",
+    "corrected_jobs_sha256": "905e5fc4d257e5d1ad56542cbaef38d2f42a00af357240c0e5c92ea7facc2c21",
+    "only_changed_deployment_runtime_file": "system-backend/deployment-core/jobs.py"
+  },
+  "limits": [
+    "SQLite-Korrektur auf VM119 noch nicht installiert bzw. durch Betreiber bestätigt.",
+    "Kein vollständiger ARM64-Build gestartet oder bestanden.",
+    "Kein physischer Pi-/SXceiver-Boot oder VPN-Wechsel nachgewiesen."
+  ]
+}
