@@ -26,6 +26,8 @@ CACHE_BYTES = 5108662272
 RECEIPT = STATE / ('recovery-' + SOURCE_BUILD + '.json')
 LOCK = STATE / ('.recovery-' + SOURCE_BUILD + '.lock')
 BASE_URL = 'http://10.0.1.131:8320'
+FAILED_JOB = '4a99c6ec54e74264811d86817a568d47'
+FAILED_BUILD = '7ec061ca1ae24338bdc86a22030957cb'
 
 
 class RecoveryError(RuntimeError):
@@ -69,7 +71,101 @@ def read_jobs():
     return jobs
 
 
-def save_receipt(receipt):
+def read_receipt(path):
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        require(stat.S_ISREG(os.fstat(descriptor).st_mode), 'Ungültiger Recoverybeleg.')
+        with os.fdopen(descriptor, 'rb', closefd=False) as source:
+            raw = source.read(2 * 1024 * 1024 + 1)
+        require(len(raw) <= 2 * 1024 * 1024, 'Recoverybeleg zu groß; kein neuer POST.')
+        try:
+            receipt = json.loads(raw)
+        except (ValueError, TypeError):
+            raise RecoveryError('Recoverybeleg beschädigt; kein neuer POST.') from None
+        require(isinstance(receipt, dict), 'Recoverybeleg beschädigt; kein neuer POST.')
+        return receipt, hashlib.sha256(raw).hexdigest()
+    finally:
+        os.close(descriptor)
+
+
+def validate_receipt(receipt):
+    require(receipt.get('source_job') == SOURCE_JOB and receipt.get('commit') == COMMIT and
+            receipt.get('recipe') == RECIPE and receipt.get('phase') in ('submit_started', 'submitted'),
+            'Unerwarteter Recoverybeleg; kein neuer Auftrag.')
+    baseline = receipt.get('baseline_ids')
+    fingerprint = receipt.get('request_sha256')
+    require(isinstance(baseline, list) and all(isinstance(key, str) for key in baseline) and
+            len(baseline) == len(set(baseline)) and isinstance(fingerprint, str) and
+            re.fullmatch('[0-9a-f]{64}', fingerprint), 'Ungültiger Recoverybeleg; kein neuer Auftrag.')
+    return baseline, fingerprint
+
+
+def nvme_parent(jobs, retry_receipt=None):
+    require(RECEIPT.is_file() and not RECEIPT.is_symlink(), 'Ursprünglicher Recoverybeleg fehlt oder ist ein Symlink.')
+    original, checksum = read_receipt(RECEIPT)
+    baseline, fingerprint = validate_receipt(original)
+    require(original.get('source_build') == SOURCE_BUILD and SOURCE_JOB in baseline,
+            'Ursprünglicher Recoverybeleg passt nicht zum Erfolgsjob.')
+    old = next((job for job in jobs if job['id'] == SOURCE_JOB), None)
+    require(old is not None and old['status'] == 'succeeded' and
+            old['request'].get('build_id') == SOURCE_BUILD and old['request'].get('commit') == COMMIT and
+            old['result'].get('id') == SOURCE_BUILD and old['result'].get('commit') == COMMIT and
+            old['result'].get('recipe') == RECIPE and request_digest(old['request']) == fingerprint,
+            'Ursprünglicher Recoveryauftrag passt nicht zu den gespeicherten Stationswerten.')
+    # Once the NVMe retry exists, its own row must not make the original POST ambiguous.
+    scope = jobs if retry_receipt is None else [job for job in jobs if job['id'] in retry_receipt['baseline_ids']]
+    candidates = [job for job in scope if job['id'] not in baseline and
+                  request_digest(job['request']) == fingerprint]
+    require(len(candidates) == 1, 'Ursprünglicher POST nicht eindeutig zugeordnet; kein NVMe-Neuauftrag.')
+    parent = candidates[0]
+    require(parent['id'] == FAILED_JOB and parent['request'].get('build_id') == FAILED_BUILD and
+            parent['request'].get('commit') == COMMIT and parent['status'] == 'failed' and
+            not parent['result'].get('remote_uncertain') and original.get('job_id', FAILED_JOB) == FAILED_JOB,
+            'Nur der bestätigte fehlgeschlagene Cacheauftrag darf nach dem NVMe-Wechsel erneut ausgeführt werden.')
+    relation = dict(parent_job=FAILED_JOB, parent_build=FAILED_BUILD,
+                    parent_receipt=str(RECEIPT), parent_receipt_sha256=checksum)
+    if retry_receipt is not None:
+        require(all(retry_receipt.get(key) == value for key, value in relation.items()) and
+                retry_receipt['request_sha256'] == fingerprint,
+                'NVMe-Recoverybeleg oder ursprünglicher Beleg verändert; kein neuer POST.')
+    return relation
+
+
+def probe_disk_readiness():
+    # A tiny file+directory fsync covers the path that previously stalled losetup.
+    code = '''import os, sys, tempfile
+from pathlib import Path
+root = Path(sys.argv[1])
+fd, name = tempfile.mkstemp(prefix=".nvme-io-probe-", dir=root)
+try:
+    payload = b"netcore-nvme-ok\\n"
+    if os.write(fd, payload) != len(payload):
+        raise OSError("Short NVMe probe write")
+    os.fsync(fd)
+finally:
+    os.close(fd)
+    os.unlink(name)
+directory = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
+try:
+    os.fsync(directory)
+finally:
+    os.close(directory)
+'''
+    process = subprocess.Popen([sys.executable, '-B', '-c', code, str(STATE)],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        require(process.wait(timeout=15) == 0, 'NVMe-Schreib-/fsync-Prüfung fehlgeschlagen; kein neuer POST.')
+    except subprocess.TimeoutExpired:
+        process.kill()
+        try:
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            pass  # A kernel I/O wait can outlive SIGKILL; the parent still stops promptly.
+        raise RecoveryError('NVMe-Schreib-/fsync-Prüfung überschreitet 15s; kein neuer POST.') from None
+
+
+def save_receipt(receipt, path=None):
+    path = RECEIPT if path is None else path
     descriptor, staging = tempfile.mkstemp(prefix='.cached-recovery-', dir=STATE)
     try:
         with os.fdopen(descriptor, 'w') as output:
@@ -78,7 +174,7 @@ def save_receipt(receipt):
             output.write('\n')
             output.flush()
             os.fsync(output.fileno())
-        os.replace(staging, RECEIPT)
+        os.replace(staging, path)
         descriptor = os.open(STATE, os.O_RDONLY | os.O_DIRECTORY)
         try:
             os.fsync(descriptor)
@@ -89,11 +185,12 @@ def save_receipt(receipt):
             os.unlink(staging)
 
 
-def summary(job):
+def summary(job, path=None):
+    path = RECEIPT if path is None else path
     key = job['request'].get('build_id')
     require(isinstance(key, str) and re.fullmatch('[0-9a-f]{32}', key), 'Ungültige Artefakt-ID des Recoveryauftrags.')
     result = dict(status=job['status'], job_id=job['id'], build_id=key, commit=COMMIT,
-                  receipt=str(RECEIPT), new_post=False)
+                  receipt=str(path), new_post=False)
     if job['status'] == 'succeeded':
         directory = STATE / 'artifacts' / key
         try:
@@ -117,15 +214,8 @@ def summary(job):
     return result
 
 
-def resume(receipt):
-    require(receipt.get('source_job') == SOURCE_JOB and receipt.get('commit') == COMMIT and
-            receipt.get('recipe') == RECIPE and receipt.get('phase') in ('submit_started', 'submitted'),
-            'Unerwarteter Recoverybeleg; kein neuer Auftrag.')
-    baseline = receipt.get('baseline_ids')
-    fingerprint = receipt.get('request_sha256')
-    require(isinstance(baseline, list) and all(isinstance(key, str) for key in baseline) and
-            isinstance(fingerprint, str) and re.fullmatch('[0-9a-f]{64}', fingerprint),
-            'Ungültiger Recoverybeleg; kein neuer Auftrag.')
+def resume(receipt, path=None):
+    baseline, fingerprint = validate_receipt(receipt)
     candidates = [job for job in read_jobs() if job['id'] not in baseline and
                   request_digest(job['request']) == fingerprint]
     require(len(candidates) == 1, 'POST-Ausgang ungeklärt: kein eindeutig zugehöriger Auftrag; Beleg erhalten, kein neuer POST.')
@@ -133,27 +223,28 @@ def resume(receipt):
     require(receipt.get('job_id', job['id']) == job['id'], 'Recoveryauftrags-ID inkonsistent; kein neuer Auftrag.')
     if receipt['phase'] != 'submitted':
         receipt.update(phase='submitted', job_id=job['id'])
-        save_receipt(receipt)
-    return summary(job)
+        save_receipt(receipt, path)
+    return summary(job, path)
 
 
-def recover(client, recipe_key, validate_image, networks):
-    if RECEIPT.exists() or RECEIPT.is_symlink():
-        require(not RECEIPT.is_symlink() and stat.S_ISREG(RECEIPT.stat().st_mode), 'Ungültiger Recoverybeleg.')
-        try:
-            receipt = json.loads(RECEIPT.read_text())
-        except (ValueError, TypeError):
-            raise RecoveryError('Recoverybeleg beschädigt; kein neuer POST.') from None
-        require(isinstance(receipt, dict), 'Recoverybeleg beschädigt; kein neuer POST.')
-        return resume(receipt)
+def recover(client, recipe_key, validate_image, networks, after_nvme_move=False):
+    path = STATE / ('recovery-' + SOURCE_BUILD + '-nvme.json') if after_nvme_move else RECEIPT
+    if path.exists() or path.is_symlink():
+        require(not path.is_symlink(), 'Ungültiger Recoverybeleg.')
+        receipt, _ = read_receipt(path)
+        if after_nvme_move:
+            validate_receipt(receipt)
+            nvme_parent(read_jobs(), receipt)
+        return resume(receipt, path)
     jobs = read_jobs()
+    relation = nvme_parent(jobs) if after_nvme_move else {}
     old = next((job for job in jobs if job['id'] == SOURCE_JOB), None)
     require(old is not None and old['status'] == 'succeeded', 'Der bestätigte ursprüngliche Erfolgsjob fehlt.')
     require(old['request'].get('build_id') == SOURCE_BUILD and old['request'].get('commit') == COMMIT and
             old['result'].get('id') == SOURCE_BUILD and old['result'].get('commit') == COMMIT and
             old['result'].get('recipe') == RECIPE, 'Ursprünglicher Erfolgsjob passt nicht zum geprüften Stand.')
     if (STATE / 'artifacts' / SOURCE_BUILD / 'image.img.xz').is_file():
-        return summary(old)
+        return summary(old, path)
     for job in jobs:
         require(job['status'] not in ('queued', 'running') and not job['result'].get('remote_uncertain'),
                 'Aktiver oder ungeklärter Imageauftrag; zuerst vorhandenen Auftrag klären.')
@@ -181,6 +272,8 @@ def recover(client, recipe_key, validate_image, networks):
     require(request.get('commit') == COMMIT, 'Stationsauftrag enthält einen anderen Commit.')
     require(all(value == old['request'].get(key) for key, value in request.items()),
             'Validierung würde gespeicherte Stationseinstellungen verändern.')
+    if after_nvme_move:
+        probe_disk_readiness()
     # Catch new work or cache/recipe changes before recording the single POST attempt.
     current = read_jobs()
     require({job['id'] for job in current} == {job['id'] for job in jobs} and
@@ -190,21 +283,24 @@ def recover(client, recipe_key, validate_image, networks):
             json.loads(metadata.read_text()).get('commit') == COMMIT, 'Cache während der Vorprüfung geändert.')
     receipt = dict(phase='submit_started', source_job=SOURCE_JOB, source_build=SOURCE_BUILD,
                    commit=COMMIT, recipe=RECIPE, request_sha256=request_digest(request),
-                   baseline_ids=[job['id'] for job in current])
-    save_receipt(receipt)  # A durable pending attempt forbids every subsequent retry POST.
+                   baseline_ids=[job['id'] for job in current], **relation)
+    if after_nvme_move:
+        require(nvme_parent(current) == relation, 'Ursprünglicher Recoverybeleg während der Vorprüfung geändert.')
+    save_receipt(receipt, path)  # A durable pending attempt forbids every subsequent retry POST.
     try:
         client.request('/build', request)
     except Exception:
         # Acceptance can have happened before the HTTP response was lost.
         # Reconcile SQLite only; never submit a second time.
         pass
-    result = resume(receipt)
+    result = resume(receipt, path)
     result['new_post'] = True
     return result
 
 
 def main():
-    require(len(sys.argv) == 1 and os.geteuid() == 0 and socket.gethostname() == 'VM-H-DEPLOY-01',
+    require(sys.argv[1:] in ([], ['--after-nvme-move']) and os.geteuid() == 0 and
+            socket.gethostname() == 'VM-H-DEPLOY-01',
             'Nur root auf VM-H-DEPLOY-01; keine Operator-Overrides.')
     require(STATE.is_dir() and STATE.resolve() == STATE and CONFIG.is_file() and not CONFIG.is_symlink(),
             'Unerwarteter State- oder Konfigurationspfad.')
@@ -221,7 +317,8 @@ def main():
     try:
         os.fchmod(descriptor, 0o600)
         fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        result = recover(ImageClient(), recipe_key, validate_image, load_config(CONFIG)['allowed_networks'])
+        result = recover(ImageClient(), recipe_key, validate_image, load_config(CONFIG)['allowed_networks'],
+                         after_nvme_move=sys.argv[1:] == ['--after-nvme-move'])
         print(json.dumps(result, indent=2, ensure_ascii=False))
         if result['status'] in ('queued', 'running'):
             print('Recovery läuft: WebUI → Builds & Downloads. Derselbe Helfer fragt später ausschließlich diesen Auftrag ab.')

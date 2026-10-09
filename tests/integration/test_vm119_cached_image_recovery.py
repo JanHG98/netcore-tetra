@@ -51,6 +51,7 @@ class CachedRecoveryTests(unittest.TestCase):
         self.driver.CONFIG = self.root / 'deployment.toml'
         self.driver.CONFIG.write_text('node_id = "VM-H-DEPLOY-01"\nrole = "controller"\n')
         self.driver.RECEIPT = self.state / ('recovery-' + SOURCE_BUILD + '.json')
+        self.active_receipt = self.driver.RECEIPT
         self.database = self.state / 'jobs.sqlite3'
         with sqlite3.connect(self.database) as db:
             db.execute('CREATE TABLE jobs (id TEXT PRIMARY KEY, created REAL, updated REAL, '
@@ -100,9 +101,9 @@ class CachedRecoveryTests(unittest.TestCase):
                             'active_profiles': [], 'free_bytes': 80 * 1024 ** 3}
                 outer.assertEqual(path, '/build')
                 outer.assertIsInstance(data, dict)
-                receipt = json.loads(outer.driver.RECEIPT.read_text())
+                receipt = json.loads(outer.active_receipt.read_text())
                 outer.assertEqual(receipt['phase'], 'submit_started')
-                outer.assertEqual(stat.S_IMODE(outer.driver.RECEIPT.stat().st_mode), 0o600)
+                outer.assertEqual(stat.S_IMODE(outer.active_receipt.stat().st_mode), 0o600)
                 outer.assertEqual(outer.rows()[SOURCE_JOB]['request'], outer.request)
                 if outer.after_receipt:
                     outer.after_receipt(receipt)
@@ -131,19 +132,22 @@ class CachedRecoveryTests(unittest.TestCase):
                          'status': row[3], 'request': json.loads(row[4]),
                          'log': row[5], 'result': json.loads(row[6])} for row in rows}
 
-    def run_recovery(self, recipe=RECIPE, validator=validate_image):
+    def run_recovery(self, recipe=RECIPE, validator=validate_image, after_nvme_move=False):
+        self.active_receipt = (self.state / ('recovery-' + SOURCE_BUILD + '-nvme.json')
+                               if after_nvme_move else self.driver.RECEIPT)
         output, error = io.StringIO(), io.StringIO()
         try:
             with contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
                 result = self.driver.recover(self.client, lambda commit: recipe,
-                                             validator, NETWORKS)
+                                             validator, NETWORKS, after_nvme_move=after_nvme_move)
         except self.driver.RecoveryError as exc:
             self.assert_private(str(exc))
             raise
         finally:
             self.assert_private(output.getvalue() + error.getvalue())
-            if self.driver.RECEIPT.exists():
-                self.assert_private(self.driver.RECEIPT.read_text())
+            for receipt in (self.driver.RECEIPT, self.active_receipt):
+                if receipt.exists():
+                    self.assert_private(receipt.read_text())
         self.assert_private(json.dumps(result))
         return result
 
@@ -504,6 +508,231 @@ class CachedRecoveryTests(unittest.TestCase):
         result = self.run_recovery()
         self.assertEqual(result['job_id'], CHILD_JOB)
         self.assertEqual(len(self.build_posts()), 1)
+
+    def prepare_nvme_parent(self):
+        parent_request = copy.deepcopy(self.request)
+        parent_request['build_id'] = self.driver.FAILED_BUILD
+        self.insert(self.driver.FAILED_JOB, 'failed', parent_request,
+                    {'error': 'Command exited with 1: unshare'})
+        receipt = dict(phase='submit_started', source_job=SOURCE_JOB, source_build=SOURCE_BUILD,
+                       commit=COMMIT, recipe=RECIPE,
+                       request_sha256=self.driver.request_digest(self.request), baseline_ids=[SOURCE_JOB])
+        self.driver.RECEIPT.write_text(json.dumps(receipt, indent=2) + '\n')
+        return self.driver.RECEIPT.read_bytes()
+
+    def expect_nvme_guard(self, original_bytes):
+        with self.assertRaises(self.driver.RecoveryError):
+            self.run_recovery(after_nvme_move=True)
+        self.assertEqual(self.build_posts(), [])
+        self.assertEqual(self.driver.RECEIPT.read_bytes(), original_bytes)
+        self.assertFalse((self.state / ('recovery-' + SOURCE_BUILD + '-nvme.json')).exists())
+
+    def test_nvme_retry_uses_separate_receipt_preserves_parent_and_submits_only_once(self):
+        original_bytes = self.prepare_nvme_parent()
+        parent_before = self.rows()[self.driver.FAILED_JOB]
+        result = self.run_recovery(after_nvme_move=True)
+        self.assertTrue(result['new_post'])
+        self.assertEqual(len(self.build_posts()), 1)
+        self.assertEqual(self.driver.RECEIPT.read_bytes(), original_bytes)
+        self.assertEqual(self.rows()[self.driver.FAILED_JOB], parent_before)
+        retry_receipt = json.loads(self.active_receipt.read_text())
+        self.assertEqual(retry_receipt['parent_job'], self.driver.FAILED_JOB)
+        self.assertEqual(retry_receipt['parent_build'], self.driver.FAILED_BUILD)
+        self.assertEqual(retry_receipt['parent_receipt_sha256'], hashlib.sha256(original_bytes).hexdigest())
+        self.assertEqual(self.build_posts()[0]['wifi_password'], self.request['wifi_password'])
+        self.assertEqual(self.build_posts()[0]['vpn_config'], self.request['vpn_config'])
+        with mock.patch.object(self.driver, 'probe_disk_readiness') as probe:
+            resumed = self.run_recovery(after_nvme_move=True)
+        probe.assert_not_called()
+        self.assertFalse(resumed['new_post'])
+        self.assertEqual(resumed['job_id'], CHILD_JOB)
+        self.assertEqual(len(self.build_posts()), 1)
+        self.assertEqual(self.driver.RECEIPT.read_bytes(), original_bytes)
+
+    def test_nvme_mode_without_original_receipt_does_not_submit(self):
+        with self.assertRaises(self.driver.RecoveryError):
+            self.run_recovery(after_nvme_move=True)
+        self.assertEqual(self.build_posts(), [])
+        self.assertFalse(self.active_receipt.exists())
+
+    def test_nvme_parent_queued_running_success_interrupted_or_uncertain_cannot_retry(self):
+        original_bytes = self.prepare_nvme_parent()
+        for state in ('queued', 'running', 'succeeded', 'interrupted', 'uncertain'):
+            with self.subTest(state=state):
+                with sqlite3.connect(self.database) as db:
+                    db.execute('UPDATE jobs SET status=?,result=? WHERE id=?',
+                               ('failed' if state == 'uncertain' else state,
+                                json.dumps({'remote_uncertain': state == 'uncertain'}), self.driver.FAILED_JOB))
+                self.expect_nvme_guard(original_bytes)
+
+    def test_nvme_parent_wrong_id_build_commit_or_private_values_cannot_retry(self):
+        original_bytes = self.prepare_nvme_parent()
+        parent = self.rows()[self.driver.FAILED_JOB]
+        for mutation in ('job', 'build', 'commit', 'private'):
+            with self.subTest(mutation=mutation):
+                key, request = self.driver.FAILED_JOB, copy.deepcopy(parent['request'])
+                if mutation == 'job':
+                    key = '9' * 32
+                elif mutation == 'build':
+                    request['build_id'] = '9' * 32
+                elif mutation == 'commit':
+                    request['commit'] = 'f' * 40
+                else:
+                    request['wifi_password'] = 'different-valid-wifi-password'
+                with sqlite3.connect(self.database) as db:
+                    db.execute('DELETE FROM jobs WHERE id IN (?,?)', (self.driver.FAILED_JOB, '9' * 32))
+                self.insert(key, 'failed', request, parent['result'])
+                self.expect_nvme_guard(original_bytes)
+
+    def test_nvme_original_receipt_digest_recipe_commit_baseline_and_job_id_are_checked(self):
+        self.prepare_nvme_parent()
+        original = json.loads(self.driver.RECEIPT.read_text())
+        for field, value in (('request_sha256', 'f' * 64), ('recipe', 'f' * 64),
+                             ('commit', 'f' * 40), ('baseline_ids', []),
+                             ('baseline_ids', [SOURCE_JOB, self.driver.FAILED_JOB]),
+                             ('job_id', '9' * 32)):
+            with self.subTest(field=field, value=value):
+                altered = dict(original)
+                altered[field] = value
+                self.driver.RECEIPT.write_text(json.dumps(altered))
+                self.expect_nvme_guard(self.driver.RECEIPT.read_bytes())
+
+    def test_nvme_ambiguous_original_post_and_other_active_job_stop_before_submit(self):
+        original_bytes = self.prepare_nvme_parent()
+        request = copy.deepcopy(self.request)
+        request['build_id'] = '9' * 32
+        self.insert('9' * 32, 'failed', request)
+        self.expect_nvme_guard(original_bytes)
+        with sqlite3.connect(self.database) as db:
+            db.execute('DELETE FROM jobs WHERE id=?', ('9' * 32,))
+        self.insert('9' * 32, 'running', {'profile': {'name': 'another-station'}})
+        self.expect_nvme_guard(original_bytes)
+
+    def test_nvme_failed_retry_is_terminal_and_never_submits_a_third_attempt(self):
+        original_bytes = self.prepare_nvme_parent()
+        self.behavior = 'failed'
+        result = self.run_recovery(after_nvme_move=True)
+        self.assertEqual(result['status'], 'failed')
+        self.run_recovery(after_nvme_move=True)
+        self.assertEqual(len(self.build_posts()), 1)
+        self.assertEqual(self.driver.RECEIPT.read_bytes(), original_bytes)
+
+    def test_nvme_lost_post_response_resumes_accepted_child_without_probe_or_repeat(self):
+        original_bytes = self.prepare_nvme_parent()
+        self.behavior = 'lost_after_acceptance'
+        result = self.run_recovery(after_nvme_move=True)
+        self.assertEqual(result['job_id'], CHILD_JOB)
+        with mock.patch.object(self.driver, 'probe_disk_readiness') as probe:
+            self.run_recovery(after_nvme_move=True)
+        probe.assert_not_called()
+        self.assertEqual(len(self.build_posts()), 1)
+        self.assertEqual(self.driver.RECEIPT.read_bytes(), original_bytes)
+
+    def test_nvme_lost_post_without_child_retains_pending_receipt_and_never_repeats(self):
+        original_bytes = self.prepare_nvme_parent()
+        self.behavior = 'lost_before_acceptance'
+        for _ in range(2):
+            with self.assertRaises(self.driver.RecoveryError):
+                self.run_recovery(after_nvme_move=True)
+        self.assertEqual(len(self.build_posts()), 1)
+        self.assertEqual(json.loads(self.active_receipt.read_text())['phase'], 'submit_started')
+        self.assertEqual(self.driver.RECEIPT.read_bytes(), original_bytes)
+
+    def test_nvme_receipt_fsync_failure_cannot_submit_and_does_not_touch_original(self):
+        original_bytes = self.prepare_nvme_parent()
+        with mock.patch.object(self.driver.os, 'fsync', side_effect=OSError('isolated receipt fsync failure')):
+            with self.assertRaises(OSError):
+                self.run_recovery(after_nvme_move=True)
+        self.assertEqual(self.build_posts(), [])
+        self.assertFalse(self.active_receipt.exists())
+        self.assertEqual(self.driver.RECEIPT.read_bytes(), original_bytes)
+
+    def test_nvme_io_probe_failure_cannot_record_or_submit_retry(self):
+        original_bytes = self.prepare_nvme_parent()
+        with mock.patch.object(self.driver, 'probe_disk_readiness',
+                               side_effect=self.driver.RecoveryError('isolated disk probe failure')):
+            self.expect_nvme_guard(original_bytes)
+
+    def test_nvme_actual_tiny_io_probe_removes_testfile(self):
+        self.driver.probe_disk_readiness()
+        self.assertEqual(list(self.state.glob('.nvme-io-probe-*')), [])
+
+    def test_nvme_probe_timeout_kills_and_waits_at_most_two_more_seconds(self):
+        process = mock.Mock()
+        process.wait.side_effect = [self.driver.subprocess.TimeoutExpired('probe', 15),
+                                    self.driver.subprocess.TimeoutExpired('probe', 2)]
+        with mock.patch.object(self.driver.subprocess, 'Popen', return_value=process):
+            with self.assertRaises(self.driver.RecoveryError):
+                self.driver.probe_disk_readiness()
+        self.assertEqual(process.wait.call_args_list, [mock.call(timeout=15), mock.call(timeout=2)])
+        process.kill.assert_called_once_with()
+
+    def test_nvme_resume_rejects_changed_original_receipt_without_another_post(self):
+        self.prepare_nvme_parent()
+        self.run_recovery(after_nvme_move=True)
+        self.driver.RECEIPT.write_bytes(self.driver.RECEIPT.read_bytes() + b'\n')
+        with self.assertRaises(self.driver.RecoveryError):
+            self.run_recovery(after_nvme_move=True)
+        self.assertEqual(len(self.build_posts()), 1)
+
+    def test_nvme_receipt_creation_detects_parent_change_during_probe(self):
+        self.prepare_nvme_parent()
+        def change_receipt():
+            self.driver.RECEIPT.write_bytes(self.driver.RECEIPT.read_bytes() + b'\n')
+        with mock.patch.object(self.driver, 'probe_disk_readiness', side_effect=change_receipt):
+            with self.assertRaises(self.driver.RecoveryError):
+                self.run_recovery(after_nvme_move=True)
+        self.assertEqual(self.build_posts(), [])
+        self.assertFalse(self.active_receipt.exists())
+
+    def test_nvme_ambiguous_retry_children_never_repeat_post(self):
+        original_bytes = self.prepare_nvme_parent()
+        self.behavior = 'lost_before_acceptance'
+        with self.assertRaises(self.driver.RecoveryError):
+            self.run_recovery(after_nvme_move=True)
+        for key, build_id in ((CHILD_JOB, CHILD_BUILD), ('9' * 32, '8' * 32)):
+            request = copy.deepcopy(self.request)
+            request['build_id'] = build_id
+            self.insert(key, 'failed', request)
+        with self.assertRaises(self.driver.RecoveryError):
+            self.run_recovery(after_nvme_move=True)
+        self.assertEqual(len(self.build_posts()), 1)
+        self.assertEqual(self.driver.RECEIPT.read_bytes(), original_bytes)
+
+    def test_nvme_receipt_directory_fsync_failure_retains_pending_without_any_post(self):
+        original_bytes = self.prepare_nvme_parent()
+        with mock.patch.object(self.driver.os, 'fsync', side_effect=[None, OSError('directory fsync failed')]):
+            with self.assertRaises(OSError):
+                self.run_recovery(after_nvme_move=True)
+        self.assertEqual(json.loads(self.active_receipt.read_text())['phase'], 'submit_started')
+        with self.assertRaises(self.driver.RecoveryError):
+            self.run_recovery(after_nvme_move=True)
+        self.assertEqual(self.build_posts(), [])
+        self.assertEqual(self.driver.RECEIPT.read_bytes(), original_bytes)
+
+    def test_nvme_parent_symlink_preserves_target_and_refuses_submit(self):
+        original_bytes = self.prepare_nvme_parent()
+        target = self.state / 'preserved-parent.json'
+        self.driver.RECEIPT.rename(target)
+        self.driver.RECEIPT.symlink_to(target)
+        self.expect_nvme_guard(original_bytes)
+        self.assertEqual(target.read_bytes(), original_bytes)
+
+    def test_nvme_finished_retry_returns_download_without_cache_or_another_probe(self):
+        original_bytes = self.prepare_nvme_parent()
+        self.run_recovery(after_nvme_move=True)
+        directory, manifest = self.finish_child()
+        self.cache_image.unlink()
+        self.cache_versions.unlink()
+        with mock.patch.object(self.driver, 'probe_disk_readiness') as probe:
+            result = self.run_recovery(after_nvme_move=True, recipe='f' * 64)
+        probe.assert_not_called()
+        self.assertEqual(result['status'], 'succeeded')
+        self.assertTrue(result['image_url'].endswith('/' + CHILD_BUILD + '/image'))
+        self.assertEqual(result['sha256'], manifest['sha256'])
+        self.assertEqual(len(self.build_posts()), 1)
+        self.assertEqual(self.driver.RECEIPT.read_bytes(), original_bytes)
+        self.assertTrue((directory / 'image.img.xz').exists())
 
 
 if __name__ == '__main__':

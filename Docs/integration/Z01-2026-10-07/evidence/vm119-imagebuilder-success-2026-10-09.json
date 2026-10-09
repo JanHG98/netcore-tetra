@@ -111,7 +111,7 @@
     },
     "diagnostic_patch_ci_not_yet_observed": true
   },
-  "next_step": "Run the guarded Proxmox storage creation and VM119 scsi0 disk move to NVMe_OSData; verify configuration and live QEMU backing before evaluating guest recovery; source preserved, no concurrent image builds",
+  "next_step": "Check bounded guest file and directory fsync in builder state, then submit at most one explicitly guarded NVMe cache recovery attempt with a separate receipt; preserve original failed attempt and recipe files; validate new download and physical Pi boot separately",
   "subsequent_operator_recovery_diagnosis": {
     "receipt_phase": "submit_started",
     "receipt_job_id_not_recorded": true,
@@ -457,5 +457,63 @@
     },
     "storage_creation_and_move_not_yet_observed": true,
     "source_and_existing_nas_copy_preserved_by_plan": true
+  },
+  "subsequent_operator_nvme_disk_move": {
+    "date": "2026-10-09",
+    "evidence_type": "operator_pasted_move_completion_qm_config_and_live_monitor",
+    "transferred_gib": 100.0,
+    "total_gib": 100.0,
+    "duration_seconds": 183,
+    "completion_messages": [
+      "all 'mirror' jobs are ready",
+      "drive-scsi0: Completed successfully.",
+      "drive-scsi0: mirror-job finished"
+    ],
+    "scsi0": "NVMe_OSData:vm-119-disk-0,iothread=1,size=100G",
+    "scsihw": "virtio-scsi-single",
+    "memory_mib": 16496,
+    "retained_unused": {
+      "unused0": "Media:119/vm-119-disk-0.qcow2",
+      "unused1": "VirtualMachines_OSData:vm-119-disk-0"
+    },
+    "live_qemu": {
+      "drive": "drive-scsi0",
+      "node": "block455",
+      "format": "raw",
+      "drivers": [
+        "raw",
+        "zeroinit",
+        "host_device"
+      ],
+      "filename": "/dev/zvol/rpool/data/vm-119-disk-0",
+      "attached_to": "scsi0",
+      "cache_mode": "writeback, direct"
+    },
+    "copy_and_live_cutover_confirmed": true,
+    "guest_disk_latency_after_cutover_not_yet_observed": true,
+    "new_cache_recovery_and_download_not_yet_observed": true,
+    "old_sources_not_updated_after_cutover": true,
+    "general_sata_host_repair_not_proven": true
+  },
+  "prepared_nvme_recovery": {
+    "helper": "Docs/integration/Z01-2026-10-07/vm119-cached-image-recovery.py",
+    "helper_sha256": "7861bec31a9c59cf3e7d9e64eb7e123d246631689cfe8bb480218951218848d2",
+    "mode": "--after-nvme-move",
+    "receipt": "/var/lib/netcore-image-builder/recovery-2e2603beacd942dfaddc7119b85a4af0-nvme.json",
+    "parent_job": "4a99c6ec54e74264811d86817a568d47",
+    "parent_build": "7ec061ca1ae24338bdc86a22030957cb",
+    "original_receipt_kept_byte_identical": true,
+    "at_most_one_new_post": true,
+    "lost_reply_and_failed_retry_never_trigger_second_post": true,
+    "guest_disk_probe_timeout_seconds": 15,
+    "probe_kill_wait_seconds": 2,
+    "runtime_recipe_files_unchanged": true,
+    "helper_tests_passed": 45,
+    "new_nvme_cases": 19,
+    "real_tiny_fsync_probe_test_passed": true,
+    "independent_review_no_open_blockers": true,
+    "main_ci_not_yet_observed": true,
+    "operator_retry_and_download_not_yet_observed": true,
+    "all_vm119_operator_tests_passed": 80
   }
 }
