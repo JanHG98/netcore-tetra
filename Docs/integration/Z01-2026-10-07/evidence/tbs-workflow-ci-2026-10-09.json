@@ -1,0 +1,91 @@
+{
+  "recorded_date": "2026-10-09",
+  "timezone": "Europe/Berlin",
+  "repository": "JanHG98/netcore-tetra",
+  "source_commit": "16d0d1fd970b7fcbe5b84cd266137ce1105b037e",
+  "workflows": [
+    {
+      "id": 37891522741,
+      "name": "OpenLab deployment and discovery",
+      "head_sha": "16d0d1fd970b7fcbe5b84cd266137ce1105b037e",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37891522741",
+      "updated_at": "2026-10-09T06:10:14Z"
+    },
+    {
+      "id": 37891522848,
+      "name": "Deployment inventory and source gate",
+      "head_sha": "16d0d1fd970b7fcbe5b84cd266137ce1105b037e",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37891522848",
+      "updated_at": "2026-10-09T06:04:21Z"
+    }
+  ],
+  "jobs": [
+    {
+      "id": 113693290712,
+      "name": "discovery",
+      "run_id": 37891522741,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37891522741/job/113693290712",
+      "completed_at": "2026-10-09T06:04:30Z"
+    },
+    {
+      "id": 113693290846,
+      "name": "rust-ui",
+      "run_id": 37891522741,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37891522741/job/113693290846",
+      "completed_at": "2026-10-09T06:05:13Z"
+    },
+    {
+      "id": 113693290922,
+      "name": "image-engine (ubuntu-26.04)",
+      "run_id": 37891522741,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37891522741/job/113693290922",
+      "completed_at": "2026-10-09T06:08:37Z"
+    },
+    {
+      "id": 113693290962,
+      "name": "image-engine (ubuntu-24.04)",
+      "run_id": 37891522741,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37891522741/job/113693290962",
+      "completed_at": "2026-10-09T06:10:13Z"
+    },
+    {
+      "id": 113693290609,
+      "name": "source-consistency",
+      "run_id": 37891522848,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37891522848/job/113693290609",
+      "completed_at": "2026-10-09T06:03:23Z"
+    },
+    {
+      "id": 113693290907,
+      "name": "syslog-runtime",
+      "run_id": 37891522848,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/37891522848/job/113693290907",
+      "completed_at": "2026-10-09T06:04:21Z"
+    }
+  ],
+  "boundaries": {
+    "vm119_workflow_update_confirmed": false,
+    "full_arm64_netcore_image_confirmed": false,
+    "physical_pi_sxceiver_vpn_confirmed": false
+  },
+  "operator_report": {
+    "disk_rescued": true,
+    "source": "Nutzerangabe vom 09.10.2026; keine neue Plattenkonfiguration oder Speicherprüfung vorgelegt"
+  }
+}

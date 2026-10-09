@@ -71,7 +71,7 @@ sichtbar.
 | VM119-Operatorhelfer | 35 Testmethoden bestanden; nach finaler UI-Anpassung Quellpin- und Syntaxprüfung erneut bestanden |
 | Tatsächlicher Browser | 69 ausgeführte Assertions bestanden; Desktop und Mobil geprüft, TCP-Testtransport |
 | Unabhängiger Review | Keine offenen Blocker; alle sieben finalen Quellpins bestätigt |
-| main-CI dieser Anpassung | Nach Veröffentlichung zu beobachten; die frühere Initramfs-CI gilt für main1595259 |
+| main-CI dieser Anpassung | Am Quellcommit16d0d1f beide Workflows vollständig bestanden: [Deployment/Discovery](https://github.com/JanHG98/netcore-tetra/actions/runs/37891522741) und [Quellgate](https://github.com/JanHG98/netcore-tetra/actions/runs/37891522848); [CI-Beleg](evidence/tbs-workflow-ci-2026-10-09.json) |
 
 Lokale API-/Persistenz-/Nebenläufigkeitstests verwenden echte HTTP- und
 SQLite-Zugriffe. Gitprüfungen verwenden ein lokales Bare-Remote mit fortgeschrittenem
@@ -79,8 +79,10 @@ main, gleichnamigem Tag, fehlendem main und fehlgeschlagenem frischen Abruf.
 Die tatsächliche Browserprüfung umfasst Bestätigung / Abbruch / Löschfehler,
 Dropdown- und Leerzustände, doppelte Klicks, Commitanzeige sowie Desktop1440 und
 Mobil390 ohne Überbreite oder JavaScriptfehler. Der Imageworker läuft dabei über
-den ausdrücklich gewählten TCP-Testtransport; der native Unix-Transport gehört
-zur GitHub-CI.
+den ausdrücklich gewählten TCP-Testtransport. In der inzwischen bestandenen
+GitHub-CI ist auch der tatsächliche Unix-Worker-/Downloadpfad bestanden. Die
+Image-Engine-Jobs auf Ubuntu24.04 und26.04 prüfen Installation und ARM64-
+Personalisierung; sie sind keine vollständige ARM64-NetCore- oder Pi-Abnahme.
 
 Die VM-Updateprüfung verwendet echte temporäre Dateien und SQLite-Datenbanken;
 Dienststeuerung und HTTP sind isolierte Fixtures. Teilweiser Austausch,

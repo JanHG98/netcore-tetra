@@ -2,9 +2,22 @@
 
 Stand: 08.10.2026, Europe/Berlin. PR: https://github.com/JanHG98/netcore-tetra/pull/62. Erster geprüfter PR-Commit: `e5ae2cd5e94c32df0e9b2573e207f9d48b0c1f26`. Die Veröffentlichung wurde durch den Nutzer ausdrücklich freigegeben; der vollständige Git-Baum entspricht dem lokalen Prüfling einschließlich Dateimodi.
 
+## Bestätigte TBS-Workflow-CI, 09.10.2026
+
+Die Profil-Löschung und automatische Auswahl des aktuellen main-Commits sind
+am Quellcommit `16d0d1fd970b7fcbe5b84cd266137ce1105b037e` veröffentlicht. Beide
+Workflows sind vollständig erfolgreich abgeschlossen:
+
+- [OpenLab deployment and discovery](https://github.com/JanHG98/netcore-tetra/actions/runs/37891522741): Discovery / HTTP / Git / Persistenz, Operator-Rückwege, tatsächliche WebUI, Rust-Workspace / TBS-Link sowie VM-Installation und ARM64-Personalisierung auf Ubuntu24.04 und26.04.
+- [Deployment inventory and source gate](https://github.com/JanHG98/netcore-tetra/actions/runs/37891522848): Quell-/Inventar-/Readiness-/Konfigurationsgate und Syslog-Laufzeitprüfungen.
+
+[Maschinenlesbarer CI-Beleg](evidence/tbs-workflow-ci-2026-10-09.json).
+Die Übernahme auf VM119 ist bis zur Betreiber-Ausgabe offen. Die Image-Smokeprüfung
+ersetzt keinen vollständigen ARM64-NetCore-Build oder physischen Pi-/SXceiver-/VPN-Test.
+
 ## Nachträglich bestätigte Initramfs-CI, 09.10.2026
 
-Am Quellcommit `1595259a2a76abfc9eff08842409156473b585a7` sind [Deployment/Discovery](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380374) und [Deployment inventory and source gate](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380390) abgeschlossen / erfolgreich. Diese Ergebnisse bestätigen die Gastrezept-Quellkorrektur einschließlich der bestehenden CI-Gates; sie sind kein vollständiger ARM64-NetCore-Build und keine VM119-Hotfix- oder Pi-/VPN-Abnahme. Die neue [TBS-Workflow-Anpassung vom 09.10.](tbs-workflow-2026-10-09.md) hat eigene lokale Tests; ihre main-CI wird erst nach der Veröffentlichung bewertet.
+Am Quellcommit `1595259a2a76abfc9eff08842409156473b585a7` sind [Deployment/Discovery](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380374) und [Deployment inventory and source gate](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380390) abgeschlossen / erfolgreich. Diese Ergebnisse bestätigen die Gastrezept-Quellkorrektur einschließlich der bestehenden CI-Gates; sie sind kein vollständiger ARM64-NetCore-Build und keine VM119-Hotfix- oder Pi-/VPN-Abnahme. Die spätere TBS-Workflow-CI ist oben am eigenen Quellcommit dokumentiert.
 
 ## Aktueller CI-Zwischenstand vom 08.10.2026, 17:03 Europe/Berlin
 
