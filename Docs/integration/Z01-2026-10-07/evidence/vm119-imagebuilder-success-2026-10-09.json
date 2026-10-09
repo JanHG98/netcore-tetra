@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-09",
+  "evidence_type": "operator_pasted_image_api_logs_and_file_metadata",
+  "host": "VM-H-DEPLOY-01",
+  "vmid": 119,
+  "successful_build": {
+    "job_id": "f141c06d4b2f48699486e149c4887b16",
+    "status": "succeeded",
+    "build_id": "2e2603beacd942dfaddc7119b85a4af0",
+    "result_id": "2e2603beacd942dfaddc7119b85a4af0",
+    "commit": "1595259a2a76abfc9eff08842409156473b585a7",
+    "filename": "netcore-srv-m-tbs-03-1595259a2a76-2e2603be.img.xz",
+    "size_bytes": 2043954184,
+    "sha256_from_completion_log": "4a6bc6549cace7559a3dfc9e1f8f6d6d0302e84df3128b63d31c4e6ac17d6c3b",
+    "completion_log": "Fertig: netcore-srv-m-tbs-03-1595259a2a76-2e2603be.img.xz · SHA256 4a6bc6549cace7559a3dfc9e1f8f6d6d0302e84df3128b63d31c4e6ac17d6c3b",
+    "current_file_bytes_and_download_not_verified": true,
+    "physical_pi_boot_not_verified": true
+  },
+  "new_failed_build": {
+    "job_id": "8d83bec249dc4297a964db170c7b5f7d",
+    "status": "failed",
+    "build_id": "66e4156625f5425e9cbd04e77bb40003",
+    "commit": "281578989e5735c0f958cbe5dbc190511ef73a80",
+    "result_error": "Command exited with 1: unshare",
+    "inner_error": "subprocess.TimeoutExpired",
+    "inner_command": [
+      "sfdisk", "--no-reread", "--no-tell-kernel", "-N", "2",
+      "/var/lib/netcore-image-builder/work/66e4156625f5425e9cbd04e77bb40003/image.img"
+    ],
+    "timeout_seconds": 30,
+    "caller_phase_not_present_in_short_log_excerpt": true
+  },
+  "current_state": {
+    "resolved_path": "/var/lib/netcore-image-builder",
+    "mount_target": "/",
+    "mount_source": "/dev/sda2",
+    "filesystem": "ext4",
+    "jobs_count_returned": 6,
+    "jobs_sqlite3_size_bytes": 708608,
+    "artifacts_direct_files_found": 0,
+    "artifacts_one_level_deep_files_found": 0,
+    "work_image_files_found": 0,
+    "work_pending_artifact_files_found": 0
+  },
+  "cache_files_found": [
+    {
+      "path": "/var/lib/netcore-image-builder/cache/62d025b9bc7ca0e1facfec74ae56ac13978b6745c58177f081d39fbb8041ed45.img.xz",
+      "size_bytes": 443120736,
+      "kind": "stock_os_download"
+    },
+    {
+      "path": "/var/lib/netcore-image-builder/cache/7699808215f76322a6ed0cceddf5804d24f707e088ceabd7bdae5e7ef07b6eb6.img",
+      "size_bytes": 5108662272,
+      "kind": "generalized_software_base"
+    }
+  ],
+  "local_source_analysis": {
+    "recipe_key_for_successful_commit": "7699808215f76322a6ed0cceddf5804d24f707e088ceabd7bdae5e7ef07b6eb6",
+    "matches_found_cache_filename": true,
+    "installed_recipe_key_not_yet_operator_verified": true,
+    "cache_versions_json_not_yet_operator_verified": true,
+    "no_cause_of_missing_artifact_proven": true
+  },
+  "next_step": "Read-only local image search and exact cached-software metadata verification before any rebuild or recipe update"
+}
