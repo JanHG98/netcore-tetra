@@ -111,7 +111,7 @@
     },
     "diagnostic_patch_ci_not_yet_observed": true
   },
-  "next_step": "Read VM119 loop/process/kernel/block-I/O state and current Proxmox VM119 disk configuration; preserve receipt and recipe/cache; no further recovery POST before platform diagnosis",
+  "next_step": "Read live QEMU block backing/block jobs and host ZFS health/capacity/kernel messages; guest root-disk I/O stall is confirmed, specific cause and correction remain open; preserve recovery receipt and cache",
   "subsequent_operator_recovery_diagnosis": {
     "receipt_phase": "submit_started",
     "receipt_job_id_not_recorded": true,
@@ -155,6 +155,72 @@
     "deployment_discovery": {
       "run_id": 37907594176,
       "conclusion": "success"
+    }
+  },
+  "subsequent_operator_block_io_diagnosis": {
+    "source": "operator_attachment_Eingefuegter_Text_20261009-093354_and_pasted_qm_config",
+    "date": "2026-10-09",
+    "guest_sample_local_time": "11:33:43 Europe/Berlin",
+    "kernel": "7.0.0-38-generic",
+    "uptime": "1:55",
+    "blocked_processes": [
+      {
+        "pid": 414,
+        "comm": "jbd2/sda2-8",
+        "state": "D",
+        "wchan": "wait_on_buffer"
+      },
+      {
+        "pid": 9793,
+        "comm": "systemd-journal",
+        "state": "D<s",
+        "wchan": "jbd2_log_wait_commit"
+      }
+    ],
+    "dirty_kib": 204,
+    "writeback_kib": 0,
+    "io_pressure": {
+      "some": {
+        "avg10": 91.69,
+        "avg60": 79.45,
+        "avg300": 81.98,
+        "total": 6213335145
+      },
+      "full": {
+        "avg10": 91.54,
+        "avg60": 79.21,
+        "avg300": 81.8,
+        "total": 6197189469
+      }
+    },
+    "netcore_loop_backing_files_reported": [],
+    "kernel_hung_task_local_time": "10:49:29 Europe/Berlin",
+    "losetup_hung_task": {
+      "pid": 9714,
+      "blocked_more_than_seconds": 122,
+      "stack_path": [
+        "rq_qos_wait",
+        "wbt_wait",
+        "__rq_qos_throttle",
+        "blk_mq_submit_bio",
+        "ext4_do_writepages",
+        "file_write_and_wait_range",
+        "ext4_sync_file",
+        "vfs_fsync",
+        "loop_configure"
+      ]
+    },
+    "curl_also_blocked_in_writeback_throttling": true,
+    "journald_watchdog_timeouts_and_unclean_journal_reported": true,
+    "later_loop21_capacity_and_partition_messages_present": true,
+    "guest_block_io_stall_confirmed": true,
+    "specific_host_storage_or_guest_kernel_cause_not_yet_proven": true,
+    "proxmox_config": {
+      "scsi0": "VirtualMachines_OSData:vm-119-disk-0,iothread=1,size=100G",
+      "scsihw": "virtio-scsi-single",
+      "memory_mib": 16496,
+      "unused0": "Media:119/vm-119-disk-0.qcow2",
+      "live_qemu_backing_not_yet_observed": true
     }
   }
 }
