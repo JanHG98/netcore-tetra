@@ -11,7 +11,7 @@ required=[
  'system-backend/alarm-workflow/install/update.sh',
  'system-backend/alarm-workflow/install/uninstall.sh',
  'system-backend/alarm-workflow/install/configure-openlab.sh',
- 'Docs/PHASE_8_SDS_STATUS_ALARM_WORKFLOWS.md',
+ 'Docs/changes/integrations/PHASE_8_SDS_STATUS_ALARM_WORKFLOWS.md',
 ]
 errors=[]
 for rel in required:

@@ -24,7 +24,7 @@ REQUIRED = [
     "system-backend/transit/install/update.sh",
     "system-backend/transit/install/uninstall.sh",
     "system-backend/transit/tests/transit_reference.py",
-    "Docs/SWMI_CORE_1_PACKAGE_K_TRANSIT.md",
+    "Docs/packages/core/SWMI_CORE_1_PACKAGE_K_TRANSIT.md",
     "system-backend/transit/web-ui/index.html",
 ]
 MARKERS = {
@@ -36,7 +36,7 @@ MARKERS = {
     "system-backend/transit/src/state.rs#2": '"automatic_failover"',
     "system-backend/transit/src/http.rs": "/api/v1/peer/envelopes",
     "system-backend/transit/src/transport.rs": "spawn_transport_worker",
-    "system-backend/transit/README.md": "noch kein ETSI ISI",
+    "Docs/services/transit/README.md": "noch kein ETSI ISI",
 }
 
 
@@ -216,7 +216,7 @@ def main() -> int:
     # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
     # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for marker in ["Path Vector", "max_hops", "dedupe_key", "backup_peers"]:
-        if marker not in state and marker not in (ROOT / "system-backend/transit/README.md").read_text():
+        if marker not in state and marker not in (ROOT / "Docs/services/transit/README.md").read_text():
             errors.append(f"missing transit safety concept {marker}")
 
     if errors:

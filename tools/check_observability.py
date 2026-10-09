@@ -13,7 +13,7 @@ import tomllib
 ROOT=Path(__file__).resolve().parents[1]
 REQUIRED=[
     "system-backend/observability/Cargo.toml",
-    "system-backend/observability/README.md",
+    "Docs/services/observability/README.md",
     "system-backend/observability/src/main.rs",
     "system-backend/observability/src/config.rs",
     "system-backend/observability/src/collector.rs",
@@ -41,7 +41,7 @@ REQUIRED=[
     "system-backend/observability/config/syslog.example.json",
     "system-backend/observability/config/log-client.example.json",
     "system-backend/observability/config/openlab-hosts.json",
-    "Docs/SWMI_CORE_1_PACKAGE_M_OBSERVABILITY.md",
+    "Docs/packages/core/SWMI_CORE_1_PACKAGE_M_OBSERVABILITY.md",
 ]
 MARKERS={
     "system-backend/observability/src/main.rs":"collector::spawn_collector",

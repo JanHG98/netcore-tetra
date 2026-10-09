@@ -26,8 +26,8 @@ REQUIRED = [
     "deploy/open-lab/netcore-deploy.py",
     "deploy/open-lab/generated/service-catalog.json",
     "tests/integration/open_lab_contract_test.py",
-    "Docs/SWMI_CORE_1_PACKAGE_P_SHARED_PLATFORM.md",
-    "Docs/OPEN_LAB_LXC_DEPLOYMENT.md",
+    "Docs/packages/core/SWMI_CORE_1_PACKAGE_P_SHARED_PLATFORM.md",
+    "Docs/deployment/OPEN_LAB_LXC_DEPLOYMENT.md",
 ]
 
 

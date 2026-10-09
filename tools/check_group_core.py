@@ -17,9 +17,9 @@ required = [
     'system-backend/group-core/config/group-core.example.toml',
     'system-backend/group-core/systemd/netcore-group-core.service',
     'system-backend/group-core/install/install.sh',
-    'system-backend/group-core/README.md',
-    'Docs/SWMI_CORE_1_PACKAGE_B_GROUP_CORE.md',
-    'Docs/SWMI_CORE_1_PACKAGE_B_APPLY.md',
+    'Docs/services/group-core/README.md',
+    'Docs/packages/core/SWMI_CORE_1_PACKAGE_B_GROUP_CORE.md',
+    'Docs/packages/core/SWMI_CORE_1_PACKAGE_B_APPLY.md',
     '.github/workflows/swmi-core-group.yml',
 ]
 missing = [item for item in required if not (ROOT / item).is_file()]

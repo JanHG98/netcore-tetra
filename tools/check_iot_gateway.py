@@ -28,17 +28,20 @@ REQUIRED = [
     "install/migrate-phase5-config.sh",
     "src/home_assistant.rs",
     "src/homematic.rs",
-    "docs/home-assistant.md",
-    "docs/homematic-ip.md",
     "install/uninstall.sh",
     "systemd/netcore-iot-gateway.service",
-    "docs/architecture.md",
-    "docs/mqtt-contract.md",
-    "docs/open-lab-mode.md",
+]
+DOCUMENTATION_REQUIRED = [
+    "Docs/services/iot-gateway/README.md",
+    "Docs/services/iot-gateway/home-assistant.md",
+    "Docs/services/iot-gateway/homematic-ip.md",
+    "Docs/services/iot-gateway/architecture.md",
+    "Docs/services/iot-gateway/mqtt-contract.md",
+    "Docs/services/iot-gateway/open-lab-mode.md",
+    "Docs/contracts/COMMAND_MODEL_V1.md",
 ]
 CONTRACT_REQUIRED = [
     "src/command.rs",
-    "COMMAND_MODEL_V1.md",
     "schemas/netcore-command-v1.schema.json",
     "schemas/netcore-command-ack-v1.schema.json",
     "examples/netcore-command-virtual-relay-set.json",
@@ -58,6 +61,9 @@ def main() -> int:
     for relative in CONTRACT_REQUIRED:
         if not (CONTRACTS / relative).is_file():
             fail(f"missing {CONTRACTS.relative_to(ROOT) / relative}")
+    for relative in DOCUMENTATION_REQUIRED:
+        if not (ROOT / relative).is_file():
+            fail(f"missing {relative}")
 
     cargo = tomllib.loads((BASE / "Cargo.toml").read_text(encoding="utf-8"))
     if cargo.get("package", {}).get("name") != "netcore-iot-gateway":
@@ -145,7 +151,7 @@ def main() -> int:
         "/health/ready",
         "INDEX_HTML",
     ]
-    docs = (BASE / "README.md").read_text(encoding="utf-8")
+    docs = (ROOT / "Docs/services/iot-gateway/README.md").read_text(encoding="utf-8")
     for marker in markers:
         if marker not in source and marker not in docs:
             fail(f"implementation marker missing: {marker}")

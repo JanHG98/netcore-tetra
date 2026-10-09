@@ -14,7 +14,7 @@ from deployment_inventory import runtime_registry, registry_inventory_errors
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_FILES = [
-    "tests/e2e/README.md",
+    "Docs/testing/e2e/README.md",
     "tests/e2e/netcore_open_lab_e2e.py",
     "tests/e2e/netcore_e2e/context.py",
     "tests/e2e/netcore_e2e/http.py",
@@ -32,9 +32,9 @@ REQUIRED_FILES = [
     "tests/e2e/unit/test_e2e_support.py",
     "tests/e2e/unit/test_edge_fallback_reference.py",
     "deploy/open-lab/netcore-e2e.py",
-    "Docs/OPEN_LAB_E2E_RUNBOOK.md",
-    "Docs/SWMI_CORE_1_PACKAGE_Q_E2E_INTEGRATION.md",
-    "Docs/SWMI_CORE_1_PACKAGE_Q_APPLY.md",
+    "Docs/deployment/OPEN_LAB_E2E_RUNBOOK.md",
+    "Docs/packages/core/SWMI_CORE_1_PACKAGE_Q_E2E_INTEGRATION.md",
+    "Docs/packages/core/SWMI_CORE_1_PACKAGE_Q_APPLY.md",
 ]
 EXECUTABLE_FILES = [
     "tests/e2e/netcore_open_lab_e2e.py",

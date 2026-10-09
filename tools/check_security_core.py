@@ -26,7 +26,7 @@ REQUIRED = [
     "system-backend/security-core/install/update.sh",
     "system-backend/security-core/install/uninstall.sh",
     "system-backend/security-core/tests/lab_response.py",
-    "Docs/SWMI_CORE_1_PACKAGE_I_SECURITY_CORE.md",
+    "Docs/packages/core/SWMI_CORE_1_PACKAGE_I_SECURITY_CORE.md",
     "system-backend/security-core/web-ui/index.html",
 ]
 MARKERS = {
@@ -37,7 +37,7 @@ MARKERS = {
     "system-backend/security-core/src/http.rs": "/api/v1/edge/actions/claim",
     "system-backend/security-core/src/crypto.rs": "netcore-security-core/lab-dck/v1",
     "system-backend/security-core/systemd/netcore-security-core.service": "UMask=0077",
-    "system-backend/security-core/README.md": "lab_hmac_sha256",
+    "Docs/services/security-core/README.md": "lab_hmac_sha256",
 }
 FORBIDDEN_NORMAL_API_MARKERS = [
     '"raw_seed": state.',

@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "system-backend/sip-switch"
 FALLBACK = BASE / "tbs-fallback"
 REQUIRED = [
-    BASE / "README.md",
+    ROOT / "Docs/services/sip-switch/README.md",
     BASE / "install/install-tbs-local-fallback.sh",
     BASE / "install/update-tbs-local-fallback.sh",
     BASE / "install/apply-tbs-local-asterisk-config.sh",
@@ -27,8 +27,8 @@ REQUIRED = [
     FALLBACK / "install/apply-native-tbs-config.py",
     FALLBACK / "install/status.sh",
     FALLBACK / "install/uninstall-tbs-local-fallback.sh",
-    FALLBACK / "docs/installation-openlab.md",
-    ROOT / "Docs/PHASE_11C_EXCLUSIVE_SIP_REGISTRATION_FAILOVER.md",
+    ROOT / "Docs/services/sip-switch/tbs-fallback/installation-openlab.md",
+    ROOT / "Docs/changes/integrations/PHASE_11C_EXCLUSIVE_SIP_REGISTRATION_FAILOVER.md",
 ]
 
 
