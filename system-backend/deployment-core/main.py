@@ -2,6 +2,7 @@
 """NetCore OpenLab Deployment Core / per-host Discovery Agent."""
 from __future__ import annotations
 import argparse
+from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 import json
 import logging
@@ -9,6 +10,7 @@ import os
 from pathlib import Path
 import shlex
 import signal
+import sqlite3
 import subprocess
 import threading
 import time
@@ -32,6 +34,19 @@ REMOTE_REQUEST_TIMEOUT = 15
 REMOTE_RETRY_SECONDS = 300
 REMOTE_POLL_INTERVAL = 2
 REMOTE_JOB_SECONDS = 7200
+
+
+class ProfileInUse(ValueError):
+    """A profile cannot be removed while its use is active or unknown."""
+
+
+class ProfilePersistenceUncertain(RuntimeError):
+    """Replacement happened or its outcome is unknown, but durability is unconfirmed."""
+    def __init__(self, applied):
+        message = ('Profiländerung wurde gespeichert, aber die Persistenzbestätigung ist fehlgeschlagen.'
+                   if applied else 'Speicherergebnis der Profiländerung ist unklar; aktuellen Stand prüfen.')
+        super().__init__(message)
+        self.result = {'error': message, 'profile_change_applied': applied, 'durability_uncertain': True}
 
 
 def public_openapi():
@@ -150,6 +165,51 @@ class App:
             lines.append(f'netcore_deployment_jobs{{status="{status}"}} {count}')
         return '\n'.join(lines) + '\n'
 
+    def remove_profile(self, name):
+        name = identifier(name)
+        with self.lock:
+            if name not in self.profiles:
+                raise KeyError(name)
+            try:
+                deployments = self.jobs.active_profile_names()
+            except (ValueError, OSError, sqlite3.Error) as exc:
+                raise ProfileInUse('Deployment-Belegung nicht sicher prüfbar; Profil bleibt erhalten.') from exc
+            if name in deployments:
+                raise ProfileInUse('Profil wird von einem laufenden oder ungeklärten Deployment-Auftrag verwendet.')
+            try:
+                image_status = self.images.status()
+            except (ValueError, OSError) as exc:
+                raise ProfileInUse('Imagebuilder-Belegung nicht sicher prüfbar; Profil bleibt erhalten.') from exc
+            active = image_status.get('active_profiles') if isinstance(image_status, dict) else None
+            if (not isinstance(image_status, dict) or image_status.get('available') is not True
+                    or not isinstance(active, list) or any(not isinstance(item, str) for item in active)):
+                raise ProfileInUse('Imagebuilder-Belegung nicht sicher prüfbar; Profil bleibt erhalten. Imagebuilder aktualisieren oder Erreichbarkeit prüfen.')
+            if name in active:
+                raise ProfileInUse('Profil wird von einem laufenden Image-Auftrag verwendet.')
+            updated = dict(self.profiles)
+            del updated[name]
+            self.persist_profiles(updated)
+        return {'deleted': name}
+
+    def persist_profiles(self, updated):
+        """Caller holds the app lock; reconcile a rename committed before fsync failed."""
+        path = self.state / 'profiles.json'
+        existed = path.exists()
+        try:
+            atomic_write(path, json.dumps(updated))
+        except OSError as exc:
+            persisted = json_file(path, None)
+            if persisted == self.profiles or (not existed and not path.exists()):
+                # The replacement did not change the saved profile set.
+                raise
+            applied = persisted == updated
+            if isinstance(persisted, dict):
+                self.profiles = persisted
+            # A directory fsync can fail after os.replace. Never claim unchanged
+            # state while the requested change is already visible on disk.
+            raise ProfilePersistenceUncertain(True if applied else None) from exc
+        self.profiles = updated
+
     def execute(self, data, log):
         if data.get('kind') == 'check':
             sha = self.repo.resolve(data['ref'], log)
@@ -168,7 +228,8 @@ class App:
         if remote['action'] != 'restart':
             remote['commit'] = self.repo.resolve(data['ref'], log)
         if data.get('profile'):
-            remote['profile'] = self.profiles[data['profile']]
+            with self.lock:
+                remote['profile'] = deepcopy(data.get('profile_snapshot') or self.profiles[data['profile']])
         remote = validate_job(remote)
         jobs_url = target['agent_url'] + '/api/v1/jobs'
         try:
@@ -339,7 +400,9 @@ def handler(app):
                 if path.startswith('/api/v1/jobs/'):
                     return self.send(app.jobs.get(path.rsplit('/', 1)[-1]))
                 if path == '/api/v1/profiles':
-                    return self.send(list(app.profiles.values()))
+                    with app.lock:
+                        profiles = deepcopy(list(app.profiles.values()))
+                    return self.send(profiles)
                 if path == '/api/v1/images' and app.cfg['role'] == 'controller':
                     return self.send(app.images.status())
                 if path.startswith('/api/v1/images/') and app.cfg['role'] == 'controller':
@@ -348,8 +411,9 @@ def handler(app):
                         raise KeyError(path)
                     return app.images.download('/artifacts/' + parts[4] + '/' + parts[5], self)
                 if path.startswith('/api/v1/profiles/') and path.endswith('/config'):
-                    profile = app.profiles[path.split('/')[-2]]
-                    template = (app.state / 'tbs-site-template.toml').read_text()
+                    with app.lock:
+                        profile = deepcopy(app.profiles[path.split('/')[-2]])
+                        template = (app.state / 'tbs-site-template.toml').read_text()
                     return self.send(tbs_config(template, profile), content='text/plain')
                 if path == '/bootstrap.sh' and app.cfg['role'] == 'controller':
                     base = app.cfg.get('advertise_url') or 'http://' + self.headers['Host']
@@ -361,6 +425,10 @@ def handler(app):
                 self.send({'error': 'Not found'}, 404)
             except KeyError:
                 self.send({'error': 'Eintrag nicht gefunden'}, 404)
+            except ProfileInUse as exc:
+                self.send({'error': str(exc)}, 409)
+            except ProfilePersistenceUncertain as exc:
+                self.send(exc.result, 503)
             except (ValueError, TypeError, OSError) as exc:
                 self.send({'error': str(exc)}, 400)
             except Exception:
@@ -397,16 +465,19 @@ def handler(app):
             if path == '/api/v1/check':
                 return self.send(app.jobs.submit({'kind': 'check', 'ref': app.cfg['ref']}), 202)
             if path == '/api/v1/images/build':
-                profile = app.profiles[data.get('profile')]
-                template = (app.state / 'tbs-site-template.toml').read_text()
-                request = {**data, 'profile': profile, 'config': tbs_config(template, profile),
-                           'environment': app.cfg['environment']}
-                request['controller_url'] = data.get('controller_url') or app.cfg.get('advertise_url') or 'http://' + self.headers['Host']
-                # Validate before network work; the final SHA is resolved afresh for this build.
-                request['commit'] = '0' * 40
-                request = validate_image(request, app.cfg['allowed_networks'])
-                request['commit'] = app.repo.resolve(data.get('ref', app.cfg['ref']), lambda _: None)
-                return self.send(app.images.request('/build', request), 202)
+                with app.lock:
+                    profile = deepcopy(app.profiles[data.get('profile')])
+                    template = (app.state / 'tbs-site-template.toml').read_text()
+                    request = {**data, 'profile': profile, 'config': tbs_config(template, profile),
+                               'environment': app.cfg['environment']}
+                    request['controller_url'] = data.get('controller_url') or app.cfg.get('advertise_url') or 'http://' + self.headers['Host']
+                    # Validate before fetching. Every accepted build pins fresh origin/main,
+                    # independently of deployment settings or request-supplied refs.
+                    request['commit'] = '0' * 40
+                    request = validate_image(request, app.cfg['allowed_networks'])
+                    request['commit'] = app.repo.resolve_latest_main(lambda _: None)
+                    result = app.images.request('/build', request)
+                return self.send(result, 202)
             if path == '/api/v1/images/remove':
                 return self.send(app.images.request('/remove', {'id': data.get('id', '')}))
             if path == '/api/v1/plan':
@@ -414,17 +485,24 @@ def handler(app):
             if path == '/api/v1/deploy':
                 if data.get('confirm_restart') is not True:
                     raise ValueError('confirm_restart erforderlich')
-                plan = app.plan(data)
-                if plan['profile'] and plan['profile'] not in app.profiles:
-                    raise ValueError('TBS-Profil fehlt')
-                return self.send(app.jobs.submit(plan), 202)
+                with app.lock:
+                    plan = app.plan(data)
+                    if plan['profile']:
+                        if plan['profile'] not in app.profiles:
+                            raise ValueError('TBS-Profil fehlt')
+                        plan['profile_snapshot'] = deepcopy(app.profiles[plan['profile']])
+                    result = app.jobs.submit(plan)
+                return self.send(result, 202)
+            if path == '/api/v1/profiles/remove':
+                return self.send(app.remove_profile(data.get('name')))
             if path == '/api/v1/profiles':
                 profile = validate_profile(data)
                 if not (app.state / 'tbs-site-template.toml').exists():
                     raise ValueError('Zuerst ein Standort-Template importieren')
                 with app.lock:
-                    app.profiles[profile['name']] = profile
-                    atomic_write(app.state / 'profiles.json', json.dumps(app.profiles))
+                    updated = dict(app.profiles)
+                    updated[profile['name']] = profile
+                    app.persist_profiles(updated)
                 return self.send(profile, 201)
             if path == '/api/v1/template':
                 template = data.get('toml', '')
@@ -432,7 +510,8 @@ def handler(app):
                 for key in ('net_info', 'cell_info', 'phy_io'):
                     if key not in parsed:
                         raise ValueError('TBS-Template benötigt ' + key)
-                atomic_write(app.state / 'tbs-site-template.toml', template)
+                with app.lock:
+                    atomic_write(app.state / 'tbs-site-template.toml', template)
                 return self.send({'saved': True})
             self.send({'error': 'Not found'}, 404)
     return Handler

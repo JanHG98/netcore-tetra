@@ -17,7 +17,6 @@
   <div class="panel"><form id="image-form">
     <div class="form-grid">
       <label>TBS-Profil<select id="image-profile" name="profile" required></select></label>
-      <label>Branch, Tag oder Commit<input id="image-ref" name="ref" required></label>
       <label>Adresse dieser VM<input id="image-controller" name="controller_url" type="url" placeholder="http://10.0.1.50:8320" required></label>
       <label>Hostname des Pi<input id="image-hostname" name="hostname" pattern="[a-zA-Z0-9][a-zA-Z0-9-]{0,62}" placeholder="srv-m-tbs-02" required></label>
       <label>Benutzer auf dem Pi<input name="username" value="jan" required></label>
@@ -26,6 +25,7 @@
       <label>Oder: Betriebssystem-Passwort<input name="password" type="password" autocomplete="new-password"><small>Für SSH und Konsole des Pi. Die WebUI bleibt ohne Anmeldung.</small></label>
       <label>SXceiver-HAT<select name="overlay"><option value="eeprom">Overlay aus programmiertem HAT-EEPROM</option><option value="sx1255">SX1255-Overlay aus dem Image (ohne EEPROM)</option></select></label>
     </div>
+    <p class="image-version-note">Der aktuelle Stand von main wird beim Start automatisch verwendet. Den gebauten Commit siehst du im Buildprotokoll und beim Download.</p>
     <details class="image-options"><summary>WLAN und VPN vorbereiten <span>optional · LAN verwendet DHCP</span></summary>
       <div class="form-grid">
         <label>WLAN-SSID<input name="wifi_ssid" maxlength="32" autocomplete="off"></label>

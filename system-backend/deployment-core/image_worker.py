@@ -72,7 +72,8 @@ class Worker:
             job['result'].pop('versions', None)
         artifacts = [{k: v for k, v in a.items() if k != 'versions'} for a in self.artifacts()]
         return {'available': True, 'base': BASE, 'free_bytes': shutil.disk_usage(self.state).free,
-                'jobs': jobs, 'artifacts': artifacts}
+                'jobs': jobs, 'artifacts': artifacts,
+                'active_profiles': self.jobs.active_profile_names()}
 
     def execute(self, request, log):
         key = request['build_id']

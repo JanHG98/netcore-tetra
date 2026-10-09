@@ -4,6 +4,10 @@ Stand: 08.10.2026, Europe/Berlin. Quellstand des Anlagenpilots: `c45a2ec1f5b7cdc
 
 Aktueller Statusnachtrag: 08.10.2026, 17:03 Europe/Berlin; geprüfter main-Stand `001fb84ac566bb0f95e18d22439ee664fe0093e4`. [Gesicherter Fortsetzungsstand](checkpoint-2026-10-08.md). Die folgenden Pilot- und SQLite-Abschnitte bewahren ihre jeweils genannten Quellstände; aktuelles main und installierte Anlagenversionen werden getrennt geführt.
 
+## Aktueller Nutzerauftrag vom 09.10.2026
+
+TBS-Profillöschung und automatische Auswahl des frisch abgerufenen main-Commits für neue Images sind implementiert und lokal über HTTP, SQLite, Bare-Git und den tatsächlichen Desktop-/Mobil-Browser geprüft. [Verhalten, gezieltes 7-Dateien-VM119-Update und Prüfgrenzen](tbs-workflow-2026-10-09.md). Der Helfer umfasst Controller, Worker, gemeinsame Jobs und Oberfläche; seine Ausführung auf VM119 ist noch offen. Die bisherige Initramfs-Korrektur an `main@1595259a2a76abfc9eff08842409156473b585a7` hat beide main-Workflows bestanden ([Deployment/Discovery](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380374), [Quellgate](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380390)); vollständiger Betreiberbuild / Artefakte und physischer Pi-/SXceiver-/VPN-Nachweis bleiben offen. Die folgenden datierten Anlagenabschnitte bewahren ihre damaligen Quellstände.
+
 ## Übernahme und CI
 
 PR #62 ist übernommen. Am Mergecommit sind diese main-Workflows abgeschlossen und erfolgreich:

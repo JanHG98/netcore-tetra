@@ -74,6 +74,31 @@ class Jobs:
             rows = db.execute('SELECT * FROM jobs ORDER BY created DESC LIMIT 100').fetchall()
         return [self._decode(row) for row in rows]
 
+    def active_profile_names(self):
+        """All persisted references, including uncertain remote jobs beyond UI limits."""
+        names = set()
+        with self.connect() as db:
+            rows = db.execute('SELECT status, request, result FROM jobs')
+            for status, request_json, result_json in rows:
+                request, result = json.loads(request_json), json.loads(result_json)
+                if not isinstance(request, dict) or not isinstance(result, dict):
+                    raise ValueError('Ungültige persistierte Auftragsdaten; Profilbelegung unklar')
+                uncertain = result.get('remote_uncertain', False)
+                if not isinstance(uncertain, bool):
+                    raise ValueError('Ungültiger Remote-Auftragsstatus; Profilbelegung unklar')
+                if status not in ('queued', 'running') and not uncertain:
+                    continue
+                profile = request.get('profile')
+                if isinstance(profile, dict):
+                    profile = profile.get('name')
+                    if not isinstance(profile, str) or not profile:
+                        raise ValueError('Ungültige Profilreferenz; Profilbelegung unklar')
+                if profile:
+                    if not isinstance(profile, str):
+                        raise ValueError('Ungültige Profilreferenz; Profilbelegung unklar')
+                    names.add(profile)
+        return sorted(names)
+
     def log(self, key, line):
         with self.connect() as db:
             db.execute('UPDATE jobs SET log=substr(log || ?, -100000), updated=? WHERE id=?',

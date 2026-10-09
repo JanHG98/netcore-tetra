@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches: ['feature/z01-deployment-consolidation', 'main']
-    paths: ['system-backend/**', 'deploy/open-lab/**', 'tests/e2e/**', 'bins/**', 'crates/**', 'install/**', 'contrib/**', 'tetra-codec-master/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/deployment-discovery-tests.yml']
+    paths: ['system-backend/**', 'deploy/open-lab/**', 'tests/e2e/**', 'tests/integration/test_vm119_*update.py', 'Docs/integration/Z01-2026-10-07/vm119-*update.py', 'bins/**', 'crates/**', 'install/**', 'contrib/**', 'tetra-codec-master/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/deployment-discovery-tests.yml']
   pull_request:
-    paths: ['system-backend/**', 'deploy/open-lab/**', 'tests/e2e/**', 'bins/**', 'crates/**', 'install/**', 'contrib/**', 'tetra-codec-master/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/deployment-discovery-tests.yml']
+    paths: ['system-backend/**', 'deploy/open-lab/**', 'tests/e2e/**', 'tests/integration/test_vm119_*update.py', 'Docs/integration/Z01-2026-10-07/vm119-*update.py', 'bins/**', 'crates/**', 'install/**', 'contrib/**', 'tetra-codec-master/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/deployment-discovery-tests.yml']
 permissions:
   contents: read
 jobs:
@@ -18,6 +18,8 @@ jobs:
           python-version: '3.11'
       - name: Discovery, API, Git pinning and persistence
         run: python3 -m unittest discover -s system-backend/deployment-core/tests -v
+      - name: VM119 targeted update and rollback guards
+        run: python3 -B -m unittest discover -s tests/integration -p 'test_vm119_*update.py' -v
       - name: Installer and existing Python UI syntax
         run: |
           for script in system-backend/deployment-core/install/*.sh system-backend/deployment-core/image/*.sh; do bash -n "$script"; done

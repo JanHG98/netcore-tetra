@@ -2,6 +2,10 @@
 
 Stand: 08.10.2026, Europe/Berlin. PR: https://github.com/JanHG98/netcore-tetra/pull/62. Erster geprüfter PR-Commit: `e5ae2cd5e94c32df0e9b2573e207f9d48b0c1f26`. Die Veröffentlichung wurde durch den Nutzer ausdrücklich freigegeben; der vollständige Git-Baum entspricht dem lokalen Prüfling einschließlich Dateimodi.
 
+## Nachträglich bestätigte Initramfs-CI, 09.10.2026
+
+Am Quellcommit `1595259a2a76abfc9eff08842409156473b585a7` sind [Deployment/Discovery](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380374) und [Deployment inventory and source gate](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380390) abgeschlossen / erfolgreich. Diese Ergebnisse bestätigen die Gastrezept-Quellkorrektur einschließlich der bestehenden CI-Gates; sie sind kein vollständiger ARM64-NetCore-Build und keine VM119-Hotfix- oder Pi-/VPN-Abnahme. Die neue [TBS-Workflow-Anpassung vom 09.10.](tbs-workflow-2026-10-09.md) hat eigene lokale Tests; ihre main-CI wird erst nach der Veröffentlichung bewertet.
+
 ## Aktueller CI-Zwischenstand vom 08.10.2026, 17:03 Europe/Berlin
 
 Geprüftes main: `001fb84ac566bb0f95e18d22439ee664fe0093e4` (Gast-APT-Konfigurationsrückfragen). Die tatsächlichen GitHub-Ergebnisse sind abgeschlossen / erfolgreich:

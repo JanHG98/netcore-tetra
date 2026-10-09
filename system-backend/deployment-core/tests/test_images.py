@@ -120,7 +120,7 @@ class ImageTests(unittest.TestCase):
                 req = image_request(password='do-not-publish')
                 app.profiles['TBS-02'] = req['profile']
                 atomic_write(app.state / 'tbs-site-template.toml', req['config'])
-                app.repo.resolve = lambda ref, log: 'b' * 40
+                app.repo.resolve_latest_main = lambda log: 'b' * 40
                 payload = {**req, 'profile': 'TBS-02', 'commit': 'c' * 40}
                 job = request_json(url + '/api/v1/images/build', payload)
                 self.assertNotIn('do-not-publish', json.dumps(job))

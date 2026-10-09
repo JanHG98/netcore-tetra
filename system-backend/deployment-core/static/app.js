@@ -2,6 +2,7 @@
 const $ = id => document.getElementById(id);
 let status = null, catalog = [], jobs = [], selectedJob = '', currentPlan = null, initialized = false, busy = false;
 let imageState = null, selectedImageJob = '', imageSubmitting = false;
+let savedProfiles = [], profileDeleting = '', profileRevision = 0;
 const labels = {queued:'Wartet',running:'Läuft',succeeded:'Erfolgreich',failed:'Fehlgeschlagen',interrupted:'Unterbrochen'};
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const short = value => value ? value.slice(0, 8) : 'Unbekannt';
@@ -10,7 +11,7 @@ async function api(path, data) {
   const options = data === undefined ? {} : {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)};
   const response = await fetch(path, options);
   const result = await response.json();
-  if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+  if (!response.ok) { const error = new Error(result.error || `HTTP ${response.status}`); error.status = response.status; error.result = result; throw error; }
   return result;
 }
 function guarded(fn) { return async event => { if (event) event.preventDefault(); try { await fn(event); } catch (error) { notice(error.message, true); } }; }
@@ -51,6 +52,18 @@ function renderJobs() {
   if (job) { $('log-title').textContent = `${labels[job.status]} · ${job.id.slice(0,8)}`; $('log').textContent = job.log || 'Auftrag wartet auf Ausführung.'; }
 }
 const gib = bytes => `${(bytes / 1024 ** 3).toLocaleString('de-DE', {maximumFractionDigits:1})} GiB`;
+function renderProfileList() {
+  $('profile-list').innerHTML = savedProfiles.length ? savedProfiles.map(p=>`<article class="saved-profile"><a href="/bootstrap.sh?profile=${encodeURIComponent(p.name)}" download="${esc(p.name)}-bootstrap.sh">${esc(p.name)} · Bootstrap ↓</a><button type="button" class="quiet profile-remove" data-remove-profile="${esc(p.name)}" ${profileDeleting?'disabled':''}>${profileDeleting===p.name?'Wird gelöscht …':'Profil löschen'}</button></article>`).join('') : '<div class="profile-empty"><p>Noch keine TBS-Profile gespeichert.</p><a href="#profile-form">TBS-Profil anlegen ↑</a></div>';
+}
+function renderProfiles(profiles) {
+  savedProfiles = profiles;
+  selectOptions($('target-profile'), [{name:''},...profiles], p=>p.name || 'Keins', p=>p.name);
+  selectOptions($('image-profile'), [{name:''},...profiles], p=>p.name || 'Profil auswählen', p=>p.name);
+  if (!$('image-profile').value) $('image-hostname').value = '';
+  else if (!$('image-hostname').value) $('image-hostname').value = $('image-profile').value.toLowerCase().replace(/[^a-z0-9-]/g,'-').slice(0,63).replace(/-+$/,'');
+  renderProfileList();
+  renderImages();
+}
 function renderImages() {
   const state = imageState;
   if (!state) return;
@@ -73,20 +86,18 @@ async function refresh() {
   if (busy) return;
   busy = true;
   try {
+    const requestedProfileRevision = profileRevision;
     const [s, j, profiles] = await Promise.all([api('/api/v1/status'),api('/api/v1/jobs'),api('/api/v1/profiles')]);
     status = s; jobs = j;
     document.body.classList.toggle('agent', s.role === 'agent');
     $('connection').textContent = '● Verbunden'; $('connection').className = 'badge ok';
     if (!initialized) {
       $('settings-ref').value = s.settings.ref; $('deploy-ref').value = s.settings.ref;
-      $('image-ref').value = s.settings.ref; $('image-controller').value = s.advertise_url || location.origin;
+      $('image-controller').value = s.advertise_url || location.origin;
       $('seeds').value = s.settings.seeds.join('\n'); $('bindings').value = Object.entries(s.settings.bindings).map(([k,v])=>`${k}=${v}`).join('\n'); initialized = true;
     }
     $('template-status').textContent = s.has_template ? 'Standort-Template vorhanden. RF- und SDR-Einstellungen werden daraus übernommen.' : 'Noch kein Standort-Template. Importiere eine geprüfte TBS-Konfiguration; sie wird nicht per Discovery verteilt.';
-    selectOptions($('target-profile'), [{name:''},...profiles], p=>p.name || 'Keins', p=>p.name);
-    selectOptions($('image-profile'), profiles, p=>p.name, p=>p.name);
-    if (!$('image-hostname').value && $('image-profile').value) $('image-hostname').value = $('image-profile').value.toLowerCase().replace(/[^a-z0-9-]/g,'-').slice(0,63).replace(/-+$/,'');
-    $('profile-list').innerHTML = profiles.map(p=>`<a href="/bootstrap.sh?profile=${encodeURIComponent(p.name)}" download="${esc(p.name)}-bootstrap.sh">${esc(p.name)} · Bootstrap ↓</a>`).join('');
+    if (requestedProfileRevision === profileRevision) renderProfiles(profiles);
     renderNodes(); renderJobs();
     if (s.role === 'controller') { imageState = await api('/api/v1/images'); renderImages(); }
   } catch (error) { $('connection').textContent = 'Verbindung verloren'; $('connection').className = 'badge bad'; notice(error.message,true); }
@@ -115,6 +126,40 @@ $('settings-form').onsubmit=guarded(async()=>{
   $('deploy-ref').value=$('settings-ref').value;notice('Einstellungen gespeichert.');await refresh();
 });
 $('template').onchange=guarded(async()=>{const file=$('template').files[0];if(file){await api('/api/v1/template',{toml:await file.text()});notice('Standort-Template gespeichert.');await refresh();}});
+$('profile-list').onclick=async event=>{
+  const button=event.target.closest('[data-remove-profile]');if(!button||profileDeleting)return;
+  event.preventDefault();
+  const name=button.dataset.removeProfile;
+  if(!confirm(`Das gespeicherte TBS-Profil „${name}“ löschen? Bereits installierte Basisstationen, Images und Buildprotokolle bleiben erhalten.`))return;
+  profileDeleting=name;renderProfileList();
+  try{
+    await api('/api/v1/profiles/remove',{name});
+    profileRevision++;
+    renderProfiles(savedProfiles.filter(p=>p.name!==name));
+    notice(`TBS-Profil „${name}“ gelöscht.`);
+    await refresh();
+  }catch(error){
+    const applied=error.result?.profile_change_applied;
+    const uncertain=applied===null||error.result?.durability_uncertain||!error.status||error.status>=500;
+    let message=error.message;
+    if(applied===true){
+      profileRevision++;
+      renderProfiles(savedProfiles.filter(p=>p.name!==name));
+      message=`TBS-Profil „${name}“ wurde gelöscht, aber die dauerhafte Speicherung konnte nicht bestätigt werden. ${error.message}`;
+    }
+    if(applied===true||uncertain){
+      if(applied!==true)profileRevision++;
+      try{
+        const revision=profileRevision;
+        const profiles=await api('/api/v1/profiles');
+        if(revision===profileRevision)renderProfiles(profiles);
+        await refresh();
+      }catch(refreshError){message+=` Der aktuelle Profilstand konnte nicht geladen werden: ${refreshError.message}`;}
+    }
+    notice(message,true);
+  }
+  finally{profileDeleting='';renderProfileList();}
+};
 $('profile-form').onsubmit=guarded(async()=>{const data=Object.fromEntries(new FormData($('profile-form')));for(const k of ['mcc','mnc','issi','la','cc'])data[k]=Number(data[k]);await api('/api/v1/profiles',data);notice('TBS-Profil angelegt. Du kannst jetzt ein Pi-Image erstellen oder den Bootstrap verwenden.');await refresh();$('image-profile').value=data.name;$('image-profile').dispatchEvent(new Event('change'));});
 $('image-profile').onchange=()=>{$('image-hostname').value=$('image-profile').value.toLowerCase().replace(/[^a-z0-9-]/g,'-').slice(0,63).replace(/-+$/,'');renderImages();};
 $('image-job-list').onclick=event=>{const button=event.target.closest('[data-image-job]');if(button){selectedImageJob=button.dataset.imageJob;renderImages();}};

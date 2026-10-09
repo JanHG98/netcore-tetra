@@ -1,6 +1,10 @@
 # Z01.4 – VM119 Imagebuilder-Vorprüfung
 
-Stand: 2026-10-08. CT150-Readiness/Recovery und CT136-TCP-/Vorschau-/NAS-Erfolgspfad einschließlich isoliertem Fehlermount sind als Betreiberbefunde dokumentiert. Die tatsächliche Vorprüfung auf `VM-H-DEPLOY-01`, VM119, `10.0.1.131`, besteht. Der dritte Betreiberbuild passiert nach DNS-/Conffile-Korrektur die bisherige Rückfrage und erreicht Kernel-Initramfs-Erzeugung. Dort scheitert die Rootgeräteerkennung der Buildumgebung. Eigene Initramfs-Treiberauswahl `MODULES=most` vor Gast-APT wird ergänzt; vollständiger ARM64-Build, Artefakte und physische Abnahme bleiben offen. Der gesicherte Stand von17:03 bleibt unten ausdrücklich datierte Historie.
+Stand: 2026-10-09. CT150-Readiness/Recovery und CT136-TCP-/Vorschau-/NAS-Erfolgspfad einschließlich isoliertem Fehlermount sind als Betreiberbefunde dokumentiert. Die tatsächliche Vorprüfung auf `VM-H-DEPLOY-01`, VM119, `10.0.1.131`, besteht. Der dritte Betreiberbuild passiert nach DNS-/Conffile-Korrektur die bisherige Rückfrage und erreicht Kernel-Initramfs-Erzeugung. Dort scheitert die Rootgeräteerkennung der Buildumgebung. Eigene Initramfs-Treiberauswahl `MODULES=most` vor Gast-APT ist auf main1595259 / CI geprüft; vollständiger ARM64-Build, Artefakte und physische Abnahme bleiben offen. Der gesicherte Stand von17:03 bleibt unten ausdrücklich datierte Historie.
+
+## Aktuelle TBS-Bedienung vom 09.10.2026
+
+[Workflow-Update und Prüfgrenzen](tbs-workflow-2026-10-09.md): gespeicherte Profile lassen sich löschen, sofern kein aktiver oder ungeklärter Auftrag sie verwendet. Neue Images verwenden automatisch frisch abgerufenes `origin/main`; eine Git-Referenzeingabe entfällt. Die ältere Ref-Eingabe in den unten datierten Build-/Hotfixanweisungen beschreibt die damalige Oberfläche. Der neue gezielte Helfer übernimmt sieben Controller-/Worker-/UI-Dateien; das Gastrezept bleibt separat. Die tatsächliche Installation auf VM119 ist noch nicht bestätigt.
 
 ## Operatorblock
 
@@ -72,7 +76,7 @@ PY
 - Installiertes `image_build.preflight()` prüft root, erforderliche Buildwerkzeuge, ARM64-binfmt mit F-Flag und mindestens 32 GiB frei. Die Prüfung benötigt keinen Rust-Compiler auf der VM; Gast-Buildwerkzeuge werden innerhalb des ARM64-Images eingerichtet.
 - Cacheanzeige bestätigt ausschließlich Dateiexistenz. Der Build prüft die feste OS-Basis-SHA-256 und lädt bei Bedarf automatisch das in `image_spec.BASE` definierte Raspberry-Pi-OS-ARM64-Basisimage.
 - Den Fingerprint von installiertem `jobs.py` mit dem gemeinsamen Quellstand vergleichen: Der zuletzt bekannte VM119-Rollout war c45a2ec; die später korrigierte SQLite-Auftragsverwaltung wurde in dieser Sitzung bislang auf CT150 installiert. Der Fingerprint ermöglicht die Zuordnung vor dem langen Build.
-- Danach vorhandenes Profil, vollständigen gemeinsamen Quellcommit, Hostname und Betriebssystem-Zugang (SSH-Public-Key oder Passwort) wählen; passendes HAT-Overlay festlegen. Für die VPN-Abnahme gültiges Inline-OpenVPN-Profil und vertraute SSIDs lokal angeben. Zugangsdaten im Betrieb eingeben, nicht im Repo ablegen.
+- Nach dem Workflow-Update vorhandenes Profil, Hostname und Betriebssystem-Zugang (SSH-Public-Key oder Passwort) wählen; passendes HAT-Overlay festlegen. Für die VPN-Abnahme gültiges Inline-OpenVPN-Profil und vertraute SSIDs lokal angeben. Zugangsdaten im Betrieb eingeben, nicht im Repo ablegen.
 - Ein voller ARM64-NetCore-Build erzeugt ein Artefakt samt Manifest/Prüfsumme. Die physische Pi-/SXceiver- und VPN-Abnahme folgt anschließend; `boot_tested=false` bleibt bis zur tatsächlichen Hardwareprüfung maßgeblich.
 
 Primärquellen: `system-backend/deployment-core/main.py`, `common.py`, `image_worker.py`, `image_spec.py`, `image_build.py`. Der Operatorblock ist gegen diese Quellschnittstellen geprüft und syntaktisch validiert. Die tatsächliche VM119-Vorprüfung besteht gemäß nachfolgendem Betreiberbefund.
@@ -100,7 +104,7 @@ Lokale Helperprüfung: Syntax und sechs Testmethoden mit elf isolierten Szenarie
 
 ## Erster vollständiger Build
 
-Vorhandenes Profil SRV-M-TBS-01 ist die vorgeschlagene erste Auswahl; die anderen Profile bleiben auswählbar. Einen eindeutigen Testhostname und einen aktuellen vollständigen Quell-SHA pro Build angeben, der die SQLite-Korrektur enthält. Dafür muss der globale Controllerref c45a2ec nicht geändert werden. SSH-Public-Key oder Betriebssystem-Passwort sowie gegebenenfalls WLAN-/OpenVPN-Daten lokal eingeben; keine Geheimnisse in Chat, Repo oder Diagnoseausgabe übernehmen.
+Vorhandenes Profil SRV-M-TBS-01 ist die vorgeschlagene erste Auswahl; die anderen Profile bleiben auswählbar. Einen eindeutigen Testhostname angeben. Nach dem Workflow-Update holt der Controller beim Absenden den neuesten Commit von `origin/main` und hält ihn für diesen Build fest. Dafür muss der globale Controllerref c45a2ec nicht geändert werden. SSH-Public-Key oder Betriebssystem-Passwort sowie gegebenenfalls WLAN-/OpenVPN-Daten lokal eingeben; keine Geheimnisse in Chat, Repo oder Diagnoseausgabe übernehmen.
 
 Den Build genau einmal über `/api/v1/images/build` oder die Imagebuilder-WebUI absenden. Bei unklarer Antwort anhand der bestehenden Builds prüfen und den POST nicht wiederholen. Imagejobs werden über `/api/v1/images` unter `jobs[]` verfolgt; Controller-Job-URLs gehören zu einer anderen Auftragsdatenbank. `job.id` und `request.build_id` sind unterschiedliche IDs. Nach `succeeded` ist `request.build_id` beziehungsweise `result.id` die Artefakt-ID; Image, SHA-256 und Manifest sind unter `/api/v1/images/<Artefakt-ID>/image`, `/sha256`, `/manifest` abrufbar. Manifestcommit und Dateiprüfsumme vergleichen. Die anschließende physische Pi-/SXceiver- und VPN-Abnahme bleibt getrennt; `boot_tested=false` ist bis dahin korrekt.
 
@@ -111,7 +115,7 @@ Nach bestandener Updateprüfung `http://10.0.1.131:8320` öffnen, Abschnitt **Vo
 | Feld | Erste Auswahl |
 | --- | --- |
 | TBS-Profil | SRV-M-TBS-01 |
-| Branch, Tag oder Commit | Vollständiger aktueller Quell-SHA aus dem Operatorauftrag; gilt nur für diesen Build |
+| Quellstand | Automatisch neuester Commit von origin/main; keine Eingabe. Der Auftrag und das Manifest halten den vollständigen SHA fest. |
 | Adresse dieser VM | http://10.0.1.131:8320 |
 | Hostname des Pi | z014-pi-01 |
 | Benutzer auf dem Pi / Zeitzone | jan / Europe/Berlin |
@@ -189,3 +193,7 @@ Danach einen neuen Build mit demselben gewünschten Profil und dem vollständige
 Die lokale Regression führt den echten Rezeptanfang im isolierten Testverzeichnis aus und prüft die wirksame Initramfs-Konfiguration vor den Paketaufrufen, Konfigurationserhalt, Rechte und Fehlerabbruch. Externe APT-Aufrufe sind isoliert. Eine tatsächliche ARM64-Initramfs wird in dieser Umgebung nicht erzeugt; der vollständige Betreiberbuild und der physische Pi-/SXceiver-/VPN-Test bleiben die nächsten Nachweise.
 
 Validierung des finalen Initramfs-Korrekturstands: Deployment-Core68 Tests /67 bestanden /1 erwarteter Unix-Socket-Skip; VM119-Operator26/26 bestanden; sechs betroffene Gast-Pakettests bestanden; Bash-Syntax und unabhängiger Review ohne Blocker. [Gastregression](../../../system-backend/deployment-core/tests/test_build_guest_packages.py), [Update-/Rückwegtests](../../../tests/integration/test_vm119_image_initramfs_update.py). Die neue main-CI war beim Erstellen des Belegs noch nicht beobachtet.
+
+## Bestätigte Initramfs-CI / weiterhin offener Betreiberbuild
+
+Am Quellcommit `1595259a2a76abfc9eff08842409156473b585a7` sind beide main-Workflows erfolgreich abgeschlossen: [Deployment/Discovery](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380374) und [Deployment-/Quellgate](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380390). Der oben datierte Hinweis auf damals noch nicht beobachtete CI bleibt historisch. Diese Ergebnisse bestätigen keinen vollständigen ARM64-NetCore-Build oder physischen Pi-Boot. Die Anlagenübernahme der neuen TBS-Bedienung und des Gastrezepts wird jeweils durch die Betreiber-Ausgabe bestätigt.

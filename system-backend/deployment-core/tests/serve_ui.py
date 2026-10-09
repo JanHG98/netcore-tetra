@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory() as state:
     apps=[];servers=[]
     for name,role in [('test-controller','controller'),('test-gateway','agent')]:
         cfg=load_config(ROOT/'config/agent.example.toml')
-        cfg.update(node_id=name,role=role,state_dir=state+'/'+name)
+        cfg.update(node_id=name,role=role,state_dir=state+'/'+name,ref='fixture-deployment-ref')
         app=App(cfg)
         server=Server(('127.0.0.1',0),handler(app))
         cfg['port']=server.server_address[1]
@@ -43,6 +43,10 @@ with tempfile.TemporaryDirectory() as state:
     agent.local=[{'name':'node-gateway','port':8080,'ready':True,'commit':'a'*40}]
     agent.jobs.execute=lambda data,log:(log('Browser integration: simulated installer'),{'commit':data.get('commit','')})[1]
     controller.repo.resolve=lambda ref,log:'b'*40
+    def resolve_image_main(log):
+        log('Browser integration: fresh origin/main selected')
+        return 'b'*40
+    controller.repo.resolve_latest_main=resolve_image_main
     controller.desired={'ref':'main','commit':'b'*40}
     controller.discovery.accept(f'http://127.0.0.1:{servers[1].server_address[1]}',agent.manifest())
     print(f'http://127.0.0.1:{servers[0].server_address[1]}',flush=True)

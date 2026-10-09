@@ -29,7 +29,7 @@ Installationen und Neustarts auslösen. GitHub und Paketquellen werden weiterhin
   keine Abhängigkeit von TBS, Node Gateway oder einem anderen Funkdienst.
 - Rollenbasierte Auflösung der bestehenden Backend-Verbindungen. Node Gateway
   und TBS-Dashboard werden trotz gemeinsamem Port 8080 nicht verwechselt.
-- TBS-Assistent: Name, MCC, MNC, ISSI, LA und CC. RF-/SDR-Einstellungen aus einer
+- TBS-Assistent: Profile anlegen und löschen; Name, MCC, MNC, ISSI, LA und CC. RF-/SDR-Einstellungen aus einer
   ausdrücklich importierten Standort-Konfiguration; Bootstrap für vorhandenes
   Debian/Raspberry Pi OS 64 Bit mit installiertem SDR-Treiber.
 - Pi-Images mit **vorinstalliertem** ARM64-NetCore, SoapySX, Codec und Discovery;
@@ -89,8 +89,9 @@ sudo bash system-backend/deployment-core/install/install-vm.sh
 ## Pi-Image erstellen
 
 1. Eine geprüfte **Standort-TOML importieren** und das TBS-Profil anlegen.
-2. Unter **Pi-Images** Profil und Git-Referenz wählen. Der Build löst die Referenz
-   auf einen vollständigen Commit auf. Dieser gilt für das gesamte Image.
+2. Unter **Pi-Images** das Profil wählen. Beim Start holt der Controller den
+   neuesten Stand von `origin/main` und pinnt dessen vollständigen Commit für
+   das gesamte Image. Eine Branch-, Tag- oder Commit-Eingabe ist nicht erforderlich.
 3. Hostname, Benutzer (Standard `jan`), Zeitzone (Standard `Europe/Berlin`) und
    SSH-Public-Key oder OS-Passwort setzen. Der Benutzer bekommt `sudo`; das ist
    der Pi-Zugang, keine Anmeldung an der weiterhin offenen WebUI.
@@ -114,6 +115,18 @@ Paketversionen, Rust-Version, Quellcommits und Prüfsumme. APT-Paketquellen und 
 Rust-Toolchain sind nicht auf einen Snapshot eingefroren: **kein Versprechen
 bitidentischer Neubauten**. Die lokale Softwarebasis wird nach OS-Rezept,
 Quellcommit und Builderdateien wiederverwendet.
+
+Unter **TBS-Assistent** lässt sich ein gespeichertes Profil über **Profil löschen**
+nach Bestätigung entfernen. Ein wartender, laufender oder noch ungeklärter
+Deployment-/Imageauftrag mit diesem Profil verhindert die Löschung. Bereits
+installierte Basisstationen, fertige Images und Auftragsprotokolle bleiben erhalten.
+Die Dropdowns werden nach der Löschung aktualisiert; ein gelöschtes Profil kann
+nicht mehr für einen neuen Build ausgewählt werden.
+
+Der automatische Git-Abruf gilt für neue Imageaufträge. Ein laufender Build
+behält seinen gepinnten Commit; der unter Einstellungen gespeicherte Deployment-Ref
+bleibt unabhängig davon. Scheitert der Abruf von `main`, wird kein Imageauftrag
+angelegt und kein alter Cache-Commit als Ersatz verwendet.
 
 Die Asterisk-Funktion in der TBS ist enthalten; ein zentraler SIP-Switch wird
 **nicht auf dem Pi installiert**. Ein zusätzlicher lokaler Asterisk-/SIP-Fallback
@@ -461,10 +474,19 @@ Lesend: `GET /health/live`, `/health/ready`, `/metrics`, `/openapi.json`, `/api/
 `/api/v1/peers`, `/api/v1/catalog`, `/api/v1/jobs`, `/api/v1/jobs/<id>`.
 JSON-POST: `/api/v1/discovery/scan`, `/api/v1/settings`; Controller zusätzlich
 `/api/v1/check`, `/api/v1/plan`, `/api/v1/deploy`, `/api/v1/template`,
-`/api/v1/profiles`; Agent: `/api/v1/jobs`.
+`/api/v1/profiles`, `/api/v1/profiles/remove` mit `{ "name": "TBS-Profilname" }`;
+Agent: `/api/v1/jobs`. Löschen liefert bei unbekanntem Profil 404, bei belegtem Profil
+oder nicht prüfbarem Workerstatus 409. Der Löschschutz prüft alle Aufträge und ist
+nicht auf die begrenzte öffentliche Auftragsliste beschränkt.
+Scheitert die Persistenzbestätigung nach dem Dateiaustausch, liefert die API 503
+mit `durability_uncertain` und `profile_change_applied`; die Oberfläche gleicht
+den tatsächlich gespeicherten Stand ab und zeigt die Unsicherheit an.
 Imagebuilder: `GET /api/v1/images`, `GET /api/v1/images/<id>/{image,sha256,manifest}`,
 `POST /api/v1/images/build`, `POST /api/v1/images/remove`. Downloads unterstützen
 einzelne HTTP-Byte-Ranges. Image-Aufträge sind von Deployment-Aufträgen unabhängig.
+`images/build` verwendet immer frisch abgerufenes `origin/main`; ein mitgesendetes
+`ref` beeinflusst diese Auswahl nicht. Der Auftrag und das Manifest enthalten den
+aufgelösten vollständigen Commit.
 
 ```bash
 python3 -m unittest discover -s system-backend/deployment-core/tests -v

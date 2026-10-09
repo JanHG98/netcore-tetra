@@ -142,6 +142,17 @@ class Repository:
                     return p.stdout.strip()
         raise ValueError('Branch, Tag oder Commit nicht gefunden')
 
+    def resolve_latest_main(self, log):
+        """Fetch first, then pin exactly the remote main branch without tag fallback."""
+        with self.guard():
+            self._prepare(log)
+            result = subprocess.run(
+                ['git', 'rev-parse', '--verify', 'refs/remotes/origin/main^{commit}'],
+                cwd=self.path, capture_output=True, text=True, timeout=10)
+            if result.returncode == 0 and SHA.fullmatch(result.stdout.strip()):
+                return result.stdout.strip()
+        raise ValueError('Aktueller main-Branch im Repository nicht gefunden; kein Image-Auftrag angelegt')
+
     def checkout(self, sha, log):
         if not SHA.fullmatch(sha):
             raise ValueError('Deployment requires a full commit SHA')
