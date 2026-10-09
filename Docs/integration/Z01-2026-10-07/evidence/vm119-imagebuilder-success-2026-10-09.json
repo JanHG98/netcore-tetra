@@ -24,7 +24,11 @@
     "result_error": "Command exited with 1: unshare",
     "inner_error": "subprocess.TimeoutExpired",
     "inner_command": [
-      "sfdisk", "--no-reread", "--no-tell-kernel", "-N", "2",
+      "sfdisk",
+      "--no-reread",
+      "--no-tell-kernel",
+      "-N",
+      "2",
       "/var/lib/netcore-image-builder/work/66e4156625f5425e9cbd04e77bb40003/image.img"
     ],
     "timeout_seconds": 30,
@@ -97,9 +101,60 @@
   },
   "original_recovery_helper_ci": {
     "source_commit": "f4e1215c7ffc2ee418b261bb7f98e14bdda44b32",
-    "source_gate": {"run_id": 37905773577, "conclusion": "success"},
-    "deployment_discovery": {"run_id": 37905773628, "conclusion": "success"},
+    "source_gate": {
+      "run_id": 37905773577,
+      "conclusion": "success"
+    },
+    "deployment_discovery": {
+      "run_id": 37905773628,
+      "conclusion": "success"
+    },
     "diagnostic_patch_ci_not_yet_observed": true
   },
-  "next_step": "Read-only receipt and SQLite error diagnosis on VM119; do not send another build POST while acceptance is unknown"
+  "next_step": "Read VM119 loop/process/kernel/block-I/O state and current Proxmox VM119 disk configuration; preserve receipt and recipe/cache; no further recovery POST before platform diagnosis",
+  "subsequent_operator_recovery_diagnosis": {
+    "receipt_phase": "submit_started",
+    "receipt_job_id_not_recorded": true,
+    "sqlite_readonly_schema_and_job_reads_succeeded": true,
+    "sqlite_version": "3.46.1",
+    "jobs_count_after_attempt": 7,
+    "matching_fingerprint_job_ids": [
+      "4a99c6ec54e74264811d86817a568d47"
+    ],
+    "post_outcome_resolved": true,
+    "job_id": "4a99c6ec54e74264811d86817a568d47",
+    "status": "failed",
+    "build_id": "7ec061ca1ae24338bdc86a22030957cb",
+    "commit": "1595259a2a76abfc9eff08842409156473b585a7",
+    "result_error": "Command exited with 1: unshare",
+    "cache_hit_log": "Vorbereitete Softwarebasis aus Cache: 7699808215f7",
+    "cache_copy_command_succeeded": true,
+    "inner_error": "subprocess.TimeoutExpired",
+    "inner_command": [
+      "losetup",
+      "--find",
+      "--show",
+      "--partscan",
+      "/var/lib/netcore-image-builder/work/7ec061ca1ae24338bdc86a22030957cb/image.img"
+    ],
+    "timeout_seconds": 30,
+    "phase": "loop_attachment_before_station_personalization",
+    "arm64_software_recompilation_not_started": true,
+    "station_personalization_not_executed": true,
+    "new_compression_and_artifact_publication_not_reached": true,
+    "original_sqlite_error_cause_unknown": true,
+    "loop_timeout_underlying_cause_unknown": true,
+    "receipt_not_changed_by_readonly_diagnosis": true
+  },
+  "sqlite_diagnostic_patch_ci": {
+    "source_commit": "d9938723d5a320718e36db9b739b5ba6a9fcb11f",
+    "source_gate": {
+      "run_id": 37907594111,
+      "conclusion": "success"
+    },
+    "deployment_discovery": {
+      "run_id": 37907594176,
+      "conclusion": "success"
+    }
+  }
 }
