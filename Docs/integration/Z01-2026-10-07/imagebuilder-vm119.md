@@ -1,6 +1,16 @@
-# Z01.4 – VM119 Imagebuilder-Vorprüfung
+# Z01.4 – VM119 Imagebuilder: Vorprüfung und Buildabnahme
 
 Stand: 2026-10-09. CT150-Readiness/Recovery und CT136-TCP-/Vorschau-/NAS-Erfolgspfad einschließlich isoliertem Fehlermount sind als Betreiberbefunde dokumentiert. Die tatsächliche Vorprüfung auf `VM-H-DEPLOY-01`, VM119, `10.0.1.131`, besteht. Der dritte Betreiberbuild passiert nach DNS-/Conffile-Korrektur die bisherige Rückfrage und erreicht Kernel-Initramfs-Erzeugung. Dort scheitert die Rootgeräteerkennung der Buildumgebung. Eigene Initramfs-Treiberauswahl `MODULES=most` vor Gast-APT ist auf main1595259 / CI geprüft; vollständiger ARM64-Build, Artefakte und physische Abnahme bleiben offen. Der gesicherte Stand von17:03 bleibt unten ausdrücklich datierte Historie.
+
+## Betreibermeldung: erfolgreiches Image, fehlende Downloadanzeige
+
+Am09.10.2026 meldet der Nutzer: Der gestrige Build war erfolgreich und hat eine `.img.xz` erzeugt. Nach dem aktuellen Update fehlt die Downloadfunktion in der WebUI. Der neue Beitrag enthält keine Job-ID, API-Antwort, Manifest- oder Prüfsummendaten. Die folgenden älteren Buildabbruchabschnitte bleiben datierte Historie; sie sind nicht der aktuelle Gesamtstand.
+
+Am geprüften TBS-Quellstand16d0d1f sind die Downloadlinks und GET-Routen weiterhin enthalten. Der neue Updatehelfer übernimmt keine Artefaktdateien und löscht keine Images. Ein tatsächlicher lokaler Browserfall mit fertigem Artefakt / Manifest / SQLite-Auftrag, leerer Profilliste und ohne Build-POST zeigt eine Downloadkarte, liefert die Testdatei bytegenau und behält die Karte nach Refresh. Ein genereller Verlust der Downloadfunktion durch die Profiländerung wurde damit nicht reproduziert.
+
+Nächster Schritt auf VM119: `/api/v1/images`, Worker-Unit und Dateien unter `/var/lib/netcore-image-builder/artifacts` ausschließlich lesend prüfen. Ein gültiges Artefakt benötigt `artifacts/<Build-ID>/image.img.xz` und ein `manifest.json` mit passender ID. Eine Datei unter work/cache allein erscheint nicht in der Downloadliste. Die neue Prüfung sämtlicher Auftragszeilen kann bei fehlerhaften alten Daten die gesamte Statusantwort verhindern; das ist isoliert reproduziert, noch keine belegte Anlagenursache. Die Managementadresse war aus der Assistenzumgebung nicht erreichbar.
+
+Keinen neuen Build, Cachelöschung oder Dienstneustart zur Diagnose auslösen. Zuerst das bestehende Image wieder in der Downloadanzeige verfügbar machen und anschließend Manifest / SHA-256 zuordnen. Die Meldung ist ein neuer Buildfortschritt; Download- und physische Pi-/SXceiver-/VPN-Abnahme bleiben offen.
 
 ## Aktuelle TBS-Bedienung vom 09.10.2026
 
