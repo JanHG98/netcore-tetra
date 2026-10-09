@@ -8,7 +8,7 @@
 | Geprüfter Ausgangsstand | Z01: `main@dae9363062a1442664a083e1fc32e6944b3be9a6`, historische Quelle `bbf039729b9b05f8d623b11195ca24a124f68d16`; Integration `67b2f0d6e2fbcbf7013ee9b0dae9b2a25c2d9315` auf `feature/z01-deployment-consolidation` |
 | Ergänzende Gruppenprüfung | `main@07609fb56f412ebe6e36655323e8fc6359cf90ec`, 2026-10-05; statischer Befund für Z02.5 |
 | Planungsstand | Reihenfolge vom Nutzer zur zentralen Ablage freigegeben; technische Aufgaben bleiben offen, soweit kein eigener Nachweis vorliegt |
-| Aktueller erster Schritt | **Z01.4: bestätigte VM119-Rootdisk-I/O-Blockade anhand des live geöffneten QEMU-Datenträgers und des Proxmox-/ZFS-Zustands zuordnen und beheben; danach Cache-Recovery / Download und Pi-/SXceiver-/VPN abnehmen** |
+| Aktueller erster Schritt | **Z01.4: VM119-Schreib-I/O-Blockade anhand von ZFS-Latenz / Warteschlangen und QEMU-Threadzustand zuordnen und beheben; lokales Live-Backing bestätigt, danach Cache-Recovery / Download und Pi-/SXceiver-/VPN abnehmen** |
 | Letzter Betreiber-Buildbefund | Am2026-10-09 technisch bestätigt: vollständiger Build an1595259, 2.043.954.184 Bytes / SHA-256 / Abschlussmarker; fertiges Artefakt aktuell nicht gefunden, Softwarecache erhalten. Neuer main-Build endet im sfdisk-Timeout30s. [Aktueller Befund / Fortsetzung](Docs/integration/Z01-2026-10-07/imagebuilder-vm119.md#betreibermeldung-erfolgreiches-image-fehlende-downloadanzeige) |
 | Gesicherter Zwischenstand | 2026-10-08, 17:03 Europe/Berlin; geprüftes `main@001fb84ac566bb0f95e18d22439ee664fe0093e4`; [Fortsetzungsstand](Docs/integration/Z01-2026-10-07/checkpoint-2026-10-08.md) |
 | Zeitplanung | Arbeitsblöcke und Abnahmebedingungen; keine zugesagten Kalendertermine |
@@ -18,6 +18,8 @@
 ## 1. Aktueller nächster Schritt
 
 **Z01.4 – Installation, Upgrade und Recovery auf dem gemeinsamen Stand abnehmen.**
+
+**Aktueller Live-Hostbefund vom 09.10.2026:** QEMU verwendet `scsi0` tatsächlich als raw `/dev/zvol/VirtualMachines_OSData/vm-119-disk-0`, Cache `writeback, direct`; keine aktiven Blockjobs. Beide ZFS-Pools sind ONLINE ohne gemeldete Datenfehler; VM-Pool40% belegt /530GiB frei, rpool15% /393GiB frei. Der Host zeigt trotzdem deutliches I/O-Warten: PSI some73,55%, full9,89% über10s; zwei kurze VM-Pool-Samples zeigen174/200 Schreiboperationen/s bei7,79/9,15MiB/s. Fehlerfreiheit / freier Platz belegen keine niedrige Latenz. Als Nächstes ZFS-Latenz und Warteschlangen, QEMU-Threadzustand sowie Host-Kernelmeldungen lesen; ein reiner Gast-Kernelbug ist noch nicht bewiesen. [Live-Speichernachweis](Docs/integration/Z01-2026-10-07/imagebuilder-vm119.md#live-qemu-backing-und-host-io-warten).
 
 **Aktueller Plattformbefund vom 09.10.2026, 11:33 Europe/Berlin:** Die angehängte Betreiber-Ausgabe belegt eine Rootdisk-I/O-Blockade unter Kernel7.0.0-38: ext4-jbd2 wartet in `wait_on_buffer`, journald in `jbd2_log_wait_commit`; I/O-Pressure full beträgt91,54% im10s-Fenster. Der historische losetup-Hungtask zeigt `wbt_wait` → ext4-Schreibpfad → `vfs_fsync` → `loop_configure`, mehr als122s blockiert. Die aktuelle Proxmox-Konfiguration nennt `scsi0=VirtualMachines_OSData:vm-119-disk-0`; die frühere Media-Datei steht als `unused0`. Als Nächstes live QEMU-Backing / Blockjobs, ZFS-Zustand / Kapazität und Host-Kernelmeldungen lesen. Der konkrete Host-/Kernelfehler und seine Behebung sind noch nicht belegt; kein weiterer Imageauftrag, Cache / Recoverybeleg erhalten. [Plattformnachweis](Docs/integration/Z01-2026-10-07/imagebuilder-vm119.md#bestaetigte-rootdisk-io-blockade-und-neue-plattenkonfiguration).
 

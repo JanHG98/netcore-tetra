@@ -111,7 +111,7 @@
     },
     "diagnostic_patch_ci_not_yet_observed": true
   },
-  "next_step": "Read live QEMU block backing/block jobs and host ZFS health/capacity/kernel messages; guest root-disk I/O stall is confirmed, specific cause and correction remain open; preserve recovery receipt and cache",
+  "next_step": "Measure local VM-pool latency/queue depth and live QEMU thread wait states plus host kernel errors; active NAS backing and active disk-move jobs are excluded for this sample, but host I/O contention remains significant",
   "subsequent_operator_recovery_diagnosis": {
     "receipt_phase": "submit_started",
     "receipt_job_id_not_recorded": true,
@@ -222,5 +222,78 @@
       "unused0": "Media:119/vm-119-disk-0.qcow2",
       "live_qemu_backing_not_yet_observed": true
     }
+  },
+  "subsequent_operator_live_host_storage_diagnosis": {
+    "date": "2026-10-09",
+    "source": "operator_pasted_live_qemu_monitor_zpool_and_host_io_pressure",
+    "live_scsi0": {
+      "path": "/dev/zvol/VirtualMachines_OSData/vm-119-disk-0",
+      "format": "raw",
+      "cache_mode": "writeback, direct",
+      "detect_zeroes": "on",
+      "local_zfs_backing_confirmed": true
+    },
+    "active_block_jobs": false,
+    "zfs_pools": [
+      {
+        "name": "VirtualMachines_OSData",
+        "state": "ONLINE",
+        "read_errors": 0,
+        "write_errors": 0,
+        "checksum_errors": 0,
+        "known_data_errors": false,
+        "size": "888G",
+        "allocated": "358G",
+        "free": "530G",
+        "capacity_percent": 40,
+        "fragmentation_percent": 46,
+        "vdev": "mirror_of_two_KIOXIA_EXCERIA_SATA_SSDS"
+      },
+      {
+        "name": "rpool",
+        "state": "ONLINE",
+        "read_errors": 0,
+        "write_errors": 0,
+        "checksum_errors": 0,
+        "known_data_errors": false,
+        "size": "464G",
+        "allocated": "71.4G",
+        "free": "393G",
+        "capacity_percent": 15,
+        "fragmentation_percent": 1,
+        "vdev": "mirror_of_two_NVME_devices"
+      }
+    ],
+    "vm_pool_live_samples": [
+      {
+        "read_ops_per_second": 2,
+        "write_ops_per_second": 174,
+        "read_bandwidth": "16.0K",
+        "write_bandwidth": "7.79M"
+      },
+      {
+        "read_ops_per_second": 1,
+        "write_ops_per_second": 200,
+        "read_bandwidth": "7.99K",
+        "write_bandwidth": "9.15M"
+      }
+    ],
+    "host_io_pressure": {
+      "some": {
+        "avg10": 73.55,
+        "avg60": 73.65,
+        "avg300": 65.88,
+        "total": 111328639792
+      },
+      "full": {
+        "avg10": 9.89,
+        "avg60": 10.35,
+        "avg300": 7.67,
+        "total": 62689737981
+      }
+    },
+    "host_latency_and_queue_depth_not_measured": true,
+    "pure_guest_kernel_bug_not_proven": true,
+    "no_recovery_or_storage_modification_performed_by_these_queries": true
   }
 }
