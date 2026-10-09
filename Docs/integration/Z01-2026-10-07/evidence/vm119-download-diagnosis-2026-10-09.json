@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-09",
+  "evidence_type": "operator_pasted_read_only_diagnostic",
+  "host": "VM-H-DEPLOY-01",
+  "vmid": 119,
+  "image_api": {
+    "url": "http://127.0.0.1:8320/api/v1/images",
+    "available": true,
+    "error": null,
+    "artifacts": [],
+    "jobs_not_in_selected_output": true
+  },
+  "worker": {
+    "unit": "netcore-image-builder.service",
+    "active_state": "active",
+    "exec_start": "/usr/bin/python3 /usr/local/lib/netcore-deployment/image_worker.py",
+    "start_time_reported": "Fri 2026-10-09 09:49:45 CEST",
+    "pid_reported": 5798,
+    "explicit_state_argument": false,
+    "source_default_state": "/var/lib/netcore-image-builder",
+    "installed_source_fingerprint_not_provided": true
+  },
+  "artifact_scan": {
+    "root": "/var/lib/netcore-image-builder/artifacts",
+    "pattern": "*/*",
+    "selection": "Path.is_file()",
+    "files_printed": 0,
+    "directory_existence_not_separately_checked": true
+  },
+  "prior_operator_report": {
+    "build_date_reported": "2026-10-08",
+    "successful_build_and_img_xz_reported": true,
+    "job_id_not_provided": true,
+    "manifest_not_provided": true,
+    "sha256_not_provided": true
+  },
+  "assessment": {
+    "worker_status_response_succeeded": true,
+    "no_artifacts_currently_listed": true,
+    "no_terminal_file_loss_proven": true,
+    "exact_build_commit_not_verified": true,
+    "physical_pi_boot_not_verified": true
+  },
+  "next_read_only_checks": [
+    "Image job statuses, request.build_id, result.id, filename and final log markers",
+    "Resolved builder state path and mount source",
+    "Shallow file metadata in artifacts, cache and work"
+  ],
+  "no_build_or_restart_requested_for_diagnosis": true
+}
