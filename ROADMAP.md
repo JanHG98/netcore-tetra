@@ -8,7 +8,7 @@
 | Geprüfter Ausgangsstand | Z01: `main@dae9363062a1442664a083e1fc32e6944b3be9a6`, historische Quelle `bbf039729b9b05f8d623b11195ca24a124f68d16`; Integration `67b2f0d6e2fbcbf7013ee9b0dae9b2a25c2d9315` auf `feature/z01-deployment-consolidation` |
 | Ergänzende Gruppenprüfung | `main@07609fb56f412ebe6e36655323e8fc6359cf90ec`, 2026-10-05; statischer Befund für Z02.5 |
 | Planungsstand | Reihenfolge vom Nutzer zur zentralen Ablage freigegeben; technische Aufgaben bleiben offen, soweit kein eigener Nachweis vorliegt |
-| Aktueller erster Schritt | **Z01.4: VM119-NVMe-Wechsel samt Live-Backing bestanden; Gast-Schreibzugriff prüfen, Stationsimage einmalig aus dem bestätigten Cache wiederherstellen und Download / Pi-/SXceiver-/VPN abnehmen** |
+| Aktueller erster Schritt | **Z01.4: NVMe-Wechsel und Gast-fsync bestanden; angenommene Cache-Recovery 4ebe40ed läuft laut Betreiber im UI. Ergebnis / Download prüfen, danach Pi-/SXceiver-/VPN abnehmen** |
 | Letzter Betreiber-Buildbefund | Am2026-10-09 technisch bestätigt: vollständiger Build an1595259, 2.043.954.184 Bytes / SHA-256 / Abschlussmarker; fertiges Artefakt aktuell nicht gefunden, Softwarecache erhalten. Neuer main-Build endet im sfdisk-Timeout30s. [Aktueller Befund / Fortsetzung](Docs/integration/Z01-2026-10-07/imagebuilder-vm119.md#betreibermeldung-erfolgreiches-image-fehlende-downloadanzeige) |
 | Gesicherter Zwischenstand | 2026-10-08, 17:03 Europe/Berlin; geprüftes `main@001fb84ac566bb0f95e18d22439ee664fe0093e4`; [Fortsetzungsstand](Docs/integration/Z01-2026-10-07/checkpoint-2026-10-08.md) |
 | Zeitplanung | Arbeitsblöcke und Abnahmebedingungen; keine zugesagten Kalendertermine |
@@ -18,6 +18,8 @@
 ## 1. Aktueller nächster Schritt
 
 **Z01.4 – Installation, Upgrade und Recovery auf dem gemeinsamen Stand abnehmen.**
+
+**Cache-Recovery am 09.10.2026 angenommen:** Der Betreiber führt den geprüften Helfer c5bf54cb mit `--after-nvme-move` aus. Er meldet `queued`, `new_post=true`, Job `4ebe40edf4b443f592e7f7ad28ad0624`, Build `6a0a67657cce49118c89f5b9479db29d`, Commit1595259 und den separaten NVMe-Beleg. Damit wurden die Vorprüfungen einschließlich begrenztem Datei-/Verzeichnis-fsync passiert; es ist noch kein neuer Artefakterfolg belegt. Anschließend meldet der Betreiber den laufenden Build im UI. Keine weiteren Aufträge oder Rezeptänderungen; bestehenden Lauf bis zum Ergebnis verfolgen und danach Download / SHA-256 prüfen. [Fortsetzung](Docs/integration/Z01-2026-10-07/imagebuilder-vm119.md#nvme-cache-recovery-angenommen).
 
 **NVMe-Wechsel am 09.10.2026 bestanden:** Der Betreiber meldet 100,0 GiB in 3 min 3 s übertragen, erfolgreichen Mirror-Abschluss und `scsi0: NVMe_OSData:vm-119-disk-0`. Live QEMU verwendet raw `/dev/zvol/rpool/data/vm-119-disk-0`, Cache `writeback, direct`. Die frühere NAS-Kopie bleibt `unused0`, die SATA-Quelle `unused1`; sie erhalten nach dem Wechsel keine neuen Gast-Schreibzugriffe. Der für VM119 belegte SATA-Pfad ist damit umgangen. Gast-Schreiblatenz, neue Cache-Recovery, aktueller Download und physischer Pi-Start sind dadurch noch nicht abgenommen. Nächster Schritt: begrenzte Datei-/Verzeichnis-fsync-Prüfung im Builderstate und genau ein neuer Cache-Recoveryversuch mit separatem Beleg; ursprünglichen Fehlversuch und Rezeptdateien erhalten. [Live-NVMe-Nachweis / Fortsetzung](Docs/integration/Z01-2026-10-07/imagebuilder-vm119.md#nvme-wechsel-bestanden-stationsimage-fortsetzen).
 
@@ -237,3 +239,5 @@ Regelmäßige NetCore-Projektstatusläufe verwenden diese Gesamtroadmap als Eins
 | 2026-10-09 | Betreiber meldet ersten erfolgreichen gestrigen Imagebuild mit .img.xz; nach aktuellem TBS-Update fehlen Downloads. Downloadcode und lokaler Browserfall mit vorhandenem Artefakt / leerer Profilwahl geprüft; erster Schritt auf Wiederherstellung der Artefaktanzeige umgestellt | Nutzerbericht ohne neue Job-/Manifest-/API-Ausgabe; genaue Liveursache offen. Kein neuer Build oder Hosteingriff; Manifest / SHA-256 / Pi-/SXceiver-/VPN-Abnahme bleibt gesondert |
 
 | 2026-10-09 | VM119-Systemplatte erfolgreich in 3 min 3 s von SATA-ZFS auf NVMe_OSData / rpool/data verschoben; Live-QEMU-Backing bestätigt | Betreiberbefund: scsi0 NVMe, alte NAS-Datei unused0 und SATA-Quelle unused1 erhalten. Gast-fsync, erneute Cache-Recovery / Download und Pi-/SXceiver-/VPN noch offen; keine allgemeine SATA-Reparaturabnahme |
+
+| 2026-10-09 | Einmalige NVMe-Cache-Recovery angenommen: Job4ebe40ed / Build6a0a6765 / Commit1595259, Betreiber meldet laufenden Build im UI | Geprüfter Helfer c5bf54cb / SHA7861bec3; Vorprüfungen einschließlich fsync passiert, eigener Recoverybeleg. Artefakterfolg / aktueller Download / Pi-/SXceiver-/VPN weiter offen |

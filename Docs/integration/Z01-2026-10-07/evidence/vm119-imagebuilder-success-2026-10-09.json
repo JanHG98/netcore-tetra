@@ -111,7 +111,7 @@
     },
     "diagnostic_patch_ci_not_yet_observed": true
   },
-  "next_step": "Check bounded guest file and directory fsync in builder state, then submit at most one explicitly guarded NVMe cache recovery attempt with a separate receipt; preserve original failed attempt and recipe files; validate new download and physical Pi boot separately",
+  "next_step": "Follow the accepted NVMe cached recovery job4ebe40edf4b443f592e7f7ad28ad0624 without another submission; on success verify new artifact and complete download checksum, then physical Pi boot",
   "subsequent_operator_recovery_diagnosis": {
     "receipt_phase": "submit_started",
     "receipt_job_id_not_recorded": true,
@@ -515,5 +515,21 @@
     "main_ci_not_yet_observed": true,
     "operator_retry_and_download_not_yet_observed": true,
     "all_vm119_operator_tests_passed": 80
+  },
+  "operator_nvme_recovery_submission": {
+    "date": "2026-10-09",
+    "evidence_type": "operator_pasted_verified_helper_output_and_followup_ui_report",
+    "source_commit": "c5bf54cb7a1a043064df0c899752c422e430ce9f",
+    "downloaded_helper": "/var/tmp/netcore-image-nvme.OjRnJo.py",
+    "helper_sha256_verified": "7861bec31a9c59cf3e7d9e64eb7e123d246631689cfe8bb480218951218848d2",
+    "job_id": "4ebe40edf4b443f592e7f7ad28ad0624",
+    "build_id": "6a0a67657cce49118c89f5b9479db29d",
+    "commit": "1595259a2a76abfc9eff08842409156473b585a7",
+    "status_from_helper": "queued",
+    "new_post": true,
+    "receipt": "/var/lib/netcore-image-builder/recovery-2e2603beacd942dfaddc7119b85a4af0-nvme.json",
+    "guest_file_and_directory_fsync_preflight_passed_by_reaching_submission": true,
+    "operator_followup_ui_reports_build_running": true,
+    "artifact_publication_and_download_not_yet_observed": true
   }
 }
