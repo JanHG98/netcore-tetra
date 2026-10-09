@@ -77,14 +77,29 @@
   },
   "prepared_recovery": {
     "helper": "Docs/integration/Z01-2026-10-07/vm119-cached-image-recovery.py",
-    "helper_sha256": "1b719f76cd8fad68f0c3152f6bbf389e7c066cb134a627c3b8420bd6c402e943",
-    "local_recovery_regressions_passed": 21,
-    "all_local_vm119_operator_tests_passed": 56,
+    "helper_sha256": "fa4de003d4639d2e29d979c548faa0dd0673d3af795524f9ab5f28f93214d004",
+    "local_recovery_regressions_passed": 26,
+    "all_local_vm119_operator_tests_passed": 61,
     "worker_transport_and_arm64_build_isolated_in_tests": true,
     "independent_review_no_open_blockers": true,
-    "vm119_execution_not_yet_observed": true,
+    "vm119_successful_recovery_not_yet_observed": true,
     "new_download_not_yet_observed": true,
     "runtime_recipe_files_unchanged": true
   },
-  "next_step": "Run the guarded one-off cached-image recovery on VM119, then verify the new download and SHA256"
+  "operator_recovery_attempt": {
+    "source_commit": "f4e1215c7ffc2ee418b261bb7f98e14bdda44b32",
+    "downloaded_helper": "/var/tmp/netcore-image-recovery.IIVfhV.py",
+    "helper_sha256_verified": "1b719f76cd8fad68f0c3152f6bbf389e7c066cb134a627c3b8420bd6c402e943",
+    "output": "STOP: OperationalError; kein automatischer Neuauftrag. Vorhandenen Recoverybeleg prüfen.",
+    "concrete_sqlite_error_not_provided": true,
+    "receipt_phase_not_provided": true,
+    "job_acceptance_unknown": true
+  },
+  "original_recovery_helper_ci": {
+    "source_commit": "f4e1215c7ffc2ee418b261bb7f98e14bdda44b32",
+    "source_gate": {"run_id": 37905773577, "conclusion": "success"},
+    "deployment_discovery": {"run_id": 37905773628, "conclusion": "success"},
+    "diagnostic_patch_ci_not_yet_observed": true
+  },
+  "next_step": "Read-only receipt and SQLite error diagnosis on VM119; do not send another build POST while acceptance is unknown"
 }

@@ -45,8 +45,17 @@ def request_digest(request):
 def read_jobs():
     path = STATE / 'jobs.sqlite3'
     require(path.is_file() and not path.is_symlink(), 'Auftragsdatenbank fehlt oder ist ein Symlink.')
-    with contextlib.closing(sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True, timeout=5)) as db:
-        rows = db.execute('SELECT id,status,request,result FROM jobs').fetchall()
+    stage = 'OPEN_READONLY'
+    try:
+        with contextlib.closing(sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True, timeout=5)) as db:
+            stage = 'SELECT_JOBS'
+            rows = db.execute('SELECT id,status,request,result FROM jobs').fetchall()
+    except sqlite3.Error as error:
+        name = getattr(error, 'sqlite_errorname', type(error).__name__)
+        code = getattr(error, 'sqlite_errorcode', None)
+        # This query contains no request values; only SQLite's diagnostic is emitted.
+        raise RecoveryError(f'{stage}: SQLite {name} ({code}): {error}; '
+                            'Beleg erhalten, kein automatischer Neuauftrag.') from None
     jobs = []
     for key, status, request, result in rows:
         try:

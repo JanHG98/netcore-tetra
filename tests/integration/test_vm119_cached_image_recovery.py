@@ -415,6 +415,96 @@ class CachedRecoveryTests(unittest.TestCase):
         self.assertEqual(self.database.read_bytes(), before)
         self.assertFalse(self.driver.RECEIPT.exists())
 
+    def test_missing_jobs_table_reports_sqlite_select_failure_without_a_post(self):
+        with sqlite3.connect(self.database) as db:
+            db.execute('ALTER TABLE jobs RENAME TO preserved_jobs')
+        before = self.database.read_bytes()
+        with self.assertRaises(self.driver.RecoveryError) as raised:
+            self.run_recovery()
+        self.assertIn('SELECT_JOBS', str(raised.exception))
+        self.assertIn('SQLITE_ERROR', str(raised.exception))
+        self.assertIn('no such table: jobs', str(raised.exception))
+        self.assertEqual(self.build_posts(), [])
+        self.assertFalse(self.driver.RECEIPT.exists())
+        self.assertEqual(self.database.read_bytes(), before)
+
+    def test_missing_jobs_column_reports_sqlite_select_failure_without_a_post(self):
+        with sqlite3.connect(self.database) as db:
+            db.execute('ALTER TABLE jobs RENAME TO preserved_jobs')
+            db.execute('CREATE TABLE jobs (id TEXT,status TEXT,result TEXT)')
+        before = self.database.read_bytes()
+        with self.assertRaises(self.driver.RecoveryError) as raised:
+            self.run_recovery()
+        self.assertIn('SELECT_JOBS', str(raised.exception))
+        self.assertIn('SQLITE_ERROR', str(raised.exception))
+        self.assertIn('no such column: request', str(raised.exception))
+        self.assertEqual(self.build_posts(), [])
+        self.assertFalse(self.driver.RECEIPT.exists())
+        self.assertEqual(self.database.read_bytes(), before)
+
+    def actual_open_error(self):
+        missing = self.root / 'not-created.sqlite3'
+        try:
+            sqlite3.connect(missing.as_uri() + '?mode=ro', uri=True)
+        except sqlite3.Error as error:
+            return error
+        self.fail('Opening a nonexistent read-only database should fail.')
+
+    def test_readonly_open_error_reports_native_sqlite_error_without_a_post(self):
+        error = self.actual_open_error()
+        with mock.patch.object(self.driver.sqlite3, 'connect', side_effect=error):
+            with self.assertRaises(self.driver.RecoveryError) as raised:
+                self.run_recovery()
+        self.assertIn('OPEN_READONLY', str(raised.exception))
+        self.assertIn('SQLITE_CANTOPEN', str(raised.exception))
+        self.assertIn('unable to open database file', str(raised.exception))
+        self.assertEqual(self.build_posts(), [])
+        self.assertFalse(self.driver.RECEIPT.exists())
+
+    def test_actual_sqlite_exclusive_lock_reports_busy_without_retrying_or_submitting(self):
+        real_connect = sqlite3.connect
+
+        def short_readonly_connect(*args, **kwargs):
+            self.assertTrue(args[0].endswith('?mode=ro'))
+            self.assertTrue(kwargs.get('uri'))
+            kwargs['timeout'] = 0.02
+            return real_connect(*args, **kwargs)
+
+        with contextlib.closing(real_connect(self.database)) as writer:
+            writer.execute('BEGIN EXCLUSIVE')
+            with mock.patch.object(self.driver.sqlite3, 'connect', side_effect=short_readonly_connect):
+                with self.assertRaises(self.driver.RecoveryError) as raised:
+                    self.run_recovery()
+            self.assertIn('SELECT_JOBS', str(raised.exception))
+            self.assertIn('SQLITE_BUSY', str(raised.exception))
+            self.assertIn('database is locked', str(raised.exception))
+        self.assertEqual(self.build_posts(), [])
+        self.assertFalse(self.driver.RECEIPT.exists())
+
+    def test_database_read_failure_after_post_acceptance_preserves_receipt_and_resumes_existing_job(self):
+        real_connect = sqlite3.connect
+        error = self.actual_open_error()
+        readonly_calls = 0
+
+        def fail_accepted_resume(*args, **kwargs):
+            nonlocal readonly_calls
+            if isinstance(args[0], str) and args[0].endswith('?mode=ro'):
+                readonly_calls += 1
+                if readonly_calls == 3:
+                    raise error
+            return real_connect(*args, **kwargs)
+
+        with mock.patch.object(self.driver.sqlite3, 'connect', side_effect=fail_accepted_resume):
+            with self.assertRaises(self.driver.RecoveryError) as raised:
+                self.run_recovery()
+        self.assertIn('OPEN_READONLY', str(raised.exception))
+        self.assertEqual(len(self.build_posts()), 1)
+        self.assertEqual(self.rows()[CHILD_JOB]['status'], 'queued')
+        self.assertEqual(json.loads(self.driver.RECEIPT.read_text())['phase'], 'submit_started')
+        result = self.run_recovery()
+        self.assertEqual(result['job_id'], CHILD_JOB)
+        self.assertEqual(len(self.build_posts()), 1)
+
 
 if __name__ == '__main__':
     unittest.main()
