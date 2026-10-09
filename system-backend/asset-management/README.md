@@ -2,13 +2,8 @@
 
 Phase 10 verwaltet physische Assets, Funkgeräte, Personen, Ausgaben und Wartungsakten.
 
-## Zuständigkeitsgrenze
+Lokale Dateien: [src](src/) · [config](config/) · [install](install/) · [tests](tests/).
 
-- **Subscriber Core** bleibt autoritativ für ISSI-Freigabe und Dienstberechtigungen.
-- **Mobility Core** bleibt autoritativ für die aktuell bedienende TBS.
-- **Asset Management** besitzt Inventarnummer, Seriennummer, Firmware-/Codeplugstand, physische Zuordnung und Wartung.
-- RUI/RUA-Felder sind in dieser Phase nur Metadaten. Es werden keine PINs gespeichert und keine Netz-Anmeldung ausgelöst.
+[Vollständige Dokumentation](../../Docs/services/asset-management/README.md) · [Zentraler Dokumentationsindex](../../Docs/README.md)
 
-WebUI: `http://<LXC-IP>:8290/`
-
-OPEN LAB: kein Login, keine Tokens, kein TLS.
+[Online lesen](https://github.com/JanHG98/netcore-tetra/blob/main/Docs/services/asset-management/README.md).

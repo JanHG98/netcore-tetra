@@ -14,7 +14,7 @@ required=[
  'system-backend/rf-monitor/examples/tbs-agent/netcore-rf-agent.py',
  'system-backend/rf-monitor/examples/tbs-agent/rf-agent.example.toml',
  'system-backend/rf-monitor/examples/probes/mock-rf-probe.py',
- 'Docs/PHASE_7_RF_MONITORING.md',
+ 'Docs/changes/integrations/PHASE_7_RF_MONITORING.md',
 ]
 for rel in required:
  p=ROOT/rel

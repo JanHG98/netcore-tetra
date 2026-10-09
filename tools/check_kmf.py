@@ -24,7 +24,7 @@ REQUIRED = [
     "system-backend/kmf/install/update.sh",
     "system-backend/kmf/install/uninstall.sh",
     "system-backend/kmf/tests/lab_edge_unwrap.py",
-    "Docs/SWMI_CORE_1_PACKAGE_J_KMF.md",
+    "Docs/packages/core/SWMI_CORE_1_PACKAGE_J_KMF.md",
     "system-backend/kmf/web-ui/index.html",
 ]
 MARKERS = {
@@ -35,7 +35,7 @@ MARKERS = {
     "system-backend/kmf/src/http.rs": "/api/v1/edge/actions/claim",
     "system-backend/kmf/src/crypto.rs": "lab_sha256_stream_mac_v1",
     "system-backend/kmf/systemd/netcore-kmf.service": "UMask=0077",
-    "system-backend/kmf/README.md": "CCK/GCK/SCK",
+    "Docs/services/kmf/README.md": "CCK/GCK/SCK",
 }
 FORBIDDEN_MANAGEMENT_EXPOSURE = [
     '"raw_key"',

@@ -23,7 +23,7 @@ required = {
     "webui warning": (ROOT / "system-backend/mobility-core/src/http.rs", "OFFENER TESTMODUS"),
     "systemd": (ROOT / "system-backend/mobility-core/systemd/netcore-mobility-core.service", "OPEN LAB MODE"),
     "install script": (ROOT / "system-backend/mobility-core/install/install.sh", "cargo build --release -p netcore-mobility-core"),
-    "package docs": (ROOT / "Docs/SWMI_MOBILITY_1_PACKAGE_E_MOBILITY_CORE.md", "keine Tokens"),
+    "package docs": (ROOT / "Docs/packages/mobility/SWMI_MOBILITY_1_PACKAGE_E_MOBILITY_CORE.md", "keine Tokens"),
 }
 
 errors = []

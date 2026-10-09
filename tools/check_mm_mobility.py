@@ -76,9 +76,9 @@ def main() -> int:
         "crates/tetra-pdus/tests/test_mm_mobility_pdus.rs",
         "crates/tetra-entities/tests/test_mm_mobility_runtime.rs",
         "crates/tetra-entities/tests/test_two_cell_mm_mobility.rs",
-        "Docs/SWMI_MOBILITY_1_PACKAGE_C.md",
-        "Docs/SWMI_MOBILITY_1_PACKAGE_C_APPLY.md",
-        "system-backend/mobility-core/README.md",
+        "Docs/packages/mobility/SWMI_MOBILITY_1_PACKAGE_C.md",
+        "Docs/packages/mobility/SWMI_MOBILITY_1_PACKAGE_C_APPLY.md",
+        "Docs/services/mobility-core/README.md",
     ]:
         if not (ROOT / path).is_file():
             raise AssertionError(f"missing required file: {path}")

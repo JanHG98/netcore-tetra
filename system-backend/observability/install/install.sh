@@ -30,7 +30,7 @@ install -o root -g root -m 0644 "${ROOT}/system-backend/observability/README.md"
 # Was: Kopiert Dateien an ihren vorgesehenen Zielort.
 # Warum: Dienstdateien und Konfigurationen müssen dort liegen, wo Betriebssystem oder Anwendung sie erwarten.
 cp -a "${ROOT}/system-backend/observability/stack/." "${PREFIX}/stack/"
-cp -a "${ROOT}/system-backend/observability/docs/." "${PREFIX}/docs/"
+cp -a "${ROOT}/Docs/services/observability/." "${PREFIX}/docs/"
 # Was: Prüft die folgende Voraussetzung und führt den passenden Zweig aus.
 # Warum: Fehlende Rechte, Dateien oder Einstellungen sollen früh und verständlich behandelt werden.
 if [[ ! -e "${CONFIG}" ]]; then install -o root -g netcore-observability -m 0640 "${ROOT}/system-backend/observability/config/observability.example.toml" "${CONFIG}"; fi

@@ -13,14 +13,14 @@ ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
     "bins/netcore-control-room/src/operations.rs",
     "bins/netcore-control-room/src/webui.rs",
-    "system-backend/control-room/Readme.md",
+    "Docs/services/control-room/README.md",
     "system-backend/control-room/config/control-room.example.toml",
     "system-backend/control-room/systemd/netcore-control-room.service",
     "system-backend/control-room/install/install.sh",
     "system-backend/control-room/install/update.sh",
     "system-backend/control-room/install/uninstall.sh",
     "system-backend/control-room/tests/control_room_reference.py",
-    "Docs/SWMI_CORE_1_PACKAGE_L_CONTROL_ROOM.md",
+    "Docs/packages/core/SWMI_CORE_1_PACKAGE_L_CONTROL_ROOM.md",
 ]
 MARKERS = {
     "bins/netcore-control-room/src/main.rs": "operations.start_poller()",
@@ -31,7 +31,7 @@ MARKERS = {
     "bins/netcore-control-room/src/http.rs#2": "/api/v1/incidents",
     "bins/netcore-control-room/src/webui.rs": "OPEN LAB",
     "system-backend/services.toml": "management_port = 9010",
-    "system-backend/control-room/Readme.md": "nicht** Eigentümer",
+    "Docs/services/control-room/README.md": "nicht** Eigentümer",
 }
 
 

@@ -17,7 +17,7 @@ required = [
     'system-backend/packet-core/config/packet-core.example.toml',
     'system-backend/packet-core/systemd/netcore-packet-core.service',
     'system-backend/packet-core/install/install.sh',
-    'Docs/SWMI_CORE_1_PACKAGE_G_PACKET_CORE.md',
+    'Docs/packages/core/SWMI_CORE_1_PACKAGE_G_PACKET_CORE.md',
 ]
 markers = {
     'Cargo.toml': 'system-backend/packet-core',

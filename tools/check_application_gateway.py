@@ -12,7 +12,7 @@ import tomllib
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = [
     "system-backend/application-gateway/Cargo.toml",
-    "system-backend/application-gateway/README.md",
+    "Docs/services/application-gateway/README.md",
     "system-backend/application-gateway/src/main.rs",
     "system-backend/application-gateway/src/config.rs",
     "system-backend/application-gateway/src/model.rs",
@@ -25,7 +25,7 @@ REQUIRED = [
     "system-backend/application-gateway/install/update.sh",
     "system-backend/application-gateway/install/uninstall.sh",
     "system-backend/application-gateway/tests/application_gateway_reference.py",
-    "Docs/SWMI_CORE_1_PACKAGE_N_APPLICATION_GATEWAY.md",
+    "Docs/packages/core/SWMI_CORE_1_PACKAGE_N_APPLICATION_GATEWAY.md",
     "system-backend/application-gateway/web-ui/index.html",
 ]
 MARKERS = {

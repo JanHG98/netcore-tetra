@@ -1,6 +1,6 @@
 # NetCore-Tetra: gesicherter Zwischenstand vom 08.10.2026
 
-Stand: **08.10.2026, 17:03 Europe/Berlin**. Nutzerauftrag: aktuellen Zwischenstand sichern und Roadmap / Projektunterlagen abgleichen. Geprüftes main vor dieser Dokumentationssicherung: **`001fb84ac566bb0f95e18d22439ee664fe0093e4`**. Dieser Checkpoint ergänzt die [zentrale Roadmap](../../../ROADMAP.md); er dokumentiert den vorhandenen Stand und löst keinen zusätzlichen Anlagenauftrag aus.
+Stand: **08.10.2026, 17:03 Europe/Berlin**. Nutzerauftrag: aktuellen Zwischenstand sichern und Roadmap / Projektunterlagen abgleichen. Geprüftes main vor dieser Dokumentationssicherung: **`001fb84ac566bb0f95e18d22439ee664fe0093e4`**. Dieser Checkpoint ergänzt die [zentrale Roadmap](../../roadmaps/ROADMAP.md); er dokumentiert den vorhandenen Stand und löst keinen zusätzlichen Anlagenauftrag aus.
 
 ## Projektstand
 

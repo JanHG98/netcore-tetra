@@ -15,8 +15,8 @@ required=[
  'system-backend/shared/contracts/schemas/netcore-asset-v1.schema.json',
  'system-backend/shared/contracts/schemas/netcore-person-v1.schema.json',
  'system-backend/shared/contracts/schemas/netcore-assignment-v1.schema.json',
- 'system-backend/shared/contracts/ASSET_MANAGEMENT_V1.md',
- 'Docs/PHASE_10_ASSET_DEVICE_USER_MANAGEMENT.md',
+ 'Docs/contracts/ASSET_MANAGEMENT_V1.md',
+ 'Docs/changes/integrations/PHASE_10_ASSET_DEVICE_USER_MANAGEMENT.md',
 ]
 errors=[]
 for rel in required:
