@@ -28,7 +28,11 @@
       "/var/lib/netcore-image-builder/work/66e4156625f5425e9cbd04e77bb40003/image.img"
     ],
     "timeout_seconds": 30,
-    "caller_phase_not_present_in_short_log_excerpt": true
+    "caller_phase_not_present_in_short_log_excerpt": true,
+    "subsequent_extended_traceback": {
+      "caller": "image_build.py:312 in build",
+      "phase": "initial_partition_expansion_before_arm64_software_build"
+    }
   },
   "current_state": {
     "resolved_path": "/var/lib/netcore-image-builder",
@@ -57,9 +61,30 @@
   "local_source_analysis": {
     "recipe_key_for_successful_commit": "7699808215f76322a6ed0cceddf5804d24f707e088ceabd7bdae5e7ef07b6eb6",
     "matches_found_cache_filename": true,
-    "installed_recipe_key_not_yet_operator_verified": true,
-    "cache_versions_json_not_yet_operator_verified": true,
+    "installed_recipe_key_operator_verified": true,
+    "cache_versions_json_operator_verified": true,
     "no_cause_of_missing_artifact_proven": true
   },
-  "next_step": "Read-only local image search and exact cached-software metadata verification before any rebuild or recipe update"
+  "subsequent_operator_cache_validation": {
+    "installed_recipe_key": "7699808215f76322a6ed0cceddf5804d24f707e088ceabd7bdae5e7ef07b6eb6",
+    "successful_job_recipe_key": "7699808215f76322a6ed0cceddf5804d24f707e088ceabd7bdae5e7ef07b6eb6",
+    "image_present": true,
+    "metadata_present": true,
+    "metadata_commit": "1595259a2a76abfc9eff08842409156473b585a7",
+    "cache_matches": true,
+    "root_filesystem_img_xz_search_only_found_stock_os_download": true,
+    "search_time_limit_reported": false
+  },
+  "prepared_recovery": {
+    "helper": "Docs/integration/Z01-2026-10-07/vm119-cached-image-recovery.py",
+    "helper_sha256": "1b719f76cd8fad68f0c3152f6bbf389e7c066cb134a627c3b8420bd6c402e943",
+    "local_recovery_regressions_passed": 21,
+    "all_local_vm119_operator_tests_passed": 56,
+    "worker_transport_and_arm64_build_isolated_in_tests": true,
+    "independent_review_no_open_blockers": true,
+    "vm119_execution_not_yet_observed": true,
+    "new_download_not_yet_observed": true,
+    "runtime_recipe_files_unchanged": true
+  },
+  "next_step": "Run the guarded one-off cached-image recovery on VM119, then verify the new download and SHA256"
 }
