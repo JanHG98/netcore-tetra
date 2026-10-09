@@ -111,7 +111,7 @@
     },
     "diagnostic_patch_ci_not_yet_observed": true
   },
-  "next_step": "Measure local VM-pool latency/queue depth and live QEMU thread wait states plus host kernel errors; active NAS backing and active disk-move jobs are excluded for this sample, but host I/O contention remains significant",
+  "next_step": "Read configured zfspool/dir storages and rpool datasets to choose a valid images-enabled NVMe target for VM119/scsi0; then perform guarded disk move preserving the source; no concurrent image build",
   "subsequent_operator_recovery_diagnosis": {
     "receipt_phase": "submit_started",
     "receipt_job_id_not_recorded": true,
@@ -295,5 +295,105 @@
     "host_latency_and_queue_depth_not_measured": true,
     "pure_guest_kernel_bug_not_proven": true,
     "no_recovery_or_storage_modification_performed_by_these_queries": true
+  },
+  "subsequent_operator_host_latency_diagnosis": {
+    "date": "2026-10-09",
+    "source": "operator_pasted_zpool_latency_queue_qemu_threads_memory_and_vmstat",
+    "pool": "VirtualMachines_OSData",
+    "pool_write_samples": [
+      {
+        "total_wait": "612ms",
+        "disk_wait": "108ms",
+        "syncq_wait": "345ms",
+        "asyncq_wait": "1s",
+        "sync_pending": 79,
+        "sync_active": 12,
+        "async_pending": 251,
+        "async_active": 2
+      },
+      {
+        "total_wait": "932ms",
+        "disk_wait": "77ms",
+        "syncq_wait": "767ms",
+        "asyncq_wait": "915ms",
+        "sync_pending": 15,
+        "sync_active": 20,
+        "async_pending": 184,
+        "async_active": 2
+      },
+      {
+        "total_wait": "349ms",
+        "disk_wait": "48ms",
+        "syncq_wait": "163ms",
+        "asyncq_wait": "467ms",
+        "sync_pending": 159,
+        "sync_active": 14,
+        "async_pending": 313,
+        "async_active": 2
+      }
+    ],
+    "slower_leaf": {
+      "serial_suffix": "K0Z5",
+      "disk_write_wait_samples": [
+        "221ms",
+        "127ms",
+        "119ms"
+      ],
+      "total_write_wait_samples": [
+        "1s",
+        "1s",
+        "1s"
+      ],
+      "async_queue_wait_samples": [
+        "3s",
+        "3s",
+        "3s"
+      ],
+      "physical_defect_not_proven": true
+    },
+    "other_leaf": {
+      "serial_suffix": "K1C5",
+      "disk_write_wait_samples": [
+        "49ms",
+        "24ms",
+        "26ms"
+      ]
+    },
+    "qemu_119_waiting_thread": {
+      "pid": 3348986,
+      "tid": 3693425,
+      "state": "Dl",
+      "comm": "iou-wrk-3348989",
+      "wchan": "submit_bio_wait"
+    },
+    "host_memory": {
+      "total": "78Gi",
+      "used": "63Gi",
+      "free": "10Gi",
+      "available": "14Gi",
+      "swap": "0B"
+    },
+    "memory_pressure": {
+      "some_avg10": 43.92,
+      "some_avg60": 43.31,
+      "some_avg300": 27.28,
+      "full_avg10": 38.39,
+      "full_avg60": 35.46,
+      "full_avg300": 22
+    },
+    "vmstat_live_swap_in_out_zero": true,
+    "host_storage_queue_bottleneck_for_vm119_confirmed": true,
+    "nvme_target_latency_not_measured": true
+  },
+  "prepared_nvme_relocation": {
+    "scope": "VM119 scsi0 only; OS and image-builder state move together",
+    "candidate_pool": "rpool",
+    "candidate_pool_kind": "NVMe mirror",
+    "candidate_pool_free_from_previous_sample": "393G",
+    "source_disk_size": "100G",
+    "target_storage_id_and_dataset_not_yet_verified": true,
+    "planned_source_preservation": "qm disk move with --delete 0; preserve existing unused NAS copy",
+    "relocation_not_started": true,
+    "sata_pool_general_repair_and_host_memory_pressure_remain_separate": true
   }
 }
