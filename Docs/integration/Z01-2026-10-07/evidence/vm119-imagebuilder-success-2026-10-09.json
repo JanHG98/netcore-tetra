@@ -111,7 +111,7 @@
     },
     "diagnostic_patch_ci_not_yet_observed": true
   },
-  "next_step": "Read configured zfspool/dir storages and rpool datasets to choose a valid images-enabled NVMe target for VM119/scsi0; then perform guarded disk move preserving the source; no concurrent image build",
+  "next_step": "Run the guarded Proxmox storage creation and VM119 scsi0 disk move to NVMe_OSData; verify configuration and live QEMU backing before evaluating guest recovery; source preserved, no concurrent image builds",
   "subsequent_operator_recovery_diagnosis": {
     "receipt_phase": "submit_started",
     "receipt_job_id_not_recorded": true,
@@ -395,5 +395,67 @@
     "planned_source_preservation": "qm disk move with --delete 0; preserve existing unused NAS copy",
     "relocation_not_started": true,
     "sata_pool_general_repair_and_host_memory_pressure_remain_separate": true
+  },
+  "subsequent_operator_nvme_target_validation": {
+    "date": "2026-10-09",
+    "source": "operator_pasted_filtered_storage_cfg_and_rpool_datasets",
+    "configured_storage": {
+      "zfspool": {
+        "id": "VirtualMachines_OSData",
+        "pool": "VirtualMachines_OSData",
+        "content": [
+          "rootdir",
+          "images"
+        ],
+        "nodes": [
+          "SRV-H-PVE-01"
+        ],
+        "sparse": true
+      },
+      "dir": {
+        "id": "local",
+        "path": "/var/lib/vz",
+        "content": [
+          "rootdir",
+          "backup",
+          "vztmpl",
+          "images",
+          "snippets",
+          "iso"
+        ]
+      }
+    },
+    "nvme_target_dataset": {
+      "name": "rpool/data",
+      "type": "filesystem",
+      "used": "96K",
+      "available": "378G",
+      "mountpoint": "/rpool/data"
+    },
+    "nvme_local_dir_dataset": {
+      "name": "rpool/var-lib-vz",
+      "used": "65.3G",
+      "available": "378G",
+      "mountpoint": "/var/lib/vz"
+    },
+    "native_zfspool_selected_for_vm119": true,
+    "proposed_storage": {
+      "id": "NVMe_OSData",
+      "type": "zfspool",
+      "pool": "rpool/data",
+      "content": [
+        "images"
+      ],
+      "nodes": [
+        "SRV-H-PVE-01"
+      ],
+      "sparse": true
+    },
+    "operator_commands": {
+      "create_storage": "pvesm add zfspool NVMe_OSData --pool rpool/data --content images --nodes SRV-H-PVE-01 --sparse 1",
+      "move_disk": "qm disk move 119 scsi0 NVMe_OSData --delete 0"
+    },
+    "storage_creation_and_move_not_yet_observed": true,
+    "source_and_existing_nas_copy_preserved_by_plan": true
   }
 }

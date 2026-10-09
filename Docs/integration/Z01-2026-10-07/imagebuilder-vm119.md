@@ -2,6 +2,36 @@
 
 Stand: 2026-10-09. CT150-Readiness/Recovery und CT136-TCP-/Vorschau-/NAS-Erfolgspfad einschließlich isoliertem Fehlermount sind als Betreiberbefunde dokumentiert. Die tatsächliche Vorprüfung auf `VM-H-DEPLOY-01`, VM119, `10.0.1.131`, besteht. Die neue Betreiber-Ausgabe bestätigt jetzt den vollständigen Imagebuilder-Erfolg an1595259 mit Dateiname, Größe, SHA-256 und Abschlussmarker. Das fertige Artefakt ist in der aktuellen Speicheransicht jedoch nicht gelistet und unter dem Standardpfad nicht gefunden. Der passende Softwarecache ist auf VM119 bestätigt. Nach einem unspezifizierten SQLite-Lesefehler ist der Recoveryauftrag inzwischen eindeutig zugeordnet: Cachekopie erfolgreich, losetup-Timeout30s vor Stationspersonalisierung. Die folgende Betreiber-Ausgabe belegt inzwischen eine Rootdisk-I/O-Blockade; lokales Live-QEMU-Backing und der SATA-Hostengpass sind inzwischen bestätigt. Als Nächstes die begrenzte Übernahme von VM119/scsi0 auf den vorhandenen NVMe-Pool vorbereiten. Downloadprüfung und physische Abnahme bleiben offen. Die früheren DNS-/Conffile-/Initramfs-Abbrüche und der gesicherte Stand von17:03 bleiben unten ausdrücklich datierte Historie.
 
+## Ausfuehrbarer NVMe-Wechsel fuer VM119
+
+Der Betreiber bestätigt `rpool/data` als vorhandenen Dataset-Parent: 96 KiB belegt, 378 GiB verfügbar, Mountpoint `/rpool/data`. Die gefilterte Storage-Konfiguration enthält nur den SATA-zfspool VirtualMachines_OSData und den lokalen Ordnerstorage. Der Ordner liegt ebenfalls auf rpool; für VM119 wird ein eigener Images-Storage auf dem vorhandenen Dataset-Parent gewählt, damit die Disk ein natives ZFS-Volume bleibt.
+
+Auf SRV-H-PVE-01 den folgenden Block genau einmal ausführen. `set -euo pipefail` verhindert den Disk-Move, wenn die Storage-Anlage fehlschlägt, beispielsweise bei einer bestehenden gleichnamigen ID. Eine bereits bestehende ID wird nicht ungeprüft wiederverwendet. Der Kopierauftrag erhält kein äußeres Timeout; währenddessen keinen Imagebuild starten.
+
+```bash
+(
+set -euo pipefail
+
+pvesm add zfspool NVMe_OSData \
+  --pool rpool/data \
+  --content images \
+  --nodes SRV-H-PVE-01 \
+  --sparse 1
+
+qm disk move 119 scsi0 NVMe_OSData --delete 0
+
+qm config 119
+
+timeout --kill-after=2s 8s \
+  pvesh create /nodes/localhost/qemu/119/monitor \
+  --command 'info block'
+)
+```
+
+Erwarteter Nachweis: `scsi0` nennt `NVMe_OSData:`, und live QEMU verwendet `/dev/zvol/rpool/data/<neues-VM119-Volume>`. Der genaue Volumename kommt aus der tatsächlichen Ausgabe. Die SATA-Quelle wird als weiterer unused-Eintrag erhalten; die vorhandene alte Media-Datei bleibt ebenfalls erhalten. Nach der Umschaltung gehen neue Gast-Schreibzugriffe nur auf die NVMe. Die alte Disk ist deshalb kein dauerhaft aktueller Rückweg; vor einem späteren Rückwechsel wären neue Daten zu berücksichtigen.
+
+Die tatsächliche Storage-Anlage, Kopie und Umschaltung sind noch nicht beobachtet. Nach bestandenem Live-Nachweis den Gastzustand prüfen; ein kontrollierter Neustart ausschließlich von VM119 ist bei weiter blockiertem Gast zu bewerten. Der bestehende Recoverybeleg bleibt erhalten. Der alte Helfer startet bei erneutem Aufruf keinen zweiten Build; ein weiterer Cache-Recoveryauftrag benötigt nach behobener Plattformstörung einen gezielt geprüften Wiederholungsweg. [Zielstorage- und Operatorbeleg](evidence/vm119-imagebuilder-success-2026-10-09.json).
+
 ## Bestaetigter Hostengpass: VM119 auf NVMe vorbereiten
 
 Die nächste Betreiber-Ausgabe vom 09.10.2026 bestätigt einen Engpass im Host-Speicherpfad: QEMU119-I/O-Worker PID3348986 / TID3693425 steht in D/`submit_bio_wait`. Der SATA-VM-Pool hat in drei aktuellen Samples 612/932/349 ms mittlere Gesamt-Schreibwartezeit; synchron warten 79/15/159 Zugriffe, asynchron 251/184/313. Die SSD mit Seriennummer-Endung K0Z5 zeigt 221/127/119 ms reine Schreib-I/O-Zeit und rund 1 s Gesamtwartezeit / 3 s asynchrone Queue-Wartezeit; die andere SSD liegt bei 49/24/26 ms reiner Schreib-I/O-Zeit. Ein bestimmter physischer SSD-Defekt ist damit noch nicht bewiesen. Der Host hat 78 GiB RAM, 14 GiB verfügbar und keinen Swap; Memory-PSI full 38,39 % über 10 s bleibt ein zusätzlicher Druckbefund, aber keine nachgewiesene Swap-Ursache.
