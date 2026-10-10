@@ -1,5 +1,7 @@
 # Projektnotizen: Sepura SCG2229 – Import, Konformität und Zollfreigabe
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 ## Rahmen
 
 - **Thema:** Import eines Sepura SCG2229 TETRA-Mobilfunkgeräts aus Australien; DHL-/Zollprozess; Marktüberwachung durch die Bundesnetzagentur; EU-Konformitätsnachweis; deutschsprachige Dokumentation; Einspruch/Neubewertung; erneute Internetzollanmeldung (IZA); erfolgreiche Abfertigung und Abholung.

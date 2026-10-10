@@ -1,5 +1,7 @@
 # Brainstorming: FlowStation-DualCarrier-Portierung, SXceiver und Hotfixes 001–009
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 > **Historisches Ergebnis, kein aktuelles Deployment-Handbuch.** Gegenstand ist die erste Übernahme des zweiten Carriers in den FlowStation-Fork und die anschließende Fehlersuche am SXceiver. Nach Hotfix 006 wurde das Ende der Gesprächsschleife im Betrieb bestätigt. Eine vollständige Abnahme unabhängiger Gespräche auf dem zweiten Carrier wurde nicht dokumentiert. Der am 03.10.2026 überprüfte Repository-Code ist wesentlich weiterentwickelt und weicht insbesondere bei Ressourcenvergabe, Secondary-Control und TX-Timing vom damaligen Stand ab.
 
 ## 1. Rahmen und Quellenstand

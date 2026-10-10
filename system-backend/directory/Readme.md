@@ -1,4 +1,4 @@
-# NetCore Directory
+# Funkverzeichnis
 
 Der Directory Server verwaltet Geräte-, Basisstations-, Gruppen- und Statusmetadaten. HTTP-API, WebUI und SQLite-Datenhaltung liegen in diesem Verzeichnis.
 

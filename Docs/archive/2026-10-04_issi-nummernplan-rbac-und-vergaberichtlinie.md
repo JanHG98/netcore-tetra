@@ -1,5 +1,7 @@
 # Brainstorming: ISSI-Nummernplan, Vergaberichtlinie und RBAC
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 > **Planungsstand:** Nummernplan und RBAC sind konzeptionell beschrieben, noch nicht vollständig validiert oder produktiv ausgerollt. Die zuletzt angenommene Struktur `[D][K][EE][NNNN]` wird historisch bewahrt. Ihre verbleibenden Fehler werden ausdrücklich getrennt dokumentiert: insbesondere der Überlauf bei `D=1/K=9` und der Widerspruch zwischen einer stabilen ISSI und einem durch Nummernwechsel dargestellten Betriebsmodus.
 
 ## Zielbild und Festlegungen

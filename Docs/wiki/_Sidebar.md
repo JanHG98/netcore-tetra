@@ -1,51 +1,52 @@
-**NetCore Tetra**
+**NetCore-Tetra · Systemwiki**
 
-- [Start](Home.md) · [Projektstand](Projektstand.md) · [Glossar](Glossar.md)
+- [Start](Home.md) · [Projektstand und Nachweisgrenzen](projektstand-und-nachweise.md) · [Glossar](glossar.md)
 
 **System**
 
-- [Architektur](Architecture.md)
-- [Dienstkatalog](Dienstkatalog.md)
-- [Netzwerk und Ports](Netzwerk-und-Ports.md)
-- [Bedienoberflächen](Bedienoberflaechen.md)
-- [Normen und Tests](Normen-und-Tests.md)
+- [Architektur](architektur-und-datenwege.md)
+- [Dienstkatalog](dienstkatalog.md)
+- [Netzwerk und Ports](netzwerk-und-ports.md)
+- [Bedienoberflächen](bedienoberflaechen-und-zustaendigkeiten.md)
+- [Normen und Tests](etsi-normen-und-tests.md)
 
 **Aufbau**
 
-- [Hardware und HF](Hardware-und-RF.md)
-- [Installation](Installation.md)
-- [Konfiguration](Configuration.md)
-- [Open-Lab-Deployment](Open-Lab-Deployment.md)
-- [Provisioning](Provisioning.md)
-- [Abnahme](Abnahme.md)
+- [Hardware und HF](hardware-sdr-und-hf-aufbau.md)
+- [Installation der lokalen Basisstation](basisstation-installieren.md)
+- [Konfiguration](basisstation-konfigurieren.md)
+- [Bereitstellung und Pi-Images](dienste-und-pi-images-bereitstellen.md)
+- [Deployment Core: ausführliche Anleitung](../services/deployment-core/README.md)
+- [Provisioning und Datenhoheit](teilnehmer-und-gruppen-anlegen.md)
+- [Inbetriebnahme und Abnahme](inbetriebnahme-und-abnahme.md)
 
 **Funk und Daten**
 
-- [ISSI und GSSI](ISSI-and-GSSI.md)
-- [Registrierung](Registration-and-Affiliation.md)
-- [Rufe](Calls.md) · [Dual Carrier](Dual-Carrier.md)
-- [SDS und U-STATUS](SDS-and-U-STATUS.md)
-- [Home Mode Display](Home-Mode-Display.md)
-- [LIP und GPS](LIP-and-GPS.md)
-- [Paketdaten und WAP](Paketdaten-und-WAP.md)
-- [Mehrzellenbetrieb](Mehrzellenbetrieb.md)
+- [ISSI und GSSI](teilnehmer-und-gruppenkennungen.md)
+- [Registrierung](registrierung-und-gruppenbindung.md)
+- [Rufe](gruppen-und-einzelrufe.md) · [Dual Carrier](zwei-funktraeger.md)
+- [SDS und U-STATUS](kurznachrichten-und-status.md)
+- [Home Mode Display](statusrueckmeldung-und-home-mode-display.md)
+- [LIP und GPS](positionen-lip-und-gps.md)
+- [Paketdaten und WAP](paketdaten-und-wap.md)
+- [Mehrzellenbetrieb, Mobility und Edge-Fallback](mehrzellenbetrieb-und-ausfallverhalten.md)
 
 **Bedienung und Integration**
 
-- [Dashboard](Dashboard.md) · [Control Room](Control-Room.md)
-- [Directory](NetCore-Directory.md) · [Directory API](Directory-API.md)
-- [Geräte](Devices.md) · [Basisstationen](Basestations.md)
-- [Gruppen](Groups.md) · [Statusmeldungen](Status-Messages.md)
-- [Gerätegruppen](Device-Groups.md)
-- [Audio-Zentrale](Audio-Zentrale.md) · [Integrationen](Integrationen.md)
-- [SIP und Brew](SIP-und-Brew.md)
-- [MQTT und Home Assistant](MQTT-und-Home-Assistant.md)
+- [Lokales Dashboard der Basisstation](dashboard-der-basisstation.md) · [Control Room](leitstelle-und-node-gateway.md)
+- [Directory](namen-und-metadaten-im-directory.md) · [Directory API](directory-http-schnittstelle.md)
+- [Geräte](funkgeraete-im-directory.md) · [Basisstationen](basisstationen-im-directory.md)
+- [Gruppen](gespraechsgruppen-im-directory.md) · [Statusmeldungen](statusmeldungen-im-directory.md)
+- [Gerätegruppen](geraete-und-statusgruppen.md)
+- [Audio-Zentrale](audio-aufnahmen-und-tts.md) · [Integrationen und Zuständigkeitsgrenzen](integrationen-und-datenwege.md)
+- [SIP und Brew](telefonie-sip-und-brew.md)
+- [MQTT und Home Assistant](mqtt-home-assistant-und-homematic.md)
 
 **Betrieb und Hilfe**
 
-- [Systemd-Service](Systemd-Service.md) · [Build und Update](Build-and-Update.md)
-- [Wartung](Betrieb-und-Wartung.md) · [Backup und Fallback](Backup-and-Fallback.md)
-- [Sicherheit](Security-and-Operations.md)
-- [Fehlersuche](Troubleshooting.md)
-- [Journalctl-Filter](Journalctl-Filters.md) · [Buildfehler](Common-Build-Errors.md)
-- [FAQ](FAQ.md) · [Roadmap](Roadmap.md)
+- [Basisstation als systemd-Dienst betreiben](basisstation-als-dienst.md) · [Build und Update](software-bauen-und-aktualisieren.md)
+- [Wartung](betrieb-wartung-und-reparatur.md) · [Backup und Fallback](datensicherung-und-fallback.md)
+- [Sicherheit](sicherheit-im-betrieb.md)
+- [Fehlersuche](fehlersuche.md)
+- [Journalctl-Filter](systemprotokolle-lesen.md) · [Buildfehler](haeufige-buildfehler.md)
+- [Häufige Fragen](haeufige-fragen.md) · [Ausbau und Prioritäten](ausbauziele-und-prioritaeten.md)

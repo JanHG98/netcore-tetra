@@ -1,5 +1,7 @@
 # Brainstorming: Android-TETRA-Modul, virtueller Airlink und Realtime Core
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 **Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
 
 ## 1. Arbeitsstand und Bezugsquellen
@@ -803,9 +805,9 @@ Die folgende Reihenfolge ist eine aus dem Endstand abgeleitete Empfehlung, keine
 
 ### 18.2 Verwandte NetCore-Archive
 
-- [Recorder-LXC, Edge-Fallback, Echtzeit-Medienpfad und Compilerfehler](./2026-10-04_recorder-lxc-edge-fallback-echtzeit-und-buildfehler.md): detaillierter geprüfter Call-/Media-/RouteReady-Abgleich und Latenzgrenzen.
-- [Basisstations-Funktionsroadmap von der Einzelzelle zum Multi-Site-Netz](./2026-10-04_basisstation-funktionsroadmap-einzelzelle-bis-multisite.md): übergeordnete Reihenfolge von Einzelzelle zu Multi-Site und vollständiges ETSI-Anhangsinventar.
-- [Ein Pi, ein SXceiver und ein dritter Carrier mit eigener MCC/MNC](./2026-10-05_ein-pi-ein-sxceiver-dritter-carrier-mit-eigenem-mcc-mnc.md): Netz-/Carrieridentität, gemeinsame RF-Dienste und Multi-Netz-Isolation.
+- [Recorder-LXC, Edge-Fallback, Echtzeit-Medienpfad und Compilerfehler](2026-10-04_recorder-lxc-edge-fallback-echtzeit-und-buildfehler.md): detaillierter geprüfter Call-/Media-/RouteReady-Abgleich und Latenzgrenzen.
+- [Basisstations-Funktionsroadmap von der Einzelzelle zum Multi-Site-Netz](2026-10-04_basisstation-funktionsroadmap-einzelzelle-bis-multisite.md): übergeordnete Reihenfolge von Einzelzelle zu Multi-Site und vollständiges ETSI-Anhangsinventar.
+- [Ein Pi, ein SXceiver und ein dritter Carrier mit eigener MCC/MNC](2026-10-05_ein-pi-ein-sxceiver-dritter-carrier-mit-eigenem-mcc-mnc.md): Netz-/Carrieridentität, gemeinsame RF-Dienste und Multi-Netz-Isolation.
 
 ## 19. ETSI-Anhänge
 

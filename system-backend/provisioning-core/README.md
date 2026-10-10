@@ -1,8 +1,8 @@
-# NetCore Provisioning Core
+# Teilnehmer- und Gruppenverwaltung
 
 Der **Provisioning Core** ist die zentrale Verwaltungsoberfläche für Teilnehmer, Geräte, Gruppen und Gruppenmitgliedschaften.
 
-Lokale Dateien: [src](src/) · [config](config/) · [install](install/) · [tests](tests/).
+Lokale Dateien: [src](src/) · [config](config/) · [install](install/) · [web-ui](web-ui/).
 
 [Vollständige Dokumentation](../../Docs/services/provisioning-core/README.md) · [Zentraler Dokumentationsindex](../../Docs/README.md)
 

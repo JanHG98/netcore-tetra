@@ -27,8 +27,8 @@ REQUIRED = [
     FALLBACK / "install/apply-native-tbs-config.py",
     FALLBACK / "install/status.sh",
     FALLBACK / "install/uninstall-tbs-local-fallback.sh",
-    ROOT / "Docs/services/sip-switch/tbs-fallback/installation-openlab.md",
-    ROOT / "Docs/changes/integrations/PHASE_11C_EXCLUSIVE_SIP_REGISTRATION_FAILOVER.md",
+    ROOT / "Docs/services/sip-switch/tbs-fallback/installation-im-labor.md",
+    ROOT / "Docs/changes/integrations/phase-11c-exklusive-sip-registrierung-und-notvermittlung.md",
 ]
 
 

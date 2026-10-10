@@ -1,10 +1,12 @@
-# Shared Backend Components
+# Gemeinsame Backend-Bausteine
 
 **Quellen:** [system-backend/shared](../../../system-backend/shared) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
 
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../roadmaps/gesamtroadmap.md).
+
 ## Zweck
 
-Dieser Ordner enthält gemeinsam genutzte Bibliotheken, Wire-Verträge und build-freie WebUI-Bausteine für die unabhängig deploybaren Backend-Dienste. `shared/` ist selbst **kein Runtime-Dienst**, besitzt keinen autoritativen Fachzustand und benötigt deshalb keine eigene WebUI oder LXC-IP.
+Der Quellordner `system-backend/shared/` enthält gemeinsam genutzte Bibliotheken, Wire-Verträge und build-freie WebUI-Bausteine für die unabhängig deploybaren Backend-Dienste. `shared/` ist selbst **kein Runtime-Dienst**, besitzt keinen autoritativen Fachzustand und benötigt deshalb keine eigene WebUI oder LXC-IP.
 
 ## Implementierte Module
 
@@ -27,4 +29,4 @@ shared/
 
 ## Deployment
 
-Die LXC-übergreifende Integrationsschicht liegt unter `deploy/open-lab/`. Sie verwendet die gemeinsamen Verträge, bleibt aber bewusst außerhalb von `shared/`, weil Deployment kein Library-Code ist.
+Die LXC-übergreifende Integrationsschicht liegt unter `deploy/open-lab/`. Sie ist unter [Open-Lab-Deployment](../../deployment/open-lab/README.md) dokumentiert und verwendet die gemeinsamen Verträge, bleibt aber bewusst außerhalb von `shared/`, weil Deployment kein Library-Code ist.

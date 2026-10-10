@@ -1,5 +1,7 @@
 # Brainstorming: BPI-R4 als NetCore-Router mit 5G und Wi-Fi 7
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 **Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
 
 > **Festgehaltene Richtung:** Für einen künftigen NetCore-TETRA-Edge-/Basisstationsknoten wurde die Router-SBC-Klasse als besonders passend bewertet. Die zuletzt bevorzugte Ausbaurichtung ist ein **Banana Pi BPI-R4 mit 8 GB RAM**, ergänzt um ein **BPI-R4-NIC-BE14** als Wi-Fi-7-Access-Point-Modul, ein **Quectel RM520N-GL** als 5G-/LTE-WWAN-Modem und optional eine NVMe-SSD. Diese Auswahl ist eine **Planungs- und Beschaffungsempfehlung**, kein Nachweis einer Bestellung, Installation oder Inbetriebnahme. Ein BPI-R4 Pro bleibt als Ausbaualternative erhalten, wurde im Verlauf aber nicht mehr als zwingend beste Erstwahl betrachtet.

@@ -11,7 +11,7 @@ on:
       - 'config.toml'
       - 'bins/**'
       - 'crates/**'
-      - 'Docs/generated/full-system-integration-audit.md'
+      - 'Docs/generated/systemintegration-pruefbericht.md'
       - '.github/workflows/deployment-consistency.yml'
   push:
     branches: ['main']
@@ -24,7 +24,7 @@ on:
       - 'config.toml'
       - 'bins/**'
       - 'crates/**'
-      - 'Docs/generated/full-system-integration-audit.md'
+      - 'Docs/generated/systemintegration-pruefbericht.md'
       - '.github/workflows/deployment-consistency.yml'
 permissions:
   contents: read
@@ -48,7 +48,7 @@ jobs:
       - name: Public alert monitoring keeps the management API protected
         run: python3 -m unittest discover -s system-backend/alert-service/tests -p test_http.py -v
       - name: Generated audit is current
-        run: git diff --exit-code -- deploy/open-lab/generated Docs/generated/full-system-integration-audit.md
+        run: git diff --exit-code -- deploy/open-lab/generated Docs/generated/systemintegration-pruefbericht.md
 
   syslog-runtime:
     runs-on: ubuntu-24.04

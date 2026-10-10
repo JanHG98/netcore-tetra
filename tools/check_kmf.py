@@ -24,7 +24,7 @@ REQUIRED = [
     "system-backend/kmf/install/update.sh",
     "system-backend/kmf/install/uninstall.sh",
     "system-backend/kmf/tests/lab_edge_unwrap.py",
-    "Docs/packages/core/SWMI_CORE_1_PACKAGE_J_KMF.md",
+    "Docs/packages/core/schluesselverwaltung-paketstand.md",
     "system-backend/kmf/web-ui/index.html",
 ]
 MARKERS = {

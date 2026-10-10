@@ -1,4 +1,4 @@
-# contrib
+# MS-Ressourcen
 
 [Dokumentationsindex](../../../README.md)
 

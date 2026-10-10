@@ -32,9 +32,9 @@ REQUIRED_FILES = [
     "tests/e2e/unit/test_e2e_support.py",
     "tests/e2e/unit/test_edge_fallback_reference.py",
     "deploy/open-lab/netcore-e2e.py",
-    "Docs/deployment/OPEN_LAB_E2E_RUNBOOK.md",
-    "Docs/packages/core/SWMI_CORE_1_PACKAGE_Q_E2E_INTEGRATION.md",
-    "Docs/packages/core/SWMI_CORE_1_PACKAGE_Q_APPLY.md",
+    "Docs/deployment/open-lab-integrationstest-anleitung.md",
+    "Docs/packages/core/lxc-systemintegration-und-tests-paketstand.md",
+    "Docs/packages/core/lxc-systemintegration-und-tests-einspielung-historisch.md",
 ]
 EXECUTABLE_FILES = [
     "tests/e2e/netcore_open_lab_e2e.py",

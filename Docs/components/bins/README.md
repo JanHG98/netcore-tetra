@@ -1,4 +1,4 @@
-# bins
+# Ausführbare Zusatzkomponenten
 
 [Dokumentationsindex](../../README.md)
 

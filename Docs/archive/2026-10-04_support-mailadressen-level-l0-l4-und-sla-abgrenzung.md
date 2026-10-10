@@ -1,5 +1,7 @@
 # Brainstorming: Support-Mailadressen L0–L4 und SLA-Abgrenzung
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 ## Zielbild und Festlegungen
 
 - Gewählt ist **Variante D**: `support`, `support.user`, `support.ops`, `support.admin`, `support.core`.

@@ -1,5 +1,7 @@
 # Brainstorming: Raspberry Pi OS – OpenVPN-Client mit GUI, Profilimport und Autostart
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
 
 Einrichtungsvorschlag für einen OpenVPN-Client auf Raspberry Pi OS mit Desktop: Pakete über NetworkManager bereitstellen, ein vorhandenes Clientprofil importieren, den Tunnel manuell starten, Erreichbarkeit prüfen und bei Bedarf an ein WLAN- oder Ethernet-Profil koppeln. Ein Start vor der Desktop-Anmeldung ist als Ausbauoption beschrieben.

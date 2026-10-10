@@ -1,4 +1,4 @@
-# examples
+# MS-Schnittstellenbeispiele
 
 [Dokumentationsindex](../../../README.md)
 

@@ -1,9 +1,9 @@
-# NetCore Transit
+# Transit – Quellpaket
 
-Transit ist die DXTT-ähnliche Vermittlung zwischen eigenständigen NetCore-Tetra-Core-Regionen. Der Dienst bestimmt Teilnehmer- und Gruppenregionen, wählt redundante Pfade und transportiert Mobility-, Einzelruf-, Gruppenruf-, SDS-, Media- und Supplementary-Service-Ereignisse zwischen Regionen.
+Native Vermittlung zwischen NetCore-Regionen mit Routing, Queues und Failover. Standardport 8200; `netcore-transit-v1` ist noch kein ETSI ISI. Management und Peer-Zugriff sind im Open Lab ungeschützt.
 
-Lokale Dateien: [src](src/) · [config](config/) · [install](install/) · [tests](tests/).
+Lokale Quellen: [src](src/) · [Beispielkonfiguration](config/transit.example.toml) · [Installer](install/) · [Testhelfer](tests/). Installer aus dem Repository-Hauptverzeichnis aufrufen.
 
-[Vollständige Dokumentation](../../Docs/services/transit/README.md) · [Zentraler Dokumentationsindex](../../Docs/README.md)
+[Anleitung und aktueller Umfang](../../Docs/services/transit/README.md) · [Zentraler Dokumentationsindex](../../Docs/README.md)
 
 [Online lesen](https://github.com/JanHG98/netcore-tetra/blob/main/Docs/services/transit/README.md).

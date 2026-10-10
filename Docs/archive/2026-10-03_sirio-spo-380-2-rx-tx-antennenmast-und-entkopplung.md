@@ -1,5 +1,7 @@
 # Brainstorming: Sirio SPO 380-2 – RX/TX-Antennen an einem gemeinsamen Mast
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 **Stand der Notizen und ergänzenden Prüfungen: 2026-10-03.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
 
 > **Planungsstand:** Zwei getrennte Sirio SPO 380-2 sollen an einem einfachen, bezahlbaren Mast räumlich versetzt montiert werden. Ein Duplexer ist ausdrücklich nicht gewünscht. Konkrete Einbaumaße, ausreichende TX/RX-Isolation und störungsfreier gleichzeitiger Betrieb sind **nicht nachgewiesen**. Der zwischenzeitlich empfohlene einfache Viertelwellen-Koaxstub wurde im Entwurf ausdrücklich zurückgenommen und ist **keine gültige Bauempfehlung**.

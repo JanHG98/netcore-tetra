@@ -1,14 +1,14 @@
 # Node Gateway
 
-**Quellen:** [system-backend/node-gateway](../../../system-backend/node-gateway) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+**Abgleich: 9. Oktober 2026, Quellstand `c3ccdb4`.** Grundlage: [src/state.rs](../../../system-backend/node-gateway/src/state.rs) · [src/http.rs](../../../system-backend/node-gateway/src/http.rs). Beschreibt den implementierten Umfang; eine Live- oder Funkabnahme wird damit nicht belegt.
 
 ## Status
 
-Erster tatsächlich deploybarer NetCore-System-Backend-Dienst. Der Dienst ist für einen eigenen Proxmox-LXC vorbereitet und enthält eine integrierte Verwaltungs-WebUI.
+Zentraler Transportdienst für die NetCore-Basisstationen und Backend-Dienste. Eine systemd-Unit, Installationsskripte und die integrierte WebUI sind vorhanden; der erfolgreiche Start eines einzelnen Dienstes ist keine Gesamtabnahme des Netzes.
 
 ## Zweck
 
-Der Node Gateway ist der zentrale Einstiegspunkt für NetCore-TBS-Instanzen. Er nimmt die bestehenden TBS-WebSocket-Verbindungen an, verwaltet Sessions und stellt einen normalisierten Transport für spätere Backend-Dienste bereit.
+Der Node Gateway ist der zentrale Einstiegspunkt für NetCore-TBS-Instanzen. Er nimmt die bestehenden TBS-WebSocket-Verbindungen an, verwaltet Sessions und vermittelt Telemetrie und Kommandos für die vorhandenen zentralen Backend-Dienste.
 
 ## Umgesetzt
 
@@ -44,7 +44,8 @@ Andere Security-Modi werden abgewiesen, statt nicht vorhandene Sicherheit vorzut
 |---|---|
 | `GET /` | Verwaltungs-WebUI |
 | `WS /ws/node` | TBS-Verbindungen |
-| `WS /ws/backend` | späterer Mobility-/Call-/SDS-Backend-Transport |
+| `WS /ws/backend` | Mobility-, Call-, SDS- und Medien-Backend-Transport |
+| `GET /api/v1/core-services` | überwachte Backend-Dienste und Ausfallzustände |
 | `GET /api/v1/status` | Gateway-Übersicht |
 | `GET /api/v1/nodes` | Nodes |
 | `GET /api/v1/nodes/{id}` | Node-Details |
@@ -88,8 +89,16 @@ target/release/netcore-node-gateway \
 - keine fachliche Teilnehmer-, Gruppen-, Mobility- oder Ruflogik
 - kein Media-Transport
 - noch keine abgesicherte Produktivbetriebsart
-- der bestehende TBS-Node-Protocol-Datentyp wird zunächst wiederverwendet; die spätere Versionierung erfolgt unter `system-backend/shared/edge-protocol`
+- der TBS-Transport nutzt weiterhin die vorhandenen Datentypen aus `crates/tetra-entities/src/net_control_room/protocol.rs`; gemeinsame Edge-Verträge liegen zusätzlich unter `system-backend/shared/contracts`, ersetzen diese Laufzeitanbindung jedoch nicht automatisch
 
 ## Gemeinsames Ereignismodell (MQTT Phase 2)
 
-Der Dienst behält `GET /api/v1/events` für die bestehende WebUI bei. Jeder lokale Datensatz enthält zusätzlich `canonical`. Für neue Verbraucher steht ausschließlich das gemeinsame Format unter `GET /api/v1/events/netcore?limit=100` bereit. Das Wire-Schema ist `netcore-event-v1`; MQTT-spezifische Topic-, QoS- und Retain-Regeln folgen erst im IoT Gateway.
+Der Dienst behält `GET /api/v1/events` für die bestehende WebUI bei. Jeder lokale Datensatz enthält zusätzlich `canonical`. Für neue Verbraucher steht ausschließlich das gemeinsame Format unter `GET /api/v1/events/netcore?limit=100` bereit. Das Wire-Schema ist `netcore-event-v1`; MQTT-Topics, QoS und Retain-Regeln werden vom vorhandenen IoT Gateway verarbeitet; diese HTTP-Ereignis-API veröffentlicht selbst keine MQTT-Nachrichten.
+
+## Überwachung zentraler Dienste
+
+Der Abschnitt `[service_monitor]` definiert Health-Ziele, Prüfintervall und Fehler-/Erholungsschwellen. Der Gateway verteilt die daraus berechnete Dienstzustandsmatrix an die TBS. Die Beispieladressen `10.0.20.*` müssen zur tatsächlichen LXC-Belegung passen. Der Zustand eines Dienstes wird getrennt von der allgemeinen Internetverbindung bewertet; Fallback-Beschreibungen ersetzen keine Prüfung der jeweiligen TBS-Funktion.
+
+## Arbeitsverzeichnis
+
+Alle `cargo`- und `system-backend/...`-Befehle in diesem Überblick werden im Repository-Root ausgeführt, beispielsweise nach `cd /opt/netcore-tetra`. Direkte Starts mit `/etc/netcore/...` benötigen passende Schreibrechte auf die konfigurierten State-Verzeichnisse; für den dauerhaften LXC-Betrieb den Installer und dessen Benutzer `netcore` verwenden.

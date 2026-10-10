@@ -1,6 +1,6 @@
 # Group Core
 
-**Quellen:** [system-backend/group-core](../../../system-backend/group-core) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+**Abgleich: 9. Oktober 2026, Quellstand `c3ccdb4`.** Grundlage: [src/state.rs](../../../system-backend/group-core/src/state.rs) · [src/http.rs](../../../system-backend/group-core/src/http.rs). Beschreibt den implementierten Umfang; eine Live- oder Funkabnahme wird damit nicht belegt.
 
 ## Zweck
 
@@ -36,4 +36,4 @@ Diese Ausbaustufe besitzt absichtlich keine Tokens, Passwörter, Benutzeranmeldu
 
 - Node Gateway auf `/ws/backend`
 - kompatible TBS mit `group_policy`- und `dgna`-Capability
-- später Subscriber Core, Call Control und SDS Router
+- Subscriber Core, Call Control und SDS Router sind vorhandene Nachbardienste, aber keine direkten HTTP-Abhängigkeiten dieses Dienstes; ihre Existenz bedeutet keine automatische gemeinsame Policy-Durchsetzung

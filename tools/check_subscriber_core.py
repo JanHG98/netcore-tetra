@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 root=Path(__file__).resolve().parents[1]
 required=[
-' system-backend/subscriber-core/Cargo.toml','system-backend/subscriber-core/src/main.rs','system-backend/subscriber-core/src/config.rs','system-backend/subscriber-core/src/state.rs','system-backend/subscriber-core/src/gateway.rs','system-backend/subscriber-core/src/http.rs','system-backend/subscriber-core/config/subscriber-core.example.toml','system-backend/subscriber-core/systemd/netcore-subscriber-core.service','Docs/packages/core/SWMI_CORE_1_PACKAGE_A_SUBSCRIBER_CORE.md','crates/tetra-entities/src/mm/mobility_runtime.rs','crates/tetra-entities/src/mm/mm_bs.rs']
+' system-backend/subscriber-core/Cargo.toml','system-backend/subscriber-core/src/main.rs','system-backend/subscriber-core/src/config.rs','system-backend/subscriber-core/src/state.rs','system-backend/subscriber-core/src/gateway.rs','system-backend/subscriber-core/src/http.rs','system-backend/subscriber-core/config/subscriber-core.example.toml','system-backend/subscriber-core/systemd/netcore-subscriber-core.service','Docs/packages/core/subscriber-core-paketstand.md','crates/tetra-entities/src/mm/mobility_runtime.rs','crates/tetra-entities/src/mm/mm_bs.rs']
 required=[x.strip() for x in required]
 missing=[x for x in required if not (root/x).is_file()]
 if missing: print('missing:',*missing,sep='\n  ');sys.exit(1)

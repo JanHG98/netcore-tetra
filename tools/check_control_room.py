@@ -20,7 +20,7 @@ REQUIRED = [
     "system-backend/control-room/install/update.sh",
     "system-backend/control-room/install/uninstall.sh",
     "system-backend/control-room/tests/control_room_reference.py",
-    "Docs/packages/core/SWMI_CORE_1_PACKAGE_L_CONTROL_ROOM.md",
+    "Docs/packages/core/leitstelle-paketstand.md",
 ]
 MARKERS = {
     "bins/netcore-control-room/src/main.rs": "operations.start_poller()",

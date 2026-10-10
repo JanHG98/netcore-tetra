@@ -1,8 +1,8 @@
-# NetCore Alarm Workflow
+# Alarmbearbeitung und Eskalation
 
-Phase 8 verbindet `netcore-event-v1`, MQTT, den zentralen SDS Router und pre-coded Status zu einem persistenten Alarm- und Eskalationsdienst.
+Der Alarm Workflow verbindet `netcore-event-v1`, MQTT, den zentralen SDS Router und pre-coded Status zu einem persistenten Alarm- und Eskalationsdienst.
 
-Lokale Dateien: [src](src/) · [config](config/) · [install](install/) · [tests](tests/).
+Lokale Dateien: [src](src/) · [config](config/) · [install](install/) · [web-ui](web-ui/).
 
 [Vollständige Dokumentation](../../Docs/services/alarm-workflow/README.md) · [Zentraler Dokumentationsindex](../../Docs/README.md)
 

@@ -1,12 +1,14 @@
-# NetCore Control Room
+# Leitstelle
 
 **Quellen:** [system-backend/control-room](../../../system-backend/control-room) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../roadmaps/gesamtroadmap.md).
 
 ## Zweck
 
 Der Control Room ist die zentrale Leitstellen-, Bedien- und Lageebene für eine NetCore-Tetra-Region. Er führt die Zustände der Fachsysteme zusammen, bleibt aber ausdrücklich **nicht** Eigentümer von Teilnehmer-, Gruppen-, Mobility-, Call-, SDS-, Packet- oder Schlüsselzuständen.
 
-## Umsetzung dieser Phase
+## Vorhandene Funktionen
 
 - Browser-WebUI auf Port `9010`
 - bestehende TBS- und Operator-WebSockets `/node` und `/ui`
@@ -28,7 +30,13 @@ Der Control Room ist die zentrale Leitstellen-, Bedien- und Lageebene für eine 
 
 Der Control Room ist eine **Presentation und Operator Plane**. Er spiegelt Zustände und stellt Bedienwege bereit, erzeugt aber keine parallele Wahrheit neben den Fachkernen. Ein generischer Schreib-Proxy zu beliebigen Backend-Endpunkten ist bewusst nicht enthalten. Für Fachverwaltung bleibt jede Dienst-WebUI unabhängig erreichbar.
 
-Der bisherige direkte TBS-WebSocket bleibt als Kompatibilitäts- und Übergangspfad erhalten. Mit zunehmender Core-Autorität sollen Lagebilder bevorzugt aus den Fachdiensten kommen.
+Der direkte TBS-WebSocket `/node` bleibt als Kompatibilitätspfad erhalten. Im
+zentralen Netzbetrieb verbinden sich TBS mit **Node Gateway**. Der Control Room
+liest dessen Telemetrie optional über `[node_gateway]` und `/ws/backend`; diese
+Verbindung ist in der Beispielkonfiguration zunächst ausgeschaltet. Für die
+Warnzentrale muss sie mit der wirklichen Node-Gateway-Adresse eingeschaltet sein,
+damit Teilnehmer, TBS-Heartbeat und aktuelle GPS-Positionen sichtbar werden.
+Health-Polling allein erzeugt keine Teilnehmer- oder Positionsdaten.
 
 ## Open-Lab-Modus
 
@@ -43,6 +51,10 @@ Aktuell absichtlich:
 Damit besitzt jeder Client im erreichbaren Netz Operatorrechte. Nur im isolierten Labor- und Managementnetz betreiben.
 
 ## Start
+
+Vom Repository-Hauptverzeichnis; der Servercode liegt unter
+[bins/netcore-control-room](../../../bins/netcore-control-room), Installation und
+Konfiguration unter `system-backend/control-room`:
 
 ```bash
 cargo build --locked --release --package netcore-control-room

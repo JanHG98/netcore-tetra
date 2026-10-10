@@ -1,6 +1,6 @@
 # NetCore Packet Core
 
-**Quellen:** [system-backend/packet-core](../../../system-backend/packet-core) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+**Abgleich: 9. Oktober 2026, Quellstand `c3ccdb4`.** Grundlage: [src/state.rs](../../../system-backend/packet-core/src/state.rs) · [src/http.rs](../../../system-backend/packet-core/src/http.rs). Beschreibt den implementierten Umfang; eine Live- oder Funkabnahme wird damit nicht belegt.
 
 Der Packet Core ist der zentrale SwMI-Dienst für **SNDCP-Kontexte, Packet-Data-Zustände und Mobility Anchoring**. Er übernimmt die langlebige Netzsicht oberhalb der lokalen TBS-SNDCP-Instanz; PHY, MAC, LLC, lokale PDCH-Zuteilung und die konkrete Air-PDU bleiben bewusst an der TBS.
 
@@ -54,7 +54,7 @@ Der Packet Core hält:
 
 ## Noch ausdrücklich nicht enthalten
 
-TUN/TAP, Routing, NAT, Firewall, DNS, WAP-Testserver und Packet Capture gehören in den **nächsten LXC `ip-gateway`**. Der Packet Core erzeugt deshalb keine künstliche Layer-2-Domäne und behauptet auch nicht, bereits der zentrale Internet-Gateway zu sein.
+TUN, Routing, NAT, Firewall, DNS, WAP-Testserver und Packet Capture liegen im **bereits vorhandenen separaten Dienst `ip-gateway`**. Der Packet Core erzeugt deshalb keine künstliche Layer-2-Domäne und behauptet auch nicht, bereits der zentrale Internet-Gateway zu sein.
 
 ## Open-Lab-Betrieb
 
@@ -75,6 +75,7 @@ cargo run -p netcore-packet-core -- --no-config --bind 0.0.0.0:8160
 Mit Konfiguration:
 
 ```bash
+sudo install -d /etc/netcore
 sudo cp system-backend/packet-core/config/packet-core.example.toml /etc/netcore/packet-core.toml
 cargo run -p netcore-packet-core -- --config /etc/netcore/packet-core.toml
 ```
@@ -106,4 +107,14 @@ GET    /health/ready
 GET    /openapi.json
 ```
 
-Weitere Details stehen unter `docs/`.
+Die Themenanleitungen liegen neben diesem Überblick; Start und Netzkonfiguration stehen in [Bereitstellung im LXC](bereitstellung-im-lxc.md), die API-Aufrufe in [Laborbeispiele](tests/api-beispiele-im-labor.md).
+
+## Aktuelle Grenze des zentralen Datenpfads
+
+Das HTTP-Edge-Protokoll ist eine implementierte Referenzschnittstelle. Die Node-Gateway-Bridge bildet derzeit nur Deactivate, Modify, Page/Wake und End of Data auf TBS-Kommandos ab; Aktivierungsantworten und N-PDU-Fragmente werden nicht über diese Bridge vollständig zum Funkstack transportiert. Ein Wechsel auf `authoritative` allein ersetzt daher noch nicht die lokale TBS-Paketdatenanbindung. Den vollständigen Weg von Funkgerät über Packet Core und IP Gateway erst durch einen eigenen Ende-zu-Ende-Labortest belegen.
+
+Außerdem verwenden die Beispielkonfigurationen unterschiedliche Pools: Packet Core `10.44.0.0/24`, IP Gateway `10.0.0.0/24`. Vor Kopplung Adresspool, TUN-Netz/Gateway, DNS-Bind und Firewall-CIDRs konsistent setzen.
+
+## Arbeitsverzeichnis
+
+Alle `cargo`- und `system-backend/...`-Befehle in diesem Überblick werden im Repository-Root ausgeführt, beispielsweise nach `cd /opt/netcore-tetra`. Direkte Starts mit `/etc/netcore/...` benötigen passende Schreibrechte auf die konfigurierten State-Verzeichnisse; für den dauerhaften LXC-Betrieb den Installer und dessen Benutzer `netcore` verwenden.

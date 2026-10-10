@@ -1,5 +1,7 @@
 # Brainstorming: Control Room, Windows-UI, RBAC, Status-Tableau und Directory-API
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 > **Arbeitsstand:** Historische Entwicklungspakete, beobachteter Betrieb und Repository-Code vom 03.10.2026 sind getrennt zu betrachten. Die zuletzt vorgeschlagenen Änderungen wurden auf den Zielsystemen nicht vollständig bestätigt.
 >
 > **Offen:** Namensauflösung sowie Konsistenz von Statustext, Statusnummer und Farbe wurden nicht vollständig Ende-zu-Ende abgenommen. Die Directory-Anbindung im Repository ist ein Codebefund, kein Betriebsnachweis. Die historische Anleitung, das vollständige LXC-Repository zu löschen und nur das Komponenten-ZIP zu entpacken, ist falsch und darf nicht verwendet werden.

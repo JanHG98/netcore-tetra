@@ -1,5 +1,7 @@
 # Brainstorming: SWMI Foundation, Mobility, Core-LXC und Open-Lab-Ausbau
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 ## Zielbild und Festlegungen
 
 - Ausbaufolge: Foundation → lokale Mobility-/Restore-Runtimes → zentrale Core-Dienste.

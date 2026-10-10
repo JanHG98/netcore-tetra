@@ -1,6 +1,8 @@
-# NetCore-Tetra Media Library
+# Medienbibliothek
 
 **Quellen:** [system-backend/media-library](../../../system-backend/media-library) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../roadmaps/gesamtroadmap.md).
 
 ## Zweck
 
@@ -176,26 +178,26 @@ Noch nicht enthalten sind:
 - S3-/Object-Storage oder Medien-CDN,
 - rechtssichere WORM-Archivierung.
 
-## Basisstation integration
+## Aufnahmen der Basisstation übernehmen
 
-The base station can register completed WAV recordings by URL. The Media Library pulls the file, processes it, and automatically archives recordings to `storage.recording_archive_root`. The shared archive uses `YYYY/MM/DD` and descriptive filenames derived from recording metadata. Ready draft assets remain visible for preview; radio playout is still blocked until approval. The Audio Centre downloads the preview into its local cache before starting radio playout.
+Die Basisstation kann abgeschlossene WAV-Aufnahmen per URL anmelden. Die Media Library lädt die Datei, verarbeitet sie und archiviert Aufnahmen standardmäßig nach `storage.recording_archive_root`. Das gemeinsame Archiv verwendet `YYYY/MM/DD` und aus Aufnahmemetadaten abgeleitete Dateinamen. Fertige Entwürfe sind vorhörbar; eine Funkübertragung benötigt weiterhin die Freigabe. Die Audio-Zentrale lädt die Vorschau vor der Aussendung vollständig in ihren lokalen Cache.
 
-See `Docs/changes/media/MEDIA_LIBRARY_BASISSTATION_INTEGRATION.md`, `Docs/changes/media/MEDIA_LIBRARY_BASISSTATION_PLAYOUT.md` and `Docs/changes/media/MEDIA_LIBRARY_ARCHIVE_UI_FIX.md` for configuration, migration and rollout steps.
+Details: [Basisstation anbinden](../../changes/media/medienbibliothek-basisstationsanbindung.md), [Aussendung über die TBS](../../changes/media/medienbibliothek-gruppen-und-einzelruf-aussendung.md) und [Archivansicht und Migration](../../changes/media/medienbibliothek-archiv-smb-und-oberflaechenkorrektur.md).
 
-## PermissionDenied directly after archive migration
+## Fehlende Dateirechte nach einer Archivmigration
 
-The installer and archive-layout migration run as root, while the service runs as
-`netcore-media-library`. Current installers preserve/repair ownership of
-`/var/lib/netcore-media-library` after migration. Existing affected installations
-can be repaired without rebuilding:
+Installer und Archivmigration laufen als root, der Dienst dagegen als
+`netcore-media-library`. Die aktuellen Installer stellen nach der Migration die
+Eigentumsrechte unter `/var/lib/netcore-media-library` wieder her. Betroffene
+Bestandsinstallationen lassen sich vom Repository-Hauptverzeichnis ohne Neubau reparieren:
 
 ```bash
 sudo ./system-backend/media-library/install/repair-permissions.sh
 ```
 
-Local state and cache data remain private (`UMask=0077`). Only files copied into
-the shared NFS/SMB archive are explicitly opened to directories `0777` and files
-`0666` for the OPEN LAB multiprotocol share.
+Lokaler Zustand und Cache bleiben geschützt (`UMask=0077`). Nur die Kopien im
+gemeinsamen NFS-/SMB-Archiv erhalten ausdrücklich Verzeichnisse `0777` und Dateien
+`0666` für das gemeinsam verwendete OPEN-LAB-Share.
 
 ## Basisstations-Katalog nach Jahr/Monat/Tag
 
@@ -209,4 +211,4 @@ Asset mit `kind = "tts"` angelegt, verarbeitet und nach
 `storage.tts_archive_root` archiviert. Die Basisstation enthält keine lokale
 TTS-Oberfläche mehr; sie sieht fertige TTS-Assets über ihren bestehenden
 Media-Library-Dateibrowser und lädt sie vor der Aussendung vollständig in den lokalen
-Cache. Siehe `Docs/changes/media/MEDIA_LIBRARY_CENTRAL_TTS.md`.
+Cache. Siehe [Zentrale Piper-TTS-Erzeugung](../../changes/media/medienbibliothek-zentrale-spracherzeugung.md).

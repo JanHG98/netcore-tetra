@@ -1,6 +1,6 @@
-# NetCore Directory Server `0.1.0`
+# NetCore Directory Server `0.2.0`
 
-Lokaler **RadioID-ähnlicher Server** für **NetCore-Tetra / FlowStation**.
+Lokaler RadioID-kompatibler Python-/SQLite-Server mit Geräten, Basisstationen, Gruppen, Gerätegruppen und Statuszuordnungen.
 
 [Vollständige Dokumentation](../../Docs/components/misc/ID-Server/README.md) · [Zentraler Dokumentationsindex](../../Docs/README.md)
 

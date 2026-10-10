@@ -26,7 +26,7 @@ REQUIRED = [
     "system-backend/security-core/install/update.sh",
     "system-backend/security-core/install/uninstall.sh",
     "system-backend/security-core/tests/lab_response.py",
-    "Docs/packages/core/SWMI_CORE_1_PACKAGE_I_SECURITY_CORE.md",
+    "Docs/packages/core/sicherheitskern-paketstand.md",
     "system-backend/security-core/web-ui/index.html",
 ]
 MARKERS = {

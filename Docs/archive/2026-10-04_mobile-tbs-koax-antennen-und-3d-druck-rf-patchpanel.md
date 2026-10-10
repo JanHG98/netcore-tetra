@@ -1,5 +1,7 @@
 # Brainstorming: Mobile TBS – Koaxkabel, Antennen und RF-/I/O-Patchpanel
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 > **Ergebnis:** Für die portable TBS in einer Großstadt wurde Aircell 7 gegenüber Ecoflex 10 als praktischer Kompromiss bevorzugt. Eine bezahlbare Rundstrahlantenne für Mast/Stativ blieb gesucht; ein Kauf oder erfolgreicher Antennenbetrieb ist nicht belegt. Später entstanden für das RF-/I/O-Patchpanel echte mehrteilige, mehrfarbige 3MF-Konstruktionsdateien. Diese sind verfügbar und rechnerisch dokumentiert, aber weder als erfolgreich gedruckt noch als mechanisch oder elektrisch abgenommen bestätigt. Die frühere pauschale Empfehlung **ATTB 4930.01 für 380–470 MHz** ist angesichts der am Prüfdatum gelesenen **380–410-MHz-Herstellerangaben** für einen TX bei 418 MHz **nicht ausreichend belegt**.
 
 ## Zielbild und Festlegungen
@@ -331,7 +333,7 @@ Bewahrte Zubehörideen: 50-Ω-Dummyload, geeignete Dämpfungsglieder, TETRA-taug
 
 ## 8. RF-/I/O-Patchpanel: verfügbarer CAD-Artefaktstand
 
-Quellstand ist das unverändert archivierte [Originalpaket](assets/2026-10-04_mobile-tbs-koax-antennen-und-patchpanel/NetCore_Tetra_Patchpanel_3MF_Paket.zip) mit [Druck-/Montage-README](assets/2026-10-04_mobile-tbs-koax-antennen-und-patchpanel/README_Druck_und_Montage.md). Die folgende Darstellung fasst **vorhandene Konstruktion** zusammen; sie macht daraus keine mechanische oder elektrische Freigabe.
+Quellstand ist das unverändert archivierte [Originalpaket](assets/2026-10-04_mobile-tbs-koax-antennen-und-patchpanel/NetCore_Tetra_Patchpanel_3MF_Paket.zip) mit [Druck-/Montage-README](assets/2026-10-04_mobile-tbs-koax-antennen-und-patchpanel/druck-und-montage.md). Die folgende Darstellung fasst **vorhandene Konstruktion** zusammen; sie macht daraus keine mechanische oder elektrische Freigabe.
 
 ### 8.1 Endgültiger im Paket vorhandener Funktionsplan
 
@@ -598,7 +600,7 @@ Nicht nacharchivierbar waren die einzelnen Web-Karussellbilder zu Groundplane/Ma
 | [NetCore_Tetra_Patchpanel_3MF_Paket.zip](assets/2026-10-04_mobile-tbs-koax-antennen-und-patchpanel/NetCore_Tetra_Patchpanel_3MF_Paket.zip) | Vollständiges unverändertes Paket mit sechs 3MF-Dateien, sieben STL-Fallbacks, Generator, Lochkoordinaten, Geometrieprüfung, Validierung und README. |
 | [NetCore_Tetra_Patchpanel_A1_Mehrfarbig.3mf](assets/2026-10-04_mobile-tbs-koax-antennen-und-patchpanel/NetCore_Tetra_Patchpanel_A1_Mehrfarbig.3mf) | Hauptdatei separat, byte-identisch zum Paket. SHA-256 `1a1ed07b01c41176227d60cd7e42d7123dd09bd1203fc13b7b4bf2e7b943c47e`. |
 | [ZUERST_DRUCKEN_Neutrik_Passformtest.3mf](assets/2026-10-04_mobile-tbs-koax-antennen-und-patchpanel/ZUERST_DRUCKEN_Neutrik_Passformtest.3mf) | Passformtest separat, byte-identisch zum Paket. SHA-256 `864c66a2eebee3dfbd5a695ef39819521d3b2d6b0635ccc09428526845697683`. |
-| [README_Druck_und_Montage.md](assets/2026-10-04_mobile-tbs-koax-antennen-und-patchpanel/README_Druck_und_Montage.md) | Unveränderter README-Auszug mit Stand 03.10.2026. |
+| [druck-und-montage.md](assets/2026-10-04_mobile-tbs-koax-antennen-und-patchpanel/druck-und-montage.md) | Unveränderter README-Auszug mit Stand 03.10.2026. |
 | [3MF_Validierung.json](assets/2026-10-04_mobile-tbs-koax-antennen-und-patchpanel/3MF_Validierung.json) | Mitgeliefertes früheres rechnerisches Prüfprotokoll; keine am Prüfdatum vorliegende physische Abnahme. |
 | [Geometriepruefung.json](assets/2026-10-04_mobile-tbs-koax-antennen-und-patchpanel/Geometriepruefung.json) | Modellmaße, Textpositionen und rechnerische Prüfwerte. |
 | [Lochkoordinaten_mm.csv](assets/2026-10-04_mobile-tbs-koax-antennen-und-patchpanel/Lochkoordinaten_mm.csv) | Vollständige Lochmittelpunkte als unveränderter Paketauszug. |

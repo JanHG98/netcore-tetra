@@ -24,7 +24,7 @@ REQUIRED = [
     "system-backend/transit/install/update.sh",
     "system-backend/transit/install/uninstall.sh",
     "system-backend/transit/tests/transit_reference.py",
-    "Docs/packages/core/SWMI_CORE_1_PACKAGE_K_TRANSIT.md",
+    "Docs/packages/core/regionenvermittlung-paketstand.md",
     "system-backend/transit/web-ui/index.html",
 ]
 MARKERS = {

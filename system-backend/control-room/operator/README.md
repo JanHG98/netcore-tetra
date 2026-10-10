@@ -1,6 +1,6 @@
 # NetCore Control Room Operator CLI
 
-Ab v5.1 nutzt die CLI klassischen User/Passwort-Login per HTTP Basic Auth.
+Kommandozeilen-Bedienplatz für Lageübersicht und Operatoraktionen. Im ausgelieferten OPEN LAB ist keine Anmeldung erforderlich; bei aktivierter Serverauthentisierung unterstützt die CLI HTTP Basic Auth.
 
 Lokale Dateien: [src](src/).
 

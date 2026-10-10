@@ -1,6 +1,8 @@
-# NetCore Shared WebUI
+# Gemeinsame Backend-Bausteine
 
 **Quellen:** [system-backend/shared/web-ui](../../../../system-backend/shared/web-ui) · [Repository-Root](../../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../../roadmaps/gesamtroadmap.md).
 
 Build-freie CSS- und ES-Modul-Bausteine für die Verwaltungsoberflächen der Backend-Dienste.
 Die Assets benötigen weder Node.js noch einen zusätzlichen Frontend-Container in Produktion.

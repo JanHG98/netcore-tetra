@@ -1,5 +1,7 @@
 # NetCore Shared Contracts
 
+**Stand und Grenzen:** `main` (`c3ccdb4`, 09.10.2026). Die gemeinsamen Typen liegen in `system-backend/shared/src/contracts/`, die JSON-Schemas in `system-backend/shared/schemas/`. Historische Phasennummern beschreiben die Einführung; sie begrenzen den heutigen Quellbestand nicht. Ein Vertragseintrag beweist keinen Live-Fluss oder Funkstandard.
+
 **Quellen:** [system-backend/shared/contracts](../../system-backend/shared/contracts) · [Repository-Root](../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
 
 `netcore-contracts` is the transport-neutral contract crate for backend-to-backend communication.
@@ -23,7 +25,7 @@ Das kanonische Runtime-Format ist `netcore-event-v1`. Rust-Typ, JSON-Schema, Kat
 - `src/event.rs`
 - `schemas/netcore-event-v1.schema.json`
 - `examples/netcore-event-subscriber-route-changed.json`
-- `EVENT_MODEL_V1.md`
+- `ereignismodell-v1.md`
 
 Lokale Dienstereignisse dürfen aus Kompatibilitätsgründen Zusatzfelder behalten, müssen für neue Integrationen aber ein gültiges `NetCoreEvent` bereitstellen.
 
@@ -36,14 +38,14 @@ Phase 4 ergänzt die transportneutralen Verträge `netcore-command-v1` und `netc
 - `schemas/netcore-command-ack-v1.schema.json`
 - `examples/netcore-command-virtual-relay-set.json`
 - `examples/netcore-command-ack-succeeded.json`
-- `COMMAND_MODEL_V1.md`
+- `kommandos-und-bestaetigungen-v1.md`
 
 ## Gemeinsames Task-Modell
 
 Phase 9 ergänzt `netcore-task-v1` für strukturierte Aufträge und WAP-Formulare:
 
 - `schemas/netcore-task-v1.schema.json`
-- `TASK_MODEL_V1.md`
+- `auftragsmodell-v1.md`
 - Ereignisse `task.*` in `src/event.rs`
 
 ## Asset-, Personen- und Zuordnungsverträge
@@ -53,7 +55,7 @@ Phase 10 ergänzt:
 - `schemas/netcore-asset-v1.schema.json`
 - `schemas/netcore-person-v1.schema.json`
 - `schemas/netcore-assignment-v1.schema.json`
-- `ASSET_MANAGEMENT_V1.md`
+- `asset-verwaltung-vertraege-v1.md`
 - Ereignisse `asset.*`, `person.*`, `assignment.*` und `maintenance.*`
 
 ## SIP-Routing-Ereignisse

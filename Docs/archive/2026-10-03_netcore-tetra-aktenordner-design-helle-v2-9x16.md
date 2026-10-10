@@ -1,5 +1,7 @@
 # Brainstorming: NetCore-Tetra Aktenordner – Branding, helle V2 und Hochkantpräsentation
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 > **Ergebnis:** Ein iterativ entwickeltes Gestaltungskonzept für einen physischen NetCore-Tetra-Aktenordner. Die jüngste ausdrücklich gewünschte Richtung ist **das eigene Logo, keine Motorola-zentrierte Gestaltung, eine helle V2 und eine Präsentation im Zielseitenverhältnis 9:16**. Es existieren gerenderte Entwürfe, aber keine freigegebene Druckvorlage und kein nachgewiesener physischer Prototyp.
 >
 > **Einordnung der Mockups:** Weder ein gerenderter Netzwerkplan noch aufgedruckte Dashboard-Adressen, QR-Codes oder Sicherheitsbegriffe sind Nachweise für implementierte oder betriebene NetCore-Funktionen. Die letzte Bilddatei ist mit **941 × 1672 Pixeln nur annähernd 9:16**. Die in mehreren Entwürfen sichtbare Jahreszahl **2024** ist kein verifiziertes Ausgabedatum.
@@ -264,19 +266,19 @@ Die Links zeigen entweder bereits vorhandene unveränderte PNGs oder ausdrückli
 
 ### Letzte Fassung: G05 – helle V2, Hochkant
 
-![G05: Helle NetCore-Tetra V2 als Hochkantpräsentation; Original 941 × 1672 Pixel](NetCore-Tetra%20operations%20binder%20Pr%C3%A4sentation.png)
+![G05: Helle NetCore-Tetra V2 als Hochkantpräsentation; Original 941 × 1672 Pixel](NetCore-Tetra operations binder Präsentation.png)
 
 ### G04 – helle V2 vor der Hochkantvariation
 
-![G04: Helle NetCore-Tetra V2 mit Außen- und Innenansichten](NetCore-Tetra%20Unternehmenshandbuch%20Pr%C3%A4sentation.png)
+![G04: Helle NetCore-Tetra V2 mit Außen- und Innenansichten](NetCore-Tetra Unternehmenshandbuch Präsentation.png)
 
 ### G03 – dunkler NetCore-Entwurf nach Logo-Vorlage
 
-![G03: Dunkler NetCore-Tetra-Ordner mit blauen Akzenten](Futuristischer%20NetCore-Tetra%20Operations-Ordner.png)
+![G03: Dunkler NetCore-Tetra-Ordner mit blauen Akzenten](Futuristischer NetCore-Tetra Operations-Ordner.png)
 
 ### G02 – früher Schwarz-Gelb-Zwischenstand
 
-![G02: Historischer taktischer Zwischenstand mit noch erfundenem Logo](Taktischer%20Operationshandbuch_%20NETCORE%20TETRA.png)
+![G02: Historischer taktischer Zwischenstand mit noch erfundenem Logo](Taktischer Operationshandbuch_ NETCORE TETRA.png)
 
 ### G01 – verworfener generischer Erstentwurf, Vorschau
 

@@ -1,5 +1,5 @@
-# logo
+# MS-Logo
 
 [Dokumentationsindex](../../../../README.md)
 
-- [NOTE](NOTE.md)
+- [NOTE](logo-farbe-und-revision.md)

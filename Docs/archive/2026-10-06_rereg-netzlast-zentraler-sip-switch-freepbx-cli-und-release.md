@@ -1,5 +1,7 @@
 # Brainstorming: REREG unter Last, zentraler SIP-Switch, TBS-Fallback, FreePBX/CLI und Releaseabschluss
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
 
 ## 1. Projektstand, Geltungsbereich und Belegstufen
@@ -773,7 +775,7 @@ Das [PDF-Inventar](assets/2026-10-06_rereg-sip-freepbx-cli/pdf-inventory.json) e
 - `17_04_2024_SELECTRIC-Netzwerk-VO-6.pdf`;
 - `Sepura Software V 10.24-SC 2.0-SALT 2.pdf`.
 
-Für die technische Diagnose wesentlich sind EN 300 392-2 V3.8.1 und EN 300 392-1 V1.6.1 sowie die genannten SELECTRIC-Seiten zum Wahlalgorithmus. Ein Inventareintrag bedeutet Verfügbarkeit/Identifikation, nicht vollständige inhaltliche Prüfung. Die PDF-Binärdateien werden hier nicht dupliziert; der Auftrag verlangte zusätzlich ausdrücklich die Originalbilder. Die gezielte [Protokollprüfnotiz](assets/2026-10-06_rereg-sip-freepbx-cli/protocol-audit.md) dokumentiert Fundstellen und den unabhängigen Logvektor-Abgleich.
+Für die technische Diagnose wesentlich sind EN 300 392-2 V3.8.1 und EN 300 392-1 V1.6.1 sowie die genannten SELECTRIC-Seiten zum Wahlalgorithmus. Ein Inventareintrag bedeutet Verfügbarkeit/Identifikation, nicht vollständige inhaltliche Prüfung. Die PDF-Binärdateien werden hier nicht dupliziert; der Auftrag verlangte zusätzlich ausdrücklich die Originalbilder. Die gezielte [Protokollprüfnotiz](assets/2026-10-06_rereg-sip-freepbx-cli/protokollpruefung.md) dokumentiert Fundstellen und den unabhängigen Logvektor-Abgleich.
 
 ### 15.3 Gesicherte Originalbilder
 

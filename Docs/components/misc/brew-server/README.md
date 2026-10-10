@@ -1,5 +1,7 @@
 # brew-server
 
+**Quellstand:** `main` (`c3ccdb4`, 09.10.2026). Dieses importierte Brew-Paket ist ein eigener Cargo-Workspace (`1.9.0`) und wird aus `misc/brew-server/` gebaut. Es ist eine separate Legacy-/Experimentalkomponente neben TBS Connect, kein zusätzlicher Eintrag der 26 Open-Lab-Inventardienste. Broker-Port und optionaler Dashboard-Port stammen aus `brew-server.toml`; die Beispiele sind keine Aussage über laufende Hosts.
+
 **Quellen:** [misc/brew-server](../../../../misc/brew-server) · [Repository-Root](../../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
 
 Experimental Rust Brew core for linking two or more MidnightBlue Basestation or Flowstation TETRA base stations.

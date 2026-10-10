@@ -1,5 +1,7 @@
 # Brainstorming: NetCore-Rebranding, Startbanner, Stack-Version und Projektbeschreibung
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 > **Historisches Projektarchiv mit separater Repository-Prüfung.** Ein Textentwurf ist kein Commit, Quellcode ist kein erfolgreicher Build und ein Banner ist keine Betriebsbestätigung. Dieses Dokument enthält keine Freigabe für Änderungen außerhalb von `Docs/archive/`.
 
 ## Zielbild und Festlegungen

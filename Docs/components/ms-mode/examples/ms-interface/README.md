@@ -1,8 +1,10 @@
 # BlueStation MS external-interface message catalog
 
+**Quellstand:** `main` (`c3ccdb4`, 09.10.2026), Workspace `ms-mode/`. `management/mod.rs`, `net_control/codec.rs`, `net_telemetry/codec.rs` und `mm/mm_ms.rs` sind maßgeblich. Die folgende TNMM-/Management-Übersicht ist ein Teilkatalog; TNCC, TNSDS, Speech, DTMF und Scan-Telemetrie sind zusätzlich im aktuellen Quellvertrag enthalten.
+
 **Quellen:** [ms-mode/examples/ms-interface](../../../../../ms-mode/examples/ms-interface) · [Repository-Root](../../../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
 
-Schema `bluestation-ms-interface-1`.
+Schema `bluestation-ms-interface-6`.
 
 This directory documents and demonstrates the **MS (mobile-station) external
 interface**: the message contract a separate user-interface process uses to
@@ -15,7 +17,7 @@ UIs can be built on top of the stack.
 
 ## Versioning
 
-Frozen at `MS_INTERFACE_SCHEMA_VERSION = "bluestation-ms-interface-1"`
+Current source constant: `MS_INTERFACE_SCHEMA_VERSION = "bluestation-ms-interface-6"`
 (`crates/tetra-entities/src/management/mod.rs`), discoverable at runtime via the
 `GetInterfaceVersion` command. This is the **application** schema version for the
 MS interface; it is **independent** of the transport WebSocket subprotocol
@@ -25,8 +27,7 @@ behaviour change).
 
 ## Transport & encoding
 
-Both planes share the existing in-tree transport (WebSocket + JSON, TLS +
-argon2). The stack currently connects **as a client** to the UI's control and
+Both planes share the existing in-tree transport (WebSocket + JSON, configured TLS and Basic/Digest transport credentials). The stack currently connects **as a client** to the UI's control and
 telemetry endpoints; the message schema is transport-agnostic, so a stack-hosted
 listen/server mode could be added later as a pure-additive change without
 touching Plane A/B messages.
@@ -55,8 +56,12 @@ JSON encoding is serde's default externally-tagged enum representation:
 | `GetState` | `{handle:u32}` | live/anytime | `State` |
 | `GetInterfaceVersion` | `{handle:u32}` | live/anytime | `InterfaceVersion` |
 | `GetConfig` | `{handle:u32}` | live/anytime | `Config` |
-| `SetConfig` | `{handle:u32, toml:String}` | live (stages to disk) | `Ack` |
-| `ApplyConfig` | `{handle:u32}` | drains + restarts | `Ack` |
+| `SetConfig` | `{handle:u32, toml:String}` | validates/persists; codeplug-only changes apply live, structural changes stage | `Ack` |
+| `ApplyConfig` | `{handle:u32}` | drains/restarts only when a structural change is staged; otherwise no-op | `Ack` |
+| `ActivateScanlist` | `{handle:u32, name:String, active:bool}` | live desired group set | `Ack` |
+| `SetCellSelectionMode` | `{handle:u32, manual:bool}` | rejects during an active call | `Ack` |
+| `StartCellScan` / `StopCellScan` | `{handle:u32}` | manual carrier survey; results on telemetry | `Ack` |
+| `CampOnCell` | `{handle:u32, carrier_hz:u32, register:bool}` | explicit carrier selection | `Ack` |
 
 ### Responses, wrapped in `ControlResponse::Management`
 
@@ -75,8 +80,11 @@ own_issi           : u32
 home_mcc           : u16
 home_mnc           : u16
 serving_la         : u16
+rssi_dbfs          : f32 | null (uncalibrated receive level)
 colour_code        : u8
 attached_groups    : [u32]
+active_scanlists   : [String]
+selection_mode_manual : bool
 restart_required   : bool
 ```
 
@@ -88,8 +96,8 @@ restart_required   : bool
   `ApplyConfig` performs the graceful de-registration drain (U-ITSI DETACH,
   cl. 16.6.1) and exits with code 75 for an external supervisor to respawn (see
   `example_config/bluestation-ms.service` and `bluestation-ms-supervisor.sh`).
-- Operational TNMM actions (register/deregister, group attach/detach, energy
-  saving): carried on Plane A and applied live.
+- Codeplug/operational-only configuration changes apply live after validation and persistence. `ApplyConfig` is a no-op when `restart_required=false`.
+- Implemented TNMM registration and group actions apply live on Plane A. STATUS and ENERGY-SAVING types exist but are not an implemented energy-economy mechanism.
 
 ### Secret handling (redact on the wire, preserve on write-back)
 
@@ -162,7 +170,7 @@ indications/confirms (cl. 15.3.2).
 | TNMM-REGISTRATION indication | 15.5 | MM reg-state transitions (accept/reject/T351) |
 | TNMM-SERVICE indication | 15.6 | in/out of service transitions |
 | TNMM-ATTACH DETACH GROUP IDENTITY confirm | 15.1 | on the D-ATTACH/DETACH GROUP IDENTITY ACKNOWLEDGEMENT, or on T353 expiry (failure) |
-| TNMM-REPORT indication | 15.4 | DORMANT — U-ITSI DETACH transfer-result source not yet wired (MM does not observe the TxReporter through LMM-UNITDATA) |
+| TNMM-REPORT indication | 15.4 | MM observes the detach TxReporter and emits the transfer result |
 | (STATUS / ENERGY-SAVING) | 15.7 / 15.3 | DEFINED but DORMANT — stack cannot truthfully observe |
 
 `TnmmAttachDetachGroupIdentityConfirm` telemetry event shape (Table 15.1):
@@ -190,16 +198,17 @@ set; causes with no cl. 15.3.4 enumerant map to `None` (never fabricated).
 
 ---
 
-## wscat (language-neutral) quick example
+## Message exchange example
 
 ```
-# Connect to the stack's control channel (subprotocol = bluestation-control-v1),
-# authenticated per your transport config.
-wscat -s bluestation-control-v1 -c wss://<stack-host>:<port>/
+# Schematic messages on an established control channel.
+# The MS stack connects as CLIENT to a UI/server; it does not listen at this URL.
+# A client such as wscat/reference-client.py needs a separate compatible
+# server or bridge. These samples alone do not create that server.
 
 # Discover the interface schema version:
 > {"Management":{"GetInterfaceVersion":{"handle":1}}}
-< {"Management":{"InterfaceVersion":{"handle":1,"version":"bluestation-ms-interface-1"}}}
+< {"Management":{"InterfaceVersion":{"handle":1,"version":"bluestation-ms-interface-6"}}}
 
 # Read runtime state:
 > {"Management":{"GetState":{"handle":2}}}
@@ -207,7 +216,7 @@ wscat -s bluestation-control-v1 -c wss://<stack-host>:<port>/
 
 # Read config (secrets show as "********"), edit the TOML, stage it, then apply:
 > {"Management":{"GetConfig":{"handle":3}}}
-< {"Management":{"Config":{"handle":3,"toml":"config_version = \"0.6\"\n..."}}}
+< {"Management":{"Config":{"handle":3,"toml":"config_version = \"0.7\"\n..."}}}
 > {"Management":{"SetConfig":{"handle":4,"toml":"<edited toml>"}}}
 < {"Management":{"Ack":{"handle":4,"accepted":true,"restart_required":true,"message":"..."}}}
 > {"Management":{"ApplyConfig":{"handle":5}}}

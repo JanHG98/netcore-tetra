@@ -1,5 +1,7 @@
 # Brainstorming: RTW-Statussynchronisation, ISSI, OPTA und Leitstellenrückmeldung
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 > Projekt- und Entwicklungsnotizen für NetCore-Tetra. Historischer Planungsstand und nachträglicher Quellen-/Repository-Abgleich sind getrennt. Die früheren Aussagen über eine gemeinsame Fahrzeug-ISSI und automatisches Routing „an die OPTA“ sind **keine belastbare technische Grundlage**. Im geprüften Repository existiert inzwischen ein konkreter Status-Sync-Pfad über Directory-Gerätegruppen und einzeln adressierte Display-SDS; eine erfolgreiche Abnahme auf den in der Planung gemeinten RTW-Geräten ist nicht belegt.
 
 ## Zielbild und Festlegungen

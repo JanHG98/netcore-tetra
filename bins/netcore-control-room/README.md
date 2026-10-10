@@ -1,6 +1,6 @@
 # NetCore Control Room Core
 
-Minimaler Rust-Core für die spätere NetCore-Tetra Leitstelle.
+Rust-Core mit Telemetrie, Backend-Föderation, Browser-WebUI sowie optionaler lokaler Authentisierung und SQLite-Persistenz. Fachzustände bleiben bei den zuständigen Backend-Diensten.
 
 [Vollständige Dokumentation](../../Docs/components/bins/netcore-control-room/README.md) · [Zentraler Dokumentationsindex](../../Docs/README.md)
 

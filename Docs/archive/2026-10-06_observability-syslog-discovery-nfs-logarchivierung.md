@@ -1,5 +1,7 @@
 # Brainstorming: Observability-LXC: Syslog, Discovery und tägliche NFS-Logarchivierung
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
 
 Aus einer vollen LXC-Platte entstand zunächst die Idee einer täglichen Logkopie, anschließend eine eigene NetCore-Syslog-Pipeline im bestehenden Observability-LXC. **Am 27.09.2026 waren der echte NFS-Mount in Observability und Media Library, ein Schreibtest mit der übersetzten Dienstidentität sowie ein Archivlauf mit einem Segment ohne Fehler durch Betriebsprotokolle bestätigt.** Der entfernte Journald-Sender auf CT 138 blieb der nächste, noch nicht bestätigte Schritt.

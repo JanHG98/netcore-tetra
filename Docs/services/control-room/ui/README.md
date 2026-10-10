@@ -1,10 +1,12 @@
-# NetCore Control Room UI
+# Leitstelle
 
 **Quellen:** [system-backend/control-room/ui](../../../../system-backend/control-room/ui) · [Repository-Root](../../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
 
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../../roadmaps/gesamtroadmap.md).
+
 Native Desktop UI für den NetCore Control Room.
 
-## v4.3 Highlights
+## Vorhandene Funktionen
 
 - echte OS-Fenster pro Modul
 - Multi-Monitor-tauglich
@@ -15,7 +17,7 @@ Native Desktop UI für den NetCore Control Room.
 - lokale Tile-Cache-Ablage
 - Standortpunkte aus `/api/locations`
 - kein Browser, keine Web-App
-- Token/Profile über `operator.toml`
+- lokale Verbindung und Bedienplatzprofil über `operator.toml`; keine Passwörter in der Datei
 
 ## Windows Update/Build
 
@@ -23,21 +25,21 @@ Im Repo-Root:
 
 ```cmd
 taskkill /IM netcore-control-room-ui.exe /F
-cargo clean --manifest-path system-backend\control-room\ui\Cargo.toml
-rmdir /S /Q system-backend\control-room\ui\target
-del /F /Q target\release\netcore-control-room-ui.exe
-del /F /Q system-backend\control-room\ui\target\release\netcore-control-room-ui.exe
-powershell -NoProfile -Command "Get-ChildItem -Recurse -Filter netcore-control-room-ui.exe | Remove-Item -Force"
 cargo build --release --manifest-path system-backend\control-room\ui\Cargo.toml
 ```
 
 Start:
 
 ```cmd
-target\release\netcore-control-room-ui.exe --config "%APPDATA%\netcore\control-room\operator.toml" --profile default
+system-backend\control-room\ui\target\release\netcore-control-room-ui.exe --config "%APPDATA%\netcore\control-room\operator.toml" --profile default
 ```
 
-Wenn die EXE an anderer Stelle liegt:
+Die Desktop-Crate ist ein eigener Cargo-Workspace. Ohne `CARGO_TARGET_DIR` liegt
+ihre EXE deshalb im oben genannten Unterverzeichnis. Für einen absichtlich
+abweichenden Buildpfad die dort erzeugte EXE verwenden. `cargo clean` ist für ein
+normales Update nicht nötig.
+
+Erzeugte EXE bei abweichendem Zielverzeichnis suchen:
 
 ```cmd
 powershell -NoProfile -Command "Get-ChildItem -Recurse -Filter netcore-control-room-ui.exe | Sort-Object LastWriteTime -Descending | Select-Object LastWriteTime,FullName"
@@ -83,7 +85,13 @@ Im Kartenmodul:
 - Klick auf Standortpunkt: Geräte-/ISSI-Details anzeigen
 
 
-## v4.5 Highlights
+## Aktuelle Positionsansicht
 
 - Standorte und Karte zeigen pro ISSI nur noch den aktuellsten Standort.
 - Alte historische Positionsmeldungen werden in der UI als Zombie-Positionen ausgeblendet.
+
+Der Login-Dialog ist im Client vorhanden. Der ausgelieferte Server läuft mit
+`--no-auth`; dessen Login-Antwort lautet dann `auth-disabled` mit Adminrechten.
+Der Dialog stellt in diesem Modus keine Zugangskontrolle her. Im geschützten
+Serverprofil werden Benutzername und Passwort geprüft. Siehe
+[Anmeldung und Rollen](../anmeldung-und-rollen.md).

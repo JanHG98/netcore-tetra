@@ -25,7 +25,7 @@ required = {
     "service health protocol": (ROOT / "crates/tetra-entities/src/net_control_room/protocol.rs", "CoreServicesSnapshot"),
     "systemd": (ROOT / "system-backend/node-gateway/systemd/netcore-node-gateway.service", "OPEN LAB MODE"),
     "install script": (ROOT / "system-backend/node-gateway/install/install.sh", "cargo build --release -p netcore-node-gateway"),
-    "package docs": (ROOT / "Docs/packages/mobility/SWMI_MOBILITY_1_PACKAGE_D_NODE_GATEWAY.md", "ohne Tokens"),
+    "package docs": (ROOT / "Docs/packages/mobility/node-gateway-open-lab-paketstand.md", "ohne Tokens"),
 }
 
 errors = []

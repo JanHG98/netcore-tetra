@@ -25,8 +25,8 @@ REQUIRED = [
     "system-backend/ip-gateway/config/ip-gateway.example.toml",
     "system-backend/ip-gateway/systemd/netcore-ip-gateway.service",
     "system-backend/ip-gateway/install/install.sh",
-    "Docs/packages/core/SWMI_CORE_1_PACKAGE_H_IP_GATEWAY.md",
-    "Docs/packages/core/SWMI_CORE_1_PACKAGE_H_APPLY.md",
+    "Docs/packages/core/ipv4-gateway-paketstand.md",
+    "Docs/packages/core/ipv4-gateway-einspielung-historisch.md",
 ]
 MARKERS = {
     "Cargo.toml": '"system-backend/ip-gateway"',

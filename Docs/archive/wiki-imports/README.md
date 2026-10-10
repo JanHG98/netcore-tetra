@@ -1,10 +1,8 @@
-# Wiki Imports
+# Historische Wiki-Importe
 
-[Gesamte Dokumentation](../../README.md)
+Die vier HTML-Importe bewahren ihren ursprünglichen HTML-Inhalt unter einer aktuellen Einordnung. Sie werden als Herkunftsnachweise verwendet; aktive Bedien- und Betriebsanleitungen stehen im [aktuellen Systemwiki](../../wiki/README.md). Frühere Versions- und Branchangaben gelten für den jeweiligen Import.
 
-Historische HTML-Importe aus dem Wiki. Die aktuellen Artikel stehen im [Systemwiki](../../wiki/README.md); die Importinhalte bleiben unverändert erhalten.
-
-- [Device-Groups](Device-Groups.md)
-- [NetCore-Directory](NetCore-Directory.md)
-- [Status-Messages](Status-Messages.md)
-- [Systemd-Service](Systemd-Service.md)
+- [Gerätegruppen](geraetegruppen-historischer-import.md)
+- [Directory](directory-historischer-import.md)
+- [Statusmeldungen](statusmeldungen-historischer-import.md)
+- [systemd-Dienste](systemd-historischer-import.md)

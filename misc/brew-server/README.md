@@ -1,6 +1,6 @@
 # brew-server
 
-Experimental Rust Brew core for linking two or more MidnightBlue Basestation or Flowstation TETRA base stations.
+Eigenständiger Rust-Workspace (`1.9.0`) für Brew-Verbindungen. Broker und optionales Dashboard sind eine Legacy-/Experimentalkomponente neben dem aktuellen TBS Connect; Build-Befehle im Verzeichnis `misc/brew-server` ausführen.
 
 [Vollständige Dokumentation](../../Docs/components/misc/brew-server/README.md) · [Zentraler Dokumentationsindex](../../Docs/README.md)
 

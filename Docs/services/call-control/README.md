@@ -1,6 +1,6 @@
 # Call Control
 
-**Quellen:** [system-backend/call-control](../../../system-backend/call-control) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+**Abgleich: 9. Oktober 2026, Quellstand `c3ccdb4`.** Grundlage: [src/state.rs](../../../system-backend/call-control/src/state.rs) · [src/http.rs](../../../system-backend/call-control/src/http.rs). Beschreibt den implementierten Umfang; eine Live- oder Funkabnahme wird damit nicht belegt.
 
 ## Zweck
 
@@ -37,7 +37,7 @@ Diese Ausbaustufe besitzt absichtlich keine Tokens, Passwörter, Benutzeranmeldu
 - Node Gateway auf `/ws/backend`
 - kompatible TBS mit `call_control` und für Restore zusätzlich `call_restore_context`
 - Teilnehmer- und Gruppenlage aus TBS-Telemetrie
-- später Media Switch für den eigentlichen netzweiten Sprachtransport
+- vorhandener Media Switch für den netzweiten Sprachtransport und revisionsgebundene RouteReady-Bestätigung
 
 ## Echtzeit-Medienereignisse
 
@@ -65,4 +65,4 @@ Individualrufe ohne explizite Ziel-TBS werden über den Mobility Core aufgelöst
 
 ## Gemeinsames Ereignismodell (MQTT Phase 2)
 
-Der Dienst behält `GET /api/v1/events` für die bestehende WebUI bei. Jeder lokale Datensatz enthält zusätzlich `canonical`. Für neue Verbraucher steht ausschließlich das gemeinsame Format unter `GET /api/v1/events/netcore?limit=100` bereit. Das Wire-Schema ist `netcore-event-v1`; MQTT-spezifische Topic-, QoS- und Retain-Regeln folgen erst im IoT Gateway.
+Der Dienst behält `GET /api/v1/events` für die bestehende WebUI bei. Jeder lokale Datensatz enthält zusätzlich `canonical`. Für neue Verbraucher steht ausschließlich das gemeinsame Format unter `GET /api/v1/events/netcore?limit=100` bereit. Das Wire-Schema ist `netcore-event-v1`; MQTT-Topics, QoS und Retain-Regeln werden vom vorhandenen IoT Gateway verarbeitet; diese HTTP-Ereignis-API veröffentlicht selbst keine MQTT-Nachrichten.

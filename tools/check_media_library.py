@@ -26,7 +26,7 @@ REQUIRED = [
     "system-backend/media-library/install/update.sh",
     "system-backend/media-library/install/uninstall.sh",
     "system-backend/media-library/tests/media_library_reference.py",
-    "Docs/packages/core/SWMI_CORE_1_PACKAGE_O_MEDIA_LIBRARY.md",
+    "Docs/packages/core/medienbibliothek-paketstand.md",
     "system-backend/media-library/web-ui/index.html",
 ]
 MARKERS = {
@@ -48,7 +48,7 @@ MARKERS = {
     "system-backend/application-gateway/config/application-gateway.example.toml": 'endpoint = "http://127.0.0.1:8230/api/v1/assets/import-url"',
     "system-backend/observability/config/observability.example.toml": 'target_id = "media-library"',
     "system-backend/control-room/config/control-room.example.toml": 'name = "media-library"',
-    "Docs/design/BACKEND_WEBUI_SERVICE_MATRIX.md": "kontrollierte Einspeisung in bestehende Media-Switch-Sessions",
+    "Docs/design/dienstoberflaechen-funktionsmatrix.md": "kontrollierte Einspeisung in bestehende Media-Switch-Sessions",
 }
 
 

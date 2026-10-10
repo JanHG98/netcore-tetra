@@ -1,5 +1,7 @@
 # Brainstorming: Motorola-CPS-Profil für WAP über NetCore-SNDCP
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 Ziel ist ein passendes Motorola-CPS-Profil für den integrierten WAP-Browser über TETRA-Paketdaten. Das historische Profil und der ZIP-Snapshot werden mit dem am **05.10.2026** geprüften Repository-Stand abgeglichen. Ein erfolgreicher On-Air-Seitenabruf nach dem CPS-Setup ist noch nicht belegt.
 
 ## 1. Rahmen und Quellenumfang

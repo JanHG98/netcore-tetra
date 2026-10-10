@@ -1,9 +1,8 @@
-# Writing HAT identification EEPROM
+# HAT-Identifikations-EEPROM vorbereiten und schreiben
 
-If your HAT already has its EEPROM written and up to date, you do not
-have to do anything here. If not, follow these instructions:
+Diese Schritte betreffen die Hardwarekennung des SXceiver-HAT, nicht die NetCore-Dienstkonfiguration. Wenn das EEPROM bereits korrekt beschrieben ist, ist kein neuer Schreibvorgang nötig. Die tatsächliche Boardrevision muss zum gewählten Image passen. [Treiberinstallation](../README.md) · [NetCore-Hardwareleitfaden](../../Docs/wiki/hardware-sdr-und-hf-aufbau.md).
 
-## Install eepromutils and other tools
+## EEPROM-Werkzeuge bauen
 
 ```
 sudo apt-get install --no-install-recommends git make gcc device-tree-compiler alsa-utils
@@ -14,36 +13,35 @@ make
 sudo make install
 ```
 
-## Make and write EEPROM image
+## Image für die Boardrevision erstellen
 
-`cd` to this directory:
+Vom SXceiver-Quellverzeichnis aus in diesen Ordner wechseln:
 ```
 cd dts
 make clean
 ```
 
-Depending on the version of your HAT:
+Den zur tatsächlichen Hardwareversion passenden Befehl wählen:
 ```
-# For hardware version 1.0:
+# Für Hardwareversion 1.0:
 make HAT_VERSION=0x0100
-# For hardware version 1.1:
+# Für Hardwareversion 1.1:
 make HAT_VERSION=0x0101
-# For hardware version 1.2:
+# Für Hardwareversion 1.2:
 make HAT_VERSION=0x0102
 ```
 
-Disable EEPROM write protection by placing a jumper between WP pins
-on the board. Then write the EEPROM:
+Den EEPROM-Schreibschutz mit der vorgesehenen WP-Brücke auf der Platine deaktivieren. Anschließend das erzeugte Image schreiben:
 ```
 sudo make write_eeprom
 ```
 
-Reboot your Raspberry Pi:
+Raspberry Pi neu starten:
 ```
 sudo reboot
 ```
 
-After reboot, you can check that HAT ID data and audio device are found:
+Nach dem Neustart prüfen, ob Hardwarekennung und Audiogerät erkannt werden:
 ```
 ls -l /proc/device-tree/hat
 aplay -L|grep SX1255

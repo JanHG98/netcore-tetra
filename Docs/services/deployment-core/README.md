@@ -1,13 +1,15 @@
-# NetCore OpenLab Deployment-, Image- und Management-VM
+# Installation, Discovery und Pi-Images
 
 **Quellen:** [system-backend/deployment-core](../../../system-backend/deployment-core) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
 
-Komponente **0.3.0**, konsolidiert im Z01-Arbeitszweig `feature/z01-deployment-consolidation`.
-Herkunft: `bbf039729b9b05f8d623b11195ca24a124f68d16`; übernommen auf
-`main@dae9363` mit den aktuellen Dienstinstallern und Konfigurationen.
-Die Installationsanleitungen und der Standard-Ref `main` gelten für den
-konsolidierten Hauptzweig nach dem Merge; vorhandene Ref-Auswahl und lokale
-Konfigurationen werden bei Updates nicht automatisch überschrieben.
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../roadmaps/gesamtroadmap.md).
+
+Komponente **0.3.0**, im Hauptzweig `main` integriert. Die frühere
+Z01-Konsolidierung und ihre Commitvergleiche stehen im
+[Integrationsbericht](../../integration/Z01-2026-10-07/README.md).
+Installationsanleitungen und der Standard-Ref `main` gelten für den integrierten
+Hauptzweig; vorhandene Ref-Auswahl und lokale Konfigurationen werden bei Updates
+nicht automatisch überschrieben.
 Bei einer bestehenden Installation mit dem inzwischen historischen Feature-Ref
 unter „Einstellungen“ ausdrücklich `main` oder den gewünschten vollständigen
 Commit auswählen. Eine in `settings.json` gespeicherte Auswahl hat Vorrang vor
@@ -20,6 +22,16 @@ Die Oberfläche, API und Discovery verwenden OpenLab: **kein Login, keine Tokens
 kein TLS, keine Zertifikate, kein RBAC**. Erreichbare Teilnehmer im Lab können
 Installationen und Neustarts auslösen. GitHub und Paketquellen werden weiterhin
 über ihre normalen HTTPS-Adressen abgerufen.
+
+## Aktueller Betriebsstand
+
+Die Controller-/Agent-/Imagebuilder-Umsetzung ist vorhanden. Für VM119 sind der
+vollständige ARM64-Build am Commit `1595259`, der anschließende NVMe-Wechsel und
+die bestandene Datei-/Verzeichnis-fsync-Vorprüfung dokumentiert. Die jüngste
+Cache-Recovery wurde angenommen und vom Betreiber als laufend gemeldet. Ein
+erfolgreicher historischer Build ersetzt weder den aktuellen Artefaktdownload mit
+Manifest und SHA-256 noch den physischen Pi-/SXceiver-/VPN-Test. Den fortgeschriebenen
+Anlagenstand führt der [VM119-Nachweis](../../integration/Z01-2026-10-07/imagebuilder-vm119.md).
 
 ## Enthalten
 
@@ -245,7 +257,7 @@ einen **Bootstrap-Download**. Das heruntergeladene Skript auf dem Zielhost als
 root ausführen; es klont das Repo, checkt den geprüften Commit aus und installiert
 den Agenten. Kein SSH-Zugang vom Controller aus erforderlich.
 
-Der gemeinsame LXC-Netzwerkhelfer nimmt künftig auch regulär installierte/
+Der gemeinsame LXC-Netzwerkhelfer nimmt auch regulär installierte/
 aktualisierte Backend-LXCs auf. Die Originalinstallation bleibt bei einem Fehler
 des Discovery-Installers nutzbar. `NETCORE_DISCOVERY_SKIP_INSTALL=1` überspringt
 diesen Zusatz; `NETCORE_DEPLOYMENT_URL=http://...:8320` setzt eine Gegenstelle.
@@ -531,8 +543,8 @@ bestimmte Loopback-Fixture, wenn die Arbeitsumgebung Unix-Sockets verbietet;
 sie prüft weder die Unix-Socket-Rechte noch die privilegierte VM-Installation.
 Die Standard-CI verwendet weiterhin den tatsächlichen Unix-Socket.
 
-Für Ubuntu 24.04/26.04 bleiben der vollständige Neu-/Wiederholungsinstallationslauf
-und die echte ARM64-Image-Personalisierung in `image-engine` vorgesehen. Ein
+Der CI-Job `image-engine` prüft auf Ubuntu 24.04/26.04 den vollständigen
+Neu-/Wiederholungsinstallationslauf und die ARM64-Image-Personalisierung. Ein
 Container ohne systemd, Mount-Namespace, Loop-Geräte oder QEMU kann diese Abnahme
 nicht liefern. Vollständiger ARM64-NetCore-Build, physischer Pi-/SXceiver-Boot,
 VPN-Wechsel auf Hardware und Anlagen-Recovery gehören zur getrennten Z01.4-Abnahme.

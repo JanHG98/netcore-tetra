@@ -1,5 +1,7 @@
 # Brainstorming: FlowStation-DualCarrier, Bearer-Zuordnung, ACK, Release und Secondary-Control
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 > **Historischer Entwicklungsverlauf mit gesonderter Repository-Prüfung, keine Freigabe eines Betriebsstands.** Gegenstand ist die Weiterentwicklung von zunächst drei Traffic-Ressourcen zu optionalem DualCarrier-Betrieb, die Fehlerfolge der Pakete v1 bis v2.8 und die zugehörige WebUI. Die letzte ausdrückliche Projektentscheidung reserviert Carrier 2 / Air-TS1 wieder für einen Steuerkanal. Das ausgelieferte Paket v2.8 setzt dafür `SecondaryBcchNoMcch` und sechs logische Traffic-Bearer ein. Ein anschließender erfolgreicher Funk- oder Lasttest dieses letzten Pakets ist nicht dokumentiert. Der am 03.10.2026 geprüfte Repository-Code enthält wichtige spätere Änderungen und darf nicht durch diese historischen Ersatzdateien überschrieben werden.
 
 ## 1. Rahmen und Quellenstand

@@ -15,7 +15,7 @@
 #
 # This unit pins the UI to cores 0-1, leaving cores 2-3 for the radio
 # (bluestation-ms.service sets CPUAffinity=2 3). Pair it with the kernel cmdline
-# isolation described in Docs/components/ms-mode/MS_CONFIG.md ("Real-time scheduling").
+# isolation described in Docs/components/ms-mode/ms-konfiguration.md ("Real-time scheduling").
 #
 # Adjust ExecStart / User / Group / WorkingDirectory and the display environment
 # for your setup, then install to /etc/systemd/system/bluestation-ms-ui.service:

@@ -1,6 +1,8 @@
-# NetCore SIP Switch – Phase 11c
+# Telefonievermittlung
 
 **Quellen:** [system-backend/sip-switch](../../../system-backend/sip-switch) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../roadmaps/gesamtroadmap.md).
 
 Der zentrale SIP-Switch ist im Normalbetrieb die **einzige Vermittlungsstelle zwischen NetCore-TETRA und dem vorhandenen PBX**. Die lokale TBS behält trotzdem ihren eigenen Asterisk als Edge-B2BUA und Notvermittlung.
 
@@ -60,8 +62,8 @@ Keine WebUI-Anmeldung, keine API-Tokens und kein TLS. SIP-Zugangsdaten liegen im
 
 ## Installation
 
-- Zentraler LXC: [LINK0](installation-openlab.md)
-- Lokale TBS: [LINK0](tbs-fallback/installation-openlab.md)
+- Zentraler LXC: [SIP-Switch-LXC installieren](installation-im-labor.md)
+- Lokale TBS: [Lokalen TBS-Fallback installieren](tbs-fallback/installation-im-labor.md)
 
 ## SIP-Routing: T-Marker und AGI-Skriptpfad
 
@@ -90,7 +92,9 @@ Nach Übernahme des Fixes auf dem **SIP-LXC** ausführen:
 
 ```bash
 cd /opt/netcore-tetra
-git pull --ff-only origin mqtt
+git fetch origin
+git switch main
+git pull --ff-only
 bash system-backend/sip-switch/install/update.sh
 asterisk -rx 'dialplan show T5102@netcore-from-pbx'
 asterisk -rx 'dialplan show netcore-from-tbs'
@@ -101,7 +105,9 @@ Für dieselbe Nummernunterstützung bei einem späteren zentralen Ausfall auf de
 
 ```bash
 cd /opt/netcore-tetra
-git pull --ff-only origin mqtt
+git fetch origin
+git switch main
+git pull --ff-only
 bash system-backend/sip-switch/install/update-tbs-local-fallback.sh
 ```
 
@@ -163,7 +169,9 @@ Nach Übernahme des Fixes auf der **TBS** ausführen:
 
 ```bash
 cd /opt/netcore-tetra
-git pull --ff-only origin mqtt
+git fetch origin
+git switch main
+git pull --ff-only
 bash system-backend/sip-switch/tbs-fallback/install/update-tbs-local-fallback.sh
 asterisk -rx 'module show like res_pjsip_caller_id.so'
 ```
@@ -223,7 +231,9 @@ Nach Übernahme des Fixes **nur auf der TBS** aktualisieren und neu bauen:
 
 ```bash
 cd /opt/netcore-tetra
-git pull --ff-only origin mqtt
+git fetch origin
+git switch main
+git pull --ff-only
 cargo build --release -p bluestation-bs
 ```
 
@@ -268,14 +278,18 @@ oder MNC außerhalb 0–16383 liegt; CPS-Platzhalter wie MCC 1000 werden nicht
 gesendet. Hintergrund: EN 300 392-1 V1.6.1 §§7.2.5–7.2.6 und
 EN 300 392-2 V3.8.1, D-SETUP Tabelle 14.15.
 
-**Nur auf SRV-M-TBS-01 (10.0.1.20), nach Übernahme dieser Änderung in `mqtt`:**
+**Beispiel für den weiterhin unbestätigten Test auf einer vorhandenen TBS:**
+
+Der frühere Versuch betraf SRV-M-TBS-01 (10.0.1.20). Das ist kein aktuelles Hostinventar; Station und wirksamen Konfigurationspfad vor der Wiederholung prüfen.
 
 1. Bestehende lokale Konfiguration sichern, Branch aktualisieren und bauen:
 
    ```bash
    cd /opt/netcore-tetra
    cp -p config.toml "config.toml.before-cli-tsi-$(date +%Y%m%d-%H%M%S)"
-   git pull --ff-only origin mqtt
+   git fetch origin
+   git switch main
+   git pull --ff-only
    cargo build --release -p bluestation-bs
    ```
 
@@ -311,4 +325,4 @@ ist die vollständige Gateway-TSI als alleinige Abhilfe nicht bestätigt.
 ## MAIN-COMPAT-Netzanbindung
 
 Installations- und Update-Reihenfolge pro LXC/TBS, aktuelle Funktionsgrenzen und Tests:
-[Zentraler Netzbetrieb](../../roadmaps/CENTRAL_NETWORK_ROLLOUT.md).
+[Zentraler Netzbetrieb](../../roadmaps/zentraler-netzbetrieb.md).

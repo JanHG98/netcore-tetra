@@ -27,7 +27,7 @@ REQUIRED = [
     "system-backend/sip-switch/install/add-tbs-openlab.sh",
     "system-backend/sip-switch/install/print-tbs-config.sh",
     "Docs/services/sip-switch/README.md",
-    "Docs/changes/integrations/PHASE_11_CENTRAL_SIP_SWITCH.md",
+    "Docs/changes/integrations/phase-11-zentrale-sip-vermittlung.md",
 ]
 
 

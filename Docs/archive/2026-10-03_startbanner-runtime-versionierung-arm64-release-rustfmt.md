@@ -1,5 +1,7 @@
 # Brainstorming: Startbanner, Runtime-Diagnose, Versionierung, ARM64-Releases und rustfmt
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 **Stand der Notizen und ergänzenden Prüfungen: 2026-10-03.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
 
 > **Ziel:** NetCore-Tetra-Branding, humorvolle Boottexte und datenbasierte Runtime Summary direkt in `main()`. Dazu kommen nachvollziehbare Cargo-/Git-Versionierung und ein ARM64-Releaseablauf. Beispielcode und Workflow sind noch keine erfolgreiche Build- oder Betriebsabnahme.

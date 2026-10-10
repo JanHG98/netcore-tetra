@@ -1,5 +1,7 @@
 # Brainstorming: POCSAG versus LoRa – Anforderungen an die Alarmierung
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 > **Archivstatus:** Historischer Diskussions- und Dokumentationschat, kein Implementierungs- oder Betriebsnachweis. Die damaligen Entwurfsfassungen enthalten erhebliche fachliche Fehler. Abschnitt 5 kennzeichnet diese ausdrücklich; Abschnitt 6 enthält eine davon getrennte, bei der Quellenprüfung ergänzte Einordnung. Aus dieser Entwicklungsphase folgt weder eine pauschale Ablehnung von LoRa noch eine freigegebene NetCore-Alarmierungsarchitektur.
 
 ## Zielbild und Festlegungen

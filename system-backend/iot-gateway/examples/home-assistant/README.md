@@ -1,6 +1,6 @@
 # Home-Assistant-Beispiele
 
-`state-bridge.yaml` spiegelt nur explizit ausgewählte Entitäten zum IoT Gateway. Dadurch wird nicht der komplette Home-Assistant-Zustandsbus in MQTT gekippt.
+`state-bridge.yaml` spiegelt nur explizit ausgewählte Entitäten zum IoT Gateway. Dadurch werden nur freigegebene Zustände übertragen.
 
 [Vollständige Dokumentation](../../../../Docs/services/iot-gateway/examples/home-assistant/README.md) · [Zentraler Dokumentationsindex](../../../../Docs/README.md)
 

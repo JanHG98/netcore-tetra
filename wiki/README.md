@@ -1,6 +1,6 @@
 # NetCore-Tetra Wiki
 
-Die Wiki-Seiten liegen zentral unter [Docs/wiki/](../Docs/wiki/README.md).
+Die hier früher abgelegten Wiki-Texte werden zentral gepflegt. Für den heutigen Stand unter [Docs/wiki/](../Docs/wiki/README.md).
 
 [Wiki-Startseite](../Docs/wiki/Home.md) · [Dokumentationsindex](../Docs/README.md)
 

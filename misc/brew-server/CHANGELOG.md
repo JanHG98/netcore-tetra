@@ -1,3 +1,9 @@
+# Brew-Server: Versionshistorie
+
+Diese Versionsnotizen gehören zum importierten Brew-Server-Quellstand. Sie sind von NetCore-Releases und installiertem PBX-/TBS-Stand zu unterscheiden. Für heutigen Betrieb und Integrationsgrenzen die [Brew-Anleitung](../../Docs/components/misc/brew-server/README.md) lesen. Die ursprünglichen Release-Einträge bleiben unten erhalten.
+
+## Ursprüngliche Release-Einträge
+
 # Changelog
 
 All notable changes to brew-server, newest first.
