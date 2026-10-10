@@ -1,15 +1,17 @@
-## Setup on Raspberry Pi
+# SXceiver und SoapySX auf dem Raspberry Pi
 
-Install dependencies:
+Dieser Ordner enthält den SDR-Treiber und die zugehörigen Hardwarewerkzeuge. Für die gesamte NetCore-TBS-Installation die [Basisstationsanleitung](../Docs/wiki/basisstation-installieren.md) und für Boardrevision, Verkabelung und HF den [Hardwareleitfaden](../Docs/wiki/hardware-sdr-und-hf-aufbau.md) verwenden. Die folgenden Befehle betreffen nur dieses Treibermodul; ab diesem Verzeichnis ausführen.
+
+## Abhängigkeiten und Treiber
+
+Abhängigkeiten aus den eingerichteten Paketquellen installieren:
 ```
 sudo apt-get install --no-install-recommends git make g++ cmake libsoapysdr-dev libasound2-dev soapysdr-tools python3-soapysdr
 ```
 
-Some prototype boards do not have the HAT identification EEPROM written.
-If you have one of those, write it first by following
-[EEPROM writing instructions](dts/README.md).
+Bei manchen Prototypplatinen ist das HAT-Identifikations-EEPROM noch unbeschrieben. Die [EEPROM-Anleitung](dts/README.md) beschreibt die dafür vorgesehenen Schritte; die tatsächliche Boardrevision bestimmt das Image.
 
-Compile and install SoapySDR module:
+SoapySDR-Modul bauen und installieren:
 ```
 cd SoapySX
 mkdir build
@@ -20,16 +22,11 @@ sudo make install
 sudo ldconfig
 ```
 
-Check that the module is found:
+Prüfen, ob SoapySDR das Modul findet:
 ```
 SoapySDRUtil --probe=driver=sx
 ```
 
-## Features
-SoapySX provides some support for timestamps which are used by some
-applications to obtain a known timing relationship between transmitted and
-received signals.
-See the
-[linear repeater example](example/linear_repeater.py)
-for an example on using timestamps to obtain a constant, known latency
-from received to transmitted signal.
+## Zeitstempel und Beispiele
+
+SoapySX unterstützt Zeitstempel, mit denen Anwendungen Sende- und Empfangssignale zeitlich zuordnen können. Das [Repeaterbeispiel](example/linear_repeater.py) zeigt einen solchen Ablauf. Ein erfolgreiches Probe-Kommando bestätigt die Treibererkennung; es ersetzt keine TBS-/Funkabnahme.

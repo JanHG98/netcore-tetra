@@ -1,5 +1,7 @@
 # NetCore-Tetra Entwicklungswerkzeuge
 
+**Quellstand:** `main` (`c3ccdb4`, 09.10.2026). Die genannten Werkzeuge existieren im Verzeichnis `tools/`. Generator-Ausgaben sind aus den Quellen reproduzierbare Inventuren; statische Checker und vorhandene Unit-Tests ersetzen keine aktuelle Dienst- oder RF-Abnahme. Ein genanntes Werkzeug ist hier kein behauptetes grünes Prüfergebnis.
+
 **Quellen:** [tools](../../tools) · [Repository-Root](../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
 
 ## Protocol Inventory
@@ -71,10 +73,7 @@ Prüft die gemeinsamen Rust-Crates, JSON-Schemas, build-freien WebUI-Assets, Ope
 
 `python3 tools/check_z01_integration.py` ist die gemeinsame Offline-Prüfung für Registry, Inventory, unveränderte generierte Konfigurationen, Ready-Schranke, E2E-Auswahl, Gesamtmatrix und Observability. `.github/workflows/deployment-consistency.yml` führt sie bei Änderungen an diesen gemeinsamen Verträgen aus. VM/Pi-Installation, LXC-Laufzeit und On-Air-Abnahme bleiben eigenständige Nachweise.
 
-`check_iot_gateway.py` prüft den Phase-3-IoT-Gateway statisch: Workspace- und
-Servicekatalog-Einbindung, OPEN-LAB-Konfiguration, vier Eventproduzenten,
-Port 8240, persistente Outbox, MQTT-Protokollpfad, WebUI/API sowie die harte
-Prüft ab Phase 4 den Default-Deny-Command/Ack-Pfad, Retain-Sperre, Ledger und ausschließlich virtuelle OPEN-LAB-Executor.
+`check_iot_gateway.py` prüft die statischen Paket-, Workspace-, Vertrags-, OPEN-LAB-, MQTT-, Outbox-, WebUI- und Command/Ack-Grundlagen des IoT Gateways. Seine historischen Phase-3/4-Marker sind keine vollständige Prüfung der später hinzugefügten HA-/CCU-Adapter; ergänzende Phase-Checks und die jeweiligen Laufzeittests getrennt ausführen.
 
 - `check_rf_monitor_phase7.py`: prüft RF-Monitor, TBS-Export-Endpunkt, Agent, Probe-Adapter, OPEN-LAB-Konfiguration und Installer.
 

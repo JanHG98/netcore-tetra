@@ -1,8 +1,8 @@
-# NetCore Observability / NMS
+# Betriebsüberwachung
 
 Zentraler Dienst für Metriken, Logs, Traces, Health-Checks und Alarmierung. Die Syslog-Erweiterung sammelt Systemlogs und stellt Archiv- und Diagnosefunktionen bereit.
 
-[Syslog-Anleitung](../../Docs/services/observability/syslog-update.md)
+[Syslog-Anleitung](../../Docs/services/observability/systemlogs-sammeln-und-archivieren.md)
 
 [Vollständige Dokumentation](../../Docs/services/observability/README.md) · [Zentraler Dokumentationsindex](../../Docs/README.md)
 

@@ -1,8 +1,8 @@
-# NetCore Task Workflow
+# Auftragsbearbeitung
 
-Phase 9 ergänzt strukturierte Aufträge und kompakte WAP-Formulare. Der Dienst läuft als eigener LXC auf Port `8280` und bleibt im OPEN-LAB-Modus ohne Login, Token und TLS.
+Task Workflow verwaltet strukturierte Aufträge und kompakte WAP-Formulare. Der Dienst läuft als eigener LXC auf Port `8280` und bleibt im OPEN-LAB-Modus ohne Login, Token und TLS.
 
-Lokale Dateien: [src](src/) · [config](config/) · [install](install/) · [tests](tests/).
+Lokale Dateien: [src](src/) · [config](config/) · [install](install/) · [web-ui](web-ui/).
 
 [Vollständige Dokumentation](../../Docs/services/task-workflow/README.md) · [Zentraler Dokumentationsindex](../../Docs/README.md)
 

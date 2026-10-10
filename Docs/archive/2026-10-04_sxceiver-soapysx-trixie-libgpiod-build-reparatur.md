@@ -1,5 +1,7 @@
 # Brainstorming: SXceiver/SoapySX auf Trixie – libgpiod-Buildreparatur
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 > **Historisches Projektarchiv, keine pauschale Anleitung für zusätzliche Neuinstallationen.** Belegt sind der erfolgreiche Bau und die Installation des damaligen SoapySX-Moduls sowie dessen Enumeration mit `SoapySDRUtil --find`. Ein erfolgreicher Hardware-Probe-, RX/TX- oder TETRA-Betriebstest ist in dieser Entwicklungsphase nicht dokumentiert. Der zum Prüfdatum im Zielrepository enthaltene Treiber hat den damaligen libgpiod-Abhängigkeitspfad bereits durch direkte Linux-GPIO-v2-Aufrufe ersetzt. Historie und geprüfter Quellcodebefund werden deshalb ausdrücklich getrennt.
 
 ## Zielbild und Festlegungen

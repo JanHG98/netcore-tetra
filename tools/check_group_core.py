@@ -18,8 +18,8 @@ required = [
     'system-backend/group-core/systemd/netcore-group-core.service',
     'system-backend/group-core/install/install.sh',
     'Docs/services/group-core/README.md',
-    'Docs/packages/core/SWMI_CORE_1_PACKAGE_B_GROUP_CORE.md',
-    'Docs/packages/core/SWMI_CORE_1_PACKAGE_B_APPLY.md',
+    'Docs/packages/core/group-core-paketstand.md',
+    'Docs/packages/core/group-core-einspielung-historisch.md',
     '.github/workflows/swmi-core-group.yml',
 ]
 missing = [item for item in required if not (ROOT / item).is_file()]

@@ -1,104 +1,53 @@
-# NetCore-Tetra KMF
+# KMF – Schlüsselverwaltung und Lab-OTAR
 
-**Quellen:** [system-backend/kmf](../../../system-backend/kmf) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+Der KMF verwaltet die Schlüsselklassen CCK/GCK/SCK im unten beschriebenen Labormodell.
 
-Die **Key Management Facility** ist der zentrale Lifecycle-Dienst für TETRA-Netz- und Gruppenschlüssel (CCK/GCK/SCK). Dieses Paket setzt den Roadmap-Baustein nach dem Security Core um und verwaltet:
+Die Key Management Facility verwaltet den Lebenszyklus der Common Cipher Keys (**CCK**), Group Cipher Keys (**GCK**) und Static Cipher Keys (**SCK**). Sie hält Versionen, Vorgänger-/Nachfolgerketten, Crypto Periods, Rotation, nodegebundene Transportprofile, OTAR-Jobs und ein hashverkettetes Audit. Weboberfläche und API verwenden standardmäßig TCP **8190**.
 
-- Common Cipher Keys (**CCK**),
-- Group Cipher Keys (**GCK**),
-- Static Cipher Keys (**SCK**),
-- Key-Versionen und Vorgänger-/Nachfolgerketten,
-- Crypto Periods,
-- Rotation,
-- vorbereitete OTAR-Zustellungen,
-- nodegebundene Transportprofile,
-- verschlüsselte Backups,
-- hashverkettetes Audit,
-- eine eigene WebUI auf Port **8190**.
+**Stand: 9. Oktober 2026.** Abgeglichen mit [Konfiguration](../../../system-backend/kmf/config/kmf.example.toml), [API](../../../system-backend/kmf/src/http.rs) und [Lifecycle-Logik](../../../system-backend/kmf/src/state.rs). Beschrieben ist der vorhandene Lab-Code, keine zertifizierte Schlüsselhaltung oder On-Air-OTAR-Abnahme.
 
-## Wichtige Sicherheitsgrenze
+## Schlüsselgrenzen
 
-Die normale WebUI und Management-API liefern **niemals Rohschlüssel**. Das gilt auch für Audit, Metrics, OpenAPI, Status, Export und Fehlermeldungen.
+Die Management-API, WebUI, Status, Metrics und Export liefern keine Rohschlüssel. Der Edge-Claim liefert Schlüsselmaterial nur im nodegebundenen `SealedBlob`. Das Bootstrap-Geheimnis wird serverseitig in einer lokalen Datei angelegt; die API nennt lediglich Pfad, Fingerprint und Metadaten.
 
-OTAR-Claims enthalten Schlüsselmaterial ausschließlich als an das Ziel-Node gebundenen `SealedBlob`. Das nötige Bootstrap-Geheimnis wird als lokale Datei mit Modus `0600` erzeugt und nicht in einer API-Antwort ausgegeben.
+`lab_file_vault` und `lab_sha256_stream_mac_v1` dienen Integrationstests. Implementiert sind **kein HSM/PKCS#11-Provider, keine TETRA-TA-Algorithmen und keine D-OTAR-Air-Interface-PDUs**. Der [Security Core](../security-core/README.md) bleibt für Authentisierung, Security-Class-Policy, Disable/Enable und kurzlebige DCK-Kontexte zuständig; die KMF ersetzt dessen Lab-Provider derzeit nicht.
 
-## Open-Lab-Modus
+## Betrieb
 
-Die aktuelle Testphase bleibt ausdrücklich offen:
-
-- keine Benutzerkonten,
-- keine Tokens,
-- kein TLS,
-- keine echte Identitätsprüfung bei der Vier-Augen-Freigabe.
-
-Deshalb darf die KMF nur in einem isolierten Managementnetz laufen. Die Actor-Namen bei Freigaben sind im Open-Lab-Modus deklarativ; die technische Erzwingung verschiedener Namen ersetzt noch keine echte Authentisierung.
-
-## Shadow und Authoritative
-
-```toml
-[policy]
-operating_mode = "shadow"
-```
-
-`shadow` erzeugt Schlüssel, Rotationen, Jobs und Zustellungen, gibt aber keine Aktion an eine TBS Edge frei.
-
-```toml
-[policy]
-operating_mode = "authoritative"
-```
-
-`authoritative` erlaubt vollständig freigegebenen und gequeueten OTAR-Aktionen, vom passenden Node über den Edge-Endpunkt beansprucht zu werden.
-
-## Was dieses Paket bewusst noch nicht behauptet
-
-- `lab_file_vault` ist kein HSM.
-- `lab_sha256_stream_mac_v1` ist ein Integrations-Envelope, kein zertifiziertes Produktionsverfahren.
-- Das Paket implementiert noch keine TETRA-TA-Algorithmen.
-- Es kodiert noch keine D-OTAR-Air-Interface-PDUs.
-- Es ersetzt keine produktive PKI, RBAC- oder Vier-Augen-Identitätsprüfung.
-
-Die KMF liefert die sichere Control-Plane, Metadaten, Lifecycle- und Transporthülle. Der spätere Air-Interface-OTAR-Baustein setzt darauf auf.
-
-## Schnellstart
+Aus dem Repository-Hauptverzeichnis auf einem Linux-Lab-Host mit systemd, `iproute2` und passender Rust-/Cargo-Toolchain:
 
 ```bash
 sudo system-backend/kmf/install/install.sh
+systemctl status netcore-kmf
+source /etc/netcore/lxc-network.env
+curl --fail "${NETCORE_WEBUI_URL}health/ready"
 ```
 
-Danach:
+`shadow` erlaubt Schlüssel- und Jobvorbereitung, gibt jedoch keine Aktionen an die Edge frei. `authoritative` erlaubt Claims vollständig freigegebener und gequeueter Aktionen. Die Beispielkonfiguration beginnt in `shadow` und bindet an `0.0.0.0:8190`.
 
-```text
-http://<KMF-LXC-IP>:8190/
-```
+Die aktuelle API hat **keine Anmeldung, Tokens oder TLS**. Die verlangten zwei unterschiedlichen Actor-Namen sind eine Workflow-Prüfung, keine verifizierten Vier-Augen-Identitäten. Der Dienst gehört ausschließlich ins isolierte Management-Lab.
 
-## Verzeichnisstruktur
+## Wichtige API-Pfade
 
-```text
-system-backend/kmf/
-├── config/kmf.example.toml
-├── docs/
-├── install/
-├── src/
-├── systemd/netcore-kmf.service
-└── tests/
-```
+| Aufgabe | Pfad |
+| --- | --- |
+| Schlüssel ansehen/erzeugen | `GET` / `POST /api/v1/keys` |
+| Rotieren/aktivieren | `POST /api/v1/keys/{id}/rotate` / `activate` |
+| Node-Profil erzeugen | `POST /api/v1/nodes` |
+| Job erzeugen, freigeben, queueen | `POST /api/v1/otar/jobs`, `/{id}/approve`, `/{id}/queue` |
+| Edge-Aktion beanspruchen/quittieren | `POST /api/v1/edge/actions/claim`, `/{id}/ack` |
+| Wartung / Backup | `POST /api/v1/maintenance/tick`, `POST /api/v1/backups` |
 
-## Kernendpunkte
+Es läuft kein automatischer KMF-Wartungstimer; zeitbezogene Zustandsbereinigung erfolgt über den Wartungsendpunkt.
 
-```text
-GET  /api/v1/status
-GET  /api/v1/keys
-POST /api/v1/keys
-POST /api/v1/keys/{id}/rotate
-POST /api/v1/keys/{id}/activate
-POST /api/v1/nodes
-POST /api/v1/otar/jobs
-POST /api/v1/otar/jobs/{id}/approve
-POST /api/v1/otar/jobs/{id}/queue
-POST /api/v1/edge/actions/claim
-POST /api/v1/edge/actions/{id}/ack
-POST /api/v1/backups
-GET  /api/v1/export.json
-```
+## Anleitungen und Quellen
 
-Weitere Details stehen in `docs/architecture.md`, `docs/key-lifecycle.md`, `docs/otar-workflow.md` und `docs/vault-backup-hsm.md`.
+- [Architektur und Secret-Fluss](architektur-und-geheimnisfluss.md)
+- [Schlüssellebenszyklus](schluessellebenszyklus.md)
+- [OTAR-Ablauf](otar-zustellablauf.md)
+- [Vault, Backup und HSM-Grenze](vault-backups-und-hsm.md)
+- [Offene Testumgebung](offene-testumgebung.md)
+- [LXC-Installation](lxc-installation.md)
+- [API-Beispiele](tests/api-beispiele-im-labor.md)
+
+Quellcode, Konfiguration, Installer, systemd-Unit und Testhelfer liegen unter [system-backend/kmf](../../../system-backend/kmf). Die ausführlichen Anleitungen liegen ausschließlich hier unter `Docs/services/kmf/`.

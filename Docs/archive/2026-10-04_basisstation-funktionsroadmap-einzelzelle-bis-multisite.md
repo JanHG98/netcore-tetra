@@ -1,5 +1,7 @@
 # Brainstorming: Basisstations-Funktionsroadmap von der Einzelzelle zum Multi-Site-Netz
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 **Stand der Notizen und ergänzenden Prüfungen: 2026-10-04.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
 
 > **Zielbild:** Schrittweise vom ersten sendenden Standort mit belegter Geräteanmeldung zum Multi-Site-Netz. Der historische Entwurf enthält acht Phasen und 40 Schritte; Einzelentscheidungen und praktische Abnahmen sind noch nicht belegt. Der zusätzliche Repository-Abgleich stammt vom 04.10.2026.

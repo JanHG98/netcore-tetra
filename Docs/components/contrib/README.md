@@ -1,4 +1,4 @@
-# contrib
+# Referenzmaterial und Beiträge
 
 [Dokumentationsindex](../../README.md)
 

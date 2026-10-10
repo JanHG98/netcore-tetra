@@ -1,5 +1,13 @@
 # Z01.4 – Observability-/Syslog-Befund CT136, 2026-10-08
 
+**Dokumenttyp: datierter Arbeits-, Prüf- und Betreiberbefund.** CT136 ist als konkreter Betreiberbefund mit UID/GID, Mountquelle, APIs und datierten Messwerten dokumentiert. Erfolgreicher NFS-Dateizugriff und ein archivierter TCP-Marker gelten für diesen Pilot, nicht für alle Sender oder reale NFS-Stalls.
+
+Heutiger Einstieg: [Observability-Anleitung](../../services/observability/README.md) · [Syslog-Betrieb](../../services/observability/systemlogs-sammeln-und-archivieren.md) · [Integrationsübersicht](README.md) · [Gesamtroadmap](../../roadmaps/gesamtroadmap.md) · [Dokumentationsindex](../../README.md). Quellbeschreibung und tatsächliche installierte Version bleiben getrennt.
+
+## Datierte Originalbefunde
+
+### Z01.4 – Observability-/Syslog-Befund CT136, 2026-10-08
+
 ## Tatsächlicher Betreiberbefund
 
 Quelle: bereitgestellte Ausgabe von `pct exec 136`, kein direkter Zugriff des Assistenten.

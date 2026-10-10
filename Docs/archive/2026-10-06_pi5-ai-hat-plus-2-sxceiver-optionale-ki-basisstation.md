@@ -1,5 +1,7 @@
 # Brainstorming: Pi-5-Basisstation mit AI HAT+ 2, SXceiver und optionale lokale KI
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
 
 Hardwareidee: Raspberry Pi 5 mit AI HAT+ 2 und darüber einem SDR für die NetCore-Tetra-Basisstation. Lokale Transkription und Diagnose erscheinen unter den unten genannten Bedingungen sinnvoll. Stückliste, Dreierstapel und KI-Integration sind noch nicht festgelegt oder praktisch abgenommen. Die Funkverarbeitung soll von optionaler KI-Auswertung unabhängig bleiben.

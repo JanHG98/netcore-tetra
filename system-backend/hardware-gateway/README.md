@@ -1,8 +1,8 @@
-# NetCore Hardware Gateway – Phase 6
+# Hardwareüberwachung
 
 OPEN-LAB-Dienst für Hardware-I/O, Rack- und Umgebungsüberwachung.
 
-Lokale Dateien: [src](src/) · [config](config/) · [install](install/) · [tests](tests/) · [examples](examples/).
+Lokale Dateien: [src](src/) · [config](config/) · [install](install/) · [tests](tests/) · [examples](examples/) · [web-ui](web-ui/).
 
 [Vollständige Dokumentation](../../Docs/services/hardware-gateway/README.md) · [Zentraler Dokumentationsindex](../../Docs/README.md)
 

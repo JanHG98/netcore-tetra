@@ -1,12 +1,8 @@
-# Handbücher und Komplettguides
+# Aktuelle Handbücher
 
-[Gesamte Dokumentation](../README.md)
+[Dokumentationsindex](../README.md) · [Gesamtroadmap](../roadmaps/gesamtroadmap.md)
 
-- [Komplettguide · 2026-09-27](NetCore-Tetra-Komplettguide-2026-09-27.md)
-- [Komplettguide · 2026-09-28](NetCore-Tetra-Komplettguide-2026-09-28.md)
-- [Komplettguide · 2026-10-07](NetCore-Tetra-Komplettguide-2026-10-07.md)
-- [Komplettguide · undatierte Referenzfassung](NetCore-Tetra-Komplettguide.md)
-- [Systemhandbuch · 2026-09-27](NetCore-Tetra-Systemhandbuch-2026-09-27.md)
-- [Systemhandbuch · 2026-09-28](NetCore-Tetra-Systemhandbuch-2026-09-28.md)
-- [Systemhandbuch · 2026-10-07](NetCore-Tetra-Systemhandbuch-2026-10-07.md)
-- [Systemhandbuch · undatierte Referenzfassung](NetCore-Tetra-Systemhandbuch.md)
+- [Systemhandbuch](systemhandbuch.md): Architektur, Rollen, Datenwege und Grenzen des aktuellen Quellstands.
+- [Inbetriebnahme](inbetriebnahme.md): Vorbereitung, Konfiguration, Deployment, Prüfungen und Betriebsübernahme.
+
+Die acht früheren Langfassungen liegen vollständig im [Handbucharchiv](../archive/handbooks/README.md). Ihre Aussagen, Versionsstände und Seitenzahlen bleiben historische Nachweise. Aktuelle Detailanleitungen werden bei den jeweiligen Diensten gepflegt und hier verlinkt.

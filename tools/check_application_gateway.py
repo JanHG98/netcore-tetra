@@ -25,7 +25,7 @@ REQUIRED = [
     "system-backend/application-gateway/install/update.sh",
     "system-backend/application-gateway/install/uninstall.sh",
     "system-backend/application-gateway/tests/application_gateway_reference.py",
-    "Docs/packages/core/SWMI_CORE_1_PACKAGE_N_APPLICATION_GATEWAY.md",
+    "Docs/packages/core/anwendungs-gateway-paketstand.md",
     "system-backend/application-gateway/web-ui/index.html",
 ]
 MARKERS = {

@@ -4,9 +4,11 @@ Hier sind Ideen, Architekturansätze, Designvarianten, technische Befunde und En
 
 Die Datumsangaben und Repository-Stände gehören zum jeweiligen historischen Arbeitsstand. **Idee**, **geplant**, **implementiert**, **getestet** und **im Betrieb bestätigt** bleiben getrennt: Ein Konzept oder vorhandener Code belegt noch keinen erfolgreichen Einsatz am Funkgerät. Spätere Korrekturen sind in den jeweiligen Notizen nachvollziehbar.
 
-Die Übersicht führt zu den Themen und ihren offenen Punkten. Messwerte, Befehle, Logs, Entwürfe und Quellen stehen in den verlinkten Notizen; zugehörige Bilder und Arbeitsdateien liegen unter `assets/`.
+**Einordnung vom 09.10.2026:** Diese Übersicht beschreibt historische Gesprächsstände. Die Spalte mit offenen Punkten hält die damalige Arbeitsliste fest; aktuelle Prioritäten und erledigte Integrationen stehen in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md). Frühere Installationsbefehle und Branchangaben sind keine aktuelle Betriebsanleitung.
 
-| Datum | Thema | Notizen | Offene Punkte und nächste Schritte |
+Die Übersicht führt zu den Themen und ihren damals offenen Punkten. Messwerte, Befehle, Logs, Entwürfe und Quellen stehen in den verlinkten Notizen; zugehörige Bilder und Arbeitsdateien liegen unter `assets/`.
+
+| Datum | Thema | Notizen | Damals offene Punkte und nächste Schritte |
 |---|---|---|---|
 | 2026-10-03 | Basisstations-ISSI, Eigentümer 01 und Systemidentität | [Basisstation: ISSI und Eigentümer](2026-10-03_basisstation-issi-eigentuemer-und-systemidentitaet.md) | Live-Konfiguration/Anzeige prüfen; lokale SDS-Routen und Legacy-Tests abgleichen; weitere TBS-Nummern und Sonderbetrieb festlegen. |
 | 2026-10-03 | Flowstation Wetterdaten & SDS-WeatherBot | [Flowstation: Wetterdaten per SDS](2026-10-03_flowstation-wetterdaten-sds-weatherbot.md) | Service-ISSI festlegen; SDS Command Router/Ingress bauen; Wetterprovider wählen; Request/Response mit realem MS testen. |

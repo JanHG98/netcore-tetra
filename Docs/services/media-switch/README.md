@@ -1,6 +1,6 @@
 # NetCore Media Switch
 
-**Quellen:** [system-backend/media-switch](../../../system-backend/media-switch) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+**Abgleich: 9. Oktober 2026, Quellstand `c3ccdb4`.** Grundlage: [src/state.rs](../../../system-backend/media-switch/src/state.rs) · [src/http.rs](../../../system-backend/media-switch/src/http.rs). Beschreibt den implementierten Umfang; eine Live- oder Funkabnahme wird damit nicht belegt.
 
 Der Media Switch ist der zentrale, eigenständig deploybare LXC-Dienst für den Transport bereits codierter TETRA-Sprachframes zwischen mehreren TBS-Call-Legs.
 
@@ -16,20 +16,12 @@ Der Media Switch ist der zentrale, eigenständig deploybare LXC-Dienst für den 
 - Duplikat-, Unbekannt-Stream- und Überlastschutz
 - Stream-Mute, Session-Flush und Testframe-Injection
 - payloadfreier Diagnose-Tap und replay-fähiger Vollframe-Tap für den Recorder
-- Injection-Schnittstelle für den späteren Audio-Player und die Media Library
+- Injection-Schnittstelle als Anschluss für Wiedergabe; eine Media Library ist bereits vorhanden
 - Prometheus-Metriken, Events, OpenAPI, systemd und LXC-Installationsskripte
 
 ## Datenweg
 
-```text
-TBS A / UMAC
-  -> Control-Room-Node-Worker
-  -> Node Gateway /ws/node
-  -> Backend WebSocket /ws/backend
-  -> Media Switch / Session + Jitter Buffer
-  -> Node Gateway
-  -> TBS B / UMAC / lokaler DL-Circuit
-```
+Ein Uplink-Sprachframe läuft von der TBS-UMAC über den Node-Worker und `/ws/node` zum Node Gateway. Der Media Switch empfängt ihn über das abonnierte Thema `media_frames` auf `/ws/backend`, ordnet ihn einer Session zu und verteilt gepufferte Kopien über den Gateway an die Ziel-TBS. Dort speist UMAC sie in den lokalen Downlink-Circuit ein.
 
 Call Control bleibt Eigentümer der logischen Calls. Änderungen werden über `ws://<call-control>:8120/ws/media` sofort als `call_created`, `leg_ready`, `floor_changed`, `call_updated` oder `call_released` übertragen. Der Media Switch erzeugt daraus ausschließlich den Media-Routinggraphen und bestätigt vollständig aktive Routen revisionsgebunden über `POST /api/v1/media/route-ready`. Erst danach darf Call Control einen angeforderten Floor freigeben. Der HTTP-Abgleich läuft nur noch als langsames Sicherheitsnetz und wiederholt bei Bedarf ein fehlgeschlagenes RouteReady-ACK.
 

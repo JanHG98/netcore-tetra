@@ -1,5 +1,7 @@
 # Brainstorming: WERMA-Racksignalisierung, Rack-Aufbau und BPI-R4 Pro
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 **Stand der Notizen und ergänzenden Prüfungen: 2026-10-03.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
 
 > **Planungsstand:** Fünf vorhandene WERMA-Farben sollen den Rackzustand anzeigen. Der Entwurf trennt Zustandsauswertung in NetCore und elektrische Ansteuerung durch einen separaten Pi. Für Routing/Switching wird ein eigenständiger Banana Pi BPI-R4 Pro betrachtet, bei Bedarf ergänzt um einen unmanaged 5-Port-Switch. Eine Hardwareintegration ist noch nicht ausgeführt.

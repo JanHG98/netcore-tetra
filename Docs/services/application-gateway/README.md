@@ -1,6 +1,8 @@
-# NetCore-Tetra Application Gateway
+# Anwendungsanbindung
 
 **Quellen:** [system-backend/application-gateway](../../../system-backend/application-gateway) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../roadmaps/gesamtroadmap.md).
 
 ## Zweck
 
@@ -21,7 +23,7 @@ Der Dienst ist **kein** SDS Router, kein Media Switch und kein Air-Interface-Pro
 - Health-Probes und Connector-Zustände
 - getrennte Secret-Datei mit redaktierten Management-Antworten
 - TTS-Orchestrierung über Piper mit validiertem WAV-Spool
-- Übergabevertrag zur späteren Media Library
+- Importübergabe an die vorhandene Media Library
 - WebUI, REST-API, OpenAPI, Prometheus-Metriken, Audit, Backup und Export
 - systemd- und LXC-Installationsskripte
 
@@ -45,6 +47,15 @@ Die Standardkonfiguration enthält Adapter beziehungsweise Verträge für:
 | Generic Webhook | bidirectional | NetCore Event Envelope v1 |
 
 Externe Protokolle werden bewusst hinter Adapterverträgen gehalten. Ein DAPNET- oder MeshCom-spezifischer Relay kann ausgetauscht werden, ohne SDS Router oder TBS zu verändern.
+
+Die Adapterliste ist keine Liste betriebsfertig eingerichteter Fremdsysteme.
+URLs, Secrets und Routingziele müssen zu erreichbaren Diensten passen. Der
+Piper-Connector nennt in der Vorlage Loopback; das setzt einen dort laufenden
+Provider voraus. Der zentrale Piper der Media Library ist dagegen an deren
+Loopback gebunden und nicht unmittelbar vom Gateway-LXC erreichbar. Für die
+aktuelle zentrale TTS-Verwaltung die [Media-Library-WebUI](../media-library/README.md)
+verwenden; einen getrennten Gateway-TTS-Workflow nur mit ausdrücklich passend
+bereitgestelltem Provider aktivieren.
 
 ## WebUI
 
@@ -89,7 +100,7 @@ WebUI/API
    → Piper HTTP
    → validiertes RIFF/WAVE im Spool
    → optionaler Import-URL-Auftrag an Media Library
-   → spätere Aussendung aus dem Media-/Recording-Workflow
+   → Freigabe und Aussendung über die Medienbibliothek und die ausgewählte TBS
 ```
 
 Der Gateway sendet ein erzeugtes WAV nicht direkt in den Media Switch. Damit bleibt die bereits bewährte Trennung erhalten: Synthese erzeugt eine Datei, die eigentliche Aussendung erfolgt aus dem Media-Library-/Recording-Pfad.
@@ -125,4 +136,4 @@ Noch nicht enthalten sind:
 - produktives Secret Backend wie Vault/HSM
 - garantierte genau-einmal-Zustellung über Fremdsystemgrenzen
 
-Details stehen unter `docs/`.
+Weitere Anleitungen: [Architektur](architektur.md), [Adaptervertrag](anwendungsadapter-und-nachrichten.md), [LXC-Installation](installation-im-lxc.md) und [Migration lokaler TBS-Anbindungen](tbs-integrationen-zentralisieren.md).

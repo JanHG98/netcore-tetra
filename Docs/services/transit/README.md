@@ -1,103 +1,52 @@
-# NetCore Transit
+# Transit – Vermittlung zwischen NetCore-Regionen
 
-**Quellen:** [system-backend/transit](../../../system-backend/transit) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+Transit vermittelt semantische Mobility-, Einzelruf-, Gruppenruf-, SDS-, Media- und Supplementary-Service-Ereignisse zwischen eigenständigen NetCore-Regionen. Das native Protokoll heißt `netcore-transit-v1`: Es ist **noch kein ETSI ISI** und bestätigt keine Interoperabilität mit fremden SwMIs.
 
-## Zweck
+**Stand: 9. Oktober 2026.** Abgeglichen mit [Konfiguration](../../../system-backend/transit/config/transit.example.toml), [Routing und Zuständen](../../../system-backend/transit/src/state.rs) und [HTTP-Transport](../../../system-backend/transit/src/transport.rs). Beschrieben ist der vorhandene Lab-Code, keine produktive WAN- oder On-Air-Abnahme.
 
-Transit ist die DXTT-ähnliche Vermittlung zwischen eigenständigen NetCore-Tetra-Core-Regionen. Der Dienst bestimmt Teilnehmer- und Gruppenregionen, wählt redundante Pfade und transportiert Mobility-, Einzelruf-, Gruppenruf-, SDS-, Media- und Supplementary-Service-Ereignisse zwischen Regionen.
+## Vorhandene Funktionen
 
-> Diese Phase implementiert das NetCore-native Protokoll `netcore-transit-v1`. Es ist **noch kein ETSI ISI** und wird nicht als solches ausgegeben.
+- Regionen und Peer-Links mit Heartbeat, Latenz, administrativem und Betriebszustand;
+- Routen nach Dienst, Zielregion, ISSI/GSSI, Präfix oder Default sowie transitive Weiterleitung;
+- Teilnehmerregionen und Gruppenreichweite, Sessions mit einem Leg je Zielregion;
+- Path Vector (`trace`), Hop Limit, Deduplizierung, Retry, TTL und Failover;
+- persistente Outbound- und Local-Delivery-Queues, Neustartbehandlung;
+- Weboberfläche, REST-API, OpenAPI, Metrics, Export und Metadatenbackup;
+- Installer und systemd-Unit.
 
-## Enthalten
+## Start und Betriebsmodus
 
-- Regionen und Peer-Links mit Heartbeat, Latenz, Admin- und Betriebszustand
-- statische Routen nach Dienst, Region, ISSI, GSSI, Präfix oder Default
-- direkte und transitive Regionalpfade
-- Teilnehmerregion über ISSI sowie Gruppenreichweite über GSSI
-- Path Vector, Hop Limit und regionale Loop Prevention
-- Deduplizierung über `dedupe_key`
-- Sessions und regionale Legs für Calls, SDS und Media
-- redundante Pfade, automatischer und kontrollierter Failover
-- persistente Outbound- und Local-Delivery-Queues
-- Retry, Backoff, TTL, Peer-Timeout und Recovery nach Neustart
-- WebUI, REST-API, OpenAPI, Metrics, Health, Export und Backup
-- systemd- und LXC-Installationsdateien
+Aus dem Repository-Hauptverzeichnis auf einem Linux-Lab-Host mit systemd, `iproute2` und passender Rust-/Cargo-Toolchain:
 
-## WebUI
-
-Standardport: `8200`
-
-```text
-http://<transit-lxc>:8200/
+```bash
+sudo system-backend/transit/install/install.sh
+systemctl status netcore-transit
+source /etc/netcore/lxc-network.env
+curl --fail "${NETCORE_WEBUI_URL}health/ready"
 ```
 
-Die WebUI besitzt Ansichten für Übersicht, Regionen/Peers, Routing, Teilnehmer-/Gruppenregionen, Sessions, Traffic/Queues, Ereignisse, Wartung und API.
+Die Beispielkonfiguration bindet zunächst an `0.0.0.0:8200` und beginnt in `shadow`; der Installer setzt `bind` und `advertised_endpoint` auf die erkannte LXC-IPv4-Adresse. Region-ID, SwMI-ID und den von anderen Regionen erreichbaren `advertised_endpoint` für jede Instanz passend einstellen. Der Installer verwendet `/etc/netcore/transit.toml`, `/opt/netcore-transit/bin/netcore-transit` und `/var/lib/netcore-transit/`.
 
-## Shadow und Authoritative
+`shadow` berechnet und persistiert den vorgesehenen Transit, sendet aber keine Heartbeats oder Envelopes. Ingress und Management bleiben erreichbar. `authoritative` aktiviert den HTTP-Peer-Versand. Der Betriebsmodus stammt aus der Startkonfiguration; Änderungen erfordern einen Neustart.
 
-```toml
-[region]
-operating_mode = "shadow"
-```
+## Schnittstellen
 
-`shadow` berechnet Pfade, erzeugt Sessions und zeigt den vorgesehenen Transit, sendet jedoch keine Heartbeats oder Envelopes an andere Regionen.
+| Schnittstelle | API-Pfad |
+| --- | --- |
+| Peer-Heartbeat / Envelope | `POST /api/v1/peer/heartbeat`, `POST /api/v1/peer/envelopes` |
+| Lokaler Auftrag | `POST /api/v1/transit/submit` |
+| Lokale Zustellungen / ACK | `GET /api/v1/local-deliveries`, `POST /api/v1/local-deliveries/{id}/ack` |
+| Routingprüfung | `POST /api/v1/route/resolve` |
+| Metadatenbackup | `POST /api/v1/maintenance/backup` |
 
-```toml
-[region]
-operating_mode = "authoritative"
-```
+Eine Zustellung in die Peer-Queue und die Anwendung durch den lokalen Core sind getrennte Schritte. Ein Peer-HTTP-Erfolg bestätigt keinen abgeschlossenen Funkruf.
 
-`authoritative` aktiviert den HTTP-Peer-Transport, Heartbeats, Retry, Deduplizierung und Failover.
+## Lab-Grenze und weitere Anleitungen
 
-## Peer-Protokoll
+Management und Peers teilen TCP **8200** ohne Anmeldung, Tokens, TLS, mTLS oder signierte Peer-Identitäten. Nur im isolierten Lab-Netz betreiben. Der vorhandene Dienst implementiert keinen ETSI-ISI-Stack, keine standardisierten ISI-Media-Profile und keine WAN-Bandbreitenreservierung.
 
-Peer-Ingress:
-
-```text
-POST /api/v1/peer/heartbeat
-POST /api/v1/peer/envelopes
-```
-
-Lokale Core-Dienste:
-
-```text
-POST /api/v1/transit/submit
-GET  /api/v1/local-deliveries
-POST /api/v1/local-deliveries/{id}/ack
-```
-
-Ein Envelope trägt Ursprung, unmittelbaren vorherigen Hop, Zielregion, Service/Operation, Adressen, Session-/Korrelations-ID, Priorität, TTL, Path Vector und Payload.
-
-## Loop Prevention
-
-Ein Envelope wird verworfen, wenn:
-
-- die lokale Region bereits im Path Vector vorkommt,
-- `max_hops` erreicht ist,
-- derselbe `dedupe_key` innerhalb des Dedupe-Fensters erneut eintrifft,
-- kein gesunder Peer ohne Rückweg in den bisherigen Pfad existiert.
-
-## Offene Testumgebung
-
-Aktuell absichtlich:
-
-- keine Anmeldung,
-- keine Tokens,
-- kein TLS,
-- keine mTLS-Peeridentität,
-- keine signierten Route Advertisements.
-
-Der Dienst darf daher nur in einem isolierten Labor- und Managementnetz betrieben werden.
-
-## Bewusste Grenzen
-
-Noch nicht enthalten:
-
-- ETSI-ISI-Protokollstacks und ANF-ISI-PDUs,
-- Interoperabilität mit fremden SwMIs,
-- produktive mTLS-/PKI-Peeridentität,
-- RBAC und Freigabeworkflows,
-- standardisierte ISI-Media- und Supplementary-Service-Profile,
-- Bandbreitenreservierung und QoS-Signalisierung auf WAN-Ebene.
-
-Diese Punkte folgen auf der NetCore-Transit-Basis als eigener ISI-/Interworking-Ausbau.
+- [Architektur und Zustellung](architektur-und-zustellung.md)
+- [Routing und Failover](routing-und-failover.md)
+- [Grenze zu ETSI ISI](grenze-zu-etsi-isi.md)
+- [Offene Testumgebung](offene-testumgebung.md)
+- [Zwei-Regionen-Labtest](tests/zwei-regionen-labortest.md)

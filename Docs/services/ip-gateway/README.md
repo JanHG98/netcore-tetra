@@ -1,6 +1,6 @@
 # NetCore IP Gateway
 
-**Quellen:** [system-backend/ip-gateway](../../../system-backend/ip-gateway) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+**Abgleich: 9. Oktober 2026, Quellstand `c3ccdb4`.** Grundlage: [src/state.rs](../../../system-backend/ip-gateway/src/state.rs) · [src/http.rs](../../../system-backend/ip-gateway/src/http.rs). Beschreibt den implementierten Umfang; eine Live- oder Funkabnahme wird damit nicht belegt.
 
 Der IP Gateway ist der **Layer-3-Übergang zwischen dem zentralen Packet Core und normalen IPv4-Netzen**. Er übernimmt vollständige IP-N-PDUs aus der Packet-Core-Outbox, speist sie über ein Linux-TUN-Interface in den Kernel ein und liefert zum TETRA-Adresspool geroutete Pakete wieder an den passenden PDP-Kontext zurück.
 
@@ -48,23 +48,10 @@ Dann benötigt der LXC `/dev/net/tun`, `CAP_NET_ADMIN`, `CAP_NET_RAW` und für D
 
 ## Datenweg
 
-```text
-MS / SNDCP
-   ↓ Uplink-Fragmente
-TBS Edge
-   ↓ vollständige N-PDU
-Packet Core Outbox
-   ↓ HTTP Pull + ACK/Delete
-IP Gateway
-   ↓ write(ntc-tun0)
-Linux Routing / nftables / NAT / lokale Dienste / externe Netze
-   ↓ Paket mit Zieladresse aus dem TETRA-IP-Pool
-read(ntc-tun0)
-   ↓ IPv4 → PDP-Kontext → ISSI/NSAPI
-Packet Core Downlink Queue
-   ↓ Fragmentierung / Flow Control
-TBS Edge → MS
-```
+| Richtung | Datenweg |
+|---|---|
+| Uplink | Funkgerät/SNDCP → TBS Edge → vollständige N-PDU in Packet-Core-Outbox → HTTP-Pull durch IP Gateway → Write auf `ntc-tun0` → Linux-Routing, nftables/NAT oder lokale Dienste |
+| Downlink | Paket zur Teilnehmer-IP → Read von `ntc-tun0` → IPv4-/PDP-Zuordnung zu ISSI und NSAPI → Packet-Core-Downlink-Queue → versionierte Fragmentaktionen; vollständige TBS-Edge-Anbindung gesondert prüfen |
 
 ## Ports
 
@@ -131,7 +118,7 @@ GET    /health/ready
 GET    /openapi.json
 ```
 
-Weitere Details stehen unter `docs/`.
+Die Themenanleitungen liegen neben diesem Überblick; Start und Netzkonfiguration stehen in [Bereitstellung im LXC](bereitstellung-im-lxc.md), die API-Aufrufe in [Laborbeispiele](tests/api-beispiele-im-labor.md).
 
 
 ## Betriebsmodus und Statusanzeige
@@ -140,3 +127,13 @@ Weitere Details stehen unter `docs/`.
 in diesem Modus erwartbar. Für echten Pakettransport `interface.mode =
 "authoritative"` setzen und den Dienst neu starten. Der DNS-Listener wird erst
 dann am TUN-Gateway aktiviert.
+
+## Adresspool vor der Kopplung abgleichen
+
+Das IP-Gateway-Beispiel verwendet `10.0.0.0/24` mit Gateway `10.0.0.1`; das Packet-Core-Beispiel vergibt Adressen aus `10.44.0.0/24`. Die Beispiele sind deshalb nicht unverändert miteinander betreibbar. Entweder Packet-Core-Adresspool oder TUN-Netz/Gateway anpassen und DNS-Bind, NAT-/Firewall-CIDRs sowie Routen mitziehen. Managementnetz und Paketdatennetz getrennt konfigurieren.
+
+Die vorhandene HTTP-/TUN-Kopplung ist von der vollständigen TBS-Edge-Anbindung zu unterscheiden; insbesondere werden Packet-Core-Downlink-Fragmente noch nicht vollständig durch die bestehende Node-Gateway-Bridge transportiert.
+
+## Arbeitsverzeichnis
+
+Alle `cargo`- und `system-backend/...`-Befehle in diesem Überblick werden im Repository-Root ausgeführt, beispielsweise nach `cd /opt/netcore-tetra`. Direkte Starts mit `/etc/netcore/...` benötigen passende Schreibrechte auf die konfigurierten State-Verzeichnisse; für den dauerhaften LXC-Betrieb den Installer und dessen Benutzer `netcore` verwenden.

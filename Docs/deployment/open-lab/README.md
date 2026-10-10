@@ -1,8 +1,10 @@
 # NetCore Open-Lab LXC Deployment
 
+**Gültigkeit:** Dokumentation gegen `main` (`c3ccdb4`, 09.10.2026) geprüft. Installer, Konfiguration und API im aktuellen Quellbaum sind maßgeblich; Phasennamen und Beispieladressen sind keine Live-Abnahme. Für Updates den bestehenden Checkout und die tatsächlich gestartete Unit verwenden.
+
 **Quellen:** [deploy/open-lab](../../../deploy/open-lab) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
 
-This directory is the final cross-LXC integration layer for the current lab phase. It does not turn the management plane into a production system: existing backend WebUIs generally remain reachable without login, token or TLS and therefore belong on an isolated management VLAN only. The new `alert-service` (port 8310) requires a locally generated API token by default. Its delivery switch starts disabled; see [installation and update guide](../KATWARN_NINA_INSTALL_UPDATE.md).
+This directory is the final cross-LXC integration layer for the current lab phase. It does not turn the management plane into a production system: existing backend WebUIs generally remain reachable without login, token or TLS and therefore belong on an isolated management VLAN only. The new `alert-service` (port 8310) requires a locally generated API token by default. Its delivery switch starts disabled; see [installation and update guide](../warnzentrale-installation-und-update.md).
 
 ## Offline workflow
 
@@ -70,4 +72,4 @@ python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.
 python3 deploy/open-lab/netcore-deploy.py --inventory deploy/open-lab/inventory.toml test --profile fault --allow-mutations --allow-restarts
 ```
 
-The runner writes JSON, JUnit XML and a compact summary below `tests/e2e/artifacts/<run-id>/`. See `Docs/deployment/OPEN_LAB_E2E_RUNBOOK.md` before enabling restarts.
+The runner writes JSON, JUnit XML and a compact summary below `tests/e2e/artifacts/<run-id>/`. See `Docs/deployment/open-lab-integrationstest-anleitung.md` before enabling restarts.

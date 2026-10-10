@@ -1,5 +1,7 @@
 # Brainstorming: NetCore-Tetra-Systemhandbuch: vom 93-Seiten-Entwurf zur 400-Seiten-Ausgabe
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
 
 Entwicklungsnotizen zur 400-Seiten-Ausgabe des NetCore-Tetra-Systemhandbuchs: Umfang, redaktionelle Entscheidungen, Qualitätssicherung und gesonderter Repository-Abgleich.
@@ -130,7 +132,7 @@ Die folgenden IPs und Ports sind **Beispielwerte aus dem geprüften Inventory**,
 | [`system-backend/services.toml`](../../system-backend/services.toml) | Geprüfter WebUI-/Servicekatalog (25 deploybare Namen plus `shared`). |
 | [`config.toml`](../../config.toml) und [`Docs/basisstation.config.sanitized.example.toml`](../basisstation.config.sanitized.example.toml) | TBS-Konfiguration und bereinigte Vorlage; tatsächliche Anlage und Geheimnisse sind hier nicht geprüft. Bei kaputtem Primär-TOML beschreibt `config.toml` eine separat anzulegende `.fallback`-Datei. |
 | [`system-backend/control-room/install/install.sh`](../../system-backend/control-room/install/install.sh), [`systemd/netcore-control-room.service`](../../system-backend/control-room/systemd/netcore-control-room.service) | Control-Room-Build, systemd-Installation, Laufzeitpfad und Healthprobe. Zielpfad-Abweichung siehe Abschnitt 9. |
-| [`Docs/generated/full-system-integration-audit.md`](../generated/full-system-integration-audit.md) | Eingecheckter Report `24`/`PASS`, zum geprüften 25er-Inventar veraltet. |
+| [`Docs/generated/systemintegration-pruefbericht.md`](../generated/systemintegration-pruefbericht.md) | Eingecheckter Report `24`/`PASS`, zum geprüften 25er-Inventar veraltet. |
 | [`tools/check_full_system_integration.py`](../../tools/check_full_system_integration.py) | Statischer Integrationsprüfer, derzeit selbst noch mit 24er-`EXPECTED`. Ausführen schreibt den generierten Report; bei dieser reinen Archivierung nicht ausgeführt. |
 | [`Docs/ETSI_SOURCE_REGISTER.md`](../ETSI_SOURCE_REGISTER.md), weitere ETSI-/SAP-/Gap-Matrizen | Normreferenzen, Inventur und Grenzen; keine vollständige Konformitätsbescheinigung. |
 

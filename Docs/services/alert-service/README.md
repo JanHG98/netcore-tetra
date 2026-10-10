@@ -1,12 +1,14 @@
-# NetCore Warnzentrale — NINA / KATWARN
+# Warnzentrale für NINA und KATWARN
 
 **Quellen:** [system-backend/alert-service](../../../system-backend/alert-service) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
 
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../roadmaps/gesamtroadmap.md).
+
 Die Warnzentrale vergleicht aktuelle Gerätepositionen aus dem Control Room mit aktiven Warngebieten und verschickt individuelle SDS über den SDS Router. Sie läuft als eigener Python-3.11+-Dienst in einem LXC und benötigt keine pip-Pakete. WebUI: `http://<WARN-LXC-IP>:8310/`.
 
-Die [Schritt-für-Schritt-Anleitung pro LXC und TBS](../../deployment/KATWARN_NINA_INSTALL_UPDATE.md) nennt für jedes betroffene System die erforderlichen Befehle und Prüfungen. **Kommen Warnungen bereits am Funkgerät an, braucht die neue Geräteübersicht nur ein [Update des Warn-LXC](../../deployment/KATWARN_NINA_INSTALL_UPDATE.md#5-bestehenden-warn-lxc-aktualisieren).** Konfiguration, Token, eigene Warnungen und dauerhafte Empfängerhistorie bleiben erhalten; weitere LXC- oder TBS-Updates sind dafür nicht erforderlich.
+Die [Schritt-für-Schritt-Anleitung pro LXC und TBS](../../deployment/warnzentrale-installation-und-update.md) nennt für jedes betroffene System die erforderlichen Befehle und Prüfungen. **Kommen Warnungen bereits am Funkgerät an, braucht die neue Geräteübersicht nur ein [Update des Warn-LXC](../../deployment/warnzentrale-installation-und-update.md#5-bestehenden-warn-lxc-aktualisieren).** Konfiguration, Token, eigene Warnungen und dauerhafte Empfängerhistorie bleiben erhalten; weitere LXC- oder TBS-Updates sind dafür nicht erforderlich.
 
-Bei der Ersteinrichtung müssen der neue Warn-LXC installiert sowie SDS Router, Control Room und die TBS aktualisiert werden. Die ab v1.9.0 in `main` enthaltene TBS-Korrektur ergänzt die fehlende CMCE-Weiterleitung der zentralen Befehle `DeliverSds` und `SendStatus` samt Rückmeldung. Der Control Room benötigt die aktivierte, nur lesende Verbindung zu Node Gateway `/ws/backend`, damit seine Geräte- und GPS-Ansichten mit Telemetrie gefüllt werden. Die TBS bleiben mit dem Node Gateway verbunden. Die ebenfalls enthaltene [Reparatur langsamer Bereitschaftsprüfungen](../../changes/backend/SDS_CALL_CONTROL_FALLBACK_REPARATUR.md) betrifft SDS Router und Call Control.
+Bei der Ersteinrichtung müssen der neue Warn-LXC installiert sowie SDS Router, Control Room und die TBS aktualisiert werden. Die ab v1.9.0 in `main` enthaltene TBS-Korrektur ergänzt die fehlende CMCE-Weiterleitung der zentralen Befehle `DeliverSds` und `SendStatus` samt Rückmeldung. Der Control Room benötigt die aktivierte, nur lesende Verbindung zu Node Gateway `/ws/backend`, damit seine Geräte- und GPS-Ansichten mit Telemetrie gefüllt werden. Die TBS bleiben mit dem Node Gateway verbunden. Die ebenfalls enthaltene [Reparatur langsamer Bereitschaftsprüfungen](../../changes/backend/sds-router-rufsteuerung-fallback-korrektur.md) betrifft SDS Router und Call Control.
 
 ## Verhalten
 
@@ -70,7 +72,7 @@ Alle `/api/`-Anfragen benötigen `Authorization: Bearer <NETCORE_ALERT_TOKEN>`. 
   "latitude": 52.3759,
   "longitude": 9.732,
   "radius_m": 1000,
-  "expires_at": "2030-01-01T16:00:00+01:00"
+  "expires_at": "2026-10-10T18:00:00+02:00"
 }
 ```
 

@@ -1,5 +1,7 @@
 # Brainstorming: TETRA-Fachbuch – Kapitelplanung, Normenbasis und Korrekturbedarf
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 > **Arbeitsstand:** Breite Kapitelplanung und viele Einzelentwürfe liegen vor. Das Manuskript ist noch nicht konsolidiert oder fachlich freigegeben; insbesondere Security/TEA, Sprachkanalkette und Normenzuordnung benötigen Korrekturen. Die Prüfung vom 04.10.2026 liefert dafür Quellen- und Codebefunde.
 
 ## Zielbild und Festlegungen

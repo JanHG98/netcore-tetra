@@ -1,6 +1,6 @@
 # NetCore SDS Router
 
-**Quellen:** [system-backend/sds-router](../../../system-backend/sds-router) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+**Abgleich: 9. Oktober 2026, Quellstand `c3ccdb4`.** Grundlage: [src/state.rs](../../../system-backend/sds-router/src/state.rs) · [src/http.rs](../../../system-backend/sds-router/src/http.rs). Beschreibt den implementierten Umfang; eine Live- oder Funkabnahme wird damit nicht belegt.
 
 Der SDS Router ist der zentrale SwMI-Dienst für **SDS und pre-coded Status**. Er nimmt verlustfrei normalisierte SDS-Edge-Ereignisse der TBS entgegen, entscheidet über Individual-, Gruppen- und Anwendungsziele und beauftragt die zuständigen TBS über den Node Gateway mit der Air-Interface-Zustellung.
 
@@ -13,7 +13,9 @@ Der SDS Router ist der zentrale SwMI-Dienst für **SDS und pre-coded Status**. E
 - Store-and-forward bei nicht erreichbaren Teilnehmern oder TBS
 - TTL, Priorität, Retry mit Backoff und maximale Versuchszahl
 - Offline-, In-flight-, Partial-, Failed- und Dead-Letter-Zustände
-- Duplikaterkennung mit konfigurierbarem Zeitfenster
+- Duplikaterkennung für Edge-Ingress mit konfigurierbarem Zeitfenster
+- dauerhafte API-Idempotenz über `idempotency_key`, auch nach Nachrichtenlöschung
+- optional `at_most_once` für genau einen zentralen Individual-Zustellversuch
 - Protokoll-ID-Routen an externe Anwendungen
 - optionale feste Individual-/Gruppenrouten zu einer TBS
 - Application-Outbox mit explizitem ACK/NACK
@@ -60,7 +62,8 @@ cargo run -p netcore-sds-router -- --no-config --bind 0.0.0.0:8150
 Mit Konfiguration:
 
 ```bash
-cp system-backend/sds-router/config/sds-router.example.toml /etc/netcore/sds-router.toml
+sudo install -d /etc/netcore
+sudo cp system-backend/sds-router/config/sds-router.example.toml /etc/netcore/sds-router.toml
 cargo run -p netcore-sds-router -- --config /etc/netcore/sds-router.toml
 ```
 
@@ -71,6 +74,7 @@ GET    /api/v1/status
 GET    /api/v1/messages
 POST   /api/v1/messages
 GET    /api/v1/messages/{id}
+GET    /api/v1/idempotency/{key}
 POST   /api/v1/messages/{id}/retry
 POST   /api/v1/messages/{id}/requeue
 POST   /api/v1/messages/{id}/cancel
@@ -91,8 +95,12 @@ GET    /health/ready
 GET    /openapi.json
 ```
 
-Weitere Details stehen unter `docs/`.
+Die Themenanleitungen liegen neben diesem Überblick; Start und Netzkonfiguration stehen in [Bereitstellung im LXC](bereitstellung-im-lxc.md), die API-Aufrufe in [Laborbeispiele](tests/api-beispiele-im-labor.md).
 
 ## Gemeinsames Ereignismodell (MQTT Phase 2)
 
-Der Dienst behält `GET /api/v1/events` für die bestehende WebUI bei. Jeder lokale Datensatz enthält zusätzlich `canonical`. Für neue Verbraucher steht ausschließlich das gemeinsame Format unter `GET /api/v1/events/netcore?limit=100` bereit. Das Wire-Schema ist `netcore-event-v1`; MQTT-spezifische Topic-, QoS- und Retain-Regeln folgen erst im IoT Gateway.
+Der Dienst behält `GET /api/v1/events` für die bestehende WebUI bei. Jeder lokale Datensatz enthält zusätzlich `canonical`. Für neue Verbraucher steht ausschließlich das gemeinsame Format unter `GET /api/v1/events/netcore?limit=100` bereit. Das Wire-Schema ist `netcore-event-v1`; MQTT-Topics, QoS und Retain-Regeln werden vom vorhandenen IoT Gateway verarbeitet; diese HTTP-Ereignis-API veröffentlicht selbst keine MQTT-Nachrichten.
+
+## Arbeitsverzeichnis
+
+Alle `cargo`- und `system-backend/...`-Befehle in diesem Überblick werden im Repository-Root ausgeführt, beispielsweise nach `cd /opt/netcore-tetra`. Direkte Starts mit `/etc/netcore/...` benötigen passende Schreibrechte auf die konfigurierten State-Verzeichnisse; für den dauerhaften LXC-Betrieb den Installer und dessen Benutzer `netcore` verwenden.

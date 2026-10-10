@@ -1,133 +1,54 @@
-# NetCore-Tetra System Backend
+# Backend-Dienste – Architektur, Betrieb und Quellen
 
-**Quellen:** [system-backend](../../system-backend) · [Repository-Root](../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+Die Backend-Dienste sind vom zeitkritischen Funkstack getrennt. Lokale PHY-, MAC-, LLC-, MLE-, MM- und CMCE-Abläufe bleiben an der TBS; zentrale Dienste koordinieren Fachzustände und Anwendungen. Diese Übersicht beschreibt die Repository-Deklaration an `main@c3ccdb4bb7daa78f38c529c95ce51993ab0d0afc` und bestätigt keine installierte oder betriebsbereite Gesamtanlage.
 
-Dieser Ordner enthält alle Dienste, die später unabhängig von der TBS als LXC, VM oder zentraler Backend-Prozess betrieben werden.
+## Dienstinventar und Zugriffsmodelle
 
-## Dienstanleitungen
+Das [Beispiel-Inventory](../../deploy/open-lab/inventory.example.toml) deklariert **26 reguläre Dienste**. Die [Registry](../../system-backend/services.toml) enthält **27 Einträge: diese 26 Runtime-Dienste und `shared` mit `runtime = false`**. Der [Agentenkatalog](../../system-backend/deployment-core/catalog.json) beschreibt getrennt davon verwaltbare Rollen und kennt den optionalen Provisioning Core; dieser gehört weder zur Registry noch zum regulären Beispiel-Inventory. Beispieladressen im Netz `10.0.20.*` sind keine ermittelten Live-Adressen.
 
-[Dokumentationsindex](../README.md) · [Gesamtroadmap](../roadmaps/ROADMAP.md)
+Der aktuelle Inventory-Managementzugriff verwendet dienstspezifische HTTP-Ports. Die meisten Registry-Dienste stehen im offenen Labormodus ohne Managementanmeldung oder TLS. Die Warnzentrale verlangt standardmäßig einen API-Token und aktiviert den Funkversand gesondert. Bediener-/Node-Authentisierung des Control-Room-Stacks ist separat in dessen Anleitung beschrieben; sie macht die übrigen Dienst-WebUIs nicht automatisch geschützt. HTTPS auf Port 8443 und gemeinsame zentrale IAM/RBAC-Rollen sind Zielvorgaben, keine bereits flächendeckend implementierte Betriebsform.
 
-- [alarm-workflow](alarm-workflow/README.md)
-- [alert-service](alert-service/README.md)
-- [application-gateway](application-gateway/README.md)
-- [asset-management](asset-management/README.md)
-- [call-control](call-control/README.md)
-- [control-room](control-room/README.md)
-- [deployment-core](deployment-core/README.md)
-- [directory](directory/README.md)
-- [group-core](group-core/README.md)
-- [hardware-gateway](hardware-gateway/README.md)
-- [iot-gateway](iot-gateway/README.md)
-- [ip-gateway](ip-gateway/README.md)
-- [kmf](kmf/README.md)
-- [media-library](media-library/README.md)
-- [media-switch](media-switch/README.md)
-- [mobility-core](mobility-core/README.md)
-- [node-gateway](node-gateway/README.md)
-- [observability](observability/README.md)
-- [packet-core](packet-core/README.md)
-- [provisioning-core](provisioning-core/README.md)
-- [recorder](recorder/README.md)
-- [rf-monitor](rf-monitor/README.md)
-- [sds-router](sds-router/README.md)
-- [security-core](security-core/README.md)
-- [shared](shared/README.md)
-- [sip-switch](sip-switch/README.md)
-- [subscriber-core](subscriber-core/README.md)
-- [task-workflow](task-workflow/README.md)
-- [tbs-connect](tbs-connect/README.md)
-- [transit](transit/README.md)
-- [tts](tts/README.md)
+| Dienst / Anleitung | Aufgabe | Beispielport | Registry-Zugriff | Hostmodell |
+| --- | --- | ---: | --- | --- |
+| [node-gateway](node-gateway/README.md) | TBS-Sessions, Telemetrie und Aufträge an die Funkkante | 8080 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [mobility-core](mobility-core/README.md) | Serving-TBS-Lage und Core-Kontexttransfermodell; aktive MM-Anbindung offen | 8090 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [subscriber-core](subscriber-core/README.md) | Teilnehmerprofile und Teilnehmerzulassung | 8100 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [group-core](group-core/README.md) | Gruppenstammdaten, Mitgliedschaften, Affiliation und DGNA | 8110 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [call-control](call-control/README.md) | Netzweite logische Rufe, Legs, Floor und Restore | 8120 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [media-switch](media-switch/README.md) | Transport gepackter TETRA-Sprachframes | 8130 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [recorder](recorder/README.md) | Passive Sprachframe-Aufzeichnung und Export | 8140 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [sds-router](sds-router/README.md) | SDS-/Statuszustellung und Store-and-forward | 8150 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [packet-core](packet-core/README.md) | SNDCP-/PDP-Kontexte und zentrale Packet-Data-Lage | 8160 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [ip-gateway](ip-gateway/README.md) | Linux-TUN, IPv4-Routing, NAT, Firewall und Diagnose | 8170 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [security-core](security-core/README.md) | Authentisierung, Policy und kurzlebige Sicherheitskontexte | 8180 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [kmf](kmf/README.md) | Schlüssellebenszyklus, Vault und OTAR-Orchestrierung | 8190 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [transit](transit/README.md) | Regionenübergreifende Vermittlung und Failover | 8200 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [application-gateway](application-gateway/README.md) | Externe Connectoren, Webhooks und Anwendungszustellung | 8220 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [media-library](media-library/README.md) | Audio-Assets, Vorschau, Freigabe, TTS und Stations-Playout | 8230 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [control-room](control-room/README.md) | Lageaggregation, Bedienung, Incidents und Schichtbuch | 9010 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [observability](observability/README.md) | Metriken, Logs, Traces, Alarme und Syslog-Archiv | 8210 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [iot-gateway](iot-gateway/README.md) | MQTT-Ereignisse, Richtlinien, Befehle und Quittierungen | 8240 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [hardware-gateway](hardware-gateway/README.md) | Edge-I/O, Sensorik und Racküberwachung | 8250 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [rf-monitor](rf-monitor/README.md) | HF-/DSP-Telemetrie und Grenzwertüberwachung | 8260 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [alarm-workflow](alarm-workflow/README.md) | Persistente Alarmakten und Eskalation | 8270 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [task-workflow](task-workflow/README.md) | Aufträge, WAP-Formulare und Statusaktionen | 8280 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [asset-management](asset-management/README.md) | Physische Assets, Personen, Ausgaben und Wartung | 8290 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [sip-switch](sip-switch/README.md) | PBX-/TBS-SIP-Vermittlung mit lokaler Notvermittlung | 8300 | Open Lab, kein TLS | eigener LXC / geeigneter Servicehost |
+| [alert-service](alert-service/README.md) | NINA/KATWARN und eigene standortbezogene Warnmeldungen | 8310 | API-Token, kein TLS | eigener LXC / geeigneter Servicehost |
+| [deployment-core](deployment-core/README.md) | Discovery, Git-Pinning, Deployments und Pi-Imagebuilder | 8320 | Open Lab, kein TLS | vollständige Ubuntu-VM |
 
-## Grundregeln
+## Weitere Komponenten und klare Zuständigkeiten
 
-- Jeder deploybare Dienst besitzt einen eigenen Unterordner.
-- Funknahe Echtzeitkomponenten bleiben außerhalb von `system-backend/`.
-- Gemeinsamer Backend-Code liegt unter `shared/`.
-- ZIP-Lieferungen behalten den vollständigen Pfad `system-backend/<dienst>/...` bei.
-- **Jeder eigenständig laufende Container oder jede VM besitzt eine eigene WebUI zur Verwaltung.**
-- Die WebUI wird vom jeweiligen Dienst selbst ausgeliefert; dafür wird kein zusätzlicher Frontend-Container benötigt.
-- Ein Ausfall der WebUI darf niemals die fachliche Runtime des Dienstes stoppen.
-- Der Control Room verlinkt und aggregiert die Service-WebUIs, ersetzt sie aber nicht.
+- [Provisioning Core](provisioning-core/README.md): optionaler Verwaltungsdienst im Agentenkatalog; kein Eintrag der Registry oder des regulären 26er-Beispiel-Inventorys.
+- [Directory](directory/README.md): Namen, Geräte-/Gruppen-/Statusmetadaten; kein Ersatz für Teilnehmerzulassung oder aktuelle Serving-TBS-Lage.
+- [Shared](shared/README.md): Verträge, Service-/Datenbank-/Telemetry-Bibliotheken und build-freie WebUI-Assets; kein eigener Container.
+- [Piper/TTS](tts/README.md): zentrale Erzeugung im Media-Library-Umfeld; kein weiterer Pflicht-LXC im Inventory.
+- [TBS Connect](tbs-connect/README.md): bestehende Anbindung; Zuständigkeit gegenüber Node Gateway anhand seiner Anleitung beurteilen.
 
-## Verbindlicher WebUI-Standard
+## Bereitstellung und Nachweise
 
-Die gemeinsame Vorgabe steht in:
+[Inventory-Bereitstellung](../deployment/open-lab/README.md) dokumentiert Validierung, Plan, Rendern und Ready-Schranke. Bestehende Host-Konfigurationen werden erhalten; bewusster Konfigurationsersatz benötigt den dafür vorgesehenen Schalter und Rückweg. Ein Readinessfehler stoppt Folgeinstallationen, stellt aber nicht automatisch sämtliche bereits geänderten Binaries oder Datenbanken zurück. Die Deployment-/Imagebuilder-Rolle verwendet den VM-Installer; ein gewöhnlicher LXC ersetzt dessen Image-/Worker-Voraussetzungen nicht.
 
-```text
-Docs/design/BACKEND_WEBUI_STANDARD.md
-```
+Prüfung und Abnahme: [Systemtests](../testing/e2e/README.md) · [Z01-Nachweise](../integration/Z01-2026-10-07/README.md) · [On-Air-Abnahme](../wiki/inbetriebnahme-und-abnahme.md) . Quellbestand, statische Gates, isolierte Diensttests, echte Anlagenpiloten und Funkabnahme bleiben getrennte Stufen. Der vollständige VM119-Build an1595259 ist dokumentiert; Download/Dateiprüfsumme und physischer Pi-/SXceiver-/VPN-Test bleiben eigene Nachweise.
 
-Die dienstspezifischen Verwaltungsbereiche stehen in:
-
-```text
-Docs/design/BACKEND_WEBUI_SERVICE_MATRIX.md
-```
-
-Gemeinsame UI-Bausteine und Service-Verträge liegen unter:
-
-```text
-system-backend/shared/
-├── contracts/
-├── service-common/
-├── database-common/
-├── telemetry-common/
-└── web-ui/
-```
-
-## Standardzugriff
-
-Langfristig verwenden neue Dienste mit eigener LXC-IP einheitlich:
-
-```text
-https://<LXC-IP>:8443/
-```
-
-Die bisher umgesetzten Dienste verwenden je Dienst einen eigenen HTTP-Port in der isolierten Testumgebung. Die verbindliche Zuordnung steht in `services.toml`; die fortlaufende Dienstreihe reicht aktuell vom Recorder auf Port 8140 bis zur Warnzentrale auf Port 8310. Der Control Room bleibt auf Port 9010. Die Warnzentrale benötigt standardmäßig ein API-Token; die älteren Dienste verwenden überwiegend den offenen Labormodus.
-
-## Bereits deploybare Dienste
-
-Bereits deploybar sind:
-
-- `node-gateway/` – TBS- und Backend-Vermittlung, Port 8080
-- `mobility-core/` – Teilnehmerlage und MM-Context-Transfer, Port 8090
-- `subscriber-core/` – Teilnehmerprofile und Admission, Port 8100
-- `group-core/` – Gruppen, Mitgliedschaften und DGNA, Port 8110
-- `provisioning-core/` – zentrale Geräte-, Gruppen- und Mitgliedschaftsmatrix, Port 8125
-- `call-control/` – logische Calls, Floor Control und Restore, Port 8120
-- `media-switch/` – Routing gepackter TETRA-Sprachframes, Port 8130
-- `recorder/` – passive Aufnahme, Integrität, Retention und Export, Port 8140
-- `sds-router/` – SDS-/Statusvermittlung, Store-and-forward und Anwendungsrouten, Port 8150
-- `packet-core/` – PDP-/NSAPI-State-Machine, Mobility Anchoring, Fragmentierung und Flow Control, Port 8160
-- `ip-gateway/` – TUN, Routing, NAT, Firewall, DNS, WAP/Testdienste und PCAP, Port 8170
-- `security-core/` – Security-Class-Policy, Authentisierung, DCK-Kontexte, Sperren und Audit, Port 8180
-- `kmf/` – CCK/GCK/SCK, Crypto Periods, Rotation, versiegelte OTAR-Aktionen und Backups, Port 8190
-- `transit/` – regionale Peer-/Route-/Sessionvermittlung und Failover, Port 8200
-- `observability/` – Metriken, Logs, Traces, Alarmierung und Diagnose, Port 8210
-- `application-gateway/` – externe Connectoren, Webhooks, Routing, Vorlagen und TTS-Orchestrierung, Port 8220
-- `media-library/` – Audio-Assets, Vorschau, Freigabe, TETRA-Cache, Archiv und Playout, Port 8230
-- `iot-gateway/` – netcore-event-v1 nach MQTT, persistente Outbox, retained Zustände und Command-Beobachtung, Port 8240
-- `hardware-gateway/` – Edge-I/O, Rack- und Umgebungsüberwachung, Port 8250
-- `rf-monitor/` – zentrale HF-, PA-, Antennen- und Modulationsüberwachung, Port 8260
-- `alarm-workflow/` – SDS-, Status-, Alarm- und Eskalationsworkflows, Port 8270
-- `task-workflow/` – WAP-Formulare und strukturierte Aufträge, Port 8280
-- `asset-management/` – Asset-, Geräte- und Benutzerverwaltung, Port 8290
-- `sip-switch/` – zentraler PBX-/TBS-SIP-B2BUA mit Mobility-Core-Routing, Port 8300
-- `control-room/` – zentrale Bedien-, Lage-, Incident- und Schichtbuchebene, Port 9010
-- `alert-service/` – NINA-/KATWARN-Warnungen und eigene Kartenwarnungen mit GPS-basierter einmaliger SDS-Zustellung, Port 8310; Tokenzugang als Standard. Konkrete Installation und Prüfung pro LXC/TBS: [Schritt-für-Schritt-Anleitung](../deployment/KATWARN_NINA_INSTALL_UPDATE.md).
-
-Alle enthalten REST-API, eigene WebUI, systemd-Unit und Installationsskripte. Die Warnzentrale sowie Hardware Gateway, RF Monitor und mehrere Workflow-Dienste verwenden Python; die übrigen Kernservices verwenden Rust. Die älteren Dienste laufen in der aktuellen Teststufe überwiegend im `open_lab`-Modus ohne Tokens, Benutzeranmeldung oder TLS. Die Warnzentrale aktiviert Tokenzugriff als Standard und startet mit deaktiviertem Funkversand.
-
-
-## Gemeinsame Plattform und Deployment
-
-Die gemeinsame Vertragsversion ist `netcore.v1`. Die inventory-gesteuerte Open-Lab-LXC-Integration liegt unter `deploy/open-lab/` und erzeugt Servicekatalog, gerenderte Konfigurationen, Portliste, Hosts-Datei und Abhängigkeitsgraph. `shared/` bleibt eine Library und ist kein zusätzlicher Container.
-
-## Cross-LXC-Systemtest
-
-Die Backend-Dienste werden über `tests/e2e/` als Gesamtsystem geprüft. Der inventory-gesteuerte Runner enthält einen Mock TBS für die Node-Gateway-Schnittstelle, fachliche Call-/Media-/Recorder-, SDS- und Packet-Data-Szenarien, Control-Room-Federation, redaktierte Plattform-Managementansichten, Persistenztests sowie eine absichtliche Dependency-Ausfallmatrix. Aufruf und Sicherheitsgrenzen stehen in `Docs/deployment/OPEN_LAB_E2E_RUNBOOK.md`.
-
-- `task-workflow` (`8280`): strukturierte Aufträge, XHTML/WML-Formulare, SDS-/Statusaktionen und persistente Task-Akte.
-
-- `asset-management` (`8290`): physischer Bestand, Funkgeräte, Personen, Ausgaben, Wartung sowie lesender Abgleich mit Subscriber und Mobility Core.
+Architekturziele: [WebUI-Standard](../design/dienstoberflaechen-gestaltungsstandard.md) · [Schnittstellenverträge](../contracts/README.md) · [Gesamtroadmap](../roadmaps/gesamtroadmap.md) · [Dokumentationsindex](../README.md).

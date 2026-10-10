@@ -1,5 +1,7 @@
 # Brainstorming: WAP/IP-Mehrgerätebetrieb, Entwicklungsaufträge und Logdiagnose
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 **Stand der Notizen und ergänzenden Prüfungen: 2026-10-04.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
 
 > **Arbeitsstand:** Ziel ist stabiler echter WAP/IP-Betrieb mehrerer TETRA-Endgeräte. Historisch liegen Entwicklungsaufträge und ein Logauszug vor; Implementierung und Endgeräteabnahme sind nicht belegt. `packet_data_flag: false` wurde zunächst überinterpretiert: Das Präfix gehört zu **MLE / D-NWRK-BROADCAST** und widerlegt keine generelle Paketdatenunterstützung. Am Repository-Prüfstand vom 2026-10-04 ist umfangreiche SNDCP-/WAP-/IP-Gateway- und Mehrgerätelogik vorhanden.

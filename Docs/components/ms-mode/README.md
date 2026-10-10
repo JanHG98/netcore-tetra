@@ -1,46 +1,19 @@
-**Quellen:** [ms-mode](../../../ms-mode) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+# MS-Modus: eigener Radio-Workspace
 
-```
-░▀█▀░█▀▀░▀█▀░█▀▄░█▀█░░░░░█▀▄░█░░░█░█░█▀▀░█▀▀░▀█▀░█▀█░▀█▀░▀█▀░█▀█░█▀█
-░░█░░█▀▀░░█░░█▀▄░█▀█░▄▄▄░█▀▄░█░░░█░█░█▀▀░▀▀█░░█░░█▀█░░█░░░█░░█░█░█░█
-░░▀░░▀▀▀░░▀░░▀░▀░▀░▀░░░░░▀▀░░▀▀▀░▀▀▀░▀▀▀░▀▀▀░░▀░░▀░▀░░▀░░▀▀▀░▀▀▀░▀░▀
-```
+**Quellstand:** `main`, `c3ccdb4`, 09.10.2026. Quellen: [ms-mode](../../../ms-mode). Dieser importierte Workspace ist getrennt vom NetCore-Basisstations-Workspace im Repository-Root; beide besitzen eine Binary namens `bluestation-bs`.
 
-This is a FOSS TETRA stack aimed at providing an extensible basis for TETRA experimentation and research. At this point, it's alpha code. The stack serves a downlink base station signal, and a properly configured MS is able to receive the emitted downlink signal, connect to it, and attach to talkgroups. Voice calls are partially supported. Connectivity through Brew with the larger BrandMeister network is also optionally available. Lots of other functionality is currently not implemented, although parsing code for most TETRA protocol messages is already present.
+Alle hier beschriebenen MS-Build- und Testbefehle im Verzeichnis **`ms-mode/`** ausführen. Der Workspace verwendet Rust Edition 2024 und Paketversion `0.5.9`; die Beispielkonfiguration verwendet `config_version = "0.7"`. Der externe Managementvertrag meldet aktuell **`bluestation-ms-interface-6`**.
 
-## Documentation
+- [Erste Schritte im MS-Modus](ms-erste-inbetriebnahme.md)
+- [MS-Konfiguration](ms-konfiguration.md)
+- [MS-Architektur und Funktionsstand](ms-architektur-und-funktionsstand.md)
+- [Externe Schnittstelle und Nachrichtenkatalog](examples/ms-interface/README.md)
+- [Kommentierte Beispielkonfiguration](../../../ms-mode/example_config/config-ms.toml)
 
-Project documentation for tetra-bluestation is maintained in a separate repository, as a wiki.
+Der SDR-Prozess synchronisiert und registriert sich als TETRA-Teilnehmer; Bedienoberfläche und ACELP-Vocoder werden über externe Control-/Telemetry-/Voice-Peers angebunden. Die konkrete Peer-Software muss den aktuellen Vertrag unterstützen. Die verlinkten MMI-/BlueStation-Projekte sind Herkunfts- und Integrationsreferenzen, keine hier überprüfte Installation.
 
-https://github.com/MidnightBlueLabs/tetra-bluestation-docs/wiki
+Vorhandener Code und Softwaretests belegen keine aktuelle Funkabnahme mit deinem SDR, deiner PA oder einem bestimmten Endgerät. Der MS-Workspace ist Forschungs-/Experimentalsoftware. Authentisierung, OTAR, Air-Interface-Verschlüsselung, DMO und SNDCP-Paketdaten sind im beschriebenen MS-Modus nicht implementiert.
 
-The documentation repository contains:
-- Hardware and SDR considerations
-- Configuration file reference and examples
-- Build and runtime instructions
-- Practical notes
+## Herkunft
 
-Contributions to the documentation follow the same pull-request-based workflow as the main codebase, see the appropriate "Contributions" chapter.
-
-### Mobile Station (MS) mode
-
-Documentation for the mobile-station (portable-radio) mode lives in-repo:
-
-- [LINK0](MS_MODE.md) — architecture, full feature matrix with
-  implementation state, spec traceability, and build/run instructions.
-- [LINK0](MS_GETTING_STARTED.md) — a step-by-step,
-  copy-paste guide to build, configure and run the MS stack from scratch.
-- [LINK0](MS_CONFIG.md) — the MS configuration-file reference.
-- [LINK0](../../../ms-mode/examples/ms-interface/README.md) — the external
-  UI / management interface (TNMM + provisioning).
-- [LINK0](https://github.com/misadeks/tetra-bluestation-mmi) — the companion
-  portable-radio operator UI (MMI: call control, codeplug programming, ACELP vocoder) that drives the
-  MS stack.
-- [LINK0](../../../ms-mode/example_config/config-ms.toml) — a commented example MS config.
-
-## Acknowledgements
-
-- Thanks to Harald Welte and the osmocom crew for their amazing initial work on osmocom-tetra, without which this project would not have existed.
-- Many thanks to Tatu Peltola, who graciously augmented rust-soapysdr with the required timestamping functionality to facilitate robust rx/tx, and also provided a rust-native Viterbi encoder/decoder class used in the LMAC.
-- Many thanks to the awesome contributers helping to make BlueStation as stable, fancy and feature-rich as can be.
-- Thanks to Stichting NLnet, who agreed on allocating a part of the [RETETRA3 project](https://nlnet.nl/project/RETETRA3/) grant to the implementation of FOSS software for TETRA.
+Der Workspace baut auf TETRA BlueStation auf. Die ursprünglichen Danksagungen gelten Harald Welte und osmocom, Tatu Peltola für SoapySDR-Zeitstempel und Viterbi-Arbeit sowie Stichting NLnet/RETETRA3. Weitere historische Hintergrundinformationen stehen in der [BlueStation-Dokumentation](https://github.com/MidnightBlueLabs/tetra-bluestation-docs/wiki).

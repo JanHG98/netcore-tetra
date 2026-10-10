@@ -1,4 +1,3 @@
-Here are some small scripts that have been used to quickly test
-some features during development of SoapySX.
-None of the tests are really automated here.
-It is mostly "disposable" code that might be removed at some point.
+# SoapySX: manuelle Treiberbeispiele
+
+Die Skripte in diesem Ordner wurden zum gezielten Ausprobieren einzelner SoapySX-Funktionen erstellt. Sie sind keine automatisierte Testsuite und kein Nachweis erfolgreicher TETRA-Übertragung. Voraussetzungen und Treiberinstallation stehen in der [SoapySX-Anleitung](../../README.md); System- und Funkprüfungen in der [NetCore-Abnahmeanleitung](../../../Docs/wiki/inbetriebnahme-und-abnahme.md).

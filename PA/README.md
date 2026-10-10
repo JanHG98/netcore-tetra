@@ -1,6 +1,6 @@
 # Little-PA-V2
 
-Same as Little PA with few improvements
+Schaltplan, Platine und Fertigungsdateien der Little-PA-V2-Revision. Die Dokumentation beschreibt Bestückung und Bypass; eine neue HF-Abnahme ist damit nicht verbunden.
 
 [Vollständige Dokumentation](../Docs/components/PA/README.md) · [Zentraler Dokumentationsindex](../Docs/README.md)
 

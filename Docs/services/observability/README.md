@@ -1,6 +1,8 @@
-# NetCore Observability / NMS
+# Betriebsüberwachung
 
 **Quellen:** [system-backend/observability](../../../system-backend/observability) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../roadmaps/gesamtroadmap.md).
 
 ## Update: Syslog und Discovery
 
@@ -8,7 +10,7 @@ Die Erweiterung verwendet im Beispiel **10.0.20.26:8210** und
 **10.0.20.35:8320** für Discovery. Adressen und Allowlist vor der Installation an
 das tatsächliche isolierte Lab anpassen. Sie archiviert empfangene Meldungen im
 Share-Ordner `Logs`. Installation, Sender, Speichergrenzen und Rücknahme stehen in
-[docs/syslog-update.md](syslog-update.md). Empfang und Archivierung sind eigene
+[Systemlogs sammeln und archivieren](systemlogs-sammeln-und-archivieren.md). Empfang und Archivierung sind eigene
 Systemdienste; die bestehende WebUI zeigt Vorschau, Quellen und Archivstatus.
 
 ## Zweck
@@ -124,6 +126,11 @@ Standardports:
 | Prometheus | 9090 |
 | Alertmanager | 9093 |
 | Loki | 3100 |
+
+Die aktuelle [Systemlog-Pipeline](systemlogs-sammeln-und-archivieren.md) arbeitet unabhängig von diesem
+optionalen Stack: TCP/UDP 514 und RELP 20514 für den Empfang, lokale JSONL-Segmente,
+begrenzte NMS-Vorschau und tägliches Share-Archiv. In `/etc/netcore/syslog.json`
+den NMS-Listener und die Quellnetze an die tatsächliche Installation anpassen.
 
 ## Bewusste Grenzen dieser Phase
 

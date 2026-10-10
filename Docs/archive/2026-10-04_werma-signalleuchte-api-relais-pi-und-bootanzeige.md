@@ -1,5 +1,7 @@
 # Brainstorming: WERMA-Signalleuchte – Relais-Pi, API und Bootanzeige
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 > **Ergebnis der Planung:** Vorhanden ist eine WERMA-Leuchte mit Rot, Orange, Grün, Blau und Weiß. Ausdrücklich übernommen wurden die Farbbedeutungen mit Prioritäten und die Architektur eines **eigenen Raspberry Pi mit Relaiskarten und API-Steuerung**. REST/FastAPI, optionale MQTT-Anbindung, TTL, Blinkmuster, Override und sehr frühe Bootanzeige wurden als technische Ausgestaltung diskutiert.
 >
 > **Nachweisstand:** Im verfügbaren Fachverlauf wurde weder eine fertige Anwendung geliefert noch eine Installation, ein Hardwaretest oder ein produktiver Betrieb bestätigt. Der damalige Python-Kern ist ein unvollständiges, fehlerhaftes Prinzipbeispiel. Am 04.10.2026 wurden relevante Repository-Komponenten geprüft; vorhandene Telemetrie, Health, IoT-Kommandos und Hardware-Gateway sind Integrationsbausteine, aber kein Nachweis einer fertig implementierten WERMA-Ausgangssteuerung.

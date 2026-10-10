@@ -1,5 +1,7 @@
 # Brainstorming: NetCore-Tetra Wallpaper und Branding
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 ## Rahmen und Quellenstand
 
 - **Thema:** Erstellung eines NetCore-Tetra Desktop- und Smartphone-Hintergrunds unter Verwendung des vorhandenen NetCore-Logos.

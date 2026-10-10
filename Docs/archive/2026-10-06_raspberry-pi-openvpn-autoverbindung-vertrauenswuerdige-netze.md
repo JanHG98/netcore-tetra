@@ -1,5 +1,7 @@
 # Brainstorming: Raspberry Pi OS – OpenVPN-Autoverbindung abhängig von vertrauenswürdigen Netzen
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 Stand der Repository- und Quellenprüfung: **06.10.2026**. Historische Ergebnisse beziehen sich auf die jeweils genannten Daten und Commits.
 
 Entwurf für einen mobilen Raspberry Pi: In benannten vertrauenswürdigen WLANs oder im physischen Heim-LAN `10.0.1.0/24` bleibt der Heim-VPN-Tunnel aus; außerhalb wird er automatisch aufgebaut. Vorgesehen sind ein NetworkManager-OpenVPN-Profil, eine Bash-Policy, ein systemd-Oneshot und ein NetworkManager-Dispatcher. Ein nftables-Kill-Switch ist eine optionale Erweiterung. Installation, erfolgreicher Test und Betrieb sind nicht belegt.

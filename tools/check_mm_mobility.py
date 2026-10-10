@@ -76,8 +76,8 @@ def main() -> int:
         "crates/tetra-pdus/tests/test_mm_mobility_pdus.rs",
         "crates/tetra-entities/tests/test_mm_mobility_runtime.rs",
         "crates/tetra-entities/tests/test_two_cell_mm_mobility.rs",
-        "Docs/packages/mobility/SWMI_MOBILITY_1_PACKAGE_C.md",
-        "Docs/packages/mobility/SWMI_MOBILITY_1_PACKAGE_C_APPLY.md",
+        "Docs/packages/mobility/mm-migration-und-forward-registration-paketstand.md",
+        "Docs/packages/mobility/mm-migration-und-forward-registration-einspielung-historisch.md",
         "Docs/services/mobility-core/README.md",
     ]:
         if not (ROOT / path).is_file():

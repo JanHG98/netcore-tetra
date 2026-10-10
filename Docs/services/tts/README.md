@@ -1,6 +1,8 @@
-# NetCore Media Library Piper TTS provider
+# Zentrale Sprachausgabe mit Piper
 
 **Quellen:** [system-backend/tts](../../../system-backend/tts) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../roadmaps/gesamtroadmap.md).
 
 Piper läuft zentral im Media-Library-LXC auf `127.0.0.1:5005`. Die Basisstation
 betreibt keinen eigenen TTS-Provider mehr. Texte, Stimmen, Vorlagen und das Speichern
@@ -41,7 +43,7 @@ sudo \
   ./install-piper.sh
 ```
 
-Zusätzliche Stimmen:
+Zusätzliche Stimmen, ebenfalls aus `system-backend/tts`:
 
 ```bash
 sudo \
@@ -64,7 +66,7 @@ sudo \
 ```bash
 systemctl status netcore-piper --no-pager
 curl -fsS http://127.0.0.1:5005/voices
-curl -fsS http://127.0.0.1:8230/api/v1/tts/status
+curl -fsS http://MEDIA-LIBRARY-IP:8230/api/v1/tts/status
 ```
 
 Synthesetest:

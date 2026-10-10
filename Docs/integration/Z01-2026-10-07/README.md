@@ -1,4 +1,41 @@
-# Z01.1–Z01.3: Quellvergleich, Integration und gemeinsames Prüfgate
+# Z01-Integration – aktueller Stand und datierte Arbeitsnachweise
+
+## Stand der Integration
+
+Deployment, Discovery, Imagebuilder, Pi-VPN und Syslog sind aus der historischen Entwicklung in main integriert. Die Quellabnahmen Z01.1–Z01.3 und die datierten CI-Läufe bleiben unten nachvollziehbar; Z01.4 enthält reale Teilabnahmen und ist als Gesamtanlagenabnahme weiter offen. Referenz für diese redaktionelle Einordnung ist `main@c3ccdb4bb7daa78f38c529c95ce51993ab0d0afc`, keine pauschale Aussage über die aktuell installierten Hostversionen.
+
+Die heutige [Dienstregistry](../../../system-backend/services.toml) hat 27 Einträge: 26 Runtime-Dienste und `shared` mit `runtime = false`. Das [Beispiel-Inventory](../../../deploy/open-lab/inventory.example.toml) umfasst die 26 Runtime-Dienste. Der optionale Provisioning Core erscheint im getrennten [Agentenkatalog](../../../system-backend/deployment-core/catalog.json), nicht in der Registry oder im regulären Inventory. Die historischen Rollen- und Dienstzahlen unten beziehen sich jeweils auf diese unterschiedlichen Verzeichnisse.
+
+| Bereich | Belastbarer Befund | Offene Grenze |
+| --- | --- | --- |
+| Quellintegration | PR #62 übernommen; Inventar, Ready-Schranke und Konfigurationserhalt in den datierten Quell-/CI-Nachweisen geprüft | Neue Quelländerungen benötigen ihre eigenen Prüfungen |
+| CT150 Hardwarepilot | Installation, Wiederholungsupdate, negative Readiness und Recovery für den dokumentierten Pilot bestanden | Kein allgemeiner physischer Aktor- oder Flottennachweis |
+| CT136 Syslog | Beide APIs, Dienstbenutzer-NFS-Zugriff, TCP-Vorschau und vollständiges NAS-gzip sowie isolierter Fehlermount dokumentiert | Reale NFS-Störung/Stall und Flottensender nicht vollständig abgenommen |
+| VM119 Imagebuilder | Vollständiger Build an1595259 technisch belegt; NVMe-Diskwechsel samt Live-Backing bestanden; Betreiber meldet späteren Buildabschluss | Neues Recoveryartefakt/Download noch eindeutig zuordnen und gegen Manifest/SHA-256 prüfen |
+| Pi / SXceiver / VPN | Software- und Personalisierungsprüfungen vorhanden | Physischer Boot und VPN-Wechsel bleiben separate offene Nachweise |
+
+Der frühere Satz „vollständiger ARM64-Build offen“ gilt für die damaligen Zwischenstände und ist durch den technischen Erfolgsbefund an1595259 überholt. Die spätere Meldung „Build ist durch“ ist ein Betreiberbericht zum Abschluss, noch kein Download- oder physischer Startnachweis. Laufende beziehungsweise bereits erledigte Aufträge anhand ihrer bestehenden IDs zuordnen, statt aus alten Fortsetzungsblöcken neue Aufträge abzuleiten.
+
+## Unterlagen und heutiger Betrieb
+
+- [VM119: Build, NVMe und Recovery](imagebuilder-vm119.md)
+- [Anlagenpiloten und Teilabnahmen](anlagenabnahme-z01-4.md)
+- [CT136: APIs, Syslog und NAS](observability-ct136.md)
+- [TBS-Profile und automatische main-Auswahl](tbs-image-ablauf-2026-10-09.md)
+- [CI am jeweiligen Quellcommit](ci-pruefungen.md)
+- [Historischer Checkpoint vom 08.10.2026](zwischenstand-2026-10-08.md)
+- [Deployment-/Image-/VPN-Integration](deployment-pruefungen.md)
+- [Syslog-Quellübernahme und lokale Prüfungen](syslog-pruefungen.md)
+- [Inventory und Readiness-Verträge](inventar-abgleich.md)
+- [Moderne Oberflächen und Discovery-Verknüpfung](oberflaechen-pruefungen.md)
+
+Heutige Komponenten-Anleitungen: [Deployment / Imagebuilder](../../services/deployment-core/README.md) · [Observability / Syslog](../../services/observability/README.md) · [Inventory-Bereitstellung](../../deployment/open-lab/README.md) · [Gesamtroadmap](../../roadmaps/gesamtroadmap.md) · [Dokumentationsindex](../../README.md).
+
+## Ursprünglicher Quell- und Integrationsbericht
+
+Der nachfolgende Bericht bewahrt die Ausgangs-SHAs, die vollständigen Vergleichstabellen, damalige Testzahlen und Rückwege. Aussagen über „aktuelles main“, offene Builds oder nachfolgende Arbeiten beziehen sich auf den jeweiligen Berichtsstand und werden durch den obenstehenden Nachtrag zeitlich eingeordnet.
+
+### Z01.1–Z01.3: Quellvergleich, Integration und gemeinsames Prüfgate
 
 Quell-/Prüfbericht: 07.10.2026; Statusnachtrag: 08.10.2026, Europe/Berlin. Auftrag: vollständiger Vergleich, kontrollierte Übernahme von Deployment/Discovery/Imagebuilder/Pi-VPN/Syslog, Inventar- und Readiness-Korrektur, Tests und Rückwege. Arbeitszweig: `feature/z01-deployment-consolidation`. Geprüfter Implementierungscommit: `67b2f0d6e2fbcbf7013ee9b0dae9b2a25c2d9315`.
 
@@ -11,7 +48,7 @@ Quell-/Prüfbericht: 07.10.2026; Statusnachtrag: 08.10.2026, Europe/Berlin. Auft
 | Z01.3 | Registry/Inventory/generierte Assets/Health/Fallback konsistent; Ready-Gates und gemeinsame CI ergänzt | Gemeinsames Quell-/Konfigurationsgate bestanden; eigene CI-/Betriebsnachweise separat |
 | Z01.4 | In Arbeit; CT150-Installation / Readiness / Recovery und CT136-TCP-/Vorschau-/NAS-Pfad samt isoliertem Mountfehler bestanden | Reale Teilabnahmen dokumentiert; vollständiger ARM64-Build, Pi/SXceiver, VPN und weitere Ausfälle / Versionswechsel offen |
 
-Die ursprüngliche Umsetzung entstand auf dem oben genannten Arbeitszweig und wurde mit [PR #62](https://github.com/JanHG98/netcore-tetra/pull/62) nach main übernommen (`c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf`). Der aktuelle geprüfte Quellstand ist `001fb84ac566bb0f95e18d22439ee664fe0093e4`; beide zugehörigen main-Workflows bestehen. [Gesicherter Fortsetzungsstand vom 08.10.2026](checkpoint-2026-10-08.md), [Laufzeitnachtrag](runtime-z014.md) und [Imagebuilder-Nachtrag](imagebuilder-vm119.md) ergänzen die späteren Betreiberbefunde. Die Assistenz hat keinen direkten Zugriff auf die Anlage; tatsächliche Teilabnahmen beruhen auf den bereitgestellten Betreiber-Ausgaben. Der folgende Quellvergleich und seine datierten lokalen Prüfergebnisse bleiben als ursprünglicher Bericht erhalten. Ein statischer Audit-PASS bestätigt Verträge und Quellanschlüsse, keine funktionierende Gesamtflotte.
+Die ursprüngliche Umsetzung entstand auf dem oben genannten Arbeitszweig und wurde mit [PR #62](https://github.com/JanHG98/netcore-tetra/pull/62) nach main übernommen (`c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf`). Der aktuelle geprüfte Quellstand ist `001fb84ac566bb0f95e18d22439ee664fe0093e4`; beide zugehörigen main-Workflows bestehen. [Gesicherter Fortsetzungsstand vom 08.10.2026](zwischenstand-2026-10-08.md), [Laufzeitnachtrag](anlagenabnahme-z01-4.md) und [Imagebuilder-Nachtrag](imagebuilder-vm119.md) ergänzen die späteren Betreiberbefunde. Die Assistenz hat keinen direkten Zugriff auf die Anlage; tatsächliche Teilabnahmen beruhen auf den bereitgestellten Betreiber-Ausgaben. Der folgende Quellvergleich und seine datierten lokalen Prüfergebnisse bleiben als ursprünglicher Bericht erhalten. Ein statischer Audit-PASS bestätigt Verträge und Quellanschlüsse, keine funktionierende Gesamtflotte.
 
 ## 1. Beide vollständigen Quellstände
 
@@ -104,7 +141,7 @@ Rollback ist absichtlich paket- und zustandsbezogen. Weder der Ready-Fehler noch
 
 ## 5. Ausgeführte Nachweise und CI
 
-Die Fachnachweise und Befehle stehen zusätzlich in [deployment.md](deployment.md), [syslog.md](syslog.md), [inventory.md](inventory.md) und [ui.md](ui.md). Gemeinsamer Einstieg:
+Die Fachnachweise und Befehle stehen zusätzlich in [deployment.md](deployment-pruefungen.md), [syslog.md](syslog-pruefungen.md), [inventory.md](inventar-abgleich.md) und [ui.md](oberflaechen-pruefungen.md). Gemeinsamer Einstieg:
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 tools/check_z01_integration.py
@@ -122,7 +159,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 tools/check_z01_integration.py
 | Observability Rust | Sieben Tests und Binary-Build bestanden |
 | Native NMS/SQLite/Prometheus-SD samt WebUI | Bestanden; Discovery-, Archivfehler-, Verlust-/Logfilter- und Darkmode-Persistenzprüfung |
 | Deployment-WebUI | Bestanden; Discovery, TBS-Assistent, Remote-/Imageauftrag, Download/Löschung, Desktop/Mobile; Installer/Imagebuild ausdrücklich simuliert |
-| Browserregression bestehender Oberflächen | PASS; Shared 93, Dashboard 137, Core 405, Media 390, Workflow 15, Auxiliary 431 sowie Edge und Brew-Renderer; Details in `ui.md` |
+| Browserregression bestehender Oberflächen | PASS; Shared 93, Dashboard 137, Core 405, Media 390, Workflow 15, Auxiliary 431 sowie Edge und Brew-Renderer; Details in `oberflaechen-pruefungen.md` |
 | Syntax, generierte Bundles und Whitespace | Bestanden; Generatoren synchron, Python-3.11-SIP-Syntax erhalten |
 
 CI-Verträge:
@@ -133,8 +170,8 @@ CI-Verträge:
 
 Ein lokales PASS wird nicht als durchgelaufene GitHub-CI ausgegeben. CI-Lauf-SHA und Ergebnis beim PR prüfen; native Unix-Socket-/VM-/Image-Nachweise sind getrennt von den hier ausführbaren Tests. Der reale vollständige NetCore-ARM64-Imagebuild und physische Pi/SXceiver-Boot bleiben Z01.4, auch wenn ein Personalisierungssmoke grün ist.
 
-Der [GitHub-CI-Nachtrag](ci.md) dokumentiert die ersten echten PR-Ergebnisse und die Korrektur des temporären rsyslog-Testaufbaus. Aktuelle main-CI und ihre Quell-SHAs stehen ebenfalls in diesem Nachtrag; historische PR-Ergebnisse bleiben entsprechend datiert.
+Der [GitHub-CI-Nachtrag](ci-pruefungen.md) dokumentiert die ersten echten PR-Ergebnisse und die Korrektur des temporären rsyslog-Testaufbaus. Aktuelle main-CI und ihre Quell-SHAs stehen ebenfalls in diesem Nachtrag; historische PR-Ergebnisse bleiben entsprechend datiert.
 
 ## 6. Nächster Übergang
 
-**Z01.4 ist in Arbeit.** VM119 und die isolierten CT150-/CT136-Piloten sind zugeordnet; ihre bestandenen Teilabnahmen und Grenzen stehen im [Fortsetzungsstand](checkpoint-2026-10-08.md). Nächster Nachweis ist die tatsächliche Übernahme des Gast-APT-Fixes001fb84 auf VM119 und ein vollständiger ARM64-Build mit verifiziertem Image / Manifest / SHA-256. Anschließend folgen physischer Pi-/SXceiver-Boot und VPN-Wechsel. Einen bereits laufenden Build über den bestehenden Auftrag verfolgen. Gezielte P0-Arbeiten aus Z02 bleiben parallel möglich; die bisherigen Befunde schließen Z01.4 insgesamt noch nicht ab.
+**Z01.4 ist in Arbeit.** VM119 und die isolierten CT150-/CT136-Piloten sind zugeordnet; ihre bestandenen Teilabnahmen und Grenzen stehen im [Fortsetzungsstand](zwischenstand-2026-10-08.md). Nächster Nachweis ist die tatsächliche Übernahme des Gast-APT-Fixes001fb84 auf VM119 und ein vollständiger ARM64-Build mit verifiziertem Image / Manifest / SHA-256. Anschließend folgen physischer Pi-/SXceiver-Boot und VPN-Wechsel. Einen bereits laufenden Build über den bestehenden Auftrag verfolgen. Gezielte P0-Arbeiten aus Z02 bleiben parallel möglich; die bisherigen Befunde schließen Z01.4 insgesamt noch nicht ab.

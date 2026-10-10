@@ -1,4 +1,4 @@
-# NetCore Directory Server `0.1.0`
+# NetCore Directory Server `0.2.0`
 
 **Quellen:** [misc/ID-Server](../../../../misc/ID-Server) · [Repository-Root](../../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
 
@@ -8,13 +8,15 @@ Lokaler **RadioID-ähnlicher Server** für **NetCore-Tetra / FlowStation**.
 
 ## Lokaler Start
 
+Die folgenden Befehle im Quellverzeichnis `misc/ID-Server/` ausführen. `APP_VERSION` im Python-Server ist `0.2.0`; SQLite und die eingebettete WebUI sind implementiert. Der Dienst besitzt keine eigene Anmeldung; die Bind-Adresse und Netzfreigabe bestimmen seine Erreichbarkeit.
+
 ```bash
 python3 netcore_directory_server.py \
   --host 0.0.0.0 \
   --port 8095 \
   --db ./netcore_directory.db \
   --seed seed.json
-````
+```
 
 ---
 
@@ -91,6 +93,10 @@ DELETE  /api/status/<id>
 ```
 
 ---
+
+## Gerätegruppen und Statuszuordnung
+
+Zusätzlich zu den oben aufgeführten CRUD-Ressourcen implementiert der Server `/api/device-groups` sowie `/api/status-group-members?issi=<ISSI>`. Die konkreten IDs und Payload-Felder aus dem Python-Handler beziehungsweise seiner WebUI übernehmen.
 
 ## Systemd-Installation
 

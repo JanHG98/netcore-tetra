@@ -1,21 +1,12 @@
-# Little-PA-V2
+# Little-PA-V2: Hardware-Referenz
 
-**Quellen:** [PA](../../../PA) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+Quellen: [Schaltplan, Platine und Fertigungsdateien](../../../PA). Dokumentationsprüfung: `main` (`c3ccdb4`, 09.10.2026). Dies beschreibt die abgelegte Hardware-Revision; daraus folgt keine neue elektrische Prüfung, HF-Abnahme oder Leistungsfreigabe.
 
-Same as Little PA with few improvements
+Die Revision ergänzt die Little-PA-Platine um eine thermisch isolierte TCXO-Insel, größere Vias, einen Bandpassfilter im TX-Pfad und einen Bypass für Betrieb ohne PA. Die Bauteilbezeichnungen gelten ausschließlich für diese Revision und müssen mit Schaltplan und tatsächlicher Bestückung übereinstimmen.
 
-# Order from here:
-- <a href="https://www.pcbway.com/project/shareproject/Little_PA_V2_SX1255_HAT_2c8ffceb.html"><img src="https://www.pcbway.com/project/img/images/frompcbway-1220.png" alt="PCB from PCBWay" /></a>
+| Bestückungsvariante | Vorgabe der abgelegten Revision |
+| --- | --- |
+| mit PA | R29 und R32 unbestückt |
+| ohne PA / Bypass | U4 und C28 unbestückt; R29 und R32 mit 0-Ohm-Brücken bestückt |
 
-# Changes to this version:
-- Added island around TCXO and under to isolate heating from the cooper for better temperature stability.
-- Added few bigger vias for better ventilation.
-- Added Bandpass filter to the TX for better RF isolation.
-- Added bridge in case if used without PA, you can jump with two 0R resistors to get signal directly from the SX1255.
-- -----------------------------------------------------
-# Work with PA:
-- R29 and R32 not soldered.
-# Work without the PA:
-- U4 and C28 not soldered, R29 and R32 soldered.
-
-# Z32IT
+Die ursprüngliche Platinenreferenz stammt von Z32IT: [Little PA V2 SX1255 HAT](https://www.pcbway.com/project/shareproject/Little_PA_V2_SX1255_HAT_2c8ffceb.html). Das ist eine Herkunftsreferenz; vor Fertigung oder Umbau die aktuellen eigenen Dateien, Stückliste, Frequenzbereich und Bestückung prüfen.

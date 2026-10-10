@@ -5,3 +5,5 @@ Vermittelt Telemetrie und Steuerung zwischen TETRA-Basisstationen und zentralen 
 [Vollständige Dokumentation](../../Docs/services/node-gateway/README.md) · [Zentraler Dokumentationsindex](../../Docs/README.md)
 
 [Online lesen](https://github.com/JanHG98/netcore-tetra/blob/main/Docs/services/node-gateway/README.md).
+
+Standardport `8080`; vermittelt TBS- und Backend-WebSockets und verteilt die Dienstzustandsmatrix. Unterstützt derzeit den offenen Labormodus.

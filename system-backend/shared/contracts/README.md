@@ -1,6 +1,6 @@
 # NetCore Shared Contracts
 
-`netcore-contracts` is the transport-neutral contract crate for backend-to-backend communication. It owns validated 24-bit SSI types, the `netcore.v1` envelope, service descriptors, health documents, problem details, events, audit records and pagination shapes.
+`netcore-contracts` bündelt die gemeinsamen Datenverträge der Backend-Dienste: geprüfte 24-Bit-Teilnehmerkennungen, `netcore.v1`-Nachrichten, Dienstbeschreibungen, Health-Antworten, Fehlermeldungen, Ereignisse, Auditdaten und Seitennavigation. Das Paket betreibt keinen eigenen Dienst.
 
 Lokale Dateien: [src](src/) · [schemas](schemas/) · [examples](examples/).
 

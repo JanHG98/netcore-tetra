@@ -1,5 +1,7 @@
 # Brainstorming: Recorder-LXC, Edge-Fallback, Echtzeit-Medienpfad und Buildfehler
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 Planungs- und Entwicklungsnotizen zum zentralen Recorder, lokalem Fallback und beschleunigten Medienpfad. Der Entwicklungsstand vom Juli 2026 wird mit den verfügbaren Paketen und dem Repository-Befund vom **04.10.2026** abgeglichen. Installation und Funklatenzen auf den Zielsystemen bleiben unbestätigt.
 
 ## Zielbild und Festlegungen
@@ -230,7 +232,7 @@ Die historische Fallback-Grafik nennt „Replay beendet + recover_after_secs“ 
 | Aktuelles Open-Lab-Inventar | 25 Dienste einschließlich `alert-service` |
 | Am Prüfdatum vorliegende `config.toml`-Fallbackmap | 24 Dienste; `alert-service` fehlt |
 | Am Prüfdatum vorliegende Node-Gateway-Beispiel-/generierte Monitorziele | 23 Ziele; Gateway selbst nicht als Ziel, `alert-service` fehlt |
-| Gespeicherter geprüfter `Docs/generated/full-system-integration-audit.md` | Meldet weiterhin PASS für 24 Dienste / 23 Ziele / 24 Fallbacks; kein am Prüfdatum vorliegender 25-Service-Nachweis |
+| Gespeicherter geprüfter `Docs/generated/systemintegration-pruefbericht.md` | Meldet weiterhin PASS für 24 Dienste / 23 Ziele / 24 Fallbacks; kein am Prüfdatum vorliegender 25-Service-Nachweis |
 | Rust-Defaults in `sec_edge_fallback.rs` | Weiterhin 17 Basisregeln; explizite Konfiguration erweitert diese |
 
 Der am Archivdatum ausgeführte Fallback-Referenztest bestätigt die fehlende Zuordnung von `alert-service`. Der alte Auditbericht darf daher nicht als Beweis einer zum Prüfdatum vollständigen Dienstematrix verwendet werden. [Quellen R6–R8 und Prüfprotokoll in Abschnitt 9](#9-am-archivdatum-ausgeführte-prüfungen).

@@ -1,60 +1,47 @@
-# NetCore-Tetra Security Core
+# Security Core – Authentisierung und Sicherheitsrichtlinien
 
-**Quellen:** [system-backend/security-core](../../../system-backend/security-core) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+Der Security Core verwaltet Sicherheitsprofile je ISSI, Security Classes 1/2/3, Challenge/Response, kurzlebige DCK-Kontexte sowie Teilnehmer- und Gerätesperren. Die eigene Weboberfläche und REST-API verwenden standardmäßig TCP **8180**.
 
-Zentraler SwMI-Dienst für Authentisierung, Security-Class-Policy, kurzlebige DCK-Kontexte, Teilnehmer-/Gerätesperren, Alarme und Audit.
+**Stand: 9. Oktober 2026.** Abgeglichen mit [Konfiguration](../../../system-backend/security-core/config/security-core.example.toml), [API](../../../system-backend/security-core/src/http.rs) und [Zustandsverwaltung](../../../system-backend/security-core/src/state.rs). Dies beschreibt den vorhandenen Lab-Code, keine produktive oder On-Air-Abnahme.
 
-> **OPEN LAB:** Port 8180 besitzt aktuell keine Benutzerkonten, Tokens oder TLS. Nur im isolierten Testnetz betreiben.
+## Vorhandener Umfang
 
-## Funktionsumfang
+- persistente globale und teilnehmerspezifische Sicherheitsrichtlinien;
+- Class-Aushandlung; Class 3 verlangt Authentisierung und anschließenden DCK-Workflow;
+- Authentisierung mit TTL, begrenzten Antwortversuchen und Lockout;
+- nodebezogene Challenge-, DCK-, Sperr- und Widerrufsaktionen;
+- Alarme, begrenzte Audit-Historie, Export und Metadatenbackup;
+- Beobachtung des Node Gateways und davon abhängige Readiness;
+- Neustartbehandlung, die offene Authentisierungen beendet und vorhandene DCK-Kontexte widerruft.
 
-- persistente Sicherheitsprofile je ISSI
-- globale und teilnehmerspezifische Security-Class-Policy
-- Aushandlung von Class 1, 2 und 3; Class 3 erzwingt immer Authentisierung und DCK-Workflow
-- Challenge/Response-State-Machine mit TTL, Retry und Lockout
-- DCK-Erzeugung und Edge-Installationsworkflow für Class 3
-- Disable/Enable für Teilnehmer und Equipment, inklusive optionaler automatischer Sperre nach Fehlversuchen
-- Kontext- und DCK-Widerruf
-- Security-Alarme und append-orientiertes Audit
-- Node-Gateway-Abhängigkeitsstatus
-- eigene WebUI, REST API, OpenAPI, Metrics, Liveness und Readiness
-- Crash-Recovery ohne Persistieren von Rohgeheimnissen
+## Lab-Grenze
 
-## Bewusste Sicherheitsgrenze
+`lab_hmac_sha256` ist der einzige implementierte Authentisierungsprovider. Er erzeugt reproduzierbare Lab-Prüfwerte und implementiert keine TETRA-TA-Algorithmen. Auch die vorhandene [KMF](../kmf/README.md) bleibt ein Lab-Lifecycle-Dienst für CCK/GCK/SCK; sie ersetzt den Security-Core-Provider derzeit nicht.
 
-Der enthaltene Provider `lab_hmac_sha256` ist ein **Testprovider** für End-to-End-Integration. Er implementiert nicht die proprietären beziehungsweise normativen TETRA-Authentisierungsalgorithmen und ersetzt keine KMF. Das folgende KMF-Paket liefert die echten Provider-Hooks und langfristige Schlüsselverwaltung.
+Managementantworten enthalten Metadaten und Fingerprints. Der getrennte Edge-Claim kann kurzlebige Challenges und DCK-Rohmaterial liefern. Beide API-Bereiche teilen denselben ungeschützten HTTP-Listener: **keine Anmeldung, Tokens oder TLS**. Die Beispielkonfiguration bindet an `0.0.0.0:8180`; das Netz muss deshalb isoliert sein.
 
-Normale Managementantworten enthalten niemals Seed, Challenge, erwartete Antwort oder DCK. Der getrennte Edge-Claim-Pfad darf dieses Material nur kurzlebig an den TBS-Adapter ausgeben.
+## Start und Betrieb
 
-## Start
+Aus dem Repository-Hauptverzeichnis, auf einem vorbereiteten Lab-Host mit Rust/Cargo:
 
 ```bash
-cargo run -p netcore-security-core -- \
-  --config system-backend/security-core/config/security-core.example.toml
+sudo system-backend/security-core/install/install.sh
+systemctl status netcore-security-core
+source /etc/netcore/lxc-network.env
+curl --fail "${NETCORE_WEBUI_URL}health/live"
+curl --fail "${NETCORE_WEBUI_URL}health/ready"
 ```
 
-WebUI: `http://127.0.0.1:8180/`
+Der Installer legt Dienstkonto, Datenverzeichnis und Konfiguration an und baut die Release-Binärdatei. [LXC-Installation](lxc-installation.md) beschreibt Pfade und Rechte.
 
-```bash
-curl http://127.0.0.1:8180/health/live
-curl http://127.0.0.1:8180/health/ready
-curl http://127.0.0.1:8180/api/v1/status
-```
+`shadow` berechnet und protokolliert die Abläufe, gibt aber keine Edge-Aktionen per Claim frei. `authoritative` erlaubt Claims. Bei aktiviertem `node_gateway.observe_nodes` meldet `/health/ready` im authoritative-Modus **503**, solange das Gateway nicht verbunden ist; die Readiness ist keine Funkabnahme.
 
-## Betriebsmodi
+## Weiterführende Anleitungen
 
-- `shadow`: State Machines, Policy und Audit laufen, Entscheidungen sind beobachtend.
-- `authoritative`: Edge-Aktionen für Challenge, DCK, Sperre und Widerruf werden verbindlich bereitgestellt.
-
-## Dokumentation
-
-- [Architektur](architecture.md)
-- [Authentisierungs-State-Machine](auth-state-machine.md)
-- [Edge-Protokoll](edge-protocol.md)
-- [Lab-Provider und Geheimnisse](lab-provider-secret-handling.md)
-- [Open Lab](open-lab-mode.md)
-- [LXC-Deployment](lxc-deployment.md)
-
-## Beziehung zur KMF
-
-Die KMF unter `system-backend/kmf/` übernimmt jetzt CCK, GCK, SCK, Key-Versionen, Crypto Periods, Rotation und OTAR-Orchestrierung. Der Security Core bleibt für Authentisierung, Security-Class-Policy, Disable/Enable und kurzlebige DCK-Kontexte zuständig.
+- [Architektur und Zuständigkeiten](architektur-und-zustaendigkeiten.md)
+- [Authentisierungsablauf](authentisierungsablauf.md)
+- [Edge-API und Quittierungen](edge-api-und-quittierungen.md)
+- [Lab-Provider und Geheimnisse](lab-provider-und-geheimnisse.md)
+- [Offene Testumgebung](offene-testumgebung.md)
+- [LXC-Installation](lxc-installation.md)
+- [API-Beispiele](tests/api-beispiele-im-labor.md)

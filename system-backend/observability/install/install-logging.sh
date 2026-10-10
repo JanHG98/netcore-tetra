@@ -29,4 +29,4 @@ done
 systemctl daemon-reload
 systemctl enable netcore-syslog.service netcore-syslog-preview.service netcore-syslog-archive.timer
 systemctl restart netcore-syslog.service netcore-syslog-preview.service netcore-syslog-archive.timer
-echo "Syslog ready: TCP/UDP 514, RELP 20514. Configure share permissions as described in /opt/netcore-observability/docs/syslog-update.md."
+echo "Syslog ready: TCP/UDP 514, RELP 20514. Configure share permissions as described in /opt/netcore-observability/docs/systemlogs-sammeln-und-archivieren.md."

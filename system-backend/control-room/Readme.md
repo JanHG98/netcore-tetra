@@ -1,4 +1,4 @@
-# NetCore Control Room
+# Leitstelle
 
 Der Control Room ist die zentrale Leitstellen-, Bedien- und Lageebene für eine NetCore-Tetra-Region. Er führt die Zustände der Fachsysteme zusammen, bleibt aber ausdrücklich **nicht** Eigentümer von Teilnehmer-, Gruppen-, Mobility-, Call-, SDS-, Packet- oder Schlüsselzuständen.
 

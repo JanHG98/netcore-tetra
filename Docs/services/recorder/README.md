@@ -1,8 +1,8 @@
 # NetCore Recorder
 
-**Quellen:** [system-backend/recorder](../../../system-backend/recorder) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+**Abgleich: 9. Oktober 2026, Quellstand `c3ccdb4`.** Grundlage: [src/state.rs](../../../system-backend/recorder/src/state.rs) · [src/http.rs](../../../system-backend/recorder/src/http.rs). Beschreibt den implementierten Umfang; eine Live- oder Funkabnahme wird damit nicht belegt.
 
-Der Recorder ist ein eigenständiger LXC-Dienst für die passive, verlustfreie Ablage bereits codierter TETRA-Sprachframes. Er hängt ausschließlich am replay-fähigen Recorder-Tap des Media Switch und liegt damit außerhalb des zeitkritischen Rufpfads.
+Der Recorder ist ein eigenständiger LXC-Dienst für die passive, unveränderte Ablage der vom Tap übernommenen TETRA-Sprachframes. Er hängt ausschließlich am replay-fähigen Recorder-Tap des Media Switch und liegt damit außerhalb des zeitkritischen Rufpfads.
 
 > Ein Ausfall des Recorders darf weder Call Control noch Media Switch noch einen laufenden Ruf blockieren.
 
@@ -34,23 +34,22 @@ Jeder Client, der Port 8140 erreicht, kann die Management-API benutzen. Das ist 
 
 ## Datenfluss
 
-```text
-TBS → Node Gateway → Media Switch
-                       ├─ zeitkritisches TBS-zu-TBS-Routing
-                       └─ begrenzter Replay-Ring mit Vollframes
-                                      ↓ HTTP Polling
-                                  Recorder LXC
-                                      ↓
-                     audio.tacelp + frames.jsonl + metadata + SHA-256
-```
+| Datenweg | Verarbeitung |
+|---|---|
+| TBS → Node Gateway → Media Switch | zeitkritisches Routing zwischen TBS-Legs |
+| Media Switch → begrenzter Replayring | Vollframes und Call-/Sprecher-Metadaten |
+| Replayring → asynchrones HTTP-Polling → Recorder | getrennte Aufnahme ohne Backpressure in den Rufpfad |
+| Recorder → persistenten Speicher | `audio.tacelp`, `frames.jsonl`, Metadaten und SHA-256-Datei |
 
 Der Media Switch wartet nicht auf den Recorder. Wenn der Recorder länger ausfällt als der Replay-Ring überbrücken kann, wird die Lücke in globalen Zählern und – soweit zuordenbar – in den Aufnahmemetadaten sichtbar.
 
 ## Schnellstart
 
 ```bash
-sudo cp system-backend/recorder/config/recorder.example.toml /etc/netcore/recorder.toml
-sudo nano /etc/netcore/recorder.toml
+cd /opt/netcore-tetra
+sudo install -d /etc/netcore
+sudo test -f /etc/netcore/recorder.toml || sudo cp system-backend/recorder/config/recorder.example.toml /etc/netcore/recorder.toml
+sudo editor /etc/netcore/recorder.toml
 sudo system-backend/recorder/install/install.sh
 ```
 
@@ -63,9 +62,10 @@ http://<RECORDER-LXC-IP>:8140/
 Kontrolle:
 
 ```bash
-curl http://127.0.0.1:8140/health/live
-curl http://127.0.0.1:8140/health/ready
-curl http://127.0.0.1:8140/api/v1/status
+source /etc/netcore/lxc-network.env
+curl "${NETCORE_WEBUI_URL}health/live"
+curl "${NETCORE_WEBUI_URL}health/ready"
+curl "${NETCORE_WEBUI_URL}api/v1/status"
 ```
 
 ## Archivlayout
@@ -98,4 +98,4 @@ Während der Aufnahme heißen Audio und Index `*.part`; `metadata.active.json` i
 | GET | `/api/v1/events` | Ereignisverlauf |
 | GET | `/metrics` | Prometheus-Textformat |
 
-Weitere Details stehen unter `docs/`.
+Die Themenanleitungen liegen neben diesem Überblick; Start und Netzkonfiguration stehen in [Bereitstellung im LXC](bereitstellung-im-lxc.md), die API-Aufrufe in [Laborbeispiele](tests/api-beispiele-im-labor.md).

@@ -1,5 +1,7 @@
 # Brainstorming: Event-Funkplan als Word-Formular
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 **Stand der Notizen und ergänzenden Prüfungen: 2026-10-04.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
 
 > **Artefaktstand:** Ein einfacher DOCX-Entwurf wurde erzeugt und unverändert gesichert. Das historische Downloadpaket enthält Dokumentation, Index-Snapshot und Word-Original; der damalige Git-Import war noch offen.

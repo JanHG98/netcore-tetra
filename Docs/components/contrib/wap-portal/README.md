@@ -12,7 +12,7 @@ Alle Seiten sind innerhalb ihres Formats vollstaendig navigierbar. Die Startseit
 - `xhtml/index.xhtml`
 - `wml/index.wml`
 
-Die Basisstation verwendet fuer den echten WSP/Openwave-Pfad zusaetzlich extrem kurze Routen wie `/x/st` und `/w/st`. Die lesbaren Aliase `/status.xhtml` und `/status.wml` bleiben ebenfalls gueltig.
+Der aktive Basisstations-Adapter bedient derzeit nur `/`, `/status`, `/status.xhtml` und `/status.wml`. Ein 21-Seiten-Renderer mit kurzen `/x/...`-/`/w/...`-Routen liegt im Quellbaum, ist jedoch nicht als Modul eingebunden. Die statischen Referenzdateien sind daher kein Nachweis eines aktiven vollständigen Funkportals. Details: [Portal und Laufzeitgrenze](../../../guides/wap/wap-portalreferenz-und-laufzeitgrenze.md).
 
 ## MIME-Typen
 
@@ -21,4 +21,4 @@ Die Basisstation verwendet fuer den echten WSP/Openwave-Pfad zusaetzlich extrem 
 .wml    text/vnd.wap.wml; charset=UTF-8
 ```
 
-Phase 9 ergänzt die Referenzseiten `tasks` und `task-form`. Die dynamischen Formulare liegen im zentralen Task Workflow auf Port 8280.
+Der heutige Referenzbestand enthält außerdem die Seiten `tasks` und `task-form`. Die dynamischen Formulare liegen im zentralen Task Workflow auf Port 8280.

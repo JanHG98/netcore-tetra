@@ -1,6 +1,6 @@
 # NetCore Control Room UI
 
-Native Desktop UI für den NetCore Control Room.
+Native Desktopoberfläche für den NetCore Control Room. Dieser Ordner ist ein eigenständiger Cargo-Workspace; Builds liegen standardmäßig unter `ui/target/`. Die Konfiguration verbindet die Oberfläche mit dem Python-Backend; der Rust-Core unter `bins/` ist eine andere Anwendung.
 
 Lokale Dateien: [src](src/).
 

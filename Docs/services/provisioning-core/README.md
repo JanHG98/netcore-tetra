@@ -1,6 +1,8 @@
-# NetCore Provisioning Core
+# Teilnehmer- und Gruppenverwaltung
 
 **Quellen:** [system-backend/provisioning-core](../../../system-backend/provisioning-core) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
+
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../roadmaps/gesamtroadmap.md).
 
 Der **Provisioning Core** ist die zentrale Verwaltungsoberfläche für Teilnehmer, Geräte, Gruppen und Gruppenmitgliedschaften.
 
@@ -13,6 +15,8 @@ Er ersetzt Subscriber Core und Group Core nicht als autoritative Dienste, sonder
 - beide Cores gemeinsam auf alle verbundenen Basisstationen synchronisieren
 - beim Löschen eines Gerätes oder einer Gruppe zugehörige Mitgliedschaften automatisch bereinigen
 
+Der Provisioning Core ist eine optionale Verwaltungsoberfläche. Er ist als Quellkomponente und Deployment-Agentrolle vorhanden, gehört aber nicht zu den 26 regulären Inventardiensten der aktuellen Registry. Seine Installation und Upstream-Adressen separat planen.
+
 Standardport: `8125/tcp`
 
 Der Dienst ist für die aktuelle Testphase bewusst **OPEN LAB**: kein Token, keine Anmeldung und kein TLS. Nur im isolierten Verwaltungsnetz betreiben.
@@ -23,8 +27,9 @@ Die Verwaltungsoberfläche verwendet getrennte, intern scrollende Tabellenbereic
 
 ## Dokumentation
 
-- vollständige Installation: `Docs/deployment/PROVISIONING_CORE_COMPLETE_INSTALL.md`
-- kurze LXC-Übersicht: `docs/lxc-deployment.md`
+- [Vollständige Installation](../../deployment/historisch-provisioning-core-erstinstallation.md)
+- [Kurze LXC-Übersicht](installation-im-lxc.md)
+- [API-Beispiele](tests/api-beispiele.md)
 
 ## Abhängigkeiten
 

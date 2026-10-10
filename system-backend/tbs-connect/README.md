@@ -1,6 +1,6 @@
-# TBS Connect
+# Historischer TBS-Brew-Connector
 
-Dieser bestehende Backend-Baustein stellt eine Verbindung zwischen TBS und zentralen Diensten bereit. Seine langfristige Funktion wird in den geplanten Node Gateway überführt oder klar davon abgegrenzt.
+Historischer Python-Brew-Router auf Port 8081 mit WebUI und lokalen Sitzungen. Der aktuelle zentrale TBS-Pfad verwendet Node Gateway; dieser Altbaustein ist kein Ersatz für dessen Core-Verträge.
 
 [Vollständige Dokumentation](../../Docs/services/tbs-connect/README.md) · [Zentraler Dokumentationsindex](../../Docs/README.md)
 

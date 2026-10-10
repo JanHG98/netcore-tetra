@@ -78,8 +78,8 @@ need("system-backend/iot-gateway/src/mqtt.rs", (
     "home_assistant_command_prefix",
 ))
 need("system-backend/iot-gateway/install/migrate-phase5-config.sh")
-need("Docs/deployment/INSTALLATION-MQTT-PHASE5-HOME-ASSISTANT-HOMEMATIC.md")
-need("Docs/changes/integrations/MQTT_PHASE5_HOME_ASSISTANT_HOMEMATIC_OPENLAB.md")
+need("Docs/deployment/historisch-home-assistant-und-homematic-installation.md")
+need("Docs/changes/integrations/mqtt-phase-5-home-assistant-und-homematic-ip.md")
 
 for pdf in ROOT.rglob("*.pdf"):
     errors.append(f"PDF must not be included: {pdf.relative_to(ROOT)}")

@@ -1,5 +1,7 @@
 # Brainstorming: USB-Signatur, Hybrid-Control, BREW-Health, Backups und Receipt-Server
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 **Stand der Notizen und ergänzenden Prüfungen: 2026-10-03.** Historische Entwürfe, nachgewiesene Umsetzung und ausgeführte Tests sind jeweils getrennt gekennzeichnet.
 
 **Arbeitsrichtung:** Signierte USB-Konfiguration als abgesicherter Startpfad, zentraler Control-Server mit Netzwerk-vor-USB-Priorität, BREW-Health, Netzwerkbackups und begrenzter Thermobondruck. USB-Signaturprüfung und einzelne Betriebsfunktionen sind bestätigt; Hybrid-Manager, Readiness und Restore bleiben offen.

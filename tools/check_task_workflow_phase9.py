@@ -22,8 +22,8 @@ REQUIRED = [
     "system-backend/task-workflow/install/uninstall.sh",
     "system-backend/task-workflow/install/configure-openlab.sh",
     "system-backend/shared/contracts/schemas/netcore-task-v1.schema.json",
-    "Docs/contracts/TASK_MODEL_V1.md",
-    "Docs/changes/integrations/PHASE_9_WAP_FORMS_STRUCTURED_TASKS.md",
+    "Docs/contracts/auftragsmodell-v1.md",
+    "Docs/changes/integrations/phase-9-wap-formulare-und-auftraege.md",
 ]
 errors: list[str] = []
 for rel in REQUIRED:

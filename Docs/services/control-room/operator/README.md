@@ -1,8 +1,27 @@
-# NetCore Control Room Operator CLI
+# Leitstelle
 
 **Quellen:** [system-backend/control-room/operator](../../../../system-backend/control-room/operator) · [Repository-Root](../../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
 
-Ab v5.1 nutzt die CLI klassischen User/Passwort-Login per HTTP Basic Auth.
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../../roadmaps/gesamtroadmap.md).
+
+Die CLI bietet Lageübersicht, Live-Dashboard, Teilnehmer-, Ruf- und Positionslisten
+sowie typisierte Operatoraktionen. Der ausgelieferte Server läuft im OPEN LAB mit
+`--no-auth`; dabei werden weder Benutzername noch Passwort benötigt.
+
+Vom Repository-Hauptverzeichnis:
+
+```bash
+cargo build --locked --release -p netcore-control-room-operator
+./target/release/netcore-control-room-operator --api http://CONTROL-ROOM-IP:9010 overview
+./target/release/netcore-control-room-operator --help
+```
+
+## Optionaler Benutzerzugang
+
+Bei aktivierter Serverauthentisierung unterstützt die CLI HTTP Basic Auth.
+Die folgenden Beispiele betreffen dieses geschützte Profil; HTTP Basic braucht
+zusätzlich einen passend eingerichteten HTTPS-Zugang, um Zugangsdaten vertraulich
+zu übertragen.
 
 Beispiel:
 
@@ -14,7 +33,7 @@ Beispiel:
   overview
 ```
 
-Passwort besser per Datei/Env:
+Passwort per `--password-file` oder Umgebungsvariable bereitstellen:
 
 ```bash
 export NETCORE_CONTROL_ROOM_USER=jan
@@ -22,7 +41,7 @@ export NETCORE_CONTROL_ROOM_PASSWORD='<passwort>'
 ./target/release/netcore-control-room-operator --api http://10.0.1.25:9010 overview
 ```
 
-Benutzerverwaltung:
+Benutzerverwaltung erfordert im geschützten Serverprofil Adminrechte:
 
 ```bash
 ./target/release/netcore-control-room-operator users list
@@ -32,3 +51,13 @@ Benutzerverwaltung:
 ./target/release/netcore-control-room-operator users password --username operator1 --password '<neu>'
 ./target/release/netcore-control-room-operator users delete --username operator1
 ```
+
+Profile initialisieren oder effektive Komfortwerte anzeigen:
+
+```bash
+./target/release/netcore-control-room-operator profiles init --api http://CONTROL-ROOM-IP:9010
+./target/release/netcore-control-room-operator profiles show
+```
+
+Profile speichern API-Adresse, Benutzernamen, bevorzugte Node und Operator-ID,
+keine Passwörter. Details: [Bedienplatzprofile](../bedienplatzprofile.md).

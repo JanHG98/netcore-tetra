@@ -1,4 +1,20 @@
-# Z01.4 – VM119 Imagebuilder: Vorprüfung und Buildabnahme
+# VM119 Imagebuilder – Buildnachweise, NVMe-Recovery und offene Abnahmen
+
+## Aktueller Nachweisstand vom 09.10.2026
+
+Der vollständige ARM64-NetCore-Build an `1595259a2a76abfc9eff08842409156473b585a7` ist technisch dokumentiert: Erfolgsauftrag `f141c06d4b2f48699486e149c4887b16`, Artefakt `2e2603beacd942dfaddc7119b85a4af0`, 2.043.954.184 Bytes, SHA-256 und `Fertig:`-Abschlussmarker. Die spätere Dateiprüfung fand dieses fertige Image nicht; der passende Softwarecache wurde bestätigt. Der erfolgreiche Build und die aktuelle Verfügbarkeit der Datei sind deshalb getrennte Befunde.
+
+VM119/scsi0 wurde anschließend nach NVMe_OSData verschoben. Kopierabschluss, Konfiguration und Live-QEMU-Backing auf `/dev/zvol/rpool/data/vm-119-disk-0` sind belegt. Der separat angenommene NVMe-Recoveryauftrag ist `4ebe40edf4b443f592e7f7ad28ad0624` / Build `6a0a67657cce49118c89f5b9479db29d`. Der Annahmebeleg allein bestätigt noch nicht dessen Abschluss. Der neue vollständige API-/Manifest-/Dateibeleg zum Recoveryartefakt muss dem konkreten Auftrag zugeordnet werden.
+
+Offen bleiben die eindeutige Zuordnung und Verfügbarkeit des aktuellen Artefakts, der Download samt Prüfung der vollständigen Dateibytes gegen Manifest/SHA-256 sowie physischer Pi-/SXceiver-Start und VPN-Wechsel. Kein neuer Build oder erneuter Disk-Move ist aus dieser Dokumentationspflege abzuleiten. Frühere DNS-, dpkg-, Initramfs-, SQLite- und I/O-Blocker stehen unten als Chronik der jeweiligen Läufe.
+
+[Aktuelle Imagebuilder-Anleitung](../../services/deployment-core/README.md) · [Integrationsübersicht](README.md) · [Gesamtroadmap](../../roadmaps/gesamtroadmap.md) · [Dokumentationsindex](../../README.md)
+
+## Chronik der Prüfungen und Betreiberbefunde
+
+Die folgenden Status- und Fortsetzungssätze gelten jeweils zum beschriebenen Zeitpunkt. Hotfix- und Recoveryblöcke sind an ihre Host-, Quell- und Auftragsprüfungen gebunden; bereits ausgeführte Schritte nicht als heutige Wiederholungsanleitung lesen. Die historischen Originalangaben sind durch diesen Nachtrag nicht erneut vollständig geprüft.
+
+### Z01.4 – VM119 Imagebuilder: Vorprüfung und Buildabnahme
 
 Stand: 2026-10-09. CT150-Readiness/Recovery und CT136-TCP-/Vorschau-/NAS-Erfolgspfad einschließlich isoliertem Fehlermount sind als Betreiberbefunde dokumentiert. Die tatsächliche Vorprüfung auf `VM-H-DEPLOY-01`, VM119, `10.0.1.131`, besteht. Die neue Betreiber-Ausgabe bestätigt jetzt den vollständigen Imagebuilder-Erfolg an1595259 mit Dateiname, Größe, SHA-256 und Abschlussmarker. Das fertige Artefakt ist in der aktuellen Speicheransicht jedoch nicht gelistet und unter dem Standardpfad nicht gefunden. Der passende Softwarecache ist auf VM119 bestätigt. Nach einem unspezifizierten SQLite-Lesefehler ist der Recoveryauftrag inzwischen eindeutig zugeordnet: Cachekopie erfolgreich, losetup-Timeout30s vor Stationspersonalisierung. Die folgende Betreiber-Ausgabe belegt inzwischen eine Rootdisk-I/O-Blockade; lokales Live-QEMU-Backing und der SATA-Hostengpass sind inzwischen bestätigt. Die begrenzte Übernahme von VM119/scsi0 auf NVMe_OSData / rpool/data ist jetzt durch erfolgreichen Kopierabschluss, Konfiguration und Live-QEMU-Backing bestanden. Als Nächstes Gast-Schreibzugriff prüfen und das Stationsimage einmalig aus dem bestätigten Softwarecache wiederherstellen. Downloadprüfung und physische Abnahme bleiben offen. Die früheren DNS-/Conffile-/Initramfs-Abbrüche und der gesicherte Stand von17:03 bleiben unten ausdrücklich datierte Historie.
 
@@ -142,7 +158,7 @@ Keinen weiteren vollständigen Build, Cachelöschung oder Dienstneustart zur Dia
 
 ## Aktuelle TBS-Bedienung vom 09.10.2026
 
-[Workflow-Update und Prüfgrenzen](tbs-workflow-2026-10-09.md): gespeicherte Profile lassen sich löschen, sofern kein aktiver oder ungeklärter Auftrag sie verwendet. Neue Images verwenden automatisch frisch abgerufenes `origin/main`; eine Git-Referenzeingabe entfällt. Die ältere Ref-Eingabe in den unten datierten Build-/Hotfixanweisungen beschreibt die damalige Oberfläche. Der neue gezielte Helfer übernimmt sieben Controller-/Worker-/UI-Dateien; das Gastrezept bleibt separat. Die tatsächliche Installation auf VM119 ist noch nicht bestätigt.
+[Workflow-Update und Prüfgrenzen](tbs-image-ablauf-2026-10-09.md): gespeicherte Profile lassen sich löschen, sofern kein aktiver oder ungeklärter Auftrag sie verwendet. Neue Images verwenden automatisch frisch abgerufenes `origin/main`; eine Git-Referenzeingabe entfällt. Die ältere Ref-Eingabe in den unten datierten Build-/Hotfixanweisungen beschreibt die damalige Oberfläche. Der neue gezielte Helfer übernimmt sieben Controller-/Worker-/UI-Dateien; das Gastrezept bleibt separat. Die tatsächliche Installation auf VM119 ist noch nicht bestätigt.
 
 ## Operatorblock
 
@@ -310,7 +326,7 @@ Der vollständige Gast-APT-Korrekturcommit ist `001fb84ac566bb0f95e18d22439ee664
 
 Der bereitgestellte Operatorbefehl verwendet diesen Commit und `vm119-image-apt-update.py`; im Imageformular gehört derselbe vollständige SHA in **Branch, Tag oder Commit**. Ein globaler Controller-Ref-Wechsel ist dafür nicht erforderlich. Zum Zeitpunkt dieser Sicherung fehlt eine neue Betreiber-Ausgabe zur Gastrezept-Übernahme und zum erneuten vollständigen Build. Der jobs.py-Fix auf VM119 ist ebenfalls nicht durch einen neuen Runtime-Fingerprint bestätigt. Bereits gestartete Builds über ihren bestehenden Auftrag verfolgen; diese Dokumentationssicherung erfordert keinen weiteren Build oder Dienstneustart.
 
-Bei einem Erfolg zuerst `/api/v1/images`, den bestehenden Imagejob, Artefakt und Manifest auswerten und den Download gegen die SHA-256 prüfen. Imagejob-ID und `request.build_id` sind verschiedene Kennungen; Controller-`/api/v1/jobs/<id>` ist kein Imagejob-Statuspfad. Das Manifest darf bis zur tatsächlichen physischen Abnahme weiterhin `boot_tested=false` melden. Erst danach folgen Pi-/SXceiver-Boot und VPN-Wechsel. [Gesamter Fortsetzungsstand](checkpoint-2026-10-08.md).
+Bei einem Erfolg zuerst `/api/v1/images`, den bestehenden Imagejob, Artefakt und Manifest auswerten und den Download gegen die SHA-256 prüfen. Imagejob-ID und `request.build_id` sind verschiedene Kennungen; Controller-`/api/v1/jobs/<id>` ist kein Imagejob-Statuspfad. Das Manifest darf bis zur tatsächlichen physischen Abnahme weiterhin `boot_tested=false` melden. Erst danach folgen Pi-/SXceiver-Boot und VPN-Wechsel. [Gesamter Fortsetzungsstand](zwischenstand-2026-10-08.md).
 
 ## Dritter ARM64-Build: Rootgeräteerkennung beim Initramfs
 

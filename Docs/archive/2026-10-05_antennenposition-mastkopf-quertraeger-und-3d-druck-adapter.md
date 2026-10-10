@@ -1,5 +1,7 @@
 # Brainstorming: Antennenposition, Mastkopf, Querträger und 3D-Druck-Adapter
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 **Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
 
 > **Festgehaltene Richtung:** Der auf den Fotos gezeigte vertikale Zwei-Antennen-Aufbau ist als aktuell verfügbare, räumlich eingeschränkte Testanordnung technisch plausibel, aber nicht als ausreichend entkoppelter gleichzeitiger TX/RX-Betrieb bestätigt. Die Aussage „die untere Antenne trifft nur Aluminium“ ist kein HF-Nachweis. Für die geplante mechanische Weiterentwicklung wurde ein Hybridansatz festgehalten: vorhandener Metallspigot als tragender Kern, Aluminium-Querträger und ein 3D-gedrucktes Klemm-/Formteil. Eine leitfähige Verbindung des Querträgers zum Mast ist nicht pauschal Voraussetzung der Antennenfunktion; für Outdoor-Betrieb sind Potentialausgleich, statische Aufladung, Überspannungs- und Blitzschutz jedoch getrennt zu planen.

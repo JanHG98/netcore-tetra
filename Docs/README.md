@@ -1,13 +1,15 @@
 # NetCore-Tetra – Dokumentation
 
-**Projektstand und nächster Schritt:** [Zentrale Gesamtroadmap](roadmaps/ROADMAP.md).
+**Projektstand und nächster Schritt:** [Zentrale Gesamtroadmap](roadmaps/gesamtroadmap.md).
+
+**Quellenabgleich:** 09.10.2026 mit `main@c3ccdb4`. Aktuelle Anleitungen beschreiben den vorhandenen Code und kennzeichnen offene Laufzeit- und Anlagenprüfungen. Datierte Nachweise behalten ihren ursprünglichen Geltungszeitraum.
 
 Detaildokumentation liegt zentral unter `Docs/`. Im Quellbaum führen kurze READMEs zur jeweiligen Komponente und zur passenden Anleitung.
 
 | Bereich | Inhalt |
 | --- | --- |
 | [Roadmaps](roadmaps/README.md) | Gesamtreihenfolge, Fachplanung und Abnahmen |
-| [Handbücher und Komplettguides](handbooks/README.md) | Systemhandbücher und datierte Komplettguides |
+| [Handbücher und Komplettguides](handbooks/README.md) | Aktuelles Systemhandbuch und Inbetriebnahme; alte Ausgaben im Archiv |
 | [Backend-Dienste](services/README.md) | Architektur, Betrieb, Deployment und Testanleitungen der Backend-Dienste |
 | [Weitere Komponenten](components/README.md) | TBS-Werkzeuge, MS-Modus, PA und weitere Komponenten |
 | [Installation und Deployment](deployment/README.md) | LXC, Open Lab, Installation und Betriebsanleitungen |
@@ -26,4 +28,4 @@ Detaildokumentation liegt zentral unter `Docs/`. Im Quellbaum führen kurze READ
 | [Generierte Daten](generated/README.md) | Maschinenlesbare Inventuren und generierte Berichte |
 | [Archiv](archive/README.md) | Gesprächsarchive, Referenzassets und historische Wiki-Importe |
 
-[Ablageregeln](STRUCTURE.md) · [Repository](../README.md) · [Verhaltenskodex](../CODE_OF_CONDUCT.md)
+[Ablageregeln](dokumentationsablage.md) · [Repository](../README.md) · [Verhaltenskodex](../CODE_OF_CONDUCT.md)

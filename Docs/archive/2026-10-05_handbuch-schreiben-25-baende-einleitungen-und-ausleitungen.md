@@ -1,5 +1,7 @@
 # Brainstorming: 25-bändige NetCore-Tetra-Handbuchreihe
 
+**Archivhinweis, 09.10.2026:** Diese Datei dokumentiert das im Titel beziehungsweise Quellenrahmen genannte Gespräch und dessen damalige Entscheidungen. Historische Kommandos, Planungen, Versionsangaben und Fehlerbilder bleiben erhalten; der heutige technische Stand steht in der [Gesamtroadmap](../roadmaps/gesamtroadmap.md) und in den [aktuellen Dienstanleitungen](../services/README.md). Die Archivaufnahme bestätigt keine spätere Implementierung oder Live-Abnahme.
+
 **Arbeitsstand:** 2026-10-05. Historische Betriebsbeobachtungen und der an diesem Datum geprüfte Repository-Stand sind getrennt ausgewiesen.
 
 Eine siebenbändige Grundreihe wird auf 25 NetCore-Tetra-Bände erweitert. Themen, Vorworte und Ausleitungen sind als redaktioneller Arbeitsstand festgehalten; für die Fachkapitel werden passende Quellorte und offene Prüfaufgaben gesammelt.

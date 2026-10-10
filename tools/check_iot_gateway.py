@@ -33,12 +33,12 @@ REQUIRED = [
 ]
 DOCUMENTATION_REQUIRED = [
     "Docs/services/iot-gateway/README.md",
-    "Docs/services/iot-gateway/home-assistant.md",
-    "Docs/services/iot-gateway/homematic-ip.md",
-    "Docs/services/iot-gateway/architecture.md",
-    "Docs/services/iot-gateway/mqtt-contract.md",
-    "Docs/services/iot-gateway/open-lab-mode.md",
-    "Docs/contracts/COMMAND_MODEL_V1.md",
+    "Docs/services/iot-gateway/home-assistant-anbinden.md",
+    "Docs/services/iot-gateway/homematic-ip-anbinden.md",
+    "Docs/services/iot-gateway/architektur.md",
+    "Docs/services/iot-gateway/mqtt-nachrichten.md",
+    "Docs/services/iot-gateway/offener-laborbetrieb.md",
+    "Docs/contracts/kommandos-und-bestaetigungen-v1.md",
 ]
 CONTRACT_REQUIRED = [
     "src/command.rs",

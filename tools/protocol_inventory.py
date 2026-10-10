@@ -400,6 +400,122 @@ GAP_PATTERNS = (
 )
 
 
+def rust_code_mask(text: str) -> str:
+    """Keep code offsets/newlines while hiding Rust comments and literals.
+
+    This is a lexical aid for scope matching, not a Rust parser. Lifetimes remain
+    visible; character literals, escaped strings, raw strings and nested block
+    comments cannot contribute braces or attribute-looking text.
+    """
+    masked = list(text)
+    idx = 0
+    char_literal = re.compile(r"'(?:\\(?:[nrt0\\'\"]|x[0-9a-fA-F]{2}|u\{[0-9a-fA-F_]+\})|[^'\\\n])'")
+    raw_literal = re.compile(r'(?:br|cr|r)(?P<hashes>#+)?"')
+
+    def hide(start: int, end: int) -> None:
+        for pos in range(start, end):
+            if text[pos] not in "\r\n":
+                masked[pos] = " "
+
+    while idx < len(text):
+        start = idx
+        if text.startswith("//", idx):
+            end = text.find("\n", idx)
+            idx = len(text) if end < 0 else end
+        elif text.startswith("/*", idx):
+            idx += 2
+            depth = 1
+            while idx < len(text) and depth:
+                if text.startswith("/*", idx):
+                    depth += 1
+                    idx += 2
+                elif text.startswith("*/", idx):
+                    depth -= 1
+                    idx += 2
+                else:
+                    idx += 1
+        elif (raw := raw_literal.match(text, idx)) and (idx == 0 or not (text[idx - 1].isalnum() or text[idx - 1] == "_")):
+            closing = '"' + (raw.group("hashes") or "")
+            end = text.find(closing, raw.end())
+            idx = len(text) if end < 0 else end + len(closing)
+        elif text[idx] == '"':
+            idx += 1
+            while idx < len(text):
+                if text[idx] == "\\":
+                    idx = min(len(text), idx + 2)
+                elif text[idx] == '"':
+                    idx += 1
+                    break
+                else:
+                    idx += 1
+        elif text[idx] == "'" and (char := char_literal.match(text, idx)):
+            idx = char.end()
+        else:
+            idx += 1
+            continue
+        hide(start, idx)
+    return "".join(masked)
+
+
+def matching_delimiter(code: str, start: int, opening: str, closing: str) -> int | None:
+    """Find a matching delimiter in already-masked Rust code."""
+    depth = 0
+    for idx in range(start, len(code)):
+        if code[idx] == opening:
+            depth += 1
+        elif code[idx] == closing:
+            depth -= 1
+            if depth == 0:
+                return idx
+    return None
+
+
+def rust_test_ranges(code: str) -> list[tuple[int, int]]:
+    """Locate explicit cfg(test) modules/functions and test functions.
+
+    Attributes and item bodies are matched in masked code. Other cfg expressions,
+    macro-generated items and external module inclusion need manual review.
+    """
+    if re.search(r"#!\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]", code):
+        return [(0, len(code))]
+    attribute = re.compile(r"#\s*\[")
+    item = re.compile(r"(?:(?:pub(?:\s*\([^)]*\))?|async|unsafe|extern)\s+)*(mod|fn)\s+\w+\b")
+    ranges = []
+    consumed = 0
+    for match in attribute.finditer(code):
+        if match.start() < consumed:
+            continue
+        cursor = match.start()
+        attrs = []
+        while (attr := attribute.match(code, cursor)):
+            bracket = code.find("[", attr.start(), attr.end())
+            end = matching_delimiter(code, bracket, "[", "]")
+            if end is None:
+                break
+            attrs.append(code[bracket + 1:end].strip())
+            cursor = end + 1
+            while cursor < len(code) and code[cursor].isspace():
+                cursor += 1
+        consumed = cursor
+        header = item.match(code, cursor)
+        if not header:
+            continue
+        cfg_test = any(re.fullmatch(r"cfg\s*\(\s*test\s*\)", attr) for attr in attrs)
+        test_fn = header.group(1) == "fn" and any(
+            re.fullmatch(r"(?:tokio\s*::\s*)?test(?:\s*\(.*\))?", attr, re.S) for attr in attrs
+        )
+        if not (cfg_test or test_fn):
+            continue
+        brace = code.find("{", header.end())
+        semicolon = code.find(";", header.end())
+        if brace < 0 or (semicolon >= 0 and semicolon < brace):
+            continue
+        end = matching_delimiter(code, brace, "{", "}")
+        if end is not None:
+            ranges.append((match.start(), end + 1))
+    return ranges
+
+
 # Was: Führt den Arbeitsschritt `gap_records` für gap records aus.
 # Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 def gap_records(root: Path) -> list[GapRecord]:
@@ -407,21 +523,27 @@ def gap_records(root: Path) -> list[GapRecord]:
     # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
     # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
     for path in rust_files(root, "crates") + rust_files(root, "bins") + rust_files(root, "system-backend"):
-        scope = "Test" if "tests" in path.parts or path.name.endswith("_test.rs") else "Runtime"
+        text = read(path)
+        code = rust_code_mask(text)
+        test_file = "tests" in path.relative_to(root).parts or path.name.endswith("_test.rs")
+        test_ranges = rust_test_ranges(code)
+        offset = 0
         # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
         # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
-        for line_no, line in enumerate(read(path).splitlines(), start=1):
+        for line_no, line in enumerate(text.splitlines(keepends=True), start=1):
+            line_offset = offset
+            code_line = code[offset:offset + len(line)]
+            offset += len(line)
             stripped = line.strip()
-            # Runtime macros in comments are historical notes, not executable paths.
-            # TODO/FIXME and explicit Todo type placeholders remain part of the inventory.
-            if stripped.startswith("//") or stripped.startswith("///"):
-                active_patterns = tuple(item for item in GAP_PATTERNS if item[0] in {"TODO/FIXME", "Todo-Typ"})
-            else:
-                active_patterns = GAP_PATTERNS
             # Was: Wiederholt den folgenden Abschnitt für mehrere Einträge oder solange die Bedingung erfüllt ist.
             # Warum: Gleichartige Daten oder wiederkehrende Prüfungen werden dadurch vollständig und einheitlich abgearbeitet.
-            for category, severity, pattern in active_patterns:
-                if pattern.search(line):
+            for category, severity, pattern in GAP_PATTERNS:
+                # Documentation TODOs/type placeholders remain visible, while
+                # macro spellings in any comment or string are not executable.
+                searched = line if category in {"TODO/FIXME", "Todo-Typ"} else code_line
+                if (match := pattern.search(searched)):
+                    position = line_offset + match.start()
+                    scope = "Test" if test_file or any(start <= position < end for start, end in test_ranges) else "Runtime"
                     effective_severity = severity
                     if scope == "Test" and category in {"panic!", "unreachable!"}:
                         effective_severity = "Test-Assertion"
@@ -609,11 +731,13 @@ def render_gaps(gaps: list[GapRecord], saps: list[SapRecord], pdus: list[PduReco
         GENERATED_HEADER.rstrip(),
         "# Implementierungslücken und Runtime-Risiken",
         "",
+        "> Statische Quelltexttreffer, keine Anzahl erreichbarer oder aktiver Laufzeitrisiken. `Test` erkennt Testdateien, explizite `#[cfg(test)]`-Module/Funktionen und `#[test]`-/`#[tokio::test]`-Funktionen durch lexikalisches Brace-Matching ohne Kommentare und Literale. `Runtime` bezeichnet die übrigen Fundstellen, nicht deren nachgewiesene Erreichbarkeit. Andere cfg-Ausdrücke, Makroexpansionen und externe Module bleiben manuell zu prüfen; dokumentierte TODO-/Todo-Treffer werden ebenfalls aufgeführt.",
+        "",
         "## Zusammenfassung",
         "",
         table(["Kategorie", "Treffer"], sorted(by_category.items())).rstrip(),
         "",
-        "## Priorität für SWMI Foundation 1",
+        "## Technische Prüffelder",
         "",
         "1. aktive `unimplemented!`-/`todo!`-Pfade in TLMC, TLPD, MLE und den zugehörigen PDU-Codecs entfernen;",
         "2. nicht in `SapMsgInner` verdrahtete TLMC-/TLPD-Primitive typisieren und routen;",
@@ -643,7 +767,7 @@ def render_gaps(gaps: list[GapRecord], saps: list[SapRecord], pdus: list[PduReco
             ],
         ).rstrip(),
         "",
-        "## Aktive und dokumentierte Quelltexttreffer",
+        "## Statische und dokumentierte Quelltexttreffer",
         "",
         table(
             ["Kategorie", "Schwere", "Bereich", "Datei", "Zeile", "Ausschnitt"],
@@ -657,15 +781,16 @@ def render_gaps(gaps: list[GapRecord], saps: list[SapRecord], pdus: list[PduReco
 # Was: Diese Funktion erzeugt states.
 # Warum: Darstellung und Fachdaten bleiben dadurch voneinander getrennt.
 def render_states(records: list[StateRecord]) -> str:
+    # Dieser manuell gepflegte Prüfumfang ergänzt die automatisch gefundenen Enums.
     required = [
-        ("MLE Cell State", "Typfundament mit `MleCellState` vorhanden; Runtime-Transitionen folgen mit den MLE-Zellwechsel-PDUs", "Foundation 2/Phase 3"),
-        ("MM Registration State", "teilweise über Client-/Registration-Zustände vorhanden", "Phase 4"),
-        ("CMCE Group Call", "vorhandene Call-State-Typen prüfen und formalisieren", "Phase 5"),
-        ("CMCE Individual Call", "vorhandene Individual-Call-State-Typen prüfen und formalisieren", "Phase 5"),
-        ("SNDCP Context State", "PDP-State vorhanden; vollständige Context-Transitionen folgen", "Phase 11"),
-        ("LTPD Link State", "Context Registry, TxReporter-gestützte Transfers, Replay-Schutz und Lifecycle-Runtime vorhanden", "Paket E ✅"),
-        ("LLC Link State", "TxReporter bindet LTPD an reale LLC/MAC-Übertragung; vollständige Advanced-Link-State-Machine bleibt offen", "Phase 3"),
-        ("Channel Change State", "TLMC Select/Response-Lifecycle vorhanden; MLE-Zellwechseltransitionen fehlen", "Phase 3"),
+        ('MLE Cell State', 'MleCellState und MleCellChangeRuntime mit Transaktionen/Timeouts vorhanden; Anbindung der aktiven BS-/MS-Pfade separat prüfen.', 'Foundation 2/Phase 3'),
+        ('MM Registration State', 'MmClientState sowie lokale Registrierungs-/Gruppen-/Recoveryzustände vorhanden; zusätzliche Mobility-Runtime belegt keine vollständige Laufzeitintegration.', 'Phase 4'),
+        ('CMCE Group Call', 'GroupCallState und lokale Floor-/Hangtime-/Release-Logik vorhanden; zentralen Ruf- und Restorepfad einschließlich Z02.2 separat prüfen.', 'Phase 5/Z02.2'),
+        ('CMCE Individual Call', 'IndividualCallState und lokaler Setup-/Antwort-/Releasepfad vorhanden; Restore-Floor und Z02.1 separat prüfen.', 'Phase 5/Z02.1'),
+        ('SNDCP Context State', 'PdpState, ContextTable, Kontext-/Bearerzustände und Timer im aktiven SNDCP-BS-Pfad vorhanden; Routing/SAP-Anbindung und Ende-zu-Ende-Datenfluss separat prüfen.', 'Phase 11'),
+        ('LTPD Link State', 'LtpdLinkState und separate LtpdRuntime mit Transferreportern/Lifecycle vorhanden; aktive MLE-BS-/MS-TLPD-Handler enthalten noch unimplemented_log.', 'Foundation/Z02'),
+        ('LLC Link State', 'Basic-Link-ACK, Retransmission, Warteschlangen und TxReporter vorhanden; Advanced-Link-Abdeckung und implizite Übergänge separat prüfen.', 'Phase 3'),
+        ('Channel Change State', 'ChannelChangeState, TLMC-Select/Response und MLE-Zellwechsel-Transaktionsmodul vorhanden; aktive Zellwechsel-/Restore-Anbindung und On-Air-Wirkung separat prüfen.', 'Phase 3/Z02'),
     ]
     return "\n".join(
         [
@@ -681,7 +806,7 @@ def render_states(records: list[StateRecord]) -> str:
                 [(r.layer, r.name, r.variants, r.test_references, f"`{r.path}`") for r in records],
             ).rstrip(),
             "",
-            "## Für die Roadmap geforderte Zustandsmaschinen",
+            "## Manueller Prüfumfang der Zustandsmaschinen",
             "",
             table(["Bereich", "Inventurstatus", "Roadmap"], required).rstrip(),
             "",
@@ -707,11 +832,11 @@ def render_summary(pdus: list[PduRecord], saps: list[SapRecord], gaps: list[GapR
     return "\n".join(
         [
             GENERATED_HEADER.rstrip(),
-            "# SWMI Foundation 1 – Protokollinventur",
+            "# Protokollinventur des aktuellen Quellcodes",
             "",
             "## Ergebnis",
             "",
-            "Paket A stellt die reproduzierbare Inventur bereit. Paket B ergänzt die typisierten TLMC-/TLPD-Primitive und grundlegenden Zustände. Paket C aktiviert die lokale TLMC-Runtime. Paket D ergänzt bidirektionales SNDCP-Routing und den lokalen Link-Lifecycle. Paket E schließt Foundation 1 mit TxReporter-gestützten Transferergebnissen, Duplicate- und Replay-Schutz, Cancel/Timeout-Robustheit, negativen Zustandsübergängen und einem wiederverwendbaren Zwei-Zellen-Testharness ab. Die Matrix bleibt die laufend aktualisierte Bestandsaufnahme für die folgenden MLE- und Multi-Site-Pakete.",
+        "Diese Inventur wird aus dem aktuellen Rust-Quellbaum erzeugt. Sie erfasst Codec-Einstiegspunkte, SAP-Verweise, sichtbare Platzhalter und benannte State-Typen. Die historischen Foundation-Pakete A bis E erklären die Entstehung des Generators; die heutige Arbeitsreihenfolge steht in der Gesamtroadmap.",
             "",
             table(
                 ["Messgröße", "Stand"],
@@ -729,15 +854,15 @@ def render_summary(pdus: list[PduRecord], saps: list[SapRecord], gaps: list[GapR
             "",
             "## Erzeugte Artefakte",
             "",
-            "- [ETSI_CONFORMANCE_MATRIX.md](ETSI_CONFORMANCE_MATRIX.md) – PDU-Parser/Encoder, Testabdeckung und Roadmap-Zuordnung",
-            "- [SAP_PRIMITIVE_MATRIX.md](SAP_PRIMITIVE_MATRIX.md) – SAP-Primitive und statisch sichtbare Routingpfade",
-            "- [IMPLEMENTATION_GAPS.md](IMPLEMENTATION_GAPS.md) – TODO, `unimplemented!`, `unimplemented_log!`, Panic-Pfade und fehlende Verdrahtung",
-            "- [STATE_MACHINE_INVENTORY.md](STATE_MACHINE_INVENTORY.md) – vorhandene und geforderte Zustandsmodelle",
+            "- [PDU-Codec-Matrix](etsi-pdu-konformitaetsmatrix.md) – PDU-Parser/Encoder, Testabdeckung und Roadmap-Zuordnung",
+            "- [SAP-Primitive und Routing](sap-primitive-und-routingmatrix.md) – SAP-Primitive und statisch sichtbare Routingpfade",
+            "- [Implementierungslücken und Laufzeitrisiken](implementierungsluecken-und-laufzeitrisiken.md) – TODO, `unimplemented!`, `unimplemented_log!`, Panic-Pfade und fehlende Verdrahtung",
+            "- [Zustandsmaschinen](zustandsmaschinen-inventur.md) – vorhandene und geforderte Zustandsmodelle",
             "- [protocol_inventory.json](../generated/protocol_inventory.json) – maschinenlesbare Gesamtdaten",
             "- [pdu_inventory.csv](../generated/pdu_inventory.csv) und [sap_inventory.csv](../generated/sap_inventory.csv) – Tabellenexport",
             "- [protocol_inventory.py](../../tools/protocol_inventory.py) – deterministischer Generator",
             "- [check_protocol_inventory.sh](../../tools/check_protocol_inventory.sh) – lokaler Konsistenzcheck",
-            "- `.github/workflows/protocol-inventory.yml` – CI-Prüfung gegen veraltete Inventurdateien",
+            "- Die lokale Prüfung erfolgt mit dem genannten Skript; eine eigene Workflow-Datei `protocol-inventory.yml` ist im aktuellen Repository nicht vorhanden.",
             "",
             "## Bedienung",
             "",
@@ -752,7 +877,7 @@ def render_summary(pdus: list[PduRecord], saps: list[SapRecord], gaps: list[GapR
             "",
             "## Nächster Arbeitsschritt",
             "",
-            "Paket E schließt SWMI Foundation 1 ab. Als Nächstes folgt die MLE-Zellwechselbasis mit vollständigen Codecs und Zustandsübergängen für D-NEW-CELL, D-PREPARE-FAIL, U/D-RESTORE und D-CHANNEL-RESPONSE.",
+            "Für Prioritäten und Abhängigkeiten die [Gesamtroadmap](../roadmaps/gesamtroadmap.md) lesen. Die Treffer dieser Inventur anschließend am konkreten Handler und Test prüfen: Ein Quelltextverweis belegt weder Erreichbarkeit im Laufzeitpfad noch erfolgreiche Mehrzellen- oder Funkabnahme.",
             "",
         ]
     )
@@ -835,11 +960,11 @@ def outputs(root: Path) -> dict[Path, str]:
     states = state_records(root)
     data = as_json_data(pdus, saps, gaps, states)
     return {
-        root / "Docs" / "protocols" / "SWMI_FOUNDATION_1_INVENTORY.md": render_summary(pdus, saps, gaps, states),
-        root / "Docs" / "protocols" / "ETSI_CONFORMANCE_MATRIX.md": render_conformance(pdus),
-        root / "Docs" / "protocols" / "SAP_PRIMITIVE_MATRIX.md": render_saps(saps),
-        root / "Docs" / "protocols" / "IMPLEMENTATION_GAPS.md": render_gaps(gaps, saps, pdus),
-        root / "Docs" / "protocols" / "STATE_MACHINE_INVENTORY.md": render_states(states),
+        root / "Docs" / "protocols" / "swmi-protokollinventur.md": render_summary(pdus, saps, gaps, states),
+        root / "Docs" / "protocols" / "etsi-pdu-konformitaetsmatrix.md": render_conformance(pdus),
+        root / "Docs" / "protocols" / "sap-primitive-und-routingmatrix.md": render_saps(saps),
+        root / "Docs" / "protocols" / "implementierungsluecken-und-laufzeitrisiken.md": render_gaps(gaps, saps, pdus),
+        root / "Docs" / "protocols" / "zustandsmaschinen-inventur.md": render_states(states),
         root / "Docs" / "generated" / "protocol_inventory.json": json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
         root / "Docs" / "generated" / "pdu_inventory.csv": csv_text(pdus),
         root / "Docs" / "generated" / "sap_inventory.csv": csv_text(saps),

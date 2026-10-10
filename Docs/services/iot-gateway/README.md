@@ -1,8 +1,10 @@
-# NetCore IoT Gateway – Phase 5
+# IoT-Anbindung
 
 **Quellen:** [system-backend/iot-gateway](../../../system-backend/iot-gateway) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
 
-Der IoT Gateway verbindet `netcore-event-v1` mit MQTT, verarbeitet `netcore-command-v1` über Default-Deny-Policies, quittiert mit `netcore-command-ack-v1` und ergänzt jetzt Home Assistant sowie Homematic IP.
+Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../roadmaps/gesamtroadmap.md).
+
+Der IoT Gateway verbindet `netcore-event-v1` mit MQTT, verarbeitet `netcore-command-v1` über Default-Deny-Policies, quittiert mit `netcore-command-ack-v1` und bindet Home Assistant sowie Homematic IP an.
 
 ## OPEN LAB
 
@@ -71,8 +73,7 @@ Direkte Schreibzugriffe benötigen gleichzeitig:
 
 ```bash
 cd /opt/netcore-tetra/system-backend/iot-gateway
-chmod 755 install/*.sh
-./install/update.sh
+sudo bash install/update.sh
 ```
 
 Der Installer ergänzt fehlende Phase-5-Konfigurationsblöcke und überschreibt bestehende Broker-, Backend- oder CCU-Adressen nicht.

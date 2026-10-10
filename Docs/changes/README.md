@@ -1,9 +1,11 @@
 # Änderungs- und Phasennachweise
 
-[Gesamte Dokumentation](../README.md)
+Diese Sammlung dokumentiert frühere Ausbauschritte, Fehleranalysen und Prüfläufe. Ihre Versionen und Ergebnisse bleiben zeitgebunden. Für laufende Installationen die heutigen Dienstanleitungen und die Gesamtroadmap verwenden.
 
-- [backend](backend/DASHBOARD_DE_HIDDEN_INTEGRATIONS_APPLY.md)
-- [control-room](control-room/CONTROL_ROOM_AUTH_TOKEN_APPLY.md)
-- [integrations](integrations/MQTT_PHASE2_COMMON_EVENT_MODEL.md)
-- [media](media/CHANGES-CENTRAL-MEDIA-LIBRARY-TTS.md)
-- [radio](radio/EDGE_FALLBACK.md)
+[Gesamtroadmap](../roadmaps/gesamtroadmap.md) · [Dokumentationsindex](../README.md) · [Aktuelle Backend-Dienste](../services/README.md)
+
+- [Backend- und Dashboardkorrekturen](backend/README.md)
+- [Leitstelle und Desktopoberfläche](control-room/README.md)
+- [MQTT, Workflows und SIP-Integration](integrations/README.md)
+- [Audio, Medienbibliothek und TTS](media/README.md)
+- [Funkregistrierung, Rufe und Paketdaten](radio/README.md)

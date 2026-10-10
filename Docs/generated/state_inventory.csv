@@ -14,6 +14,6 @@ SAP/COMMON,LtpdLinkState,crates/tetra-saps/src/common/mod.rs,10,6
 SAP/COMMON,MleCellState,crates/tetra-saps/src/common/mod.rs,10,0
 SAP/COMMON,TlmcScanState,crates/tetra-saps/src/common/mod.rs,5,3
 SAP/COMMON,TlmcSelectionState,crates/tetra-saps/src/common/mod.rs,5,0
-SAP/COMMON,TxGrantState,crates/tetra-saps/src/common/mod.rs,2,0
+SAP/COMMON,TxGrantState,crates/tetra-saps/src/common/mod.rs,2,6
 SNDCP,PdpState,crates/tetra-entities/src/sndcp/state.rs,4,0
 UMAC,DefragBufferState,crates/tetra-entities/src/umac/subcomp/defrag.rs,3,0
