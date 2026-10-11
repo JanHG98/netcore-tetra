@@ -6,9 +6,53 @@ Der vollständige ARM64-NetCore-Build an `1595259a2a76abfc9eff08842409156473b585
 
 VM119/scsi0 wurde anschließend nach NVMe_OSData verschoben. Kopierabschluss, Konfiguration und Live-QEMU-Backing auf `/dev/zvol/rpool/data/vm-119-disk-0` sind belegt. Der separat angenommene NVMe-Recoveryauftrag ist `4ebe40edf4b443f592e7f7ad28ad0624` / Build `6a0a67657cce49118c89f5b9479db29d`. Der nachfolgende Windows-Prüfbeleg ordnet das heruntergeladene Recoveryartefakt jetzt dieser Build-ID und Commit1595259 zu; Größe und vollständige SHA-256 stimmen mit dem Manifest überein. Der separate SQLite-Endstatus wurde nicht erneut eingefügt.
 
-Am 11.10.2026 besteht der Betreiber-Prüfblock am Windows-PC: `PASS` für Build6a0a6765, lokaler Dateiname und vollständige SHA-256 sind angegeben. Download / Manifestzuordnung / komprimierte Dateigröße / Byteintegrität sind damit bestanden. Offen bleiben SD-Schreiben sowie physischer Pi-/SXceiver-Start und VPN-Wechsel. Kein neuer Build oder erneuter Disk-Move ist aus dieser Dokumentationspflege abzuleiten. Frühere DNS-, dpkg-, Initramfs-, SQLite- und I/O-Blocker stehen unten als Chronik der jeweiligen Läufe.
+Am 11.10.2026 besteht der Betreiber-Prüfblock am Windows-PC: `PASS` für Build6a0a6765, lokaler Dateiname und vollständige SHA-256 sind angegeben. Download / Manifestzuordnung / komprimierte Dateigröße / Byteintegrität sind damit bestanden. Anschließend besteht der physische Pi-OS-/SD-/Firstboot-/SSH-/lokale Agententest auf srv-m-tbs-03. Offen bleiben SXceiver, Controller-Sichtbarkeit, Funk-/Core-Anbindung und VPN-Wechsel. Kein neuer Build oder erneuter Disk-Move ist aus dieser Dokumentationspflege abzuleiten. Frühere DNS-, dpkg-, Initramfs-, SQLite- und I/O-Blocker stehen unten als Chronik der jeweiligen Läufe.
 
 [Aktuelle Imagebuilder-Anleitung](../../services/deployment-core/README.md) · [Integrationsübersicht](README.md) · [Gesamtroadmap](../../roadmaps/gesamtroadmap.md) · [Dokumentationsindex](../../README.md)
+
+## Physischer Pi-Erststart bestanden
+
+Der Betreiber liefert am 11.10.2026 die tatsächliche SSH-Ausgabe von `jan@srv-m-tbs-03`. Sie belegt den Start des zuvor gegen Manifest geprüften Recoveryimages auf SD:
+
+| Prüfung | Tatsächlicher Befund |
+| --- | --- |
+| OS / Architektur | Debian GNU/Linux12 (bookworm), Kernel `6.12.109+rpt-rpi-2712`, `aarch64` |
+| Host / LAN | `srv-m-tbs-03`, eth0 UP mit `10.0.1.20/24` |
+| Rootdateisystem | `/dev/mmcblk0p2`, 29G gesamt, 3.1G benutzt, 25G verfügbar |
+| Firstboot | `Result=success`, `active/exited`; `resize2fs` meldet bereits 7.658.624 Blöcke zu4KiB, keine weitere Erweiterung nötig |
+| Discovery / SSH | Beide `Result=success`, `active/running` |
+| Stationsprofil | SRV-M-TBS-03, MCC901 / MNC1510 / ISSI4010003 / LA3 / CC1 |
+| Imagequelle / Overlay | Commit `1595259a2a76abfc9eff08842409156473b585a7`, Hostname `srv-m-tbs-03`, `overlay=eeprom` |
+| Lokaler Agent | `http://127.0.0.1:8321/health/ready`: `ok=true`, `ready=true`, `security_mode=open_lab` |
+
+Die Dateisystemgröße und der erfolgreiche Erweiterungsausgang bestätigen die SD-Erweiterung zusätzlich zum Dienststatus. Der Imager-Schreibprüfbericht wurde nicht separat eingefügt; der tatsächliche SD-Boot ist belegt. Das lokale Ready-Ergebnis belegt den Agenten, noch keine SXceiver-/Funkbereitschaft oder Sichtbarkeit im Controller. Der Nachweis steht strukturiert unter `operator_physical_pi_firstboot_acceptance` im [Betreiberbeleg](evidence/vm119-imagebuilder-success-2026-10-09.json).
+
+Die Firstboot-Journalzeilen tragen `Apr27 21:48:57–58`. Diese historischen Bootzeitstempel können vor der Zeitsynchronisierung entstanden sein; eine aktuell falsche Uhr ist damit nicht belegt. Vor der VPN-Abnahme die aktuelle Uhr / Synchronisierung mit `timedatectl status` lesen.
+
+### Nächster Schritt: SXceiver unter dem Dienstbenutzer prüfen
+
+Der gebaute Quellstand aktiviert `tetra.service` und startet die Funkanwendung nach erfolgreicher Hardwareprobe. Für die separate Hardwareprüfung den Dienst zunächst stoppen und dessen Autostart deaktivieren:
+
+```bash
+sudo systemctl disable --now tetra.service
+```
+
+Falls der SXceiver noch nicht montiert ist, den Pi mit `sudo poweroff` herunterfahren, anschließend die Stromversorgung trennen, den HAT anschließen und über LAN wieder starten. Ist er bereits montiert, direkt mit der Probe fortfahren. Beim erneuten SSH-Verbindungsaufbau die aktuelle DHCP-Adresse verwenden; zuletzt war es `ssh jan@10.0.1.20`.
+
+Auf dem Pi:
+
+```bash
+timedatectl status
+
+sudo -u netcore timeout --kill-after=2s 30s \
+  SoapySDRUtil --probe='driver=sx'
+```
+
+Die Probe läuft als `netcore`, um die Hardwarezugriffsrechte des TBS-Dienstbenutzers mitzuprüfen. Erwartet werden ein erkanntes SX-Gerät und erfolgreiche Probe ohne `No devices found` oder `[ERROR]`. Sie initialisiert die Hardware; eine On-Air-Abnahme oder vollständige Funkdienstbereitschaft folgt daraus noch nicht. Den TBS-Dienst bis zur Prüfung von Hardwarebefund und RF-Konfiguration deaktiviert lassen. Nach dieser Prüfung ist der Rückweg `sudo systemctl enable --now tetra.service`; dies startet die Basisstation tatsächlich.
+
+Nach dem nächsten Boot kann `netcore-firstboot.service` aufgrund seiner bereits vorhandenen Done-Datei `inactive/dead` sein. Das allein ist kein Rückfall der bestandenen Erststartabnahme.
+
+Geprüfte Dienstquellen am Imagecommit1595259: [tetra.service](https://github.com/JanHG98/netcore-tetra/blob/1595259a2a76abfc9eff08842409156473b585a7/system-backend/deployment-core/image/systemd/tetra.service) und [check-hardware.py](https://github.com/JanHG98/netcore-tetra/blob/1595259a2a76abfc9eff08842409156473b585a7/system-backend/deployment-core/image/check-hardware.py).
 
 ## Downloadintegritaet bestanden: Flashen und Erststart
 
@@ -19,7 +63,7 @@ Der Betreiber meldet am 11.10.2026 das Ergebnis des vorgegebenen Windows-Prüfbl
 - SHA-256: `d24d7ed3e6e8a878ac3a24fee52239c608eb000f4c87ab6aaecfe6af96286366`.
 - Ergebnis: `PASS: Größe und SHA-256 stimmen`.
 
-Der ausgeführte Block prüft außerdem Manifest-ID und Commit1595259. Die lokale komprimierte Datei ist damit dem erwarteten Recoveryartefakt zugeordnet und vollständig gegen das Manifest geprüft. Eine konkrete numerische Dateigröße wurde in dieser Ausgabe nicht gedruckt; die Größenübereinstimmung wurde geprüft. Der aktuelle Download ist abgenommen. SD-Schreiben / Pi-Boot / SDR und VPN sind dadurch noch nicht geprüft.
+Der ausgeführte Block prüft außerdem Manifest-ID und Commit1595259. Die lokale komprimierte Datei ist damit dem erwarteten Recoveryartefakt zugeordnet und vollständig gegen das Manifest geprüft. Eine konkrete numerische Dateigröße wurde in dieser Ausgabe nicht gedruckt; die Größenübereinstimmung wurde geprüft. Der aktuelle Download ist abgenommen. Die Downloadprüfung allein prüft SD / Pi / SDR / VPN noch nicht; der anschließend gelieferte physische OS-/SD-/Agentenbefund steht im vorangehenden Abschnitt. SXceiver und VPN bleiben offen.
 
 ### Verifiziertes Image auf SD schreiben
 
@@ -58,7 +102,7 @@ curl --noproxy '*' --fail --max-time 10 -sS \
   python3 -m json.tool
 ```
 
-Erwartung: ARM64 / `aarch64`, Stationsprofil SRV-M-TBS-03 am Commit1595259, Firstboot normalerweise `active/exited`, Agent bereit. Die SD-Erweiterung anhand Journal und Dateisystemgröße prüfen; ein Firstboot-Marker allein belegt sie nicht. Noch keine tatsächliche Pi-Ausgabe liegt vor.
+Erwartung: ARM64 / `aarch64`, Stationsprofil SRV-M-TBS-03 am Commit1595259, Firstboot normalerweise `active/exited`, Agent bereit. Die SD-Erweiterung anhand Journal und Dateisystemgröße prüfen; ein Firstboot-Marker allein belegt sie nicht. Dieser Block ist inzwischen mit der tatsächlichen Pi-Ausgabe vom 11.10.2026 bestanden; siehe [physischen Erststart](#physischer-pi-erststart-bestanden).
 
 Geprüfte Quellen am Imagecommit: `image/build-guest.sh`, `image/personalize.py`, `image/firstboot.py`, `image/systemd/netcore-firstboot.service` und `image/systemd/tetra.service` unter `system-backend/deployment-core/`.
 

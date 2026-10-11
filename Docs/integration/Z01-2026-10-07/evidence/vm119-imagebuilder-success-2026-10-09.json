@@ -111,7 +111,7 @@
     },
     "diagnostic_patch_ci_not_yet_observed": true
   },
-  "next_step": "Write verified recovery image6a0a67657cce49118c89f5b9479db29d to the intended SD card without extra Imager customization; verify writing, first boot Pi without SXceiver over LAN, inspect firstboot/profile/discovery, then perform SXceiver and VPN acceptance",
+  "next_step": "SXceiver mit vorübergehend deaktiviertem tetra.service als Dienstbenutzer netcore prüfen; aktuelle Uhr und Synchronisierung lesen. Danach TBS-/Core-Anbindung, Controller-Sichtbarkeit und VPN-Wechsel abnehmen.",
   "subsequent_operator_recovery_diagnosis": {
     "receipt_phase": "submit_started",
     "receipt_job_id_not_recorded": true,
@@ -563,5 +563,92 @@
     "current_artifact_download_and_integrity_acceptance_passed": true,
     "recovery_sqlite_terminal_status_not_separately_pasted": true,
     "sd_write_and_physical_boot_not_yet_observed": true
+  },
+  "operator_physical_pi_firstboot_acceptance": {
+    "date": "2026-10-11",
+    "evidence_type": "operator_pasted_physical_pi_ssh_os_firstboot_station_and_local_ready_output",
+    "preceding_verified_build_id": "6a0a67657cce49118c89f5b9479db29d",
+    "preceding_verified_image_sha256": "d24d7ed3e6e8a878ac3a24fee52239c608eb000f4c87ab6aaecfe6af96286366",
+    "ssh_user": "jan",
+    "hostname": "srv-m-tbs-03",
+    "os": "Debian GNU/Linux 12 (bookworm)",
+    "kernel": "6.12.109+rpt-rpi-2712",
+    "architecture": "aarch64",
+    "ipv4": {
+      "interface": "eth0",
+      "state": "UP",
+      "address": "10.0.1.20/24"
+    },
+    "root_filesystem": {
+      "device": "/dev/mmcblk0p2",
+      "size_display": "29G",
+      "used_display": "3.1G",
+      "available_display": "25G",
+      "use_percent": "12%",
+      "mount": "/"
+    },
+    "units": {
+      "netcore-firstboot.service": {
+        "Result": "success",
+        "ActiveState": "active",
+        "SubState": "exited"
+      },
+      "netcore-discovery.service": {
+        "Result": "success",
+        "ActiveState": "active",
+        "SubState": "running"
+      },
+      "ssh.service": {
+        "Result": "success",
+        "ActiveState": "active",
+        "SubState": "running"
+      }
+    },
+    "firstboot_journal": {
+      "displayed_timestamp": "Apr 27 21:48:57–58",
+      "resize2fs_version": "1.47.0 (5-Feb-2023)",
+      "filesystem_blocks": 7658624,
+      "block_bytes": 4096,
+      "message": "The filesystem is already 7658624 (4k) blocks long. Nothing to do!",
+      "completed": true,
+      "current_clock_and_sync_not_yet_checked": true
+    },
+    "station": {
+      "profile": {
+        "name": "SRV-M-TBS-03",
+        "mcc": 901,
+        "mnc": 1510,
+        "issi": 4010003,
+        "la": 3,
+        "cc": 1
+      },
+      "commit": "1595259a2a76abfc9eff08842409156473b585a7",
+      "hostname": "srv-m-tbs-03",
+      "overlay": "eeprom"
+    },
+    "local_agent_ready": {
+      "url": "http://127.0.0.1:8321/health/ready",
+      "ok": true,
+      "ready": true,
+      "service": "netcore-deployment",
+      "security_mode": "open_lab"
+    },
+    "physical_sd_boot_passed": true,
+    "root_expansion_passed": true,
+    "station_metadata_matches_expected": true,
+    "ssh_and_local_discovery_agent_passed": true,
+    "imager_write_verification_report_not_separately_pasted": true,
+    "sxceiver_probe_not_yet_observed": true,
+    "controller_peer_visibility_not_yet_observed": true,
+    "tetra_core_and_rf_readiness_not_yet_observed": true,
+    "physical_vpn_switch_not_yet_observed": true,
+    "prepared_next_check": {
+      "stop_autostart": "sudo systemctl disable --now tetra.service",
+      "poweroff_if_hat_needs_mounting": "sudo poweroff",
+      "time_check": "timedatectl status",
+      "probe": "sudo -u netcore timeout --kill-after=2s 30s SoapySDRUtil --probe='driver=sx'",
+      "probe_uses_service_identity": true,
+      "tetra_start_deferred_until_hardware_and_rf_config_checked": true
+    }
   }
 }

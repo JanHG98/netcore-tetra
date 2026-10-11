@@ -31,8 +31,11 @@ die bestandene Datei-/Verzeichnis-fsync-Vorprüfung dokumentiert. Die jüngste
 Cache-Recovery wurde angenommen und vom Betreiber als laufend gemeldet. Am
 11.10.2026 besteht der Windows-Prüfblock für Recoveryartefakt6a0a6765:
 Manifest-ID / Commit1595259 / Dateigröße und vollständige SHA-256 stimmen mit der
-lokalen Datei überein. Download und Dateiintegrität sind abgenommen; SD-Schreiben
-und physischer Pi-/SXceiver-/VPN-Test bleiben offen. Den fortgeschriebenen
+lokalen Datei überein. Anschließend startet das Image auf dem physischen ARM64-Pi
+srv-m-tbs-03 / 10.0.1.20: Root29G, Stationsprofil SRV-M-TBS-03 am Commit1595259,
+Firstboot success, SSH / Discovery aktiv und lokaler Agent ready. Download,
+Dateiintegrität und OS-/SD-/Agentenabnahme sind bestanden; SXceiver,
+Controller-Sichtbarkeit, Funk-/Core-Anbindung und VPN-Wechsel bleiben offen. Den fortgeschriebenen
 Anlagenstand führt der [VM119-Nachweis](../../integration/Z01-2026-10-07/imagebuilder-vm119.md).
 
 ## Enthalten
@@ -118,8 +121,12 @@ sudo bash system-backend/deployment-core/install/install-vm.sh
 6. Build starten und das Protokoll verfolgen. Danach `.img.xz`, SHA256 und Manifest
    herunterladen. In Raspberry Pi Imager **„Eigenes Image“** wählen. Keine zusätzlichen
    Imager-Anpassungen für Benutzer/WLAN anwenden, da diese bereits enthalten sind.
-7. Auf SD schreiben, im Pi mit SXceiver starten und dessen Agent auf Port **8321**
-   sowie das TBS-Dashboard am Port aus der Vorlage kontrollieren.
+7. Auf SD schreiben und zunächst Pi-OS / Firstboot / Rootgröße / SSH sowie den Agenten auf Port **8321** prüfen.
+   Für die getrennte SXceiver-Prüfung den TBS-Autostart mit `sudo systemctl disable --now tetra.service`
+   stoppen. Falls noch nötig den HAT bei ausgeschaltetem und stromlosem Pi anschließen,
+   danach als Dienstbenutzer `netcore` prüfen. Erst nach Hardware- und RF-Konfigurationsprüfung
+   die Basisstation starten und das TBS-Dashboard am Port aus der Vorlage kontrollieren.
+   Die konkrete Reihenfolge und Befunde stehen im [Pi-Erststartnachweis](../../integration/Z01-2026-10-07/imagebuilder-vm119.md#physischer-pi-erststart-bestanden).
 
 Der Builder startet mit dem offiziellen Raspberry Pi OS Lite **Bookworm ARM64**
 vom 13.05.2025, prüft den fest hinterlegten SHA256 und installiert verfügbare
