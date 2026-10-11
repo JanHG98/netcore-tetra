@@ -29,10 +29,10 @@ Die Controller-/Agent-/Imagebuilder-Umsetzung ist vorhanden. Für VM119 sind der
 vollständige ARM64-Build am Commit `1595259`, der anschließende NVMe-Wechsel und
 die bestandene Datei-/Verzeichnis-fsync-Vorprüfung dokumentiert. Die jüngste
 Cache-Recovery wurde angenommen und vom Betreiber als laufend gemeldet. Am
-11.10.2026 meldet der Betreiber den Download auf seinen PC; die konkrete
-Artefaktzuordnung und vollständige SHA-256-Prüfung der lokalen Datei bleiben offen.
-Ein erfolgreicher historischer Build ersetzt weder diese Dateiprüfung noch den
-physischen Pi-/SXceiver-/VPN-Test. Den fortgeschriebenen
+11.10.2026 besteht der Windows-Prüfblock für Recoveryartefakt6a0a6765:
+Manifest-ID / Commit1595259 / Dateigröße und vollständige SHA-256 stimmen mit der
+lokalen Datei überein. Download und Dateiintegrität sind abgenommen; SD-Schreiben
+und physischer Pi-/SXceiver-/VPN-Test bleiben offen. Den fortgeschriebenen
 Anlagenstand führt der [VM119-Nachweis](../../integration/Z01-2026-10-07/imagebuilder-vm119.md).
 
 ## Enthalten

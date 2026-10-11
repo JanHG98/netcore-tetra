@@ -111,7 +111,7 @@
     },
     "diagnostic_patch_ci_not_yet_observed": true
   },
-  "next_step": "Associate reported PC download with expected recovery build6a0a67657cce49118c89f5b9479db29d and commit1595259, verify local size and all file bytes against manifest SHA256; then flash and perform physical Pi/SXceiver/VPN acceptance",
+  "next_step": "Write verified recovery image6a0a67657cce49118c89f5b9479db29d to the intended SD card without extra Imager customization; verify writing, first boot Pi without SXceiver over LAN, inspect firstboot/profile/discovery, then perform SXceiver and VPN acceptance",
   "subsequent_operator_recovery_diagnosis": {
     "receipt_phase": "submit_started",
     "receipt_job_id_not_recorded": true,
@@ -545,5 +545,23 @@
     "expected_previously_accepted_job_id": "4ebe40edf4b443f592e7f7ad28ad0624",
     "prepared_next_check": "Windows PowerShell: verify manifest ID and commit, compressed file size and full file SHA256",
     "physical_pi_sxceiver_boot_and_vpn_not_yet_observed": true
+  },
+  "operator_pc_download_integrity_acceptance": {
+    "date": "2026-10-11",
+    "evidence_type": "operator_pasted_windows_powershell_manifest_bound_hash_check",
+    "build_id": "6a0a67657cce49118c89f5b9479db29d",
+    "source_job_id": "4ebe40edf4b443f592e7f7ad28ad0624",
+    "expected_commit_checked_by_executed_script": "1595259a2a76abfc9eff08842409156473b585a7",
+    "local_path": "C:\\Users\\janho\\Desktop\\netcore-srv-m-tbs-03-1595259a2a76-6a0a6765.img.xz",
+    "filename": "netcore-srv-m-tbs-03-1595259a2a76-6a0a6765.img.xz",
+    "sha256": "d24d7ed3e6e8a878ac3a24fee52239c608eb000f4c87ab6aaecfe6af96286366",
+    "output": "PASS: Größe und SHA-256 stimmen. Build: 6a0a67657cce49118c89f5b9479db29d",
+    "manifest_id_and_commit_checks_passed": true,
+    "local_file_size_matches_manifest": true,
+    "exact_numeric_size_not_in_pasted_output": true,
+    "all_compressed_file_bytes_sha256_match_manifest": true,
+    "current_artifact_download_and_integrity_acceptance_passed": true,
+    "recovery_sqlite_terminal_status_not_separately_pasted": true,
+    "sd_write_and_physical_boot_not_yet_observed": true
   }
 }

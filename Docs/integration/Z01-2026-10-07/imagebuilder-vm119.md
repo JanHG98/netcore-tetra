@@ -4,11 +4,63 @@
 
 Der vollständige ARM64-NetCore-Build an `1595259a2a76abfc9eff08842409156473b585a7` ist technisch dokumentiert: Erfolgsauftrag `f141c06d4b2f48699486e149c4887b16`, Artefakt `2e2603beacd942dfaddc7119b85a4af0`, 2.043.954.184 Bytes, SHA-256 und `Fertig:`-Abschlussmarker. Die spätere Dateiprüfung fand dieses fertige Image nicht; der passende Softwarecache wurde bestätigt. Der erfolgreiche Build und die aktuelle Verfügbarkeit der Datei sind deshalb getrennte Befunde.
 
-VM119/scsi0 wurde anschließend nach NVMe_OSData verschoben. Kopierabschluss, Konfiguration und Live-QEMU-Backing auf `/dev/zvol/rpool/data/vm-119-disk-0` sind belegt. Der separat angenommene NVMe-Recoveryauftrag ist `4ebe40edf4b443f592e7f7ad28ad0624` / Build `6a0a67657cce49118c89f5b9479db29d`. Der Annahmebeleg allein bestätigt noch nicht dessen Abschluss. Der neue vollständige API-/Manifest-/Dateibeleg zum Recoveryartefakt muss dem konkreten Auftrag zugeordnet werden.
+VM119/scsi0 wurde anschließend nach NVMe_OSData verschoben. Kopierabschluss, Konfiguration und Live-QEMU-Backing auf `/dev/zvol/rpool/data/vm-119-disk-0` sind belegt. Der separat angenommene NVMe-Recoveryauftrag ist `4ebe40edf4b443f592e7f7ad28ad0624` / Build `6a0a67657cce49118c89f5b9479db29d`. Der nachfolgende Windows-Prüfbeleg ordnet das heruntergeladene Recoveryartefakt jetzt dieser Build-ID und Commit1595259 zu; Größe und vollständige SHA-256 stimmen mit dem Manifest überein. Der separate SQLite-Endstatus wurde nicht erneut eingefügt.
 
-Am 11.10.2026 meldet der Betreiber den abgeschlossenen Download auf seinen PC. Dateiname, Manifest, Größe und berechnete Prüfsumme wurden noch nicht mitgeteilt. Offen bleiben die eindeutige Zuordnung zum konkreten Recoveryartefakt und Prüfung der vollständigen Dateibytes gegen Manifest/SHA-256 sowie physischer Pi-/SXceiver-Start und VPN-Wechsel. Kein neuer Build oder erneuter Disk-Move ist aus dieser Dokumentationspflege abzuleiten. Frühere DNS-, dpkg-, Initramfs-, SQLite- und I/O-Blocker stehen unten als Chronik der jeweiligen Läufe.
+Am 11.10.2026 besteht der Betreiber-Prüfblock am Windows-PC: `PASS` für Build6a0a6765, lokaler Dateiname und vollständige SHA-256 sind angegeben. Download / Manifestzuordnung / komprimierte Dateigröße / Byteintegrität sind damit bestanden. Offen bleiben SD-Schreiben sowie physischer Pi-/SXceiver-Start und VPN-Wechsel. Kein neuer Build oder erneuter Disk-Move ist aus dieser Dokumentationspflege abzuleiten. Frühere DNS-, dpkg-, Initramfs-, SQLite- und I/O-Blocker stehen unten als Chronik der jeweiligen Läufe.
 
 [Aktuelle Imagebuilder-Anleitung](../../services/deployment-core/README.md) · [Integrationsübersicht](README.md) · [Gesamtroadmap](../../roadmaps/gesamtroadmap.md) · [Dokumentationsindex](../../README.md)
+
+## Downloadintegritaet bestanden: Flashen und Erststart
+
+Der Betreiber meldet am 11.10.2026 das Ergebnis des vorgegebenen Windows-Prüfblocks:
+
+- Build-ID: `6a0a67657cce49118c89f5b9479db29d`.
+- Datei: `C:\Users\janho\Desktop\netcore-srv-m-tbs-03-1595259a2a76-6a0a6765.img.xz`.
+- SHA-256: `d24d7ed3e6e8a878ac3a24fee52239c608eb000f4c87ab6aaecfe6af96286366`.
+- Ergebnis: `PASS: Größe und SHA-256 stimmen`.
+
+Der ausgeführte Block prüft außerdem Manifest-ID und Commit1595259. Die lokale komprimierte Datei ist damit dem erwarteten Recoveryartefakt zugeordnet und vollständig gegen das Manifest geprüft. Eine konkrete numerische Dateigröße wurde in dieser Ausgabe nicht gedruckt; die Größenübereinstimmung wurde geprüft. Der aktuelle Download ist abgenommen. SD-Schreiben / Pi-Boot / SDR und VPN sind dadurch noch nicht geprüft.
+
+### Verifiziertes Image auf SD schreiben
+
+1. Raspberry Pi Imager auf dem Windows-PC öffnen und das vorhandene Pi-Modell auswählen.
+2. Unter Betriebssystem **Eigenes Image / Use Custom** wählen und die oben geprüfte `.img.xz` direkt auswählen.
+3. Die vorgesehene SD-Karte als Ziel wählen; sie wird überschrieben.
+4. Zusätzliche Imager-Anpassungen für Benutzer, SSH, WLAN und Hostname überspringen. Diese Werte stammen bereits aus dem Imageauftrag.
+5. Schreiben starten, die anschließende Schreibprüfung vollständig abwarten und die Karte auswerfen.
+
+Die [offizielle Imager-Anleitung](https://www.raspberrypi.com/documentation/computers/getting-started.html) beschreibt Custom-Image, Zielmedium und Schreibprüfung. Das Überspringen zusätzlicher Anpassungen folgt der vorhandenen NetCore-Personalisierung.
+
+### Erster Pi-Start und lesende OS-Pruefung
+
+Für den ersten OS-/Agententest den Pi ohne SXceiver über LAN im Managementnetz starten. Diese Reihenfolge ist durch den tatsächlich gebauten Quellstand1595259 begründet: `tetra.service` ist aktiviert und startet die Funkanwendung nach erfolgreichem SXceiver-Probe. Ohne HAT kann dieser Dienst fehlschlagen / wiederholen; SSH und Discovery werden separat geprüft. Nach bestandener OS-Prüfung den Pi sauber herunterfahren, bevor die Hardware ergänzt wird.
+
+Die LAN-Adresse kommt per DHCP; im Router die Station identifizieren. SSH mit dem beim Imagebuild gesetzten Benutzer / Schlüssel oder Passwort verwenden. Ein Benutzername `pi` wird nicht angenommen; der Imageauftrag entscheidet den Zugang.
+
+Auf dem Pi nach der SSH-Anmeldung:
+
+```bash
+hostnamectl --static
+uname -m
+ip -br -4 address
+df -h /
+
+sudo systemctl --no-pager show \
+  netcore-firstboot.service netcore-discovery.service ssh.service \
+  -p Id -p ActiveState -p SubState -p Result
+
+sudo journalctl -b -u netcore-firstboot.service --no-pager
+
+cat /usr/share/netcore-image/station.json
+
+curl --noproxy '*' --fail --max-time 10 -sS \
+  http://127.0.0.1:8321/health/ready |
+  python3 -m json.tool
+```
+
+Erwartung: ARM64 / `aarch64`, Stationsprofil SRV-M-TBS-03 am Commit1595259, Firstboot normalerweise `active/exited`, Agent bereit. Die SD-Erweiterung anhand Journal und Dateisystemgröße prüfen; ein Firstboot-Marker allein belegt sie nicht. Noch keine tatsächliche Pi-Ausgabe liegt vor.
+
+Geprüfte Quellen am Imagecommit: `image/build-guest.sh`, `image/personalize.py`, `image/firstboot.py`, `image/systemd/netcore-firstboot.service` und `image/systemd/tetra.service` unter `system-backend/deployment-core/`.
 
 ## Download auf den PC gemeldet: Datei pruefen
 
@@ -44,7 +96,7 @@ Der folgende lesende Prüfblock ist auf dem Windows-PC in PowerShell auszuführe
 }
 ```
 
-Bei `PASS` sind die gewählte lokale Datei und die Manifestwerte anhand von ID / Commit / Größe / vollständiger SHA-256 zugeordnet. Dieser Block ist vorbereitet und geprüft, auf dem Nutzer-PC aber noch nicht nachgewiesen. Anschließend die ausgegebene Prüfsumme dokumentieren und das verifizierte Image flashen. Pi-/SXceiver-Start und VPN-Wechsel benötigen ihre eigenen Gerätebefunde. Bei Manifest-, Größen- oder Hashfehler nicht flashen; Datei / Artefaktzuordnung zuerst klären.
+Bei `PASS` sind die gewählte lokale Datei und die Manifestwerte anhand von ID / Commit / Größe / vollständiger SHA-256 zugeordnet. Dieser Block ist inzwischen am Nutzer-PC mit `PASS` nachgewiesen; der aktuelle Beleg steht im Abschnitt zur bestandenen Downloadintegrität. Anschließend die ausgegebene Prüfsumme dokumentieren und das verifizierte Image flashen. Pi-/SXceiver-Start und VPN-Wechsel benötigen ihre eigenen Gerätebefunde. Bei Manifest-, Größen- oder Hashfehler nicht flashen; Datei / Artefaktzuordnung zuerst klären.
 
 ## Chronik der Prüfungen und Betreiberbefunde
 
