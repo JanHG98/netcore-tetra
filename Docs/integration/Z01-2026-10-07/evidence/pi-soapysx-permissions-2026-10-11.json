@@ -65,10 +65,10 @@
     "vm119_installation_confirmed": false
   },
   "limits": [
-    "No successful GPIO open or complete SXceiver probe yet",
-    "Device errno, node permissions and GPIO chip mapping are not yet supplied",
-    "No successful RF/Core/VPN acceptance yet",
-    "Source fix has not been confirmed installed on VM119"
+    "Actual node-to-RP1 mapping not yet reported",
+    "Temporary alias and complete SXceiver probe not yet confirmed",
+    "No RF/Core/VPN acceptance yet",
+    "Image source fix not confirmed installed on VM119"
   ],
   "post_repair_operator_result": {
     "driver_check": "PRESENT",
@@ -78,5 +78,90 @@
     "module_access_repaired": true,
     "hardware_probe_passed": false,
     "next_diagnostic": "Compare open(/dev/gpiochip0, O_RDWR) as netcore and root; inspect device ownership, permissions and GPIO chip mapping."
+  },
+  "gpio_node_operator_diagnostic": {
+    "netcore_identity": {
+      "uid": 995,
+      "gid": 992,
+      "groups": {
+        "netcore": 992,
+        "audio": 29,
+        "spi": 995,
+        "gpio": 993
+      }
+    },
+    "nodes": [
+      {
+        "path": "/dev/gpiochip11",
+        "owner": "root",
+        "group": "gpio",
+        "mode": "0660",
+        "major": 254,
+        "minor": 11
+      },
+      {
+        "path": "/dev/gpiochip12",
+        "owner": "root",
+        "group": "gpio",
+        "mode": "0660",
+        "major": 254,
+        "minor": 12
+      },
+      {
+        "path": "/dev/gpiochip13",
+        "owner": "root",
+        "group": "gpio",
+        "mode": "0660",
+        "major": 254,
+        "minor": 13
+      },
+      {
+        "path": "/dev/gpiochip14",
+        "owner": "root",
+        "group": "gpio",
+        "mode": "0660",
+        "major": 254,
+        "minor": 14
+      },
+      {
+        "path": "/dev/gpiochip15",
+        "owner": "root",
+        "group": "gpio",
+        "mode": "0660",
+        "major": 254,
+        "minor": 15
+      },
+      {
+        "path": "/dev/gpiochip16",
+        "owner": "root",
+        "group": "gpio",
+        "mode": "0660",
+        "major": 254,
+        "minor": 16
+      }
+    ],
+    "spi": {
+      "path": "/dev/spidev0.0",
+      "owner": "root",
+      "group": "spi",
+      "mode": "0660",
+      "major": 153,
+      "minor": 1
+    },
+    "gpiochip0_exists": false,
+    "netcore_open_errno": 2,
+    "root_open_errno": 2,
+    "udevadm_result": "Unknown device /dev/gpiochip0: No such device",
+    "conclusion": "The pinned GPIO path is absent; this failure is ENOENT, not denied file access."
+  },
+  "proposed_next_step": {
+    "read_only_inventory": "GPIO_GET_CHIPINFO_IOCTL on actual native character nodes",
+    "required_label": "pinctrl-rp1",
+    "required_lines": 54,
+    "require_unique_match": true,
+    "temporary_alias": "/dev/gpiochip0",
+    "overwrite_existing_path": false,
+    "execution_confirmed": false,
+    "persistent_fix": "Use a nonreserved stable device path plus a driver path option/discovery after physical acceptance; no permanent kernel-name alias yet."
   }
 }
