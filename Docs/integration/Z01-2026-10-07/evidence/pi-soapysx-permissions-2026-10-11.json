@@ -65,10 +65,11 @@
     "vm119_installation_confirmed": false
   },
   "limits": [
-    "No manual TBS streaming, specific node WebSocket/Core binding, On-Air/controller/VPN acceptance yet",
+    "Bounded manual TBS process/stream/Gateway run passed; automatic TBS boot, sustained RF/On-Air, functional Core/controller/VPN acceptance still open",
     "media-library and observability reported unavailable; no diagnosis yet",
     "17 monitored backend records do not constitute complete26-service fleet acceptance",
-    "Image source fixes not confirmed installed on VM119; no new complete ARM64 build"
+    "Image source fixes not confirmed installed on VM119; no new complete ARM64 build",
+    "Hardware TX status API unsupported; zero reported hardware counters do not prove absence of physical underflows"
   ],
   "post_repair_operator_result": {
     "driver_check": "PRESENT",
@@ -358,7 +359,7 @@
     "gateway_live_identity": "netcore-node-gateway",
     "core_health_endpoint": "/api/v1/core-services"
   },
-  "next_acceptance": "Manual tetra.service start without enabling boot; bounded process/TX-continuity observation and node-specific gateway connection/heartbeat/identity acceptance.",
+  "next_acceptance": "Enable tetra.service autostart, controlled Pi reboot, then verify helper/alias, stable automatically started TBS, fresh node-specific Gateway reconnection/identity and settled TX skip counters.",
   "operator_gateway_health": {
     "requested_from": "srv-m-tbs-03",
     "base_url": "http://10.0.1.179:8080",
@@ -514,6 +515,193 @@
       ]
     },
     "all_six_reported_critical_services_available": true,
-    "tbs_node_specific_connection_confirmed": false
+    "tbs_node_specific_connection_confirmed_at_this_prestart_probe": false
+  },
+  "operator_manual_tbs_run": {
+    "start_command": "sudo systemctl start tetra.service",
+    "autostart_enable_command_executed": false,
+    "automatic_tbs_reboot_acceptance_confirmed": false,
+    "unit_snapshots": [
+      {
+        "MainPID": 2934,
+        "Result": "success",
+        "NRestarts": 0,
+        "ExecMainStatus": 0,
+        "ActiveState": "active",
+        "SubState": "running",
+        "InvocationID": "9bb74e1668d740099cf059e4cb9b9f0b"
+      },
+      {
+        "MainPID": 2934,
+        "Result": "success",
+        "NRestarts": 0,
+        "ExecMainStatus": 0,
+        "ActiveState": "active",
+        "SubState": "running",
+        "InvocationID": "9bb74e1668d740099cf059e4cb9b9f0b"
+      }
+    ],
+    "node_endpoint": "http://10.0.1.179:8080/api/v1/nodes/SRV-M-TBS-03",
+    "node_snapshots": [
+      {
+        "node_id": "SRV-M-TBS-03",
+        "connected": true,
+        "stale": false,
+        "last_seen": "2026-10-11T20:25:20.919Z",
+        "heartbeat_seq": 40,
+        "message_count": 59,
+        "error_count": 0,
+        "identity": {
+          "station_name": "SRV-M-TBS-03",
+          "mcc": 901,
+          "mnc": 1510,
+          "location_area": 3,
+          "main_carrier": 720,
+          "secondary_carrier": 721,
+          "colour_code": 1
+        },
+        "dual_carrier": true
+      },
+      {
+        "node_id": "SRV-M-TBS-03",
+        "connected": true,
+        "stale": false,
+        "last_seen": "2026-10-11T20:25:31.040Z",
+        "heartbeat_seq": 115,
+        "message_count": 135,
+        "error_count": 0,
+        "identity": {
+          "station_name": "SRV-M-TBS-03",
+          "mcc": 901,
+          "mnc": 1510,
+          "location_area": 3,
+          "main_carrier": 720,
+          "secondary_carrier": 721,
+          "colour_code": 1
+        },
+        "dual_carrier": true
+      }
+    ],
+    "same_process_and_invocation": true,
+    "tbs_node_specific_connection_confirmed": true,
+    "actual_sdr_settings": {
+      "name": "SXceiver",
+      "use_get_hardware_time": true,
+      "sample_rate": 600000,
+      "rx_channel": 0,
+      "tx_channel": 0,
+      "rx_antenna": "RX",
+      "tx_antenna": "TX",
+      "rx_gains_db": {
+        "LNA": 42,
+        "PGA": 16
+      },
+      "tx_gains_db": {
+        "DAC": 9,
+        "MIXER": 30
+      },
+      "rx_args": {
+        "period": "900"
+      },
+      "tx_args": {
+        "period": "900"
+      },
+      "dev_args": [],
+      "rx_center_freq": 408012500,
+      "tx_center_freq": 418012500
+    },
+    "control_room_transport_connected_at": "2026-10-11T22:25:13.610+02:00",
+    "control_room_hello_accepted_at": "2026-10-11T22:25:13.636+02:00",
+    "control_room_mode": "OPEN LAB",
+    "tx_continuity": [
+      {
+        "timestamp": "2026-10-11T22:25:18.728+02:00",
+        "tx_block": 3333,
+        "hw_block": 3317,
+        "lead_blocks": 16,
+        "late_skip_events": 5,
+        "late_skipped_blocks": 76,
+        "hw_status_supported": false,
+        "hw_status_events": 0,
+        "hw_underflows": 0,
+        "hw_time_errors": 0,
+        "hw_other_errors": 0
+      },
+      {
+        "timestamp": "2026-10-11T22:25:23.728+02:00",
+        "tx_block": 6666,
+        "hw_block": 6651,
+        "lead_blocks": 15,
+        "late_skip_events": 5,
+        "late_skipped_blocks": 76,
+        "hw_status_supported": false,
+        "hw_status_events": 0,
+        "hw_underflows": 0,
+        "hw_time_errors": 0,
+        "hw_other_errors": 0
+      },
+      {
+        "timestamp": "2026-10-11T22:25:28.728+02:00",
+        "tx_block": 9999,
+        "hw_block": 9984,
+        "lead_blocks": 15,
+        "late_skip_events": 5,
+        "late_skipped_blocks": 76,
+        "hw_status_supported": false,
+        "hw_status_events": 0,
+        "hw_underflows": 0,
+        "hw_time_errors": 0,
+        "hw_other_errors": 0
+      }
+    ],
+    "tx_startup_skips": [
+      {
+        "timestamp": "2026-10-11T22:25:13.857+02:00",
+        "tx_block": 0,
+        "skipped_blocks": 72
+      },
+      {
+        "timestamp": "2026-10-11T22:25:13.857+02:00",
+        "tx_block": 72,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:25:13.859+02:00",
+        "tx_block": 73,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:25:13.861+02:00",
+        "tx_block": 74,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:25:13.862+02:00",
+        "tx_block": 75,
+        "skipped_blocks": 1
+      }
+    ],
+    "rx_startup_warning": {
+      "timestamp": "2026-10-11T22:25:13.856+02:00",
+      "message": "Lost -1200 samples, skipping 900 more samples and 1 processing blocks",
+      "signed_sample_count_difference": -1200,
+      "alignment_samples_discarded": 900,
+      "processing_blocks_skipped": 1
+    },
+    "interpretation": {
+      "bounded_manual_start_stream_gateway_passed": true,
+      "tx_blocks_advance": true,
+      "tx_skip_counters_unchanged_across_three_reports": true,
+      "rx_negative_delta": "First DSP expectation1200 versus normalized first hardware timestamp0; initial alignment delta, not evidence of1200 physical sample losses",
+      "heartbeat_seq": "Sequence shared with live/replayed telemetry, not heartbeat count",
+      "hardware_status": "Unsupported; hardware zeros cannot establish absence of physical underflows",
+      "source_commit": "1595259a2a76abfc9eff08842409156473b585a7",
+      "source_paths": [
+        "crates/tetra-entities/src/phy/components/soapy_dev.rs",
+        "crates/tetra-entities/src/phy/components/soapyio.rs",
+        "crates/tetra-entities/src/phy/components/fcfb.rs",
+        "crates/tetra-entities/src/net_control_room/worker.rs"
+      ]
+    }
   }
 }
