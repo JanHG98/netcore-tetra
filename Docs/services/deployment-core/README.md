@@ -28,9 +28,11 @@ Installationen und Neustarts auslösen. GitHub und Paketquellen werden weiterhin
 Die Controller-/Agent-/Imagebuilder-Umsetzung ist vorhanden. Für VM119 sind der
 vollständige ARM64-Build am Commit `1595259`, der anschließende NVMe-Wechsel und
 die bestandene Datei-/Verzeichnis-fsync-Vorprüfung dokumentiert. Die jüngste
-Cache-Recovery wurde angenommen und vom Betreiber als laufend gemeldet. Ein
-erfolgreicher historischer Build ersetzt weder den aktuellen Artefaktdownload mit
-Manifest und SHA-256 noch den physischen Pi-/SXceiver-/VPN-Test. Den fortgeschriebenen
+Cache-Recovery wurde angenommen und vom Betreiber als laufend gemeldet. Am
+11.10.2026 meldet der Betreiber den Download auf seinen PC; die konkrete
+Artefaktzuordnung und vollständige SHA-256-Prüfung der lokalen Datei bleiben offen.
+Ein erfolgreicher historischer Build ersetzt weder diese Dateiprüfung noch den
+physischen Pi-/SXceiver-/VPN-Test. Den fortgeschriebenen
 Anlagenstand führt der [VM119-Nachweis](../../integration/Z01-2026-10-07/imagebuilder-vm119.md).
 
 ## Enthalten

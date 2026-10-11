@@ -111,7 +111,7 @@
     },
     "diagnostic_patch_ci_not_yet_observed": true
   },
-  "next_step": "Follow the accepted NVMe cached recovery job4ebe40edf4b443f592e7f7ad28ad0624 without another submission; on success verify new artifact and complete download checksum, then physical Pi boot",
+  "next_step": "Associate reported PC download with expected recovery build6a0a67657cce49118c89f5b9479db29d and commit1595259, verify local size and all file bytes against manifest SHA256; then flash and perform physical Pi/SXceiver/VPN acceptance",
   "subsequent_operator_recovery_diagnosis": {
     "receipt_phase": "submit_started",
     "receipt_job_id_not_recorded": true,
@@ -461,8 +461,8 @@
   "subsequent_operator_nvme_disk_move": {
     "date": "2026-10-09",
     "evidence_type": "operator_pasted_move_completion_qm_config_and_live_monitor",
-    "transferred_gib": 100.0,
-    "total_gib": 100.0,
+    "transferred_gib": 100,
+    "total_gib": 100,
     "duration_seconds": 183,
     "completion_messages": [
       "all 'mirror' jobs are ready",
@@ -531,5 +531,19 @@
     "guest_file_and_directory_fsync_preflight_passed_by_reaching_submission": true,
     "operator_followup_ui_reports_build_running": true,
     "artifact_publication_and_download_not_yet_observed": true
+  },
+  "operator_pc_download_report": {
+    "date": "2026-10-11",
+    "evidence_type": "operator_statement",
+    "statement": "so, ist auf meinen PC gedownloaded",
+    "download_completed_as_reported_by_operator": true,
+    "exact_filename_and_size_not_provided": true,
+    "manifest_not_provided": true,
+    "full_local_sha256_not_yet_observed": true,
+    "exact_artifact_and_recovery_job_completion_not_yet_independently_verified": true,
+    "expected_previously_accepted_build_id": "6a0a67657cce49118c89f5b9479db29d",
+    "expected_previously_accepted_job_id": "4ebe40edf4b443f592e7f7ad28ad0624",
+    "prepared_next_check": "Windows PowerShell: verify manifest ID and commit, compressed file size and full file SHA256",
+    "physical_pi_sxceiver_boot_and_vpn_not_yet_observed": true
   }
 }

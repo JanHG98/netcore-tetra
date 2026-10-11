@@ -3,13 +3,13 @@
 | Feld | Wert |
 | --- | --- |
 | Roadmap-ID | NETCORE-MASTER-01 |
-| Erstellt / aktualisiert | 2026-10-05 / 2026-10-09, Europe/Berlin |
+| Erstellt / aktualisiert | 2026-10-05 / 2026-10-11, Europe/Berlin |
 | Geltungsbereich | Gesamtes NetCore-Tetra-Repository: TBS / Funkstack, Core, Deployment, Betrieb, IAM, Drive, Plugins und weitere Integrationen |
 | Geprüfter Ausgangsstand | Z01: `main@dae9363062a1442664a083e1fc32e6944b3be9a6`, historische Quelle `bbf039729b9b05f8d623b11195ca24a124f68d16`; Integration `67b2f0d6e2fbcbf7013ee9b0dae9b2a25c2d9315` auf `feature/z01-deployment-consolidation` |
 | Ergänzende Gruppenprüfung | `main@07609fb56f412ebe6e36655323e8fc6359cf90ec`, 2026-10-05; statischer Befund für Z02.5 |
 | Planungsstand | Reihenfolge vom Nutzer zur zentralen Ablage freigegeben; technische Aufgaben bleiben offen, soweit kein eigener Nachweis vorliegt |
-| Aktueller erster Schritt | **Z01.4: NVMe-Wechsel und Gast-fsync bestanden; Recoveryauftrag angenommen; Ergebnis / Artefakt / Download / SHA-256 anhand des konkreten Auftrags zuordnen, danach Pi-/SXceiver-/VPN abnehmen** |
-| Letzter Betreiber-Buildbefund | Vollbuild an 1595259 technisch dokumentiert; der spätere NVMe-Recoveryauftrag ist angenommen. Sein Abschluss sowie Download / Manifest / SHA-256 sind anhand eines zugeordneten neuen Artefaktbelegs zu prüfen; frühere Fehler bleiben in der [Chronologie](projektverlauf-bis-2026-10-09.md). |
+| Aktueller erster Schritt | **Z01.4: Download auf den PC am 11.10.2026 vom Betreiber gemeldet; Datei dem Recoveryartefakt zuordnen und Größe / vollständige SHA-256 gegen Manifest prüfen, danach Pi-/SXceiver-/VPN abnehmen** |
+| Letzter Betreiber-Buildbefund | Vollbuild an 1595259 technisch dokumentiert; späterer NVMe-Recoveryauftrag angenommen. Betreiber meldet am 11.10.2026 Download auf den PC; Dateiname / Artefaktzuordnung / vollständige SHA-256 und konkreter Abschlussbeleg bleiben zu prüfen; frühere Fehler bleiben in der [Chronologie](projektverlauf-bis-2026-10-09.md). |
 | Gesicherter Zwischenstand | 2026-10-08, 17:03 Europe/Berlin; geprüftes `main@001fb84ac566bb0f95e18d22439ee664fe0093e4`; [Fortsetzungsstand](../integration/Z01-2026-10-07/zwischenstand-2026-10-08.md) |
 | Zeitplanung | Arbeitsblöcke und Abnahmebedingungen; keine zugesagten Kalendertermine |
 
@@ -31,6 +31,8 @@ Der geprüfte Dokumentations-Ausgangsstand ist `main@c3ccdb4bb7daa78f38c529c95ce
 | CT150 Hardware-Gateway | Installation, Readiness-Negativfall und Recovery dokumentiert | Echter Hardware-Versionswechsel und Aktorbetrieb |
 | CT136 Observability | TCP-Syslog, Vorschau und NAS-gzip sowie ein isolierter Mount-Negativfall dokumentiert | Echte NFS-Unterbrechung/Stall und Flottensender |
 | Pi-/Funkkante | Image-/Firstboot-/VPN-Code vorhanden | Physischer Pi-/SXceiver-Boot, Downloadprüfung und VPN-Wechsel am realen Gerät |
+
+**Betreiberstand vom 11.10.2026:** Das Image ist nach Nutzerangabe auf den PC heruntergeladen. Die Meldung enthält keinen Dateinamen, kein Manifest und keine berechnete SHA-256. Der vorherige Recoveryauftrag bleibt unter Job `4ebe40edf4b443f592e7f7ad28ad0624` / Build `6a0a67657cce49118c89f5b9479db29d` dokumentiert; die neue Datei muss dieser erwarteten Build-ID erst eindeutig zugeordnet werden. Nächster Schritt: auf dem Windows-PC das zugehörige Manifest lesen, ID / Commit und Dateigröße prüfen sowie alle Dateibytes mit SHA-256 vergleichen. Erst danach Flashen / physischer Pi-/SXceiver-/VPN-Test. [Prüfblock und Nachweisgrenze](../integration/Z01-2026-10-07/imagebuilder-vm119.md#download-auf-den-pc-gemeldet-datei-pruefen).
 
 **Nächste Abnahme:** Fertiges Artefakt, Manifest und SHA-256 gegen die heruntergeladenen Dateibytes prüfen; anschließend den physischen Pi-/SXceiver-Start und die VPN-Umschaltung dokumentieren. Ein erfolgreicher Quelltest oder eine UI-Erfolgsmeldung allein schließt diese Schritte nicht ab.
 

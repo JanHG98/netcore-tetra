@@ -1,14 +1,50 @@
 # VM119 Imagebuilder – Buildnachweise, NVMe-Recovery und offene Abnahmen
 
-## Aktueller Nachweisstand vom 09.10.2026
+## Aktueller Nachweisstand vom 11.10.2026
 
 Der vollständige ARM64-NetCore-Build an `1595259a2a76abfc9eff08842409156473b585a7` ist technisch dokumentiert: Erfolgsauftrag `f141c06d4b2f48699486e149c4887b16`, Artefakt `2e2603beacd942dfaddc7119b85a4af0`, 2.043.954.184 Bytes, SHA-256 und `Fertig:`-Abschlussmarker. Die spätere Dateiprüfung fand dieses fertige Image nicht; der passende Softwarecache wurde bestätigt. Der erfolgreiche Build und die aktuelle Verfügbarkeit der Datei sind deshalb getrennte Befunde.
 
 VM119/scsi0 wurde anschließend nach NVMe_OSData verschoben. Kopierabschluss, Konfiguration und Live-QEMU-Backing auf `/dev/zvol/rpool/data/vm-119-disk-0` sind belegt. Der separat angenommene NVMe-Recoveryauftrag ist `4ebe40edf4b443f592e7f7ad28ad0624` / Build `6a0a67657cce49118c89f5b9479db29d`. Der Annahmebeleg allein bestätigt noch nicht dessen Abschluss. Der neue vollständige API-/Manifest-/Dateibeleg zum Recoveryartefakt muss dem konkreten Auftrag zugeordnet werden.
 
-Offen bleiben die eindeutige Zuordnung und Verfügbarkeit des aktuellen Artefakts, der Download samt Prüfung der vollständigen Dateibytes gegen Manifest/SHA-256 sowie physischer Pi-/SXceiver-Start und VPN-Wechsel. Kein neuer Build oder erneuter Disk-Move ist aus dieser Dokumentationspflege abzuleiten. Frühere DNS-, dpkg-, Initramfs-, SQLite- und I/O-Blocker stehen unten als Chronik der jeweiligen Läufe.
+Am 11.10.2026 meldet der Betreiber den abgeschlossenen Download auf seinen PC. Dateiname, Manifest, Größe und berechnete Prüfsumme wurden noch nicht mitgeteilt. Offen bleiben die eindeutige Zuordnung zum konkreten Recoveryartefakt und Prüfung der vollständigen Dateibytes gegen Manifest/SHA-256 sowie physischer Pi-/SXceiver-Start und VPN-Wechsel. Kein neuer Build oder erneuter Disk-Move ist aus dieser Dokumentationspflege abzuleiten. Frühere DNS-, dpkg-, Initramfs-, SQLite- und I/O-Blocker stehen unten als Chronik der jeweiligen Läufe.
 
 [Aktuelle Imagebuilder-Anleitung](../../services/deployment-core/README.md) · [Integrationsübersicht](README.md) · [Gesamtroadmap](../../roadmaps/gesamtroadmap.md) · [Dokumentationsindex](../../README.md)
+
+## Download auf den PC gemeldet: Datei pruefen
+
+Am 11.10.2026 meldet der Betreiber: „so, ist auf meinen PC gedownloaded“. Dies dokumentiert den Download nach Nutzerangabe. Ohne Dateiname / Manifest / Byteprüfung ist damit noch kein vollständiger Dateiintegritäts- oder zugeordneter Recoveryabschlussbeleg gegeben.
+
+Der folgende lesende Prüfblock ist auf dem Windows-PC in PowerShell auszuführen; keine Administratorrechte nötig. Er erwartet das zuvor angenommene Recoveryartefakt `6a0a67657cce49118c89f5b9479db29d` am Commit `1595259a2a76abfc9eff08842409156473b585a7`. Der Operator gibt den tatsächlichen Dateipfad ein; ein durch den Browser geänderter Dateiname ist zulässig. Ein anderes Artefakt darf nicht stillschweigend diesem Build zugeordnet werden. Der frühere Originalimage-Hash `4a6b…` ist für die neue Recoverydatei nicht maßgeblich.
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    $ncBuild = '6a0a67657cce49118c89f5b9479db29d'
+    $ncCommit = '1595259a2a76abfc9eff08842409156473b585a7'
+    $ncManifest = Invoke-RestMethod -TimeoutSec 20 -Uri "http://10.0.1.131:8320/api/v1/images/$ncBuild/manifest"
+
+    if ($ncManifest.id -ne $ncBuild -or $ncManifest.commit -ne $ncCommit -or
+        $ncManifest.sha256 -notmatch '^[0-9a-fA-F]{64}$') {
+        throw 'Manifest passt nicht zum Recovery-Build.'
+    }
+
+    $ncPath = Read-Host 'Vollständiger Pfad zur heruntergeladenen .img.xz'
+    $ncFile = Get-Item -LiteralPath ($ncPath.Trim().Trim('"'))
+    $ncSize = [Int64]$ncManifest.size_bytes
+    if ($ncFile.PSIsContainer -or $ncFile.Name -notlike '*.img.xz' -or
+        $ncSize -le 0 -or $ncFile.Length -ne $ncSize) {
+        throw 'Datei oder Dateigröße passt nicht zum Manifest.'
+    }
+
+    $ncHash = (Get-FileHash -LiteralPath $ncFile.FullName -Algorithm SHA256).Hash
+    if ($ncHash -ine $ncManifest.sha256) { throw 'SHA-256 stimmt nicht überein.' }
+    "PASS: Größe und SHA-256 stimmen. Build: $ncBuild"
+    "Datei: $($ncFile.FullName)"
+    "SHA-256: $ncHash"
+}
+```
+
+Bei `PASS` sind die gewählte lokale Datei und die Manifestwerte anhand von ID / Commit / Größe / vollständiger SHA-256 zugeordnet. Dieser Block ist vorbereitet und geprüft, auf dem Nutzer-PC aber noch nicht nachgewiesen. Anschließend die ausgegebene Prüfsumme dokumentieren und das verifizierte Image flashen. Pi-/SXceiver-Start und VPN-Wechsel benötigen ihre eigenen Gerätebefunde. Bei Manifest-, Größen- oder Hashfehler nicht flashen; Datei / Artefaktzuordnung zuerst klären.
 
 ## Chronik der Prüfungen und Betreiberbefunde
 
