@@ -65,7 +65,7 @@
     "vm119_installation_confirmed": false
   },
   "limits": [
-    "Bounded manual TBS process/stream/Gateway run passed; automatic TBS boot, sustained RF/On-Air, functional Core/controller/VPN acceptance still open",
+    "Automatic TBS boot/process/Gateway reconnection passed; new postboot TX deadline events prevent TX continuity acceptance. Fault duration/cause, sustained RF/On-Air, functional Core/controller/VPN remain open",
     "media-library and observability reported unavailable; no diagnosis yet",
     "17 monitored backend records do not constitute complete26-service fleet acceptance",
     "Image source fixes not confirmed installed on VM119; no new complete ARM64 build",
@@ -359,7 +359,7 @@
     "gateway_live_identity": "netcore-node-gateway",
     "core_health_endpoint": "/api/v1/core-services"
   },
-  "next_acceptance": "Enable tetra.service autostart, controlled Pi reboot, then verify helper/alias, stable automatically started TBS, fresh node-specific Gateway reconnection/identity and settled TX skip counters.",
+  "next_acceptance": "Bounded20–30-second live TX/RX timing and CPU/thread/cgroup/thermal diagnostic; determine whether skips continue before a targeted remedy. No speculative radio or scheduler changes.",
   "operator_gateway_health": {
     "requested_from": "srv-m-tbs-03",
     "base_url": "http://10.0.1.179:8080",
@@ -703,5 +703,394 @@
         "crates/tetra-entities/src/net_control_room/worker.rs"
       ]
     }
+  },
+  "operator_automatic_tbs_boot_run": {
+    "source": "Operator uploaded SSH transcript Eingefügter Text(20261011-204032).txt; new boot result following requested reboot; no direct host access",
+    "automatic_service_boot_confirmed": true,
+    "exact_reboot_timestamp_supplied": false,
+    "gpio_helper": {
+      "ExecMainStatus": 0,
+      "ActiveState": "active",
+      "SubState": "exited"
+    },
+    "gpio_alias_resolved_target": "/dev/gpiochip15",
+    "unit_snapshots": [
+      {
+        "MainPID": 780,
+        "Result": "success",
+        "NRestarts": 0,
+        "ExecMainStatus": 0,
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled",
+        "InvocationID": "138a645a94644ae0822ecb3c92a1b96f"
+      },
+      {
+        "MainPID": 780,
+        "Result": "success",
+        "NRestarts": 0,
+        "ExecMainStatus": 0,
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled",
+        "InvocationID": "138a645a94644ae0822ecb3c92a1b96f"
+      }
+    ],
+    "node_snapshots": [
+      {
+        "node_id": "SRV-M-TBS-03",
+        "connected": true,
+        "stale": false,
+        "last_seen": "2026-10-11T20:40:10.878Z",
+        "heartbeat_seq": 161,
+        "message_count": 167,
+        "error_count": 0,
+        "identity": {
+          "station_name": "SRV-M-TBS-03",
+          "mcc": 901,
+          "mnc": 1510,
+          "location_area": 3,
+          "main_carrier": 720,
+          "secondary_carrier": 721,
+          "colour_code": 1
+        },
+        "dual_carrier": true
+      },
+      {
+        "node_id": "SRV-M-TBS-03",
+        "connected": true,
+        "stale": false,
+        "last_seen": "2026-10-11T20:40:20.787Z",
+        "heartbeat_seq": 179,
+        "message_count": 185,
+        "error_count": 0,
+        "identity": {
+          "station_name": "SRV-M-TBS-03",
+          "mcc": 901,
+          "mnc": 1510,
+          "location_area": 3,
+          "main_carrier": 720,
+          "secondary_carrier": 721,
+          "colour_code": 1
+        },
+        "dual_carrier": true
+      }
+    ],
+    "journal_scope": "current boot, matching last60 records; all60 are TX deadline warnings; incomplete timeline",
+    "tx_late_events": [
+      {
+        "timestamp": "2026-10-11T22:40:20.838+02:00",
+        "tx_block": 32039,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.840+02:00",
+        "tx_block": 32040,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.841+02:00",
+        "tx_block": 32041,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.843+02:00",
+        "tx_block": 32042,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.844+02:00",
+        "tx_block": 32043,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.846+02:00",
+        "tx_block": 32044,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.847+02:00",
+        "tx_block": 32045,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.849+02:00",
+        "tx_block": 32046,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.850+02:00",
+        "tx_block": 32047,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.852+02:00",
+        "tx_block": 32048,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.853+02:00",
+        "tx_block": 32049,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.855+02:00",
+        "tx_block": 32050,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.856+02:00",
+        "tx_block": 32051,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.858+02:00",
+        "tx_block": 32052,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.859+02:00",
+        "tx_block": 32053,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.861+02:00",
+        "tx_block": 32054,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.862+02:00",
+        "tx_block": 32055,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.864+02:00",
+        "tx_block": 32056,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.865+02:00",
+        "tx_block": 32057,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.867+02:00",
+        "tx_block": 32058,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.868+02:00",
+        "tx_block": 32059,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.870+02:00",
+        "tx_block": 32060,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.871+02:00",
+        "tx_block": 32061,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.873+02:00",
+        "tx_block": 32062,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.874+02:00",
+        "tx_block": 32063,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.876+02:00",
+        "tx_block": 32064,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.877+02:00",
+        "tx_block": 32065,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.879+02:00",
+        "tx_block": 32066,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.881+02:00",
+        "tx_block": 32067,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.882+02:00",
+        "tx_block": 32068,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.883+02:00",
+        "tx_block": 32069,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.885+02:00",
+        "tx_block": 32070,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.886+02:00",
+        "tx_block": 32071,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.888+02:00",
+        "tx_block": 32072,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.889+02:00",
+        "tx_block": 32073,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.891+02:00",
+        "tx_block": 32074,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.892+02:00",
+        "tx_block": 32075,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.894+02:00",
+        "tx_block": 32076,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.895+02:00",
+        "tx_block": 32077,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.897+02:00",
+        "tx_block": 32078,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.898+02:00",
+        "tx_block": 32079,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.900+02:00",
+        "tx_block": 32080,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.901+02:00",
+        "tx_block": 32081,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.903+02:00",
+        "tx_block": 32082,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.904+02:00",
+        "tx_block": 32083,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.906+02:00",
+        "tx_block": 32084,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.908+02:00",
+        "tx_block": 32085,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.909+02:00",
+        "tx_block": 32086,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.910+02:00",
+        "tx_block": 32087,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.912+02:00",
+        "tx_block": 32088,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.913+02:00",
+        "tx_block": 32089,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.915+02:00",
+        "tx_block": 32090,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.918+02:00",
+        "tx_block": 32091,
+        "skipped_blocks": 2
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.921+02:00",
+        "tx_block": 32093,
+        "skipped_blocks": 2
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.923+02:00",
+        "tx_block": 32095,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.924+02:00",
+        "tx_block": 32096,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.925+02:00",
+        "tx_block": 32097,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.927+02:00",
+        "tx_block": 32098,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.929+02:00",
+        "tx_block": 32099,
+        "skipped_blocks": 1
+      },
+      {
+        "timestamp": "2026-10-11T22:40:20.930+02:00",
+        "tx_block": 32100,
+        "skipped_blocks": 1
+      }
+    ],
+    "observed_tx_warning_span_ms": 92,
+    "observed_tx_warning_count": 60,
+    "observed_skipped_blocks": 62,
+    "tx_continuity_reports_in_supplied_tail": [],
+    "acceptance": {
+      "boot_process_gpio_gateway_passed": true,
+      "tx_continuity_passed": false,
+      "cause_identified": false,
+      "longer_fault_duration_established": false,
+      "rx_history_received": false,
+      "host_load_diagnostic_received": false
+    },
+    "interpretation": "New software TX lead<2 deadline events well after initial0–75 startupcluster. Truncatedtail spans only92ms and cannot establish preceding duration or cause. Keep prior bounded manual result historical; no claim of hardware underflow or RF-quality PASS."
   }
 }
