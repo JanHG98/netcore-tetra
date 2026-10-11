@@ -56,7 +56,7 @@
       "/usr/local/lib/SoapySDR/modules0.8"
     ],
     "mode": "0755",
-    "execution_confirmed": false
+    "execution_confirmed": true
   },
   "source_fix": {
     "guest_umask": "0022",
@@ -65,8 +65,18 @@
     "vm119_installation_confirmed": false
   },
   "limits": [
-    "No post-chmod operator output yet",
-    "No successful SXceiver probe or RF/Core/VPN acceptance yet",
-    "Local regressions do not execute a real ARM64/Soapy plugin build"
-  ]
+    "No successful GPIO open or complete SXceiver probe yet",
+    "Device errno, node permissions and GPIO chip mapping are not yet supplied",
+    "No successful RF/Core/VPN acceptance yet",
+    "Source fix has not been confirmed installed on VM119"
+  ],
+  "post_repair_operator_result": {
+    "driver_check": "PRESENT",
+    "soapy_commit": "9705147dd8c189625071f3f163ea56119bda4a05",
+    "hardware_version": "1.2",
+    "probe_error": "Failed to open GPIO",
+    "module_access_repaired": true,
+    "hardware_probe_passed": false,
+    "next_diagnostic": "Compare open(/dev/gpiochip0, O_RDWR) as netcore and root; inspect device ownership, permissions and GPIO chip mapping."
+  }
 }
