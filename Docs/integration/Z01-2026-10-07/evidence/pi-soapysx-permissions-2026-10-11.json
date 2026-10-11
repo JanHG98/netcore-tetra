@@ -65,10 +65,9 @@
     "vm119_installation_confirmed": false
   },
   "limits": [
-    "Actual node-to-RP1 mapping not yet reported",
-    "Temporary alias and complete SXceiver probe not yet confirmed",
-    "No RF/Core/VPN acceptance yet",
-    "Image source fix not confirmed installed on VM119"
+    "Persistent helper installation and post-reboot probe not yet reported",
+    "No streaming/RF/Core/VPN acceptance yet",
+    "Image source fixes not confirmed installed on VM119; no new complete ARM64 build"
   ],
   "post_repair_operator_result": {
     "driver_check": "PRESENT",
@@ -161,7 +160,77 @@
     "require_unique_match": true,
     "temporary_alias": "/dev/gpiochip0",
     "overwrite_existing_path": false,
-    "execution_confirmed": false,
-    "persistent_fix": "Use a nonreserved stable device path plus a driver path option/discovery after physical acceptance; no permanent kernel-name alias yet."
+    "execution_confirmed": true,
+    "persistent_fix": "Verified Pi5/CM5 boot helper, exact unique RP1 ioctl discovery; preserve conflicting gpiochip0; separate service required and ordered before tetra device filtering. Installation and reboot acceptance pending."
+  },
+  "gpio_chip_inventory": [
+    {
+      "path": "/dev/gpiochip11",
+      "label": "gpio-brcmstb@107d517c00",
+      "lines": 17
+    },
+    {
+      "path": "/dev/gpiochip12",
+      "label": "gpio-brcmstb@107d517c20",
+      "lines": 6
+    },
+    {
+      "path": "/dev/gpiochip13",
+      "label": "gpio-brcmstb@107d508500",
+      "lines": 32
+    },
+    {
+      "path": "/dev/gpiochip14",
+      "label": "gpio-brcmstb@107d508520",
+      "lines": 4
+    },
+    {
+      "path": "/dev/gpiochip15",
+      "label": "pinctrl-rp1",
+      "lines": 54
+    },
+    {
+      "path": "/dev/gpiochip16",
+      "label": "7inch-touchscreen-p",
+      "lines": 2
+    }
+  ],
+  "successful_operator_probe": {
+    "user": "netcore",
+    "alias": "/dev/gpiochip0",
+    "target": "/dev/gpiochip15",
+    "unique_rp1_match": true,
+    "soapy_commit": "9705147dd8c189625071f3f163ea56119bda4a05",
+    "hardware_version": "1.2",
+    "detected_clock_mhz": 38.4,
+    "channels": {
+      "rx": 1,
+      "tx": 1
+    },
+    "timestamps": true,
+    "stream_formats": [
+      "CF32"
+    ],
+    "sample_rates_sps": [
+      25000,
+      50000,
+      75000,
+      150000,
+      300000,
+      600000
+    ],
+    "clean_uninitialization": true,
+    "hardware_probe_passed": true,
+    "streaming_tested": false
+  },
+  "persistent_gpio_fix": {
+    "helper": "system-backend/deployment-core/image/gpio-compat.py",
+    "service": "netcore-sx-gpio-compat.service",
+    "tetra_dependency": [
+      "Requires",
+      "After"
+    ],
+    "installation_confirmed": false,
+    "post_reboot_probe_confirmed": false
   }
 }

@@ -73,7 +73,10 @@ install -m 0755 /opt/netcore-tetra/contrib/packet-data/netcore-tetra-packet-gate
 install -d /etc/systemd/system/tetra.service.d
 install -m 0644 /opt/netcore-tetra/contrib/systemd/tetra.service.d/20-packet-data-gateway.conf /etc/systemd/system/tetra.service.d/
 install -m 0644 /usr/local/lib/netcore-image/99-netcore-sdr.rules /etc/udev/rules.d/
-systemctl enable netcore-firstboot.service netcore-discovery.service tetra.service ssh.service NetworkManager.service
+# Install the guarded Pi 5 GPIO alias before tetra's device filter is initialized.
+# --install only writes files; the image builder never probes VM GPIO hardware.
+python3 /usr/local/lib/netcore-image/gpio-compat.py --install
+systemctl enable netcore-sx-gpio-compat.service netcore-firstboot.service netcore-discovery.service tetra.service ssh.service NetworkManager.service
 # Personalization supplies the user before the image is ever booted.
 systemctl mask userconfig.service userconf-pi.service
 systemctl disable regenerate_ssh_host_keys.service 2>/dev/null || true
