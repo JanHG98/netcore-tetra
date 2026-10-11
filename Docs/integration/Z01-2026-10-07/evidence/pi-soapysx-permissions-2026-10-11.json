@@ -65,7 +65,9 @@
     "vm119_installation_confirmed": false
   },
   "limits": [
-    "No physical Node-Gateway/Core connectivity, TBS streaming, On-Air/controller/VPN acceptance yet",
+    "No manual TBS streaming, specific node WebSocket/Core binding, On-Air/controller/VPN acceptance yet",
+    "media-library and observability reported unavailable; no diagnosis yet",
+    "17 monitored backend records do not constitute complete26-service fleet acceptance",
     "Image source fixes not confirmed installed on VM119; no new complete ARM64 build"
   ],
   "post_repair_operator_result": {
@@ -356,5 +358,162 @@
     "gateway_live_identity": "netcore-node-gateway",
     "core_health_endpoint": "/api/v1/core-services"
   },
-  "next_acceptance": "Read-only Node-Gateway identity/status and central service health matrix from the physical Pi, then TBS streaming and gateway/Core binding."
+  "next_acceptance": "Manual tetra.service start without enabling boot; bounded process/TX-continuity observation and node-specific gateway connection/heartbeat/identity acceptance.",
+  "operator_gateway_health": {
+    "requested_from": "srv-m-tbs-03",
+    "base_url": "http://10.0.1.179:8080",
+    "status": {
+      "service": "netcore-node-gateway",
+      "node_path": "/ws/node",
+      "known_nodes": 2,
+      "connected_nodes": 0,
+      "monitored_services": 17,
+      "available_services": 15,
+      "degraded_services": 0,
+      "unavailable_services": 2
+    },
+    "core_services": {
+      "generated_at": "2026-10-11T20:18:37.962Z",
+      "services": [
+        {
+          "service": "application-gateway",
+          "level": "available",
+          "critical_for_edge": false,
+          "fallback_mode": "local_integrations_only",
+          "checked_at": "2026-10-11T20:18:36.328Z",
+          "last_success_at": "2026-10-11T20:18:36.328Z"
+        },
+        {
+          "service": "call-control",
+          "level": "available",
+          "critical_for_edge": true,
+          "fallback_mode": "local_cell_calls_only",
+          "checked_at": "2026-10-11T20:18:34.076Z",
+          "last_success_at": "2026-10-11T20:18:34.076Z"
+        },
+        {
+          "service": "control-room",
+          "level": "available",
+          "critical_for_edge": false,
+          "fallback_mode": "local_dashboard_and_audit",
+          "checked_at": "2026-10-11T20:18:37.829Z",
+          "last_success_at": "2026-10-11T20:18:37.829Z"
+        },
+        {
+          "service": "group-core",
+          "level": "available",
+          "critical_for_edge": true,
+          "fallback_mode": "cached_policy_then_local_affiliations",
+          "checked_at": "2026-10-11T20:18:34.075Z",
+          "last_success_at": "2026-10-11T20:18:34.075Z"
+        },
+        {
+          "service": "ip-gateway",
+          "level": "available",
+          "critical_for_edge": false,
+          "fallback_mode": "local_tun_gateway_when_configured",
+          "checked_at": "2026-10-11T20:18:34.827Z",
+          "last_success_at": "2026-10-11T20:18:34.827Z"
+        },
+        {
+          "service": "kmf",
+          "level": "available",
+          "critical_for_edge": false,
+          "fallback_mode": "installed_keys_only_no_otar",
+          "checked_at": "2026-10-11T20:18:34.827Z",
+          "last_success_at": "2026-10-11T20:18:34.827Z"
+        },
+        {
+          "service": "media-library",
+          "level": "unavailable",
+          "critical_for_edge": false,
+          "fallback_mode": "local_media_cache_and_playout",
+          "checked_at": "2026-10-11T20:18:37.829Z",
+          "last_success_at": "2026-10-10T01:14:38.064Z"
+        },
+        {
+          "service": "media-switch",
+          "level": "available",
+          "critical_for_edge": true,
+          "fallback_mode": "local_air_interface_media_only",
+          "checked_at": "2026-10-11T20:18:34.076Z",
+          "last_success_at": "2026-10-11T20:18:34.076Z"
+        },
+        {
+          "service": "mobility-core",
+          "level": "available",
+          "critical_for_edge": true,
+          "fallback_mode": "local_registration_and_location_area",
+          "checked_at": "2026-10-11T20:18:34.075Z",
+          "last_success_at": "2026-10-11T20:18:34.075Z"
+        },
+        {
+          "service": "observability",
+          "level": "unavailable",
+          "critical_for_edge": false,
+          "fallback_mode": "local_logs_and_health_continue",
+          "checked_at": "2026-10-11T20:18:36.328Z",
+          "last_success_at": "2026-10-11T00:25:34.385Z"
+        },
+        {
+          "service": "packet-core",
+          "level": "available",
+          "critical_for_edge": false,
+          "fallback_mode": "local_sndcp_contexts",
+          "checked_at": "2026-10-11T20:18:34.826Z",
+          "last_success_at": "2026-10-11T20:18:34.826Z"
+        },
+        {
+          "service": "provisioning-core",
+          "level": "available",
+          "critical_for_edge": false,
+          "fallback_mode": "management_only_no_radio_impact",
+          "checked_at": "2026-10-11T20:18:37.831Z",
+          "last_success_at": "2026-10-11T20:18:37.831Z"
+        },
+        {
+          "service": "recorder",
+          "level": "available",
+          "critical_for_edge": false,
+          "fallback_mode": "local_recorder_continues",
+          "checked_at": "2026-10-11T20:18:34.076Z",
+          "last_success_at": "2026-10-11T20:18:34.076Z"
+        },
+        {
+          "service": "sds-router",
+          "level": "available",
+          "critical_for_edge": true,
+          "fallback_mode": "local_delivery_and_durable_store_forward",
+          "checked_at": "2026-10-11T20:18:34.076Z",
+          "last_success_at": "2026-10-11T20:18:34.076Z"
+        },
+        {
+          "service": "security-core",
+          "level": "available",
+          "critical_for_edge": false,
+          "fallback_mode": "last_known_security_policy_no_downgrade",
+          "checked_at": "2026-10-11T20:18:34.827Z",
+          "last_success_at": "2026-10-11T20:18:34.827Z"
+        },
+        {
+          "service": "subscriber-core",
+          "level": "available",
+          "critical_for_edge": true,
+          "fallback_mode": "cached_policy_then_static_config",
+          "checked_at": "2026-10-11T20:18:34.075Z",
+          "last_success_at": "2026-10-11T20:18:34.075Z"
+        },
+        {
+          "service": "transit",
+          "level": "available",
+          "critical_for_edge": false,
+          "fallback_mode": "no_inter_region_routing",
+          "checked_at": "2026-10-11T20:18:34.828Z",
+          "last_success_at": "2026-10-11T20:18:34.828Z"
+        }
+      ]
+    },
+    "all_six_reported_critical_services_available": true,
+    "tbs_node_specific_connection_confirmed": false
+  }
 }
