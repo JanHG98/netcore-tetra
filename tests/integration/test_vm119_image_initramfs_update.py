@@ -1,5 +1,4 @@
 """Initramfs wrapper checks with the existing real atomic-swap operator fixture."""
-import hashlib
 import importlib.util
 from pathlib import Path
 import unittest
@@ -40,7 +39,8 @@ class ImageInitramfsUpdateTests(unittest.TestCase):
         self.assertEqual(driver.TARGET, Path('/usr/local/lib/netcore-deployment/image/build-guest.sh'))
         self.assertEqual(driver.SOURCE, REPO / 'system-backend/deployment-core/image/build-guest.sh')
         self.assertEqual(driver.OLD_SHA, '84b8d4070730b2fe94c4ddf4514411fadd08f19f72bfb3ce0adc86f14d1d8c3c')
-        self.assertEqual(hashlib.sha256(driver.SOURCE.read_bytes()).hexdigest(), driver.NEW_SHA)
+        # Keep the historical update pin, as the APT wrapper test already does.
+        self.assertEqual(driver.NEW_SHA, '4ecd8daeaff314d63da00407f49c994f3bff0569755dbd95640aef96289a8e68')
         driver.validate_source(driver.SOURCE.read_bytes())
 
     def test_valid_and_invalid_bash_without_executing_guest_commands(self):

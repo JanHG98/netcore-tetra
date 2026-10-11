@@ -28,7 +28,9 @@ class ImageDnsUpdateTests(unittest.TestCase):
         self.assertEqual(driver.TARGET, Path('/usr/local/lib/netcore-deployment/image_build.py'))
         self.assertEqual(driver.SOURCE, REPO / 'system-backend/deployment-core/image_build.py')
         self.assertRegex(driver.OLD_SHA, r'^[0-9a-f]{64}$')
-        self.assertEqual(hashlib.sha256(driver.SOURCE.read_bytes()).hexdigest(), driver.NEW_SHA)
+        # This historical operator remains pinned to its reviewed DNS commit,
+        # rather than silently becoming an updater for later source revisions.
+        self.assertEqual(driver.NEW_SHA, '13aab8659a09bfddbe6aab3dce2bd193e8d5f62f9afcad3cfdce054a6dd61e61')
 
     def test_inherited_host_guard_refuses_wrong_machine_without_side_effects(self):
         driver = load_wrapper().UPDATER
@@ -59,6 +61,9 @@ class ImageDnsUpdateTests(unittest.TestCase):
             expected_protected = {path: path.read_bytes() for path in protected}
             driver.TARGET, driver.BUILD_STATE = target, build
             driver.OLD_SHA = hashlib.sha256(old).hexdigest()
+            # Test the atomic-swap guard with today's isolated source fixture;
+            # do not broaden the historical production wrapper's accepted pins.
+            driver.NEW_SHA = hashlib.sha256(new).hexdigest()
             operations = []
 
             def command(*args):

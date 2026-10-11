@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Runs inside the ARM64 image, never on the VM root filesystem.
 set -Eeuo pipefail
+# Guest software must be readable by netcore; the host worker keeps UMask=0077.
+umask 0022
 [[ $(dpkg --print-architecture) == arm64 ]] || { echo 'ARM64-Gast erforderlich'; exit 1; }
 NETCORE_REPOSITORY=${1:?}
 NETCORE_COMMIT=${2:?}

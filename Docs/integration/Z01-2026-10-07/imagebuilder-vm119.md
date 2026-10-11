@@ -6,7 +6,7 @@ Der vollständige ARM64-NetCore-Build an `1595259a2a76abfc9eff08842409156473b585
 
 VM119/scsi0 wurde anschließend nach NVMe_OSData verschoben. Kopierabschluss, Konfiguration und Live-QEMU-Backing auf `/dev/zvol/rpool/data/vm-119-disk-0` sind belegt. Der separat angenommene NVMe-Recoveryauftrag ist `4ebe40edf4b443f592e7f7ad28ad0624` / Build `6a0a67657cce49118c89f5b9479db29d`. Der nachfolgende Windows-Prüfbeleg ordnet das heruntergeladene Recoveryartefakt jetzt dieser Build-ID und Commit1595259 zu; Größe und vollständige SHA-256 stimmen mit dem Manifest überein. Der separate SQLite-Endstatus wurde nicht erneut eingefügt.
 
-Am 11.10.2026 besteht der Betreiber-Prüfblock am Windows-PC: `PASS` für Build6a0a6765, lokaler Dateiname und vollständige SHA-256 sind angegeben. Download / Manifestzuordnung / komprimierte Dateigröße / Byteintegrität sind damit bestanden. Anschließend besteht der physische Pi-OS-/SD-/Firstboot-/SSH-/lokale Agententest auf srv-m-tbs-03. Offen bleiben SXceiver, Controller-Sichtbarkeit, Funk-/Core-Anbindung und VPN-Wechsel. Kein neuer Build oder erneuter Disk-Move ist aus dieser Dokumentationspflege abzuleiten. Frühere DNS-, dpkg-, Initramfs-, SQLite- und I/O-Blocker stehen unten als Chronik der jeweiligen Läufe.
+Am 11.10.2026 besteht der Betreiber-Prüfblock am Windows-PC: `PASS` für Build6a0a6765, lokaler Dateiname und vollständige SHA-256 sind angegeben. Download / Manifestzuordnung / komprimierte Dateigröße / Byteintegrität sind damit bestanden. Anschließend besteht der physische Pi-OS-/SD-/Firstboot-/SSH-/lokale Agententest auf srv-m-tbs-03. NTP ist inzwischen synchronisiert. Die SX-Probe scheitert vor der Hardwareöffnung an zwei Soapy-Verzeichnissen mit0700; root lädt den vorhandenen Treiber, netcore kann sie nicht betreten. Die gezielte Pi-Reparatur und der dauerhafte Quellfix stehen im [Rechtenachtrag](#soapysx-verzeichnisrechte-auf-dem-physischen-pi). Hardwareprobe nach Reparatur, Controller-Sichtbarkeit, Funk-/Core-Anbindung und VPN-Wechsel bleiben offen. Kein neuer Build oder erneuter Disk-Move ist für die aktuelle Pi-Reparatur erforderlich. Frühere DNS-, dpkg-, Initramfs-, SQLite- und I/O-Blocker stehen unten als Chronik der jeweiligen Läufe.
 
 [Aktuelle Imagebuilder-Anleitung](../../services/deployment-core/README.md) · [Integrationsübersicht](README.md) · [Gesamtroadmap](../../roadmaps/gesamtroadmap.md) · [Dokumentationsindex](../../README.md)
 
@@ -27,7 +27,7 @@ Der Betreiber liefert am 11.10.2026 die tatsächliche SSH-Ausgabe von `jan@srv-m
 
 Die Dateisystemgröße und der erfolgreiche Erweiterungsausgang bestätigen die SD-Erweiterung zusätzlich zum Dienststatus. Der Imager-Schreibprüfbericht wurde nicht separat eingefügt; der tatsächliche SD-Boot ist belegt. Das lokale Ready-Ergebnis belegt den Agenten, noch keine SXceiver-/Funkbereitschaft oder Sichtbarkeit im Controller. Der Nachweis steht strukturiert unter `operator_physical_pi_firstboot_acceptance` im [Betreiberbeleg](evidence/vm119-imagebuilder-success-2026-10-09.json).
 
-Die Firstboot-Journalzeilen tragen `Apr27 21:48:57–58`. Diese historischen Bootzeitstempel können vor der Zeitsynchronisierung entstanden sein; eine aktuell falsche Uhr ist damit nicht belegt. Vor der VPN-Abnahme die aktuelle Uhr / Synchronisierung mit `timedatectl status` lesen.
+Die Firstboot-Journalzeilen tragen `Apr27 21:48:57–58`. Diese historischen Bootzeitstempel können vor der Zeitsynchronisierung entstanden sein; eine aktuell falsche Uhr ist damit nicht belegt. Der nachfolgende Betreiberbefund vom 11.10.2026 zeigt die aktuelle Uhr korrekt in Europe/Berlin, NTP aktiv und `System clock synchronized: yes`.
 
 ### Nächster Schritt: SXceiver unter dem Dienstbenutzer prüfen
 
@@ -53,6 +53,40 @@ Die Probe läuft als `netcore`, um die Hardwarezugriffsrechte des TBS-Dienstbenu
 Nach dem nächsten Boot kann `netcore-firstboot.service` aufgrund seiner bereits vorhandenen Done-Datei `inactive/dead` sein. Das allein ist kein Rückfall der bestandenen Erststartabnahme.
 
 Geprüfte Dienstquellen am Imagecommit1595259: [tetra.service](https://github.com/JanHG98/netcore-tetra/blob/1595259a2a76abfc9eff08842409156473b585a7/system-backend/deployment-core/image/systemd/tetra.service) und [check-hardware.py](https://github.com/JanHG98/netcore-tetra/blob/1595259a2a76abfc9eff08842409156473b585a7/system-backend/deployment-core/image/check-hardware.py).
+
+## SoapySX-Verzeichnisrechte auf dem physischen Pi
+
+**Betreiberbefund vom 11.10.2026, Z01.4:** Dasselbe SoapySDRUtil meldet als `netcore` alle Modulpfade als fehlend und keine Factories; als root lädt es `/usr/local/lib/SoapySDR/modules0.8/libSXSupport.so` und meldet Factory `sx`. Lib0.8.1-3 / API0.8.0 / ABI0.8 sind bei beiden identisch. `namei -l` zeigt:
+
+| Pfad | Besitzer / Gruppe | Modus |
+| --- | --- | --- |
+| `/usr/local/lib/SoapySDR` | root /973 |0700 |
+| `/usr/local/lib/SoapySDR/modules0.8` | root /973 |0700 |
+| `/usr/local/lib/SoapySDR/modules0.8/libSXSupport.so` | root /973 |0644 |
+
+Die Ursache der fehlenden Registrierung als `netcore` ist damit bestätigt: Die beiden Elternverzeichnisse sind nur für root zugänglich. Die bisherige Probe erreicht noch keine Hardwareinitialisierung. Der ARM64-Builder vererbt seine Worker-Umask0077 in das Gastrezept; die ursprüngliche Treiberprüfung läuft ausschließlich als root. [Strukturierter Laufzeitbeleg](evidence/pi-soapysx-permissions-2026-10-11.json).
+
+**Gezielte Reparatur auf dem vorhandenen Pi:**
+
+```bash
+sudo chmod 0755 \
+  /usr/local/lib/SoapySDR \
+  /usr/local/lib/SoapySDR/modules0.8
+
+sudo -u netcore timeout --kill-after=2s 15s \
+  SoapySDRUtil --check=sx
+
+sudo -u netcore timeout --kill-after=2s 30s \
+  SoapySDRUtil --probe='driver=sx'
+```
+
+Moduldatei, Eigentümer und Gruppe benötigen nach diesem Befund keine Änderung. Das chmod ist noch nicht durch eine Betreiber-Ausgabe bestätigt. Registrierung und erfolgreiche Hardwareprobe als `netcore` sind getrennte Abnahmepunkte; ein folgender SPI-/GPIO-/ALSA-Fehler muss anhand der neuen Probe eingegrenzt werden. Der TBS-Dienst bleibt bis zur RF-/Core-Prüfung deaktiviert.
+
+**Dauerhafte Quellkorrektur:** `image/build-guest.sh` setzt ausschließlich im Gast-Softwarebuild Umask0022. Die Host-Worker-Umask0077 bleibt erhalten, ebenso die separate Personalisierung mit privaten Zugangsdaten. `image_build.guest_sdr()` prüft auf jeder Stationskopie nach der Personalisierung die erwarteten echten Modulpfade, setzt die beiden öffentlichen Verzeichnisse auf0755 / das Modul auf0644 und führt `SoapySDRUtil --info` als `netcore` aus. Nur eine exakt gemeldete Factory `sx` erlaubt die weitere Artefaktausgabe; es wird keine Hardware geöffnet. Dieser Schritt liegt außerhalb des Cache-Miss-Zweigs und erfasst deshalb auch zugelassene Cachekopien. Die unveränderte allgemeine Cachedatei wird nicht bearbeitet.
+
+Der Recipekey enthält beide geänderten Quelldateien: Ein normaler neuer Auftrag erhält damit einen neuen Recipekey und übernimmt einen alten Softwarecache nicht automatisch. Die aktuelle Pi-Reparatur braucht keinen neuen Auftrag. Der Quellfix ist noch nicht auf VM119 installiert, und ein neuer vollständiger ARM64-Build dieses Fixes ist nicht belegt.
+
+Lokale Regressionen verwenden reale Verzeichnisse / Dateien / chmod unter Umask0077, prüfen Cacheverzeichnisse0700, unveränderte private Nachbarpfade, fehlende oder irreführende Factorymeldungen und Fehlerabbruch. Der Produktions-Cacheweg wird bis zur Dateiveröffentlichung simuliert: Die Dienstbenutzerprüfung liegt nach der Personalisierung und vor der Kompression; ohne sx entsteht kein Artefakt. ARM64-Ausführung, Mounts und Kompression sind simuliert; dies ersetzt keine neue Pi-/SDR-Abnahme. Acht SDR-Fälle, neun Gast-DNS-/Resolverfälle und sechs native dpkg-/Initramfs-Rezeptfälle bestehen, zusammen23 lokale Tests; zusätzlich bestehen alle80 VM119-Update-/Rückwegtests und Bash-/Python-Syntax. Historische DNS-/Initramfs-Operatorpins bleiben unverändert; ihre Tests prüfen diese festen Pins und verwenden für den isolierten Dateiaustausch eigene Fixturefingerprints, wie der bestehende APT-Test. [SDR-Regression](../../../system-backend/deployment-core/tests/test_image_sdr.py).
 
 ## Downloadintegritaet bestanden: Flashen und Erststart
 

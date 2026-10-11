@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-11",
+  "timezone": "Europe/Berlin",
+  "task": "Z01.4",
+  "source": "Operator-pasted SSH output; no direct host access",
+  "host": "srv-m-tbs-03",
+  "address": "10.0.1.20",
+  "image_build_id": "6a0a67657cce49118c89f5b9479db29d",
+  "image_commit": "1595259a2a76abfc9eff08842409156473b585a7",
+  "clock": {
+    "synchronized": true,
+    "ntp_service": "active"
+  },
+  "soapy": {
+    "library": "v0.8.1-3",
+    "api": "v0.8.0",
+    "abi": "v0.8",
+    "same_executable_for_both_users": true,
+    "netcore": {
+      "modules": [],
+      "factories": []
+    },
+    "root": {
+      "modules": [
+        "/usr/local/lib/SoapySDR/modules0.8/libSXSupport.so"
+      ],
+      "factories": [
+        "sx"
+      ]
+    }
+  },
+  "paths": [
+    {
+      "path": "/usr/local/lib/SoapySDR",
+      "mode": "0700",
+      "owner": "root",
+      "group": "973"
+    },
+    {
+      "path": "/usr/local/lib/SoapySDR/modules0.8",
+      "mode": "0700",
+      "owner": "root",
+      "group": "973"
+    },
+    {
+      "path": "/usr/local/lib/SoapySDR/modules0.8/libSXSupport.so",
+      "mode": "0644",
+      "owner": "root",
+      "group": "973"
+    }
+  ],
+  "diagnosis": "netcore cannot traverse the installed Soapy module directories; root loads sx. SXceiver hardware initialization is not yet reached.",
+  "pi_repair": {
+    "directories": [
+      "/usr/local/lib/SoapySDR",
+      "/usr/local/lib/SoapySDR/modules0.8"
+    ],
+    "mode": "0755",
+    "execution_confirmed": false
+  },
+  "source_fix": {
+    "guest_umask": "0022",
+    "host_worker_umask": "0077 unchanged",
+    "per_station_copy": "Normalize only known public plugin paths; verify exact sx factory as netcore before publication, including cache reuse",
+    "vm119_installation_confirmed": false
+  },
+  "limits": [
+    "No post-chmod operator output yet",
+    "No successful SXceiver probe or RF/Core/VPN acceptance yet",
+    "Local regressions do not execute a real ARM64/Soapy plugin build"
+  ]
+}

@@ -36,9 +36,12 @@ loaded = subprocess.run([os.environ['NC_TEST_BASH'], '-c', load_config,
                          'load-initramfs-config', os.environ['NC_TEST_INITRAMFS']],
                         capture_output=True, text=True, check=True)
 modules = loaded.stdout.strip()
+inherited_umask = os.umask(0)
+os.umask(inherited_umask)
 with open(os.environ['NC_TEST_LOG'], 'a') as log:
     log.write(json.dumps({'operation': operation, 'args': args,
                           'frontend': os.environ.get('DEBIAN_FRONTEND'),
+                          'umask': inherited_umask,
                           'modules': modules}) + '\\n')
 if operation != 'update' and modules != 'most':
     print('mkinitramfs: failed to determine device for /', file=sys.stderr)
@@ -131,6 +134,7 @@ class GuestPackageTests(unittest.TestCase):
         self.assertEqual([call['operation'] for call in calls], ['update', 'dist-upgrade', 'install'])
         for call in calls:
             self.assertEqual(call['frontend'], 'noninteractive')
+            self.assertEqual(call['umask'], 0o022)
             self.assertIn('Dpkg::Options::=--force-confdef', call['args'])
             self.assertIn('Dpkg::Options::=--force-confold', call['args'])
         self.assertIn('APT::Update::Error-Mode=any', calls[0]['args'])

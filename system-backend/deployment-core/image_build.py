@@ -43,6 +43,33 @@ def guest_dns(root):
                  '/usr/bin/getent', 'ahostsv4', host], timeout=20)
 
 
+def guest_sdr(root):
+    """Repair public plugin paths and check SoapySX as the actual service user.
+
+    Run on the per-station copy, including cache hits, without opening hardware.
+    The host worker's private umask and the generalized cache stay unchanged.
+    """
+    directory = root / 'usr/local/lib/SoapySDR'
+    modules = directory / 'modules0.8'
+    library = modules / 'libSXSupport.so'
+    for path in (directory, modules):
+        if path.is_symlink() or not path.is_dir():
+            raise RuntimeError('SoapySX-Modulverzeichnis fehlt oder ist ein Symlink: ' + str(path))
+    if library.is_symlink() or not library.is_file():
+        raise RuntimeError('SoapySX-Modul fehlt oder ist ein Symlink: ' + str(library))
+    for path in (directory, modules):
+        path.chmod(0o755)
+    library.chmod(0o644)
+    print('SoapySX im ARM64-Gast als Dienstbenutzer netcore prüfen.', flush=True)
+    info = output(['chroot', root, '/usr/sbin/runuser', '-u', 'netcore', '--',
+                   '/usr/bin/timeout', '--kill-after=2s', '15s',
+                   '/usr/bin/SoapySDRUtil', '--info'])
+    factories = re.search(r'^Available factories\.\.\.[ \t]*([^\n]*)$', info, re.M)
+    if not factories or 'sx' not in [value.strip() for value in factories.group(1).split(',')]:
+        raise RuntimeError('SoapySX für netcore nicht ladbar:\n' + info)
+    print(info, flush=True)
+
+
 def sha256(path):
     digest = hashlib.sha256()
     with Path(path).open('rb') as source:
@@ -340,6 +367,7 @@ def build(state, key):
             try:
                 with disk.guest():
                     command(['chroot', root, '/usr/bin/python3', '/usr/local/lib/netcore-image/personalize.py'])
+                    guest_sdr(root)
             finally:
                 profile_path.unlink(missing_ok=True)
             clean_identity(root)
