@@ -65,8 +65,7 @@
     "vm119_installation_confirmed": false
   },
   "limits": [
-    "Persistent helper installation and post-reboot probe not yet reported",
-    "No streaming/RF/Core/VPN acceptance yet",
+    "No RF/TBS config, streaming/Core/controller/VPN acceptance yet",
     "Image source fixes not confirmed installed on VM119; no new complete ARM64 build"
   ],
   "post_repair_operator_result": {
@@ -161,7 +160,7 @@
     "temporary_alias": "/dev/gpiochip0",
     "overwrite_existing_path": false,
     "execution_confirmed": true,
-    "persistent_fix": "Verified Pi5/CM5 boot helper, exact unique RP1 ioctl discovery; preserve conflicting gpiochip0; separate service required and ordered before tetra device filtering. Installation and reboot acceptance pending."
+    "persistent_fix": "Verified helper installed and enabled; actual reboot and complete netcore hardware probe passed. Next read-only RF/TBS and Core/Discovery configuration review."
   },
   "gpio_chip_inventory": [
     {
@@ -230,7 +229,38 @@
       "Requires",
       "After"
     ],
-    "installation_confirmed": false,
-    "post_reboot_probe_confirmed": false
+    "installation_confirmed": true,
+    "post_reboot_probe_confirmed": true,
+    "helper_commit": "6b43cce1c7ff8151833e2d6db3b68d8add7a16fb",
+    "helper_sha256": "133c4d6d433c67ff5aee0726d487282faf19ad370d38da710fc3b883153d33e0",
+    "download_checksum_passed": true,
+    "activation_confirmed": true
+  },
+  "post_reboot_operator_acceptance": {
+    "reboot_initiated_at": "2026-10-11T22:08:15+02:00",
+    "ssh_connection_closed": true,
+    "ssh_reconnected_to": "10.0.1.20",
+    "kernel": "6.12.109+rpt-rpi-2712",
+    "architecture": "aarch64",
+    "gpio_helper": {
+      "ExecMainStatus": 0,
+      "ActiveState": "active",
+      "SubState": "exited"
+    },
+    "gpio_alias": "/dev/gpiochip0",
+    "resolved_target": "/dev/gpiochip15",
+    "probe_user": "netcore",
+    "hardware_probe_passed": true,
+    "soapy_commit": "9705147dd8c189625071f3f163ea56119bda4a05",
+    "hardware_version": "1.2",
+    "detected_clock_mhz": 38.4,
+    "channels": {
+      "rx": 1,
+      "tx": 1
+    },
+    "clean_uninitialization": true,
+    "tetra_disable_stop_command_completed": true,
+    "streaming_tested": false,
+    "wifi_login_notice": "Wi-Fi is currently blocked by rfkill; country setting required before use."
   }
 }
