@@ -65,7 +65,7 @@
     "vm119_installation_confirmed": false
   },
   "limits": [
-    "No RF/TBS config, streaming/Core/controller/VPN acceptance yet",
+    "No physical Node-Gateway/Core connectivity, TBS streaming, On-Air/controller/VPN acceptance yet",
     "Image source fixes not confirmed installed on VM119; no new complete ARM64 build"
   ],
   "post_repair_operator_result": {
@@ -262,5 +262,99 @@
     "tetra_disable_stop_command_completed": true,
     "streaming_tested": false,
     "wifi_login_notice": "Wi-Fi is currently blocked by rfkill; country setting required before use."
-  }
+  },
+  "operator_tbs_config_preview": {
+    "executed_as": "netcore",
+    "read_only": true,
+    "source_path": "/etc/netcore/config.toml",
+    "runtime_path": "/var/lib/netcore-discovery-tbs/config.toml",
+    "source_equals_next_start_preview": true,
+    "stack_mode": "Bs",
+    "net_info": {
+      "mcc": 901,
+      "mnc": 1510
+    },
+    "cell_info": {
+      "main_carrier": 720,
+      "secondary_carrier": 721,
+      "dual_carrier_enabled": null,
+      "freq_band": 4,
+      "freq_offset": 0,
+      "duplex_spacing": 0,
+      "reverse_operation": false,
+      "custom_duplex_spacing": null,
+      "location_area": 3,
+      "colour_code": 1
+    },
+    "soapysdr": {
+      "backend": "SoapySdr",
+      "rx_freq": 408000000,
+      "tx_freq": 418000000,
+      "rx_center_freq": 408012500,
+      "tx_center_freq": 418012500,
+      "sample_rate": 600000,
+      "ppm_err": null,
+      "rx_channel": null,
+      "tx_channel": null,
+      "rx_antenna": null,
+      "tx_antenna": null,
+      "explicit_device": false,
+      "gain_overrides": {}
+    },
+    "control_room": {
+      "enabled": true,
+      "host": "10.0.1.179",
+      "port": 8080,
+      "use_tls": false,
+      "node_id": "SRV-M-TBS-03",
+      "station_name": "SRV-M-TBS-03",
+      "central_sds_routing": true
+    },
+    "discovery_cache_readable": true,
+    "resolved_fields": [],
+    "tetra_unit": {
+      "User": "netcore",
+      "ActiveState": "inactive",
+      "UnitFileState": "disabled",
+      "ExecStart_wrapper": "/usr/local/lib/netcore-deployment/launch.py",
+      "DevicePolicy": "auto",
+      "DeviceAllow": [
+        "char-alsa rw",
+        "/dev/gpiochip0 rw",
+        "/dev/spidev0.0 rw",
+        "/dev/net/tun rw"
+      ]
+    }
+  },
+  "pinned_source_config_semantics": {
+    "commit": "1595259a2a76abfc9eff08842409156473b585a7",
+    "missing_dual_carrier_enabled_defaults_to": true,
+    "derived_tx_hz": [
+      418000000,
+      418025000
+    ],
+    "derived_rx_hz": [
+      408000000,
+      408025000
+    ],
+    "duplex_spacing_hz": 10000000,
+    "sx_defaults_applied_only_when_stack_starts": {
+      "rx_channel": 0,
+      "tx_channel": 0,
+      "rx_antenna": "RX",
+      "tx_antenna": "TX",
+      "rx_gains_db": {
+        "LNA": 42,
+        "PGA": 16
+      },
+      "tx_gains_db": {
+        "DAC": 9,
+        "MIXER": 30
+      }
+    },
+    "gateway_ready_is_unconditional": true,
+    "gateway_live_identity": "netcore-node-gateway",
+    "core_health_endpoint": "/api/v1/core-services"
+  },
+  "next_acceptance": "Read-only Node-Gateway identity/status and central service health matrix from the physical Pi, then TBS streaming and gateway/Core binding."
 }
