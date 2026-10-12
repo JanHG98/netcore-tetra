@@ -91,7 +91,7 @@ jobs:
       - name: Build affected backend UI strings
         run: cargo check --locked --workspace
       - name: Verify central HTTP framing, persistence and readiness
-        run: cargo test --locked -p netcore-ip-gateway -p netcore-observability -p netcore-media-library
+        run: cargo test --locked -p netcore-packet-core -p netcore-ip-gateway -p netcore-observability -p netcore-media-library
       - name: Link the default-feature TBS binary used in images
         run: cargo build --locked -p bluestation-bs
 

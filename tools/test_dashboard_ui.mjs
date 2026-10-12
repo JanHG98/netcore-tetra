@@ -375,7 +375,7 @@ try {
     await admin.page.locator('#nc-neighbor-form button[type=submit]').click();
     assert.equal(await admin.page.locator('#nc-neighbor-rows tr').count(),2);
     await admin.page.locator('#nc-neighbor-save').click();
-    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('geladen'));
+    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.startsWith('Nachbarzellen geladen.'));
     const saved=requests.findLast(r=>r.method==='POST'&&r.path==='/api/neighbours');
     assert.equal(saved.body.revision,'fixture-revision');
     assert.equal(saved.body.neighbors[0].main_carrier_number,111);
@@ -385,7 +385,7 @@ try {
     await admin.page.locator('#nc-neighbor-rows button').filter({hasText:'Löschen'}).last().click();
     assert.equal(await admin.page.locator('#nc-neighbor-rows tr').count(),1);
     await admin.page.locator('#nc-neighbor-save').click();
-    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('geladen'));
+    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.startsWith('Nachbarzellen geladen.'));
     await admin.page.reload();await admin.page.waitForFunction(()=>typeof showPage==='function');
     await navigate(admin.page,'neighbors');assert.match(await admin.page.locator('#nc-neighbor-rows').textContent(),/111/);
     assert.deepEqual(admin.errors,[]);
@@ -400,7 +400,7 @@ try {
     assert.ok(await admin.page.locator('#nc-neighbor-save').isDisabled());
     scenario.neighborConflict=false;admin.page.once('dialog',dialog=>dialog.accept());
     await admin.page.locator('#nc-neighbor-reload').click();
-    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('geladen'));
+    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.startsWith('Nachbarzellen geladen.'));
     assert.match(await admin.page.locator('#nc-neighbor-rows').textContent(),/111/);
   });
   await check('neighbor persistence failure permits retry without losing changes',async()=>{
@@ -411,7 +411,7 @@ try {
     await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('fehlgeschlagen'));
     assert.ok(await admin.page.locator('#nc-neighbor-save').isEnabled());assert.match(await admin.page.locator('#nc-neighbor-rows').textContent(),/113/);
     scenario.neighborSaveError=false;await admin.page.locator('#nc-neighbor-save').click();
-    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('geladen'));
+    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.startsWith('Nachbarzellen geladen.'));
   });
   await check('neighbor numeric bounds are validated before modifying the draft',async()=>{
     await admin.page.locator('#nc-neighbor-add').click();await admin.page.locator('#nc-n-main_carrier_number').fill('4096');
@@ -570,7 +570,7 @@ try {
     assert.ok(await neighborFailure.page.locator('#nc-neighbor-add').isDisabled());
     assert.ok(await neighborFailure.page.locator('#nc-neighbor-save').isDisabled());
     scenario.neighborLoadError=false;await neighborFailure.page.locator('#nc-neighbor-reload').click();
-    await neighborFailure.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('geladen'));
+    await neighborFailure.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.startsWith('Nachbarzellen geladen.'));
     assert.equal(await neighborFailure.page.locator('#nc-neighbor-rows tr').count(),1);assert.deepEqual(neighborFailure.errors,[]);
   });
   await neighborFailure.context.close();

@@ -13,6 +13,8 @@ from unittest import mock
 
 REPO = Path(__file__).resolve().parents[2]
 DRIVER = REPO / 'Docs/integration/Z01-2026-10-07/vm119-tbs-workflow-update.py'
+# Freeze only the two UI blobs changed after this historical, immutable updater.
+HISTORICAL_UI = REPO / 'tests/integration/fixtures/vm119-tbs-workflow-0770'
 
 
 def load_driver():
@@ -31,7 +33,8 @@ class WorkflowUpdateTests(unittest.TestCase):
             '30ce8b0f936383f9c20ddb5ffda244c4065b1de1a567ddf3fbda360058d17e64',
             '905e5fc4d257e5d1ad56542cbaef38d2f42a00af357240c0e5c92ea7facc2c21'})
         for name, pins in driver.PINS.items():
-            self.assertEqual(driver.digest((driver.SOURCE / name).read_bytes()), pins['new'])
+            source = HISTORICAL_UI / name if name in ('static/index.html', 'static/app.js') else driver.SOURCE / name
+            self.assertEqual(driver.digest(source.read_bytes()), pins['new'])
 
     def exercise(self, kind):
         driver = load_driver()
