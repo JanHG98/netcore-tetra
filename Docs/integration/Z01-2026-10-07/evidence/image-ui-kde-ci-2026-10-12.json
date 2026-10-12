@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "task": "Z01.4 image/UI/KDE and central responsiveness",
+  "date": "2026-10-12",
+  "pull_request": 71,
+  "source_commit": "d3ea8283f3f837296742a2445070364ad7fa4813",
+  "image_recipe_payload_commit": "e842197c2ede8337267a913304816da11664f7a8",
+  "checks": {
+    "dashboard_rust": {
+      "job": 114990648415,
+      "passed": 72,
+      "failed": 0
+    },
+    "dashboard_browser": {
+      "job": 114990648129,
+      "passed": 149,
+      "failed": 0
+    },
+    "deployment": {
+      "job": 114990648581,
+      "python_cases": 113,
+      "expected_root_fixture_skips": 1,
+      "vm_update_cases": 120,
+      "vm_update_skips": 0,
+      "desktop_cases": 14,
+      "sip_setup_cases": 10,
+      "sip_permission_cases": 9,
+      "browser": "passed desktop and mobile with actual KDE/Lite/private import submissions"
+    },
+    "central_backends": {
+      "job": 114990648582,
+      "packet_core": 8,
+      "ip_gateway": 12,
+      "observability": 22,
+      "media_library": 22,
+      "failed": 0,
+      "default_feature_tbs_link": "passed"
+    },
+    "arm64_personalization": {
+      "ubuntu_26_04": {
+        "job": 114990648658,
+        "status": "passed",
+        "finished_utc": "2026-10-12T20:23:09Z"
+      },
+      "ubuntu_24_04": {
+        "job": 114990648237,
+        "status": "passed",
+        "finished_utc": "2026-10-12T20:26:58Z"
+      }
+    }
+  },
+  "vm_updater": {
+    "file": "vm119-image-features-update.py",
+    "sha256": "005838dada6c62784721777f5dabf2d4de72870800c925286c07fd3063edaeae",
+    "payload_files": 10,
+    "independent_sha_verification": "passed",
+    "applied_to_vm": false
+  },
+  "runtime_acceptance": {
+    "new_kde_image_built": false,
+    "kde_physical_login": false,
+    "wifi_actual_connection": false,
+    "telegram_delivery": false,
+    "sip_calls": false,
+    "central_roles_updated": false,
+    "media_record_playback": false,
+    "full_rf_long_run": false
+  },
+  "previous_booted_candidate": {
+    "build_id": "53a280bdf70e4b11935ce4f6a197ff73",
+    "commit": "0770e903b7dfc2f8410ad6f32cdc35e014adbbc7",
+    "profile": "SRV-M-TBS-01",
+    "unchanged_by_this_task": true
+  },
+  "notes": [
+    "Tests are native Linux/browser/ARM64 personalization proofs, not a full KDE software-image build or deployed service acceptance.",
+    "Local desktop/exec transport closed after initial publishing; definitive follow-ups were reconstructed from immutable GitHub source, reviewed and tested by native CI."
+  ],
+  "merge_commit": "4041ceee34383adf451f4e3689bdb192eaa8417c",
+  "workflows": [
+    {
+      "id": 38303133749,
+      "name": "Deployment inventory and source gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 38303133612,
+      "name": "Base station dashboard",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 38303133894,
+      "name": "Warning service",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 38303133643,
+      "name": "NetCore service WebUIs",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 38303133523,
+      "name": "Radio traffic regression tests",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 38303133680,
+      "name": "OpenLab deployment and discovery",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ]
+}

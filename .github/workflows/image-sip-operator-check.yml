@@ -1,0 +1,37 @@
+name: Private SIP image operator syntax
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - Docs/integration/Z01-2026-10-07/setup-image-sip-01.sh
+      - .github/workflows/image-sip-operator-check.yml
+  push:
+    branches: [main]
+    paths:
+      - Docs/integration/Z01-2026-10-07/setup-image-sip-01.sh
+      - .github/workflows/image-sip-operator-check.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Bash and the actual embedded Python without provisioning
+        run: |
+          bash -n Docs/integration/Z01-2026-10-07/setup-image-sip-01.sh
+          python3 - <<'NC_CHECK_PY'
+          import ast
+          from pathlib import Path
+          script = Path('Docs/integration/Z01-2026-10-07/setup-image-sip-01.sh').read_text()
+          marker = "sudo python3 - <<'PY'\n"
+          assert script.count(marker) == 1
+          program, suffix = script.split(marker, 1)[1].rsplit('\nPY\n', 1)
+          assert not suffix.strip()
+          ast.parse(program, filename='setup-image-sip-01.sh:embedded-python')
+          print('PASS: actual Bash and embedded Python syntax; no provisioning executed')
+          NC_CHECK_PY

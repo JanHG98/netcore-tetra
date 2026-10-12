@@ -3,6 +3,8 @@
 
 ## Aktuelle Image-Nachbesserung mit KDE
 
+**Repo-/CI-Korrekturen fertig:** PR #71 auf `main@4041ceee34383adf451f4e3689bdb192eaa8417c` nach allen sechs erfolgreichen Workflows übernommen. Native VM-/KDE-/SIP-/Backend-/Dashboardtests, echte Browser sowie beide realen ARM64-Personalisierungen bestanden. [Gepinnter VM-Befehl und getrennte zentrale Updates](image-ui-desktop-fixes-2026-10-12.md), [CI-Beleg](evidence/image-ui-kde-ci-2026-10-12.json). Der Betreiber muss das konsolidierte Rezept noch auf VM119 übernehmen und anschließend den vollständigen KDE-Imagebuild starten; im laufenden Image53a280bd ist kein Desktop nachinstalliert worden.
+
 PR #70 ist auf `main@67b6ef8141b1ad3b584d5c3e5f8dc834ad37a6c4` übernommen. Native systemd-Tests und beide realen ARM64-Personalisierungsjobs sind erfolgreich. Die Verzeichnisrechte sind damit als Quell-/CI-Korrektur belegt; das bereits gestartete Image53a280bd bleibt unverändert.
 
 Der Nutzer erweitert den nächsten Build um **KDE Plasma**, quote-aware Carrier-/Telegram-Konfiguration, WLAN-Bedienung, SIP-Neueinrichtung, kompakte Systemzustand-Dienste und einen Nachbarzellen-Editor. Die zentrale Media Library, Observability, Packet Core und IP-Gateway benötigen gesonderte Serverübernahme. [Aktueller Umfang und nächster Ablauf](image-ui-desktop-fixes-2026-10-12.md). Der konsolidierte VM-Updater ersetzt die notwendigen Rezept-/Builder-UI-Dateien gemeinsam bei leeren Queues; danach kann das neue Formular verwendet werden. Die alten Einzeldatei-Helfer bleiben historische, gepinnte Abläufe.
