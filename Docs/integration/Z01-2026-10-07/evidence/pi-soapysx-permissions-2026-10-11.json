@@ -360,7 +360,7 @@
     "gateway_live_identity": "netcore-node-gateway",
     "core_health_endpoint": "/api/v1/core-services"
   },
-  "next_acceptance": "Stop and temporarily disable tetra.service (not yet confirmed executed), retain executable hash and invocation-scoped startup/SDR/RX/suppression evidence; distinguish RX/slot gating before a targeted fix or instrumentation. No additional load loop or speculative tuning.",
+  "next_acceptance": "Run fixed diagnostic commit29f891f with guarded Pi binary build/stage while inactive/disabled; no automatic RF start. Then bounded manual run records driver-write/RX/slot return counters before selecting the actual stall remedy.",
   "operator_gateway_health": {
     "requested_from": "srv-m-tbs-03",
     "base_url": "http://10.0.1.179:8080",
@@ -1233,8 +1233,9 @@
     "next_action": {
       "stop_requested": true,
       "temporary_autostart_disable_requested": true,
-      "execution_confirmed": false,
-      "invocation_startup_binary_suppression_read_requested": true
+      "execution_confirmed": true,
+      "invocation_startup_binary_suppression_read_requested": true,
+      "invocation_startup_binary_suppression_read_completed": true
     },
     "production_source_changed": false,
     "driver_time_source": {
@@ -1247,5 +1248,133 @@
       "literal_CLOCK_MONOTONIC_API": false,
       "stream_origin_alignment_verified": false
     }
+  },
+  "operator_diagnostic_shutdown_2026_10_12": {
+    "source": "Operator-pasted SSH output",
+    "running_exe_path": "/usr/local/bin/bluestation-bs",
+    "hash_source": "/proc/771/exe",
+    "running_binary_sha256": "e4180b8580a5e37431bd84a7f9796eb7ea17a2e8619a4ba338163c0f6b39698e",
+    "disable_now_completed": true,
+    "unit_after": {
+      "MainPID": 0,
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "UnitFileState": "disabled"
+    },
+    "queried_invocation": "8af0dbe98d1e4d38a9fdaeb12d33b439",
+    "startup_sdr_query": "No entries",
+    "rx_query": "No entries",
+    "journald_suppression_records": [
+      {
+        "monotonic_seconds": 1418.229826,
+        "suppressed_messages": 5055,
+        "source_unit": "tetra.service"
+      },
+      {
+        "monotonic_seconds": 1448.231287,
+        "suppressed_messages": 5069,
+        "source_unit": "tetra.service"
+      },
+      {
+        "monotonic_seconds": 1478.232924,
+        "suppressed_messages": 5065,
+        "source_unit": "tetra.service"
+      },
+      {
+        "monotonic_seconds": 1508.234266,
+        "suppressed_messages": 5052,
+        "source_unit": "tetra.service"
+      },
+      {
+        "monotonic_seconds": 1538.235753,
+        "suppressed_messages": 5057,
+        "source_unit": "tetra.service"
+      },
+      {
+        "monotonic_seconds": 1568.237246,
+        "suppressed_messages": 5050,
+        "source_unit": "tetra.service"
+      },
+      {
+        "monotonic_seconds": 1598.238886,
+        "suppressed_messages": 5051,
+        "source_unit": "tetra.service"
+      },
+      {
+        "monotonic_seconds": 1628.240249,
+        "suppressed_messages": 5055,
+        "source_unit": "tetra.service"
+      },
+      {
+        "monotonic_seconds": 1658.241744,
+        "suppressed_messages": 5059,
+        "source_unit": "tetra.service"
+      }
+    ],
+    "displayed_suppression_total": 45513,
+    "particular_missing_rx_line_loss_proven": false
+  },
+  "diagnostic_source_patch": {
+    "pr": 67,
+    "diagnostic_commit": "29f891f186f0b85d1930ba38ea8ac38157bc78ad",
+    "merge_commit": "510ec6f0f50f43bc8b3e87b50077fed8ea81c11f",
+    "source_paths": [
+      "crates/tetra-entities/src/phy/components/soapy_dev.rs",
+      "crates/tetra-entities/src/phy/components/soapy_dev_tests.rs"
+    ],
+    "scheduling_modulation_stream_parameters_unchanged": true,
+    "hot_path_new_allocations": false,
+    "late_detail_max_per_sdr_5_seconds": 1,
+    "all_cumulative_skips_retained": true,
+    "fields": [
+      "tx_process_attempts",
+      "tx_write_attempts",
+      "tx_written_blocks",
+      "latest_rx_block",
+      "tx_rx_lead_blocks",
+      "tx_slot_times",
+      "tx_hw_ahead_returns",
+      "tx_rx_ahead_returns",
+      "tx_slot_not_ready_returns"
+    ],
+    "successful_write_is_on_air_confirmation": false,
+    "actual_stall_remedy_claimed": false,
+    "runtime_source_baseline_equivalence": {
+      "from": "1595259a2a76abfc9eff08842409156473b585a7",
+      "to": "f81bdb2346a116925892c2cf886bd47ac99177ce",
+      "all_rust_cargo_codec_source_unchanged": true,
+      "method": "Full Git checkout/diff, not truncated300-file RESTcompare"
+    },
+    "validation": {
+      "local_exact_source_counter_tests": 2,
+      "native_soapy_waveform_tests": 9,
+      "native_base_station_release_build_passed": true,
+      "independent_review": "PASS",
+      "radio_ci_run": 38224342827,
+      "source_gate_ci_run": 38224342762,
+      "openlab_ci_run": 38224342791,
+      "all_three_ci_success": true
+    },
+    "arm64_runtime_installation_confirmed": false
+  },
+  "diagnostic_binary_stage_plan": {
+    "helper": "tools/operator/pi-txdiag-build-stage.sh",
+    "test_path": "system-backend/deployment-core/tests/test_txdiag_stage.py",
+    "local_filesystem_guard_tests_passed": 8,
+    "shell_and_embedded_python_syntax_passed": true,
+    "test_service_and_root_ownership_mocked": true,
+    "image_rust_version_pinned": true,
+    "cargo_lock_and_default_features_preserved": true,
+    "jobs": 2,
+    "only_binary_replaced": true,
+    "old_sha_guard": "e4180b8580a5e37431bd84a7f9796eb7ea17a2e8619a4ba338163c0f6b39698e",
+    "backup_and_atomic_swap": true,
+    "hardware_opened": false,
+    "service_start_or_enable": false,
+    "vm119_recipe_cache_modified": false,
+    "host_execution_confirmed": false,
+    "unresolved_library_shell_guard_tested": true,
+    "helper_sha256": "17f6c38c81c1fe54687b8220d46010cd8438cfae42017ff0cf175c3868b6e943",
+    "independent_review": "PASS after fixing and testing unresolved-library Bash guard"
   }
 }
