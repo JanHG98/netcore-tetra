@@ -4,6 +4,7 @@
 // Was: Bindet das Untermodul callsign in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod callsign;
+pub mod config_edit;
 // Was: Bindet das Untermodul dapnet in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod dapnet;
@@ -22,6 +23,7 @@ pub mod html;
 // Was: Bindet das Untermodul meshcom in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod meshcom;
+pub mod neighbours;
 // Was: Bindet das Untermodul radioid in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod radioid;
@@ -49,3 +51,4 @@ pub mod wx_service;
 
 pub use server::DashboardServer;
 pub use state::{DashboardState, DashboardStateInner};
+

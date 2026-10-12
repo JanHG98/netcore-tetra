@@ -100,6 +100,8 @@ testWav.writeUInt32LE(8000, 24); testWav.writeUInt32LE(16000, 28); testWav.write
 testWav.writeUInt16LE(16, 34); testWav.write('data', 36); testWav.writeUInt32LE(16000, 40);
 let scenario = { authenticated: true, auth_required: true, public_overview: true, wifi: true };
 let requests = [];
+const neighborFixture = [{...fixtureApi['/api/btsinfo'].neighbors[0],maximum_ms_transmit_power:5,bs_service_details:{registration:true}}];
+const copy = value => JSON.parse(JSON.stringify(value));
 
 // Was: Bedient nur die realen Template-/Assetdateien und kontrollierte lokale Testantworten.
 // Warum: Die Suite greift weder auf einen echten Funkknoten noch auf externe Dienste zu.
@@ -121,6 +123,25 @@ const server = http.createServer(async (req, res) => {
       record.body = body ? JSON.parse(body) : null;
       scenario.audio_request = url.pathname === '/api/audio/play' ? record.body : null;
       res.end(JSON.stringify({ ok: true })); return;
+    }
+    if(req.method==='POST'&&['/api/neighbours','/api/telegram','/api/telegram/verify','/api/telegram/detect','/api/telegram/test','/api/wifi/radio','/api/wifi/connect'].includes(url.pathname)){
+      if(!scenario.authenticated&&scenario.auth_required){res.writeHead(401);res.end('{}');return;}
+      let body='';for await(const chunk of req)body+=chunk;record.body=JSON.parse(body);
+      if(url.pathname==='/api/neighbours'){
+        if(scenario.neighborConflict){res.writeHead(409);res.end(JSON.stringify({error:'config changed'}));return;}
+        if(scenario.neighborSaveError){res.writeHead(503);res.end(JSON.stringify({error:'configuration write failed'}));return;}
+        scenario.neighbors=copy(record.body.neighbors);scenario.neighborRevision+='-saved';
+        res.end(JSON.stringify({ok:true,restarting:!!scenario.neighborRestart,neighbors:scenario.neighbors}));return;
+      }
+      if(url.pathname==='/api/telegram'){
+        if(scenario.telegramSaveError){res.writeHead(503);res.end('Einstellungen konnten nicht gespeichert werden.');return;}
+        scenario.telegram={...scenario.telegram,...record.body,token_set:!!record.body.bot_token||!!scenario.telegram?.token_set};
+        delete scenario.telegram.bot_token;res.setHeader('Content-Type','text/plain');res.end('OK');return;
+      }
+      if(url.pathname.startsWith('/api/telegram/')){res.end(JSON.stringify({ok:true,username:'fixture_bot',chats:[],sent:1}));return;}
+      if(scenario.wifiHardwareError){res.end(JSON.stringify({ok:false,error:{kind:'HardwareBlocked'}}));return;}
+      if(url.pathname==='/api/wifi/radio')scenario.wifiStatus={...scenario.wifiStatus,radio_enabled:!!record.body.enabled,soft_blocked:false};
+      res.end(JSON.stringify({ok:true}));return;
     }
     if (req.method !== 'GET') { res.writeHead(405); res.end('{}'); return; }
     if (url.pathname === '/api/session') {
@@ -151,6 +172,12 @@ const server = http.createServer(async (req, res) => {
         services: [{ service: 'node-gateway', level: 'unavailable', critical_for_edge: true,
           fallback_mode: 'local_edge_autonomy', message: 'Node Gateway unreachable', checked_at: now }] })); return;
     }
+    if(url.pathname==='/api/neighbours'){
+      if(scenario.neighborLoadError){res.writeHead(503);res.end('{}');return;}
+      res.end(JSON.stringify({neighbors:scenario.neighbors,running_neighbors:scenario.neighbors,revision:scenario.neighborRevision,max_neighbors:7,restart_required:false}));return;
+    }
+    if(url.pathname==='/api/telegram'){res.end(JSON.stringify(scenario.telegram));return;}
+    if(url.pathname==='/api/wifi/status'){res.end(JSON.stringify({ok:true,status:scenario.wifiStatus}));return;}
     if (url.pathname in fixtureApi) { res.end(JSON.stringify(fixtureApi[url.pathname])); return; }
     res.writeHead(404); res.end(JSON.stringify({ error: 'Unmocked test endpoint: ' + url.pathname })); return;
   }
@@ -194,7 +221,9 @@ async function navigate(page, name) {
   assert.equal(await page.locator('.nav-item.active').count(), 1, `${name}: exactly one active page navigation item`);
 }
 async function open(settings = {}, suffix = '/', viewport = { width: 1440, height: 1100 }, storage = {}) {
-  scenario = { authenticated: true, auth_required: true, public_overview: true, wifi: true, ...settings };
+  scenario = { authenticated: true, auth_required: true, public_overview: true, wifi: true,
+    neighbors:copy(neighborFixture),neighborRevision:'fixture-revision',telegram:{enabled:false,token_set:false,chat_ids:[]},
+    wifiStatus:copy(fixtureApi['/api/wifi/status'].status),...settings };
   requests = [];
   const context = await browser.newContext({ viewport });
   const discoveryRequests = [];
@@ -331,6 +360,109 @@ try {
     assert.match(await admin.page.locator('#nc-neighbor-rows').textContent(), /103/);
     assert.match(await admin.page.locator('#page-neighbors').textContent(), /nicht gemessen/);
   });
+  await check('neighbor editor stages validated changes and preserves optional service details', async () => {
+    await navigate(admin.page,'neighbors');
+    await admin.page.locator('#nc-neighbor-rows button').filter({hasText:'Bearbeiten'}).first().click();
+    await admin.page.locator('#nc-n-main_carrier_number').fill('111');
+    await admin.page.locator('#nc-neighbor-form button[type=submit]').click();
+    assert.equal(requests.filter(r=>r.method==='POST'&&r.path==='/api/neighbours').length,0,'draft editing must not restart radio');
+    await admin.page.locator('#nc-neighbor-add').click();
+    await admin.page.locator('#nc-n-cell_identifier_ca').fill('2');
+    await admin.page.locator('#nc-n-main_carrier_number').fill('105');
+    await admin.page.locator('#nc-neighbor-form button[type=submit]').click();
+    assert.match(await admin.page.locator('#nc-neighbor-form-msg').textContent(),/bereits vorhanden/);
+    await admin.page.locator('#nc-n-cell_identifier_ca').fill('3');
+    await admin.page.locator('#nc-neighbor-form button[type=submit]').click();
+    assert.equal(await admin.page.locator('#nc-neighbor-rows tr').count(),2);
+    await admin.page.locator('#nc-neighbor-save').click();
+    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('geladen'));
+    const saved=requests.findLast(r=>r.method==='POST'&&r.path==='/api/neighbours');
+    assert.equal(saved.body.revision,'fixture-revision');
+    assert.equal(saved.body.neighbors[0].main_carrier_number,111);
+    assert.deepEqual(saved.body.neighbors[0].bs_service_details,{registration:true});
+    assert.equal(saved.body.neighbors[0].maximum_ms_transmit_power,5);
+    assert.equal(saved.body.neighbors[0].tdma_frame_offset,undefined,'optional null becomes absent without losing populated values');
+    await admin.page.locator('#nc-neighbor-rows button').filter({hasText:'Löschen'}).last().click();
+    assert.equal(await admin.page.locator('#nc-neighbor-rows tr').count(),1);
+    await admin.page.locator('#nc-neighbor-save').click();
+    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('geladen'));
+    await admin.page.reload();await admin.page.waitForFunction(()=>typeof showPage==='function');
+    await navigate(admin.page,'neighbors');assert.match(await admin.page.locator('#nc-neighbor-rows').textContent(),/111/);
+    assert.deepEqual(admin.errors,[]);
+  });
+  await check('neighbor save conflicts keep the draft and require reload before retry',async()=>{
+    await admin.page.locator('#nc-neighbor-rows button').filter({hasText:'Bearbeiten'}).first().click();
+    await admin.page.locator('#nc-n-main_carrier_number').fill('112');
+    await admin.page.locator('#nc-neighbor-form button[type=submit]').click();
+    scenario.neighborConflict=true;await admin.page.locator('#nc-neighbor-save').click();
+    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('inzwischen'));
+    assert.match(await admin.page.locator('#nc-neighbor-rows').textContent(),/112/);
+    assert.ok(await admin.page.locator('#nc-neighbor-save').isDisabled());
+    scenario.neighborConflict=false;admin.page.once('dialog',dialog=>dialog.accept());
+    await admin.page.locator('#nc-neighbor-reload').click();
+    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('geladen'));
+    assert.match(await admin.page.locator('#nc-neighbor-rows').textContent(),/111/);
+  });
+  await check('neighbor persistence failure permits retry without losing changes',async()=>{
+    await admin.page.locator('#nc-neighbor-rows button').filter({hasText:'Bearbeiten'}).first().click();
+    await admin.page.locator('#nc-n-main_carrier_number').fill('113');
+    await admin.page.locator('#nc-neighbor-form button[type=submit]').click();
+    scenario.neighborSaveError=true;await admin.page.locator('#nc-neighbor-save').click();
+    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('fehlgeschlagen'));
+    assert.ok(await admin.page.locator('#nc-neighbor-save').isEnabled());assert.match(await admin.page.locator('#nc-neighbor-rows').textContent(),/113/);
+    scenario.neighborSaveError=false;await admin.page.locator('#nc-neighbor-save').click();
+    await admin.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('geladen'));
+  });
+  await check('neighbor numeric bounds are validated before modifying the draft',async()=>{
+    await admin.page.locator('#nc-neighbor-add').click();await admin.page.locator('#nc-n-main_carrier_number').fill('4096');
+    await admin.page.locator('#nc-neighbor-form button[type=submit]').click();
+    assert.equal(await admin.page.locator('#nc-neighbor-rows tr').count(),1);
+    assert.equal(await admin.page.locator('#nc-n-main_carrier_number').evaluate(input=>input.validity.rangeOverflow),true);
+    await noOverflow(admin.page,'neighbors editor');await admin.page.locator('#nc-neighbor-cancel').click();
+  });
+  await check('Telegram setup explains prerequisites without sending an unset token',async()=>{
+    await navigate(admin.page,'telegram');
+    assert.match(await admin.page.locator('#tg-setup-hint').textContent(),/BotFather/);
+    await admin.page.locator('#tg-enabled').check();await admin.page.evaluate(()=>saveTelegram());
+    assert.match(await admin.page.locator('#tg-msg').textContent(),/Kein Bot-Token/);
+    assert.equal(requests.filter(r=>r.method==='POST'&&r.path==='/api/telegram').length,0);
+    await admin.page.locator('#tg-token').fill('123456:fixture_only_secret');
+    await admin.page.evaluate(()=>saveTelegram());assert.match(await admin.page.locator('#tg-msg').textContent(),/Empfänger/);
+    assert.equal(requests.filter(r=>r.method==='POST'&&r.path==='/api/telegram').length,0);
+    await admin.page.locator('#tg-chat-input').fill('-12345');await admin.page.evaluate(()=>addRecipient());
+    await admin.page.evaluate(()=>saveTelegram());
+    await admin.page.waitForFunction(()=>document.getElementById('tg-token').placeholder.includes('gespeichert'));
+    assert.equal(await admin.page.locator('#tg-token').inputValue(),'');assert.equal(await admin.page.locator('#tg-token').getAttribute('type'),'password');
+    await admin.page.evaluate(()=>saveTelegram());await admin.page.waitForTimeout(150);
+    const saved=requests.findLast(r=>r.method==='POST'&&r.path==='/api/telegram');
+    assert.equal(saved.body.bot_token,undefined,'blank saved-token field must preserve server secret');
+    assert.deepEqual(saved.body.chat_ids,[-12345]);assert.deepEqual(admin.errors,[]);
+  });
+  await check('WLAN displays software lock and enables radio through the existing API',async()=>{
+    scenario.wifiStatus={...scenario.wifiStatus,radio_enabled:true,soft_blocked:true,hard_blocked:false};
+    await navigate(admin.page,'wifi');await admin.page.evaluate(()=>wifiLoadStatus());
+    assert.match(await admin.page.locator('#wifi-status-grid').textContent(),/Sperre aufheben/);
+    await admin.page.locator('#wifi-radio-btn').click();
+    await admin.page.waitForFunction(()=>document.getElementById('wifi-radio-btn').textContent.includes('deaktivieren'));
+    assert.ok(requests.some(r=>r.method==='POST'&&r.path==='/api/wifi/radio'&&r.body.enabled===true));
+  });
+  await check('WLAN hardware lock remains actionable and failed saved connections are visible',async()=>{
+    scenario.wifiStatus={...scenario.wifiStatus,radio_enabled:false,soft_blocked:false,hard_blocked:true};
+    await admin.page.evaluate(()=>wifiLoadStatus());
+    assert.match(await admin.page.locator('#wifi-status-grid').textContent(),/Hardware gesperrt/);
+    assert.ok(await admin.page.locator('#wifi-radio-btn').isDisabled());
+    scenario.wifiHardwareError=true;await admin.page.evaluate(()=>wifiConnectSaved('fixture-uuid'));
+    assert.match(await admin.page.locator('#wifi-action-msg').textContent(),/Hardware gesperrt/);
+    scenario.wifiHardwareError=false;scenario.wifiStatus=copy(fixtureApi['/api/wifi/status'].status);
+    assert.deepEqual(admin.errors,[]);
+  });
+  await check('Systemzustand uses compact service chips and opens full service details',async()=>{
+    await navigate(admin.page,'health');
+    assert.equal(await admin.page.locator('#health-core-services-grid .core-service-card').count(),0);
+    assert.equal(await admin.page.locator('#health-core-services-grid .nc-health-service-chip').count(),17);
+    await admin.page.locator('#health-core-services-grid .nc-health-service-chip').first().press('Enter');
+    assert.equal(await admin.page.locator('#page-services.active').count(),1);
+  });
   await check('service page renders the full reported service matrix', async () => {
     await navigate(admin.page, 'services');
     assert.equal(await admin.page.locator('#core-services-grid .core-service-card').count(), 17);
@@ -431,6 +563,38 @@ try {
   });
   await admin.context.close();
 
+  const neighborFailure=await open({neighborLoadError:true},'/?intern=netcore');
+  await check('neighbor load failure offers retry without enabling unsafe writes',async()=>{
+    await navigate(neighborFailure.page,'neighbors');
+    await neighborFailure.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('nicht geladen'));
+    assert.ok(await neighborFailure.page.locator('#nc-neighbor-add').isDisabled());
+    assert.ok(await neighborFailure.page.locator('#nc-neighbor-save').isDisabled());
+    scenario.neighborLoadError=false;await neighborFailure.page.locator('#nc-neighbor-reload').click();
+    await neighborFailure.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('geladen'));
+    assert.equal(await neighborFailure.page.locator('#nc-neighbor-rows tr').count(),1);assert.deepEqual(neighborFailure.errors,[]);
+  });
+  await neighborFailure.context.close();
+  const neighborMaximum=await open({neighbors:Array.from({length:7},(_,index)=>({...copy(neighborFixture[0]),cell_identifier_ca:index}))},'/?intern=netcore');
+  await check('neighbor editor respects the seven-cell limit and permits staged deletion',async()=>{
+    await navigate(neighborMaximum.page,'neighbors');
+    assert.equal(await neighborMaximum.page.locator('#nc-neighbor-rows tr').count(),7);
+    assert.ok(await neighborMaximum.page.locator('#nc-neighbor-add').isDisabled());
+    await neighborMaximum.page.locator('#nc-neighbor-rows button').filter({hasText:'Löschen'}).last().click();
+    assert.equal(await neighborMaximum.page.locator('#nc-neighbor-rows tr').count(),6);
+    assert.ok(await neighborMaximum.page.locator('#nc-neighbor-add').isEnabled());
+    assert.equal(requests.filter(r=>r.method==='POST'&&r.path==='/api/neighbours').length,0);assert.deepEqual(neighborMaximum.errors,[]);
+  });
+  await neighborMaximum.context.close();
+  const neighborRestart=await open({neighborRestart:true},'/?intern=netcore');
+  await check('neighbor save explains the scheduled radio restart',async()=>{
+    await navigate(neighborRestart.page,'neighbors');
+    await neighborRestart.page.locator('#nc-neighbor-rows button').filter({hasText:'Löschen'}).first().click();
+    await neighborRestart.page.locator('#nc-neighbor-save').click();
+    await neighborRestart.page.waitForFunction(()=>document.getElementById('nc-neighbor-status').textContent.includes('startet kurz neu'));
+    assert.ok(await neighborRestart.page.locator('#nc-neighbor-save').isDisabled());assert.deepEqual(neighborRestart.errors,[]);
+  });
+  await neighborRestart.context.close();
+
   const legacyDark = await open({}, '/?intern=netcore', undefined, { legacyTheme: 'dark' });
   await check('legacy station theme migrates to the shared preference', async () => {
     await darkSurfaces(legacyDark.page);
@@ -477,6 +641,13 @@ try {
   }
   await navigate(mobile.page, 'rf');
   await mobile.page.screenshot({ path: path.join(output, 'rf-mobile.png') });
+  await check('neighbor editor is usable at mobile width',async()=>{
+    await navigate(mobile.page,'neighbors');await mobile.page.locator('#nc-neighbor-add').click();
+    await noOverflow(mobile.page,'neighbors mobile editor');
+    assert.ok(await mobile.page.locator('#nc-n-main_carrier_number').isVisible());
+    await mobile.page.screenshot({path:path.join(output,'neighbors-editor-mobile.png'),fullPage:true});
+    await mobile.page.locator('#nc-neighbor-cancel').click();assert.deepEqual(mobile.errors,[]);
+  });
   await mobile.page.locator('.theme-btn[data-t="dark"]').click();
   for (const name of dashboardPages) {
     await check(`mobile dark width 390 ${name}`, async () => {
@@ -661,3 +832,4 @@ try {
 }
 console.log(`\n${checks} checks passed; ${failures.length} failed. Screenshots: target/dashboard-preview/`);
 if (failures.length) process.exitCode = 1;
+

@@ -1,0 +1,16 @@
+// The dashboard runs as netcore. Grant only its NetworkManager operations;
+// the radio and connection changes remain authenticated dashboard actions.
+polkit.addRule(function(action, subject) {
+    if (subject.user !== "netcore") {
+        return;
+    }
+    var allowed = [
+        "org.freedesktop.NetworkManager.enable-disable-wifi",
+        "org.freedesktop.NetworkManager.wifi.scan",
+        "org.freedesktop.NetworkManager.network-control",
+        "org.freedesktop.NetworkManager.settings.modify.system"
+    ];
+    if (allowed.indexOf(action.id) !== -1) {
+        return polkit.Result.YES;
+    }
+});

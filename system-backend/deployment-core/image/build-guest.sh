@@ -8,6 +8,8 @@ NETCORE_REPOSITORY=${1:?}
 NETCORE_COMMIT=${2:?}
 SOAPY_REPOSITORY=${3:?}
 SOAPY_COMMIT=${4:?}
+NETCORE_DESKTOP=${5:-none}
+[[ $NETCORE_DESKTOP == none || $NETCORE_DESKTOP == kde ]] || { echo 'Desktop: none oder kde erforderlich'; exit 1; }
 export DEBIAN_FRONTEND=noninteractive
 export LC_ALL=C
 # Build portable Pi initramfs images instead of detecting the VM's root device.
@@ -22,11 +24,19 @@ NC_APT=(apt-get -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-co
   git ca-certificates curl python3 python3-soapysdr build-essential pkg-config cmake \
   libssl-dev libsqlite3-dev libsoapysdr-dev soapysdr-tools libasound2-dev libgsm1-dev \
   alsa-utils device-tree-compiler ffmpeg jq sqlite3 nfs-common network-manager \
-  openssh-server sudo tzdata openvpn iw rfkill cloud-guest-utils iproute2 nftables
+  openssh-server sudo tzdata openvpn iw rfkill cloud-guest-utils iproute2 nftables polkitd
 install -d /opt /usr/share/netcore-image
+source /usr/local/lib/netcore-image/desktop-setup.sh
+netcore_install_desktop "$NETCORE_DESKTOP"
 git clone --no-checkout "$NETCORE_REPOSITORY" /opt/netcore-tetra
 git -C /opt/netcore-tetra checkout --detach "$NETCORE_COMMIT"
 [[ $(git -C /opt/netcore-tetra rev-parse HEAD) == "$NETCORE_COMMIT" ]]
+# Build the same local SIP gateway that a configured TBS needs. This helper
+# validates a package installation or falls back to the pinned source release.
+# Provisioning supplies the station credentials later, before services are enabled.
+source /opt/netcore-tetra/system-backend/sip-switch/install/ensure-asterisk.sh
+netcore_ensure_asterisk
+systemctl disable asterisk.service
 git clone --no-checkout "$SOAPY_REPOSITORY" /opt/sxxcvr
 git -C /opt/sxxcvr checkout --detach "$SOAPY_COMMIT"
 [[ $(git -C /opt/sxxcvr rev-parse HEAD) == "$SOAPY_COMMIT" ]]
@@ -51,10 +61,11 @@ ldd /usr/local/bin/bluestation-bs | tee /usr/share/netcore-image/ldd.txt
 ! grep -q 'not found' /usr/share/netcore-image/ldd.txt
 SoapySDRUtil --info | tee /usr/share/netcore-image/soapysdr.txt
 grep -q 'sx' /usr/share/netcore-image/soapysdr.txt
-python3 - "$NETCORE_COMMIT" "$SOAPY_COMMIT" <<'PY'
+python3 - "$NETCORE_COMMIT" "$SOAPY_COMMIT" "$NETCORE_DESKTOP" <<'PY'
 import json, pathlib, subprocess, sys
-data = dict(commit=sys.argv[1], soapy_commit=sys.argv[2],
+data = dict(commit=sys.argv[1], soapy_commit=sys.argv[2], desktop=sys.argv[3],
             rustc=subprocess.check_output(['/root/.cargo/bin/rustc','--version'],text=True).strip(),
+            asterisk=subprocess.check_output(['/usr/sbin/asterisk','-V'],text=True).strip(),
             packages=subprocess.check_output(['dpkg-query','-W','-f=${Package}\t${Version}\n'],text=True).splitlines())
 pathlib.Path('/usr/share/netcore-image/versions.json').write_text(json.dumps(data,indent=2))
 PY
@@ -66,9 +77,15 @@ install -m 0755 "$SOURCE"/install/prepare-host.sh "$SOURCE"/install/install-tbs.
 install -m 0644 "$SOURCE/systemd/netcore-discovery.service" /etc/systemd/system/
 for group in netcore spi gpio; do getent group "$group" >/dev/null || groupadd --system "$group"; done
 id netcore >/dev/null 2>&1 || useradd --system --gid netcore --groups audio,spi,gpio --home-dir /var/lib/netcore-tbs --shell /usr/sbin/nologin netcore
+# NetworkManager executes dashboard WiFi changes through its D-Bus policy,
+# while the station itself keeps the unprivileged netcore service account.
+install -d -m 0755 /etc/polkit-1/rules.d
+install -m 0644 /usr/local/lib/netcore-image/49-netcore-networkmanager.rules /etc/polkit-1/rules.d/
 install -d -m 0750 -o netcore -g netcore /var/lib/netcore-tbs
 install -d -m 0755 /var/lib/netcore-discovery /usr/local/libexec
 install -m 0644 /usr/local/lib/netcore-image/systemd/* /etc/systemd/system/
+install -m 0755 /opt/netcore-tetra/system-backend/sip-switch/tbs-fallback/src/netcore_tbs_sip_fallback.py /usr/local/bin/netcore-tbs-sip-fallback
+install -m 0644 /opt/netcore-tetra/system-backend/sip-switch/tbs-fallback/systemd/netcore-tbs-sip-failover.service /etc/systemd/system/
 install -m 0755 /opt/netcore-tetra/contrib/packet-data/netcore-tetra-packet-gateway-cleanup /usr/local/libexec/
 install -d /etc/systemd/system/tetra.service.d
 install -m 0644 /opt/netcore-tetra/contrib/systemd/tetra.service.d/20-packet-data-gateway.conf /etc/systemd/system/tetra.service.d/
@@ -86,3 +103,4 @@ rm -f /tmp/netcore-rustup.sh
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 echo 'Softwarebasis vollständig gebaut. Noch kein Funk-/Boot-Test ausgeführt.'
+

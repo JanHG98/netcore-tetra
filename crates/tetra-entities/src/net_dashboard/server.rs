@@ -2253,21 +2253,13 @@ fn serve_tpg2200_action_url(
 
 
 #[cfg(feature = "recording")]
-fn serve_media_library_recording_export(
-    mut stream: TcpStream,
-    req_line: &str,
-    recorder: &DashboardRecorderHandle,
-) {
+fn serve_media_library_recording_export(mut stream: TcpStream, req_line: &str, recorder: &DashboardRecorderHandle) {
     let route = request_route(req_line).trim_end_matches('/');
     let method = req_line.split_whitespace().next().unwrap_or("");
     drain_http_headers(&mut stream);
 
     if method != "GET" {
-        http_json_response(
-            stream,
-            405,
-            &serde_json::json!({"error":"only GET is allowed"}).to_string(),
-        );
+        http_json_response(stream, 405, &serde_json::json!({"error":"only GET is allowed"}).to_string());
         return;
     }
     let Some(handle) = recorder.as_ref() else {
@@ -2302,22 +2294,14 @@ fn serve_media_library_recording_export(
     match action {
         "audio" => match handle.audio_path(id) {
             Ok(path) => serve_recording_audio(stream, &path, id),
-            Err(error) => http_json_response(
-                stream,
-                404,
-                &serde_json::json!({"error":error}).to_string(),
-            ),
+            Err(error) => http_json_response(stream, 404, &serde_json::json!({"error":error}).to_string()),
         },
         "metadata" => match handle.find_recording(id) {
             Some(item) => {
                 let body = serde_json::to_string(&item).unwrap_or_else(|_| "{}".to_string());
                 http_json_response(stream, 200, &body);
             }
-            None => http_json_response(
-                stream,
-                404,
-                &serde_json::json!({"error":"recording not found"}).to_string(),
-            ),
+            None => http_json_response(stream, 404, &serde_json::json!({"error":"recording not found"}).to_string()),
         },
         _ => http_response(stream, 404, "not found"),
     }
@@ -2373,7 +2357,11 @@ fn serve_recording_request(mut stream: TcpStream, req_line: &str, recorder: &Das
             .ok()
             .and_then(|value| value.get("active").and_then(|value| value.as_bool()));
         let Some(active) = active else {
-            http_json_response(stream, 400, &serde_json::json!({"ok":false,"error":"body must contain boolean active"}).to_string());
+            http_json_response(
+                stream,
+                400,
+                &serde_json::json!({"ok":false,"error":"body must contain boolean active"}).to_string(),
+            );
             return;
         };
         handle.set_active(active);
@@ -2622,12 +2610,7 @@ fn serve_audio_preview(
 #[cfg(feature = "audio-player")]
 // Was: Diese Funktion stellt tts request.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-fn serve_tts_request(
-    mut stream: TcpStream,
-    req_line: &str,
-    request_headers: &str,
-    tts: &DashboardTtsHandle,
-) {
+fn serve_tts_request(mut stream: TcpStream, req_line: &str, request_headers: &str, tts: &DashboardTtsHandle) {
     let route = request_route(req_line).trim_end_matches('/');
     let method = req_line.split_whitespace().next().unwrap_or("");
     let Some(handle) = tts.as_ref() else {
@@ -2663,11 +2646,7 @@ fn serve_tts_request(
                 let body = serde_json::json!({"templates": templates}).to_string();
                 http_json_response(stream, 200, &body);
             }
-            Err(error) => http_json_response(
-                stream,
-                503,
-                &serde_json::json!({"templates":[],"error":error}).to_string(),
-            ),
+            Err(error) => http_json_response(stream, 503, &serde_json::json!({"templates":[],"error":error}).to_string()),
         }
         return;
     }
@@ -2733,11 +2712,7 @@ fn serve_tts_request(
             // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
             match result {
                 Ok(()) => http_json_response(stream, 200, &serde_json::json!({"ok":true}).to_string()),
-                Err(error) => http_json_response(
-                    stream,
-                    409,
-                    &serde_json::json!({"ok":false,"error":error}).to_string(),
-                ),
+                Err(error) => http_json_response(stream, 409, &serde_json::json!({"ok":false,"error":error}).to_string()),
             }
             return;
         }
@@ -2799,16 +2774,8 @@ fn serve_tts_request(
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match handle.save_template(draft) {
-            Ok(template) => http_json_response(
-                stream,
-                200,
-                &serde_json::json!({"ok":true,"template":template}).to_string(),
-            ),
-            Err(error) => http_json_response(
-                stream,
-                409,
-                &serde_json::json!({"ok":false,"error":error}).to_string(),
-            ),
+            Ok(template) => http_json_response(stream, 200, &serde_json::json!({"ok":true,"template":template}).to_string()),
+            Err(error) => http_json_response(stream, 409, &serde_json::json!({"ok":false,"error":error}).to_string()),
         }
         return;
     }
@@ -2838,16 +2805,8 @@ fn serve_tts_request(
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match handle.generate_preview(text, voice_id, speed, recording_name) {
-            Ok(job_id) => http_json_response(
-                stream,
-                202,
-                &serde_json::json!({"ok":true,"job_id":job_id}).to_string(),
-            ),
-            Err(error) => http_json_response(
-                stream,
-                409,
-                &serde_json::json!({"ok":false,"error":error}).to_string(),
-            ),
+            Ok(job_id) => http_json_response(stream, 202, &serde_json::json!({"ok":true,"job_id":job_id}).to_string()),
+            Err(error) => http_json_response(stream, 409, &serde_json::json!({"ok":false,"error":error}).to_string()),
         }
         return;
     }
@@ -2964,7 +2923,11 @@ fn serve_audio_player_request(
         let request: serde_json::Value = match serde_json::from_slice(&body) {
             Ok(value) => value,
             Err(error) => {
-                http_json_response(stream, 400, &serde_json::json!({"ok":false,"error":format!("invalid JSON: {error}")}).to_string());
+                http_json_response(
+                    stream,
+                    400,
+                    &serde_json::json!({"ok":false,"error":format!("invalid JSON: {error}")}).to_string(),
+                );
                 return;
             }
         };
@@ -2974,12 +2937,24 @@ fn serve_audio_player_request(
             Some("group") => AudioTargetType::Group,
             Some("individual") => AudioTargetType::Individual,
             _ => {
-                http_json_response(stream, 400, &serde_json::json!({"ok":false,"error":"target_type must be group or individual"}).to_string());
+                http_json_response(
+                    stream,
+                    400,
+                    &serde_json::json!({"ok":false,"error":"target_type must be group or individual"}).to_string(),
+                );
                 return;
             }
         };
-        let Some(target_id) = request.get("target_id").and_then(|value| value.as_u64()).and_then(|value| u32::try_from(value).ok()) else {
-            http_json_response(stream, 400, &serde_json::json!({"ok":false,"error":"target_id must be an integer"}).to_string());
+        let Some(target_id) = request
+            .get("target_id")
+            .and_then(|value| value.as_u64())
+            .and_then(|value| u32::try_from(value).ok())
+        else {
+            http_json_response(
+                stream,
+                400,
+                &serde_json::json!({"ok":false,"error":"target_id must be an integer"}).to_string(),
+            );
             return;
         };
         let priority = request.get("priority").and_then(|value| value.as_u64()).and_then(|value| u8::try_from(value).ok());
@@ -2989,7 +2964,11 @@ fn serve_audio_player_request(
         let result = match source_type {
             "media" => {
                 let Some(path) = request.get("path").and_then(|value| value.as_str()) else {
-                    http_json_response(stream, 400, &serde_json::json!({"ok":false,"error":"media source requires path"}).to_string());
+                    http_json_response(
+                        stream,
+                        400,
+                        &serde_json::json!({"ok":false,"error":"media source requires path"}).to_string(),
+                    );
                     return;
                 };
                 let source_id = request.get("source_id").and_then(|value| value.as_str()).unwrap_or("local");
@@ -2997,13 +2976,21 @@ fn serve_audio_player_request(
             }
             "recording" => {
                 let Some(id) = request.get("recording_id").and_then(|value| value.as_str()) else {
-                    http_json_response(stream, 400, &serde_json::json!({"ok":false,"error":"recording source requires recording_id"}).to_string());
+                    http_json_response(
+                        stream,
+                        400,
+                        &serde_json::json!({"ok":false,"error":"recording source requires recording_id"}).to_string(),
+                    );
                     return;
                 };
                 #[cfg(feature = "recording")]
                 {
                     let Some(recorder) = recorder.as_ref() else {
-                        http_json_response(stream, 503, &serde_json::json!({"ok":false,"error":"recording service unavailable"}).to_string());
+                        http_json_response(
+                            stream,
+                            503,
+                            &serde_json::json!({"ok":false,"error":"recording service unavailable"}).to_string(),
+                        );
                         return;
                     };
                     // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
@@ -3018,9 +3005,8 @@ fn serve_audio_player_request(
                     let display_name = recorder
                         .find_recording(id)
                         .map(|item| {
-                            item.title.unwrap_or_else(|| {
-                                format!("Aufzeichnung {} · Call {}", item.started_at, item.call_id)
-                            })
+                            item.title
+                                .unwrap_or_else(|| format!("Aufzeichnung {} · Call {}", item.started_at, item.call_id))
                         })
                         .unwrap_or_else(|| format!("Aufzeichnung {id}"));
                     handle.play_recording(path, display_name, target_type, target_id, priority)
@@ -3606,6 +3592,13 @@ fn handle_connection(
     } else if req_line.contains("POST /api/dualcarrier") {
         let (inner, body_str) = read_post_body(stream);
         serve_dual_carrier_post(inner, &shared_config, &config_path, &body_str);
+    } else if req_line.contains("GET /api/neighbours") {
+        let mut s = stream;
+        drain_http_headers(&mut s);
+        serve_neighbours_get(s, &shared_config, &config_path);
+    } else if req_line.contains("POST /api/neighbours") {
+        let (inner, body_str) = read_post_body(stream);
+        serve_neighbours_post(inner, &config_path, &body_str);
     } else if req_line.contains("GET /api/asterisk/status") {
         let mut s = stream;
         drain_http_headers(&mut s);
@@ -3990,7 +3983,13 @@ fn handle_connection(
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         let iface = match crate::wifi::status() {
-            Ok(s) if s.device_present => "wlan0".to_string(), // nmcli accepts any wifi dev name; wlan0 covers RPi
+            Ok(s) if s.device_present => match s.interface {
+                Some(interface) => interface,
+                None => {
+                    http_response(stream, 400, "Kein WLAN-Gerät verfügbar");
+                    return;
+                }
+            },
             _ => {
                 http_response(stream, 400, "no wifi device");
                 return;
@@ -4616,18 +4615,53 @@ fn serve_bts_info(mut stream: TcpStream, shared_config: &Option<tetra_config::bl
 // Was: Projiziert ausschließlich konfigurierte Nachbarzellen auf die angemeldete BTS-Ansicht.
 // Warum: Die Oberfläche zeigt vorhandene Daten, ohne gemessene Erreichbarkeit oder Handover vorzutäuschen.
 fn neighbor_cell_snapshot(cell: &tetra_config::bluestation::CfgNeighborCellCa) -> serde_json::Value {
-    serde_json::json!({
-        "cell_identifier_ca": cell.cell_identifier_ca,
-        "main_carrier_number": cell.main_carrier_number,
-        "main_carrier_number_extension": cell.main_carrier_number_extension,
-        "cell_reselection_types_supported": cell.cell_reselection_types_supported,
-        "neighbor_cell_synchronized": cell.neighbor_cell_synchronized,
-        "cell_load_ca": cell.cell_load_ca,
-        "mcc": cell.mcc,
-        "mnc": cell.mnc,
-        "location_area": cell.location_area,
-        "tdma_frame_offset": cell.tdma_frame_offset,
-    })
+    serde_json::to_value(cell).expect("neighbor configuration serializes to JSON")
+}
+
+/// Saved neighbour config and current radio config remain distinguishable.
+fn serve_neighbours_get(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>, config_path: &str) {
+    let original = match std::fs::read_to_string(config_path) {
+        Ok(original) => original,
+        Err(e) => {
+            return http_json_no_cache_response(
+                stream,
+                503,
+                &serde_json::json!({"error":format!("Konfiguration kann nicht gelesen werden: {e}")}).to_string(),
+            );
+        }
+    };
+    let running_config = shared_config.as_ref().map(|cfg| cfg.config());
+    let running = running_config
+        .as_ref()
+        .map(|cfg| cfg.cell.neighbor_cells_ca.as_slice())
+        .unwrap_or(&[]);
+    match crate::net_dashboard::neighbours::snapshot(&original, running) {
+        Ok(snapshot) => http_json_no_cache_response(stream, 200, &snapshot.to_string()),
+        Err(e) => http_json_no_cache_response(stream, 503, &serde_json::json!({"error":e}).to_string()),
+    }
+}
+
+/// Persist the validated list, then request a restart only after publication.
+fn serve_neighbours_post(stream: TcpStream, config_path: &str, body: &str) {
+    match crate::net_dashboard::neighbours::save(config_path, body) {
+        Ok(saved) => {
+            if saved.changed {
+                crate::service_control::schedule_service_action(
+                    crate::service_control::ServiceAction::Restart,
+                    std::time::Duration::from_secs(2),
+                );
+            }
+            http_json_response(
+                stream,
+                200,
+                &serde_json::json!({
+                    "ok":true, "restarting":saved.changed, "neighbors":saved.neighbors,
+                })
+                .to_string(),
+            );
+        }
+        Err(e) => http_json_response(stream, e.status, &serde_json::json!({"error":e.message}).to_string()),
+    }
 }
 
 /// GET /api/dualcarrier — current Dual-Carrier ON/OFF state for the first-page toggle.
@@ -4682,6 +4716,9 @@ fn serve_dual_carrier_post(
         return http_response(stream, 400, "missing boolean field 'enabled'");
     };
 
+    let _config_guard = crate::net_dashboard::config_edit::CONFIG_EDIT_LOCK
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     let current = dual_carrier::read_dual_carrier(config_path);
 
     // Enabling uses an explicit carrier from the request, otherwise the one already present in TOML.
@@ -4689,11 +4726,13 @@ fn serve_dual_carrier_post(
     let secondary = if enabled {
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-        let requested = match req.get("secondary_carrier").and_then(|v| v.as_u64()) {
-            Some(n) if n > 4095 => {
-                return http_response(stream, 400, "secondary_carrier must be in 0..4095");
-            }
-            Some(n) => Some(n as u16),
+        let requested = match req.get("secondary_carrier") {
+            Some(value) => match value.as_u64() {
+                Some(n) if n <= 4095 => Some(n as u16),
+                _ => {
+                    return http_response(stream, 400, "secondary_carrier must be an integer in 0..4095");
+                }
+            },
             None => None,
         };
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
@@ -4718,7 +4757,10 @@ fn serve_dual_carrier_post(
         Ok(s) => s,
         Err(e) => return http_response(stream, 500, &format!("cannot read config: {e}")),
     };
-    let prospective = dual_carrier::compute_toml(&original, enabled, secondary);
+    let prospective = match dual_carrier::compute_toml(&original, enabled, secondary) {
+        Ok(content) => content,
+        Err(e) => return http_response(stream, 400, &e),
+    };
     // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
     // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match tetra_config::bluestation::parsing::from_toml_str(&prospective) {
@@ -4727,10 +4769,12 @@ fn serve_dual_carrier_post(
                 return http_response(stream, 400, &format!("resulting config is invalid: {e}"));
             }
         }
-        Err(e) => return http_response(stream, 400, &format!("resulting config does not parse: {e}")),
+        Err(e) => {
+            return http_response(stream, 400, &format!("resulting config does not parse: {e}"));
+        }
     }
 
-    if let Err(e) = dual_carrier::write_dual_carrier(config_path, enabled, secondary) {
+    if let Err(e) = crate::net_dashboard::config_edit::write_checked(config_path, &original, &prospective) {
         return http_response(stream, 500, &format!("failed to write config: {e}"));
     }
 
@@ -4739,10 +4783,7 @@ fn serve_dual_carrier_post(
         if enabled { "ON" } else { "OFF" },
         secondary
     );
-    crate::service_control::schedule_service_action(
-        crate::service_control::ServiceAction::Restart,
-        std::time::Duration::from_secs(2),
-    );
+    crate::service_control::schedule_service_action(crate::service_control::ServiceAction::Restart, std::time::Duration::from_secs(2));
 
     http_response(
         stream,
@@ -5302,18 +5343,11 @@ fn read_post_body(mut stream: TcpStream) -> (TcpStream, String) {
 // Was: Führt den Arbeitsschritt `telegram_resolve_token` für telegram resolve Zugriffsschlüssel aus.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn telegram_resolve_token(json: &serde_json::Value, shared_config: &Option<tetra_config::bluestation::SharedConfig>) -> String {
-    if let Some(t) = json.get("bot_token").and_then(|v| v.as_str()) {
-        let t = t.trim();
-        if !t.is_empty() && !t.contains('…') {
-            return t.to_string();
-        }
-    }
-    // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
-    // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-    match shared_config {
-        Some(cfg) => cfg.effective_telegram().bot_token.as_ref().to_string(),
-        None => String::new(),
-    }
+    let current = shared_config
+        .as_ref()
+        .map(|cfg| cfg.effective_telegram().bot_token.as_ref().to_string())
+        .unwrap_or_default();
+    crate::net_dashboard::telegram::resolve_token(json.get("bot_token").and_then(|value| value.as_str()), &current)
 }
 
 /// Whether a bot token is safe to store. Empty is allowed (not yet configured). A real Telegram
@@ -5323,7 +5357,7 @@ fn telegram_resolve_token(json: &serde_json::Value, shared_config: &Option<tetra
 // Was: Führt den Arbeitsschritt `telegram_token_acceptable` für telegram Zugriffsschlüssel acceptable aus.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn telegram_token_acceptable(t: &str) -> bool {
-    t.is_empty() || (t.contains(':') && t.chars().all(|c| !c.is_whitespace() && !c.is_control()))
+    crate::net_dashboard::telegram::token_acceptable(t)
 }
 
 /// GET /api/telegram — return the effective Telegram settings as JSON. The token is masked and is
@@ -5339,7 +5373,10 @@ fn serve_telegram_get(stream: TcpStream, shared_config: &Option<tetra_config::bl
     };
     let masked = crate::net_dashboard::telegram::mask_token(tg.bot_token.as_ref());
     let token_set = !tg.bot_token.as_ref().trim().is_empty();
+    let setup_required = crate::net_dashboard::telegram::setup_required(tg.bot_token.as_ref(), &tg.chat_ids);
     let body = serde_json::json!({
+        "configured": setup_required.is_empty(),
+        "setup_required": setup_required,
         "enabled": tg.enabled,
         "bot_token_masked": masked,
         "token_set": token_set,
@@ -5385,7 +5422,11 @@ fn serve_telegram_post(stream: TcpStream, shared_config: &Option<tetra_config::b
 
     let bot_token = telegram_resolve_token(&json, shared_config);
     if !telegram_token_acceptable(&bot_token) {
-        http_response(stream, 400, "Invalid token: no spaces or control characters, and must contain ':'.");
+        http_response(
+            stream,
+            400,
+            "Ungültiger Bot-Token: Er muss ':' enthalten und darf keine Leerzeichen oder Steuerzeichen enthalten.",
+        );
         return;
     }
     // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
@@ -5439,15 +5480,33 @@ fn serve_telegram_post(stream: TcpStream, shared_config: &Option<tetra_config::b
         brew_register_issi_blacklist,
     };
 
+    if ov.enabled {
+        let missing = crate::net_dashboard::telegram::setup_required(&ov.bot_token, &ov.chat_ids);
+        if !missing.is_empty() {
+            let message = if missing.contains(&"bot_token") {
+                "Telegram kann erst mit einem Bot-Token aktiviert werden. Token von BotFather eintragen."
+            } else {
+                "Telegram kann erst mit mindestens einer Chat-ID aktiviert werden."
+            };
+            http_response(stream, 400, message);
+            return;
+        }
+    }
+
+    // Persist first: a failed write must not claim success or change live settings.
+    if let Err(e) = crate::net_dashboard::telegram::write_telegram_to_toml(config_path, &ov) {
+        tracing::warn!("Dashboard: Telegram settings could not be persisted: {}", e);
+        http_response(
+            stream,
+            503,
+            "Telegram-Einstellungen konnten nicht gespeichert werden. Dateiberechtigungen prüfen; die bisherigen Einstellungen bleiben aktiv.",
+        );
+        return;
+    }
+
     {
         let mut state = cfg.state_write();
         state.telegram_override = Some(ov.clone());
-    }
-
-    if let Err(e) = crate::net_dashboard::telegram::write_telegram_to_toml(config_path, &ov) {
-        tracing::warn!("Dashboard: Telegram applied at runtime but failed to persist to TOML: {}", e);
-        http_response(stream, 200, "Applied at runtime; failed to write config file (check permissions)");
-        return;
     }
 
     tracing::info!(
@@ -7517,7 +7576,7 @@ fn serve_telegram_verify(stream: TcpStream, shared_config: &Option<tetra_config:
     let json: serde_json::Value = serde_json::from_str(body.trim()).unwrap_or(serde_json::Value::Null);
     let token = telegram_resolve_token(&json, shared_config);
     if token.is_empty() {
-        http_json_response(stream, 200, "{\"ok\":false,\"error\":\"Niciun token setat\"}");
+        http_json_response(stream, 200, &crate::net_dashboard::telegram::missing_token_response());
         return;
     }
     let client = crate::net_telegram::TelegramClient::new();
@@ -7545,7 +7604,7 @@ fn serve_telegram_detect(stream: TcpStream, shared_config: &Option<tetra_config:
     let json: serde_json::Value = serde_json::from_str(body.trim()).unwrap_or(serde_json::Value::Null);
     let token = telegram_resolve_token(&json, shared_config);
     if token.is_empty() {
-        http_json_response(stream, 200, "{\"ok\":false,\"error\":\"Niciun token setat\"}");
+        http_json_response(stream, 200, &crate::net_dashboard::telegram::missing_token_response());
         return;
     }
     let client = crate::net_telegram::TelegramClient::new();
@@ -7581,7 +7640,11 @@ fn serve_telegram_detect(stream: TcpStream, shared_config: &Option<tetra_config:
 fn serve_telegram_test(stream: TcpStream, shared_config: &Option<tetra_config::bluestation::SharedConfig>, body: &str) {
     let json: serde_json::Value = serde_json::from_str(body.trim()).unwrap_or(serde_json::Value::Null);
     let Some(cfg) = shared_config else {
-        http_json_response(stream, 200, "{\"ok\":false,\"error\":\"Config indisponibil\"}");
+        http_json_response(
+            stream,
+            200,
+            "{\"ok\":false,\"code\":\"config_unavailable\",\"error\":\"Konfiguration nicht verfügbar\"}",
+        );
         return;
     };
     let token = telegram_resolve_token(&json, shared_config);
@@ -7593,11 +7656,15 @@ fn serve_telegram_test(stream: TcpStream, shared_config: &Option<tetra_config::b
         None => tg.chat_ids.clone(),
     };
     if token.is_empty() {
-        http_json_response(stream, 200, "{\"ok\":false,\"error\":\"Niciun token setat\"}");
+        http_json_response(stream, 200, &crate::net_dashboard::telegram::missing_token_response());
         return;
     }
     if chat_ids.is_empty() {
-        http_json_response(stream, 200, "{\"ok\":false,\"error\":\"Niciun Chat ID setat\"}");
+        http_json_response(
+            stream,
+            200,
+            "{\"ok\":false,\"code\":\"chat_missing\",\"error\":\"Keine Chat-ID hinterlegt. Empfänger in den Telegram-Einstellungen auswählen.\"}",
+        );
         return;
     }
     let station = crate::net_telegram::format::StationInfo::from_config(cfg);
@@ -8852,3 +8919,4 @@ tdma_frame_offset = 6
         assert!(telegram.contains(&1063));
     }
 }
+

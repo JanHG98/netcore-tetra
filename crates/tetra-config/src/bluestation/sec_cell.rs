@@ -1,7 +1,7 @@
 // NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Einlesen und Prüfen der TETRA-Konfiguration.
 // NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use tetra_core::ranges::{SortedDisjointSsiRanges, SsiRange};
@@ -47,7 +47,6 @@ pub struct HomeModeDisplayDto {
     pub text_coding_scheme: Option<HomeModeDisplaySdsTextCodingScheme>,
     pub text: Option<String>,
 }
-
 
 /// Compiled configuration for the opt-in WAP-over-SNDCP IPv4 service.
 #[derive(Debug, Clone)]
@@ -163,7 +162,6 @@ pub struct WapIpDto {
     pub max_total_contexts: Option<usize>,
     pub strict_source_address: Option<bool>,
 }
-
 
 /// Host firewall backend used for the managed packet-data forwarding rules.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -298,7 +296,8 @@ pub struct PacketDataGatewayDto {
 }
 
 /// Service details for a neighbor cell — mirrors BsServiceDetails but for config parsing.
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 // Was: Bündelt die zusammengehörigen Werte für cfg Basisstation Dienst details in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgBsServiceDetails {
@@ -328,7 +327,8 @@ pub struct CfgBsServiceDetails {
 
 /// Configuration for a single CA neighbor cell, included in D-NWRK-BROADCAST.
 /// Per ETSI EN 300 392-2 clause 18.5.17 / Table 18.64.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 // Was: Bündelt die zusammengehörigen Werte für cfg neighbor cell ca in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct CfgNeighborCellCa {
@@ -628,9 +628,7 @@ pub fn cell_dto_to_cfg(ci: CellInfoDto) -> CfgCellInfo {
                 standby_timer_code: dto.standby_timer_code.unwrap_or(defaults.standby_timer_code),
                 response_wait_timer_code: dto.response_wait_timer_code.unwrap_or(defaults.response_wait_timer_code),
                 mtu_code: dto.mtu_code.unwrap_or(defaults.mtu_code),
-                network_default_data_priority: dto
-                    .network_default_data_priority
-                    .unwrap_or(defaults.network_default_data_priority),
+                network_default_data_priority: dto.network_default_data_priority.unwrap_or(defaults.network_default_data_priority),
                 max_contexts_per_issi: dto.max_contexts_per_issi.unwrap_or(defaults.max_contexts_per_issi),
                 max_total_contexts: dto.max_total_contexts.unwrap_or(defaults.max_total_contexts),
                 strict_source_address: dto.strict_source_address.unwrap_or(defaults.strict_source_address),
@@ -647,9 +645,7 @@ pub fn cell_dto_to_cfg(ci: CellInfoDto) -> CfgCellInfo {
                 auto_configure: dto.auto_configure.unwrap_or(defaults.auto_configure),
                 enable_ipv4_forwarding: dto.enable_ipv4_forwarding.unwrap_or(defaults.enable_ipv4_forwarding),
                 managed_forwarding: dto.managed_forwarding.unwrap_or(defaults.managed_forwarding),
-                allow_unsolicited_inbound: dto
-                    .allow_unsolicited_inbound
-                    .unwrap_or(defaults.allow_unsolicited_inbound),
+                allow_unsolicited_inbound: dto.allow_unsolicited_inbound.unwrap_or(defaults.allow_unsolicited_inbound),
                 nat_mode: dto.nat_mode.unwrap_or(defaults.nat_mode),
                 firewall_backend: dto.firewall_backend.unwrap_or(defaults.firewall_backend),
                 external_interface: dto.external_interface.or(defaults.external_interface),
@@ -657,9 +653,7 @@ pub fn cell_dto_to_cfg(ci: CellInfoDto) -> CfgCellInfo {
                 channel_capacity: dto.channel_capacity.unwrap_or(defaults.channel_capacity),
                 max_pdch_bearers: dto.max_pdch_bearers.unwrap_or(defaults.max_pdch_bearers),
                 reserved_voice_slots: dto.reserved_voice_slots.unwrap_or(defaults.reserved_voice_slots),
-                prefer_secondary_carrier: dto
-                    .prefer_secondary_carrier
-                    .unwrap_or(defaults.prefer_secondary_carrier),
+                prefer_secondary_carrier: dto.prefer_secondary_carrier.unwrap_or(defaults.prefer_secondary_carrier),
                 downlink_queue_packets_per_context: dto
                     .downlink_queue_packets_per_context
                     .unwrap_or(defaults.downlink_queue_packets_per_context),
@@ -674,15 +668,9 @@ pub fn cell_dto_to_cfg(ci: CellInfoDto) -> CfgCellInfo {
                 fragment_reassembly_max_datagrams: dto
                     .fragment_reassembly_max_datagrams
                     .unwrap_or(defaults.fragment_reassembly_max_datagrams),
-                fragment_reassembly_max_bytes: dto
-                    .fragment_reassembly_max_bytes
-                    .unwrap_or(defaults.fragment_reassembly_max_bytes),
-                automatic_filter_ttl_secs: dto
-                    .automatic_filter_ttl_secs
-                    .unwrap_or(defaults.automatic_filter_ttl_secs),
-                automatic_filter_max_bindings: dto
-                    .automatic_filter_max_bindings
-                    .unwrap_or(defaults.automatic_filter_max_bindings),
+                fragment_reassembly_max_bytes: dto.fragment_reassembly_max_bytes.unwrap_or(defaults.fragment_reassembly_max_bytes),
+                automatic_filter_ttl_secs: dto.automatic_filter_ttl_secs.unwrap_or(defaults.automatic_filter_ttl_secs),
+                automatic_filter_max_bindings: dto.automatic_filter_max_bindings.unwrap_or(defaults.automatic_filter_max_bindings),
             }
         },
         system_code: ci.system_code.unwrap_or(3), // 3 = ETSI EN 300 392-2 V3.1.1

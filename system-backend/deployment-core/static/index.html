@@ -12,7 +12,7 @@
 <section id="profiles" class="controller"><div class="section-title"><div><h2>Neue Basisstation</h2><p>Standort-Template einmal importieren, neue TBS mit ihren Kennungen anlegen.</p></div><label class="button secondary" for="template">TBS-Template importieren<input id="template" type="file" accept=".toml" hidden></label></div><div class="panel"><p id="template-status" class="hint">Template wird geprüft …</p><form id="profile-form"><div class="form-grid profile-grid"><label>Name<input name="name" placeholder="SRV-M-TBS-02" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{0,63}" required></label><label>MCC<input name="mcc" type="number" min="0" max="1023" value="901" required></label><label>MNC<input name="mnc" type="number" min="0" max="16383" value="1510" required></label><label>ISSI<input name="issi" type="number" min="1" max="16777214" placeholder="4010002" required></label><label>Location Area<input name="la" type="number" min="0" max="16383" value="2" required></label><label>Colour Code<input name="cc" type="number" min="0" max="63" value="2" required></label></div><div class="form-bottom"><p>RF-, SDR- und weitere Standorteinstellungen stammen aus deiner TOML-Vorlage.</p><button type="submit">TBS-Profil anlegen</button></div></form><div id="profile-list" class="profile-list"></div></div></section>
 <section id="images" class="controller">
   <div class="section-title"><div><h2>Vom Profil zur Basisstation.</h2><p>Pi-Image auf der VM bauen, herunterladen und mit Raspberry Pi Imager auf eine SD-Karte schreiben.</p></div><span id="builder-state" class="badge">Imagebuilder prüfen …</span></div>
-  <div class="image-intro panel"><div><span class="eyebrow">RASPBERRY PI 4 / 5 · ARM64</span><h3>Bereit für den ersten Start.</h3><p>Raspberry Pi OS Lite, SoapySX, NetCore und Discovery sind im Image vorinstalliert. Die Softwarebasis wird für weitere Stationen wiederverwendet.</p></div><div class="image-space"><strong id="image-space">—</strong><small>frei auf der Build-VM</small></div></div>
+  <div class="image-intro panel"><div><span class="eyebrow">RASPBERRY PI 4 / 5 · ARM64</span><h3>Bereit für den ersten Start.</h3><p>Raspberry Pi OS, SoapySX, NetCore und Discovery sind im Image vorinstalliert. KDE Plasma bringt eine grafische Anmeldung mit. Die Softwarebasis wird für weitere Stationen wiederverwendet.</p></div><div class="image-space"><strong id="image-space">—</strong><small>frei auf der Build-VM</small></div></div>
   <p id="builder-note" class="hint" hidden></p>
   <div class="panel"><form id="image-form">
     <div class="form-grid">
@@ -22,7 +22,8 @@
       <label>Benutzer auf dem Pi<input name="username" value="jan" required></label>
       <label>Zeitzone<input name="timezone" value="Europe/Berlin" required></label>
       <label>SSH-Public-Key<textarea name="ssh_key" rows="2" placeholder="ssh-ed25519 …"></textarea></label>
-      <label>Oder: Betriebssystem-Passwort<input name="password" type="password" autocomplete="new-password"><small>Für SSH und Konsole des Pi. Die WebUI bleibt ohne Anmeldung.</small></label>
+      <label>Betriebssystem-Passwort<input id="image-password" name="password" type="password" autocomplete="new-password" required><small id="image-password-note">Für die KDE-Anmeldung, SSH und Konsole des Pi. Die WebUI bleibt ohne Anmeldung.</small></label>
+      <label>Desktop<select id="image-desktop" name="desktop"><option value="kde" selected>KDE Plasma</option><option value="none">Ohne Desktop (Lite)</option></select><small>Mit KDE erfolgt die grafische Anmeldung über deinen Pi-Benutzer und dessen Passwort.</small></label>
       <label>SXceiver-HAT<select name="overlay"><option value="eeprom">Overlay aus programmiertem HAT-EEPROM</option><option value="sx1255">SX1255-Overlay aus dem Image (ohne EEPROM)</option></select></label>
     </div>
     <p class="image-version-note">Der aktuelle Stand von main wird beim Start automatisch verwendet. Den gebauten Commit siehst du im Buildprotokoll und beim Download.</p>
@@ -36,6 +37,10 @@
         <label>Lokales LAN · VPN aus<input name="trusted_lan" value="10.0.1.0/24"></label>
       </div><p class="option-note">Mit VPN-Profil: Im lokalen LAN oder einem der lokalen WLANs bleibt der Tunnel aus. In anderen Netzen wird er automatisch gestartet. Funkdienste laufen unabhängig davon weiter.</p>
     </details>
+    <details class="image-options"><summary>SIP für diese Station einrichten <span>optional · eigene Zugangsdaten</span></summary>
+      <label>SIP-Fallback-Konfiguration<input id="image-sip" type="file" accept=".toml"><small>Private TOML-Datei für das ausgewählte TBS-Profil mit zentralem SIP-Switch und PBX-Ersatzweg. Die Datei wird im Image eingerichtet; Zugangsdaten erscheinen nicht im Buildprotokoll.</small></label>
+      <p class="option-note">Ohne Datei bleibt die lokale PBX deaktiviert und SIP wird als „Einrichtung erforderlich“ markiert. Du kannst das Image trotzdem erstellen.</p>
+    </details>
     <div class="form-bottom"><p>Der erste Build kann mehrere Stunden dauern. Danach: Image → Raspberry Pi Imager → „Eigenes Image“. Die Funkhardware wird beim Start auf dem Pi geprüft.</p><button id="image-build" type="submit" disabled>Image erstellen →</button></div>
   </form></div>
   <div class="section-title image-subtitle"><h3>Builds & Downloads</h3><span id="image-count" class="muted"></span></div>
@@ -45,3 +50,4 @@
 <section id="jobs"><div class="section-title"><div><h2>Auftragsverlauf</h2><p>Installationen, Updates und Versionsprüfungen mit dauerhaftem Protokoll.</p></div></div><div class="jobs-grid"><div id="job-list" class="panel job-list"></div><div class="panel log-panel"><h3 id="log-title">Auftragsprotokoll</h3><pre id="log">Wähle einen Auftrag aus.</pre></div></div></section>
 <section id="settings"><div class="section-title"><div><h2>Discovery-Einstellungen</h2><p>Für VPN-Gegenstellen und Netze, in denen Multicast nicht weitergeleitet wird.</p></div></div><div class="panel"><form id="settings-form"><div class="form-grid"><label>Git-Referenz<input id="settings-ref" name="ref" required></label><label>Feste Gegenstellen · eine URL pro Zeile<textarea id="seeds" rows="3" placeholder="http://10.0.1.50:8320"></textarea></label><label>Feste Dienstzuordnung · Rolle=Node-ID<textarea id="bindings" rows="3" placeholder="node-gateway=netcore-gateway-01"></textarea></label></div><div class="form-bottom"><p>Bei mehreren Instanzen derselben Rolle erfolgt keine zufällige Auswahl. Zuordnung hier festlegen.</p><button type="submit">Einstellungen speichern</button></div></form></div></section>
 <footer>NETCORE-TETRA <span>Discovery v1 · lokale Verwaltung · laufende Dienste bleiben autonom</span></footer></main></body></html>
+

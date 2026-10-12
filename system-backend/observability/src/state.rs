@@ -376,6 +376,7 @@ pub struct ObservabilityStatus {
 pub struct SharedObservability {
     config: ObservabilityConfig,
     inner: Arc<Mutex<PersistentState>>,
+    persistence: Arc<Mutex<()>>,
 }
 
 // Was: Implementiert das zugehörige Verhalten für `SharedObservability`.
@@ -429,7 +430,7 @@ impl SharedObservability {
                 checked_at: None, last_error: None,
             });
         }
-        let shared = Self { config, inner: Arc::new(Mutex::new(state)) };
+        let shared = Self { config, inner: Arc::new(Mutex::new(state)), persistence: Arc::new(Mutex::new(())) };
         shared.persist()?;
         Ok(shared)
     }
@@ -1060,9 +1061,16 @@ impl SharedObservability {
     // Was: Diese Funktion speichert den vorgesehenen Arbeitsschritt.
     // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
     fn persist(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let state = self.lock(); let bytes = serde_json::to_vec_pretty(&*state)?;
-        // Serialize commits with the snapshot: discovery/preview/scraping run concurrently.
-        write_atomic(&self.config.storage.state_path, &bytes)?; drop(state); Ok(())
+        self.persist_with(|bytes| write_atomic(&self.config.storage.state_path, bytes))
+    }
+
+    fn persist_with<F>(&self, write: F) -> Result<(), Box<dyn std::error::Error>>
+    where F: FnOnce(&[u8]) -> Result<(), Box<dyn std::error::Error>> {
+        // Preserve commit ordering without holding the live state during JSON/NAS/fsync.
+        let _commit = self.persistence.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let snapshot = self.lock().clone();
+        let bytes = serde_json::to_vec_pretty(&snapshot)?;
+        write(&bytes)
     }
 
     // Was: Führt den Arbeitsschritt `lock` für lock aus.
@@ -1235,3 +1243,79 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), Box<dyn std::error::Err
     if result.is_err() { let _ = fs::remove_file(temporary); }
     result
 }
+
+#[cfg(test)]
+mod persistence_tests {
+    use super::*;
+    use std::sync::mpsc;
+    use std::time::Duration as StdDuration;
+
+    fn service() -> SharedObservability {
+        SharedObservability {
+            config: ObservabilityConfig::default(),
+            inner: Arc::new(Mutex::new(PersistentState::default())),
+            persistence: Arc::new(Mutex::new(())),
+        }
+    }
+
+    #[test]
+    fn slow_persistence_does_not_block_health_status() {
+        let service = service();
+        let writer = service.clone();
+        let (started_tx, started_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            writer.persist_with(|bytes| {
+                assert!(!bytes.is_empty());
+                started_tx.send(()).unwrap();
+                release_rx.recv_timeout(StdDuration::from_secs(2)).unwrap();
+                Ok(())
+            }).unwrap();
+        });
+        started_rx.recv_timeout(StdDuration::from_secs(2)).unwrap();
+        let reader = service.clone();
+        let (status_tx, status_rx) = mpsc::channel();
+        let status_worker = std::thread::spawn(move || status_tx.send(reader.status().ready).unwrap());
+        let ready = status_rx.recv_timeout(StdDuration::from_millis(200));
+        release_tx.send(()).unwrap();
+        worker.join().unwrap();
+        status_worker.join().unwrap();
+        assert_eq!(ready.unwrap(), true, "health remains readable while persistence is slow");
+    }
+
+    #[test]
+    fn commits_remain_serialized_and_later_commit_contains_latest_state() {
+        let service = service();
+        service.lock().sequence = 1;
+        let writer = service.clone();
+        let (started_tx, started_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let (commit_tx, commit_rx) = mpsc::channel();
+        let first_commit_tx = commit_tx.clone();
+        let first = std::thread::spawn(move || {
+            writer.persist_with(|bytes| {
+                started_tx.send(()).unwrap();
+                release_rx.recv_timeout(StdDuration::from_secs(2)).unwrap();
+                first_commit_tx.send(serde_json::from_slice::<Value>(bytes).unwrap()["sequence"].as_u64().unwrap()).unwrap();
+                Ok(())
+            }).unwrap();
+        });
+        started_rx.recv_timeout(StdDuration::from_secs(2)).unwrap();
+        service.lock().sequence = 2;
+        let writer = service.clone();
+        let second = std::thread::spawn(move || {
+            writer.persist_with(|bytes| {
+                commit_tx.send(serde_json::from_slice::<Value>(bytes).unwrap()["sequence"].as_u64().unwrap()).unwrap();
+                Ok(())
+            }).unwrap();
+        });
+        let premature_commit = commit_rx.recv_timeout(StdDuration::from_millis(100));
+        release_tx.send(()).unwrap();
+        first.join().unwrap();
+        second.join().unwrap();
+        assert!(premature_commit.is_err());
+        assert_eq!(commit_rx.recv().unwrap(), 1);
+        assert_eq!(commit_rx.recv().unwrap(), 2);
+    }
+}
+

@@ -57,6 +57,7 @@ struct LibraryInner {
     application_gateway_connected: bool,
     dependency_errors: BTreeMap<String, String>,
     last_dependency_probe_at: Option<DateTime<Utc>>,
+    readiness: Arc<Mutex<ReadinessView>>,
 }
 
 #[derive(Clone)]
@@ -64,6 +65,16 @@ struct LibraryInner {
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedLibrary {
     inner: Arc<Mutex<LibraryInner>>,
+    readiness: Arc<Mutex<ReadinessView>>,
+}
+
+/// Health polling must not traverse the media/NAS filesystem.
+#[derive(Debug, Clone, Serialize)]
+pub struct ReadinessView {
+    pub service: &'static str,
+    pub ready: bool,
+    pub storage_available: bool,
+    pub last_error: Option<String>,
 }
 
 fn archive_timestamp(asset: &AssetRecord) -> DateTime<FixedOffset> {
@@ -211,7 +222,14 @@ impl SharedLibrary {
             }
         }
         let archive_available = archive_roots_available(&config);
+        let readiness = Arc::new(Mutex::new(ReadinessView {
+            service: "media-library",
+            ready: true,
+            storage_available: true,
+            last_error: None,
+        }));
         let library = Self {
+            readiness: readiness.clone(),
             inner: Arc::new(Mutex::new(LibraryInner {
                 config,
                 state,
@@ -224,6 +242,7 @@ impl SharedLibrary {
                 application_gateway_connected: false,
                 dependency_errors: BTreeMap::new(),
                 last_dependency_probe_at: None,
+                readiness,
             })),
         };
         {
@@ -233,13 +252,21 @@ impl SharedLibrary {
         Ok(library)
     }
 
+    pub fn readiness(&self) -> ReadinessView {
+        // File import, archive operations and state fsync may own LibraryInner for
+        // a long time. This separate snapshot records the last actual state-write
+        // result and never waits for those operations or probes the filesystem.
+        self.readiness.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone()
+    }
+
     // Was: Führt den Arbeitsschritt `status` für Status aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> StatusView {
         let inner = lock(&self.inner);
         let assets = inner.state.assets.values().collect::<Vec<_>>();
         let jobs = &inner.state.jobs;
-        StatusView {
+        let storage_root = inner.config.storage.root.clone();
+        let mut status = StatusView {
             service: "media-library".to_string(),
             security_mode: OPEN_LAB_MODE.to_string(),
             operating_mode: inner.config.runtime.operating_mode.clone(),
@@ -270,11 +297,15 @@ impl SharedLibrary {
             jobs_playing: jobs.iter().filter(|job| job.state == "playing").count(),
             jobs_completed: jobs.iter().filter(|job| job.state == "completed").count(),
             jobs_failed: jobs.iter().filter(|job| job.state == "failed").count(),
-            storage_used_bytes: media::total_directory_bytes(&inner.config.storage.root),
+            storage_used_bytes: 0,
             started_at: inner.started_at,
             last_dependency_probe_at: inner.last_dependency_probe_at,
             last_error: inner.storage_last_error.clone(),
-        }
+        };
+        // A slow filesystem walk must not hold up health checks or job updates.
+        drop(inner);
+        status.storage_used_bytes = media::total_directory_bytes(&storage_root);
+        status
     }
 
     // Was: Führt den Arbeitsschritt `config_view` für Konfiguration view aus.
@@ -1717,9 +1748,14 @@ impl SharedLibrary {
     // Was: Führt den Arbeitsschritt `maintenance` für maintenance aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn maintenance(&self, actor_name: Option<String>) -> Result<Value, String> {
+        let config = {
+            let inner = lock(&self.inner);
+            require_management(&inner)?;
+            inner.config.clone()
+        };
+        let archive_available = archive_roots_available(&config);
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
-        let archive_available = archive_roots_available(&inner.config);
         inner.archive_available = archive_available;
         trim_locked(&mut inner);
         audit_locked(
@@ -1982,6 +2018,7 @@ fn persist_locked(inner: &mut LibraryInner) -> Result<(), String> {
         Ok(()) => {
             inner.storage_available = true;
             inner.storage_last_error = None;
+            publish_readiness(inner);
             // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
             // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for asset in inner.state.assets.values() {
@@ -2003,9 +2040,17 @@ fn persist_locked(inner: &mut LibraryInner) -> Result<(), String> {
         Err(error) => {
             inner.storage_available = false;
             inner.storage_last_error = Some(error.clone());
+            publish_readiness(inner);
             Err(error)
         }
     }
+}
+
+fn publish_readiness(inner: &LibraryInner) {
+    let mut readiness = inner.readiness.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    readiness.ready = inner.storage_available;
+    readiness.storage_available = inner.storage_available;
+    readiness.last_error = inner.storage_last_error.clone();
 }
 
 // Was: Führt den Arbeitsschritt `bool_metric` für bool metric aus.
@@ -2050,3 +2095,109 @@ mod dispatch_mode_tests {
         ));
     }
 }
+
+#[cfg(test)]
+mod readiness_tests {
+    use super::*;
+
+    fn library(storage_available: bool, error: Option<&str>) -> SharedLibrary {
+        let readiness = Arc::new(Mutex::new(ReadinessView {
+            service: "media-library",
+            ready: storage_available,
+            storage_available,
+            last_error: error.map(str::to_string),
+        }));
+        SharedLibrary { readiness: readiness.clone(), inner: Arc::new(Mutex::new(LibraryInner {
+            config: MediaLibraryConfig::default(),
+            state: PersistentState::default(),
+            started_at: Utc::now(),
+            storage_available,
+            storage_last_error: error.map(str::to_string),
+            archive_available: false,
+            media_switch_connected: false,
+            recorder_connected: false,
+            application_gateway_connected: false,
+            dependency_errors: BTreeMap::new(),
+            last_dependency_probe_at: None,
+            readiness,
+        })) }
+    }
+
+    #[test]
+    fn health_snapshot_preserves_real_storage_failure() {
+        let readiness = library(false, Some("state write failed")).readiness();
+        assert!(!readiness.ready);
+        assert!(!readiness.storage_available);
+        assert_eq!(readiness.last_error.as_deref(), Some("state write failed"));
+    }
+
+    #[test]
+    fn health_snapshot_does_not_require_inventory_or_archive_statistics() {
+        let library = library(true, None);
+        {
+            let mut inner = lock(&library.inner);
+            inner.config.storage.root = PathBuf::from("/unavailable-media-nas");
+        }
+        let readiness = serde_json::to_value(library.readiness()).unwrap();
+        assert_eq!(readiness["ready"], true);
+        assert!(readiness.get("storage_used_bytes").is_none());
+        assert!(readiness.get("assets_total").is_none());
+    }
+
+    #[test]
+    fn readiness_remains_responsive_while_library_state_is_locked_by_io() {
+        use std::sync::mpsc;
+        use std::time::Duration;
+        let library = library(true, None);
+        let blocked_writer = library.clone();
+        let (held_tx, held_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let writer = std::thread::spawn(move || {
+            let _inner = lock(&blocked_writer.inner);
+            held_tx.send(()).unwrap();
+            release_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        });
+        held_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        let reader = library.clone();
+        let (response_tx, response_rx) = mpsc::channel();
+        let health = std::thread::spawn(move || response_tx.send(reader.readiness()).unwrap());
+        let response = response_rx.recv_timeout(Duration::from_millis(200));
+        release_tx.send(()).unwrap();
+        writer.join().unwrap();
+        health.join().unwrap();
+        assert!(response.unwrap().ready);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn actual_failed_state_commit_publishes_failure_and_repaired_commit_recovers() {
+        let directory = std::env::temp_dir().join(format!("netcore-media-readiness-{}", Uuid::new_v4()));
+        fs::create_dir_all(&directory).unwrap();
+        let library = library(true, None);
+        let state_file = directory.join("state.json");
+        // A directory at the commit destination fails even for a root test runner.
+        fs::create_dir(&state_file).unwrap();
+        let error = {
+            let mut inner = lock(&library.inner);
+            inner.config.storage.state_file = state_file.clone();
+            persist_locked(&mut inner).unwrap_err()
+        };
+        let failed = library.readiness();
+        assert!(!failed.ready);
+        assert!(!failed.storage_available);
+        assert_eq!(failed.last_error.as_deref(), Some(error.as_str()));
+        fs::remove_dir(&state_file).unwrap();
+        {
+            let mut inner = lock(&library.inner);
+            persist_locked(&mut inner).unwrap();
+        }
+        let recovered = library.readiness();
+        assert!(recovered.ready);
+        assert!(recovered.storage_available);
+        assert!(recovered.last_error.is_none());
+        let committed: PersistentState = serde_json::from_slice(&fs::read(&state_file).unwrap()).unwrap();
+        assert_eq!(committed.next_event_seq, 0);
+        fs::remove_dir_all(&directory).unwrap();
+    }
+}
+

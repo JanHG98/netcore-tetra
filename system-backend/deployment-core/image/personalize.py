@@ -11,12 +11,25 @@ import tomllib
 
 from common import atomic_write, toml_dump
 from deploy import install_dropin
-from image_spec import validate_image, wifi_keyfile
+from image_spec import sip_setup_state, validate_image, wifi_keyfile
+from sip_setup import configure_local_sip
 
 
 def call(*args, **kwargs):
     # No command logging: passwords/keys are never emitted to job logs.
     subprocess.run(args, check=True, **kwargs)
+
+
+def apply_sip(config, req):
+    """Apply explicit private credentials; an unconfigured PBX stays offline."""
+    patch = configure_local_sip(req['sip_fallback_config'], req['profile']['name'])
+    if patch is not None:
+        config.setdefault('asterisk', {}).update(patch)
+    else:
+        sip = config.get('asterisk', {})
+        if sip.get('remote_host') in ('localhost', '127.0.0.1', '::1') and sip.get('remote_port', 5060) == 5060:
+            sip['enabled'] = False
+    return sip_setup_state(config, req['sip_fallback_config'])
 
 
 def personalize():
@@ -73,6 +86,7 @@ def personalize():
         atomic_write('/etc/openvpn/client/netcore.conf', req['vpn_config'])
         call('systemctl', 'enable', 'netcore-vpn-policy.timer')
     config = tomllib.loads(req['config'])
+    sip_setup = apply_sip(config, req)
     config['service_name'] = 'tetra'
     config.setdefault('dashboard', {}).update(source_dir='/opt/netcore-tetra')
     for key in ('username', 'password'):
@@ -104,9 +118,10 @@ def personalize():
                        'dtparam=spi=on\ndtoverlay=netcore-sx1255\n')
     atomic_write('/usr/share/netcore-image/station.json',
                  json.dumps(dict(profile=req['profile'], commit=req['commit'], hostname=req['hostname'],
-                                 overlay=req['overlay']), indent=2), 0o644)
+                                 overlay=req['overlay'], desktop=req['desktop'], sip_setup=sip_setup), indent=2), 0o644)
     print('Station eingerichtet: ' + req['profile']['name'] + '. Netzwerk-/Zugangsdaten werden nicht protokolliert.')
 
 
 if __name__ == '__main__':
     personalize()
+
