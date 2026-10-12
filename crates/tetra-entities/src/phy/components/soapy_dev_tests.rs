@@ -161,3 +161,64 @@ fn tx_late_skip_discards_partial_block_and_filter_history() {
     }
     assert_waveforms_match(&skipped.samples, &fresh.samples);
 }
+
+#[test]
+fn tx_skip_burst_is_rate_limited_without_losing_cumulative_evidence() {
+    let mut diagnostics = TxDiagnostics::default();
+    let mut warning_blocks = Vec::new();
+    let interval = 3333; // Production SXceiver: approximately five SDR seconds.
+    for next_block in 900..10_900 {
+        let skipped = if next_block == 900 { 900 } else { 1 };
+        if diagnostics.record_late_skip(next_block, skipped, interval) {
+            warning_blocks.push(next_block);
+        }
+    }
+    assert_eq!(diagnostics.late_skip_events, 10_000);
+    assert_eq!(diagnostics.late_skipped_blocks, 10_899);
+    assert_eq!(warning_blocks, [900, 4233, 7566, 10_899]);
+    assert_eq!(diagnostics.written_blocks, 0);
+}
+
+#[test]
+fn tx_failed_write_is_not_counted_as_successful_production() {
+    let mut diagnostics = TxDiagnostics::default();
+    assert!(diagnostics.record_write_result(Ok(())).is_ok());
+    assert!(matches!(
+        diagnostics.record_write_result(Err(RxTxDevError::RxReadError)),
+        Err(RxTxDevError::RxReadError)
+    ));
+    assert_eq!(diagnostics.write_attempts, 2);
+    assert_eq!(diagnostics.written_blocks, 1);
+}
+
+#[test]
+fn tx_stale_slots_show_waits_without_claiming_driver_writes() {
+    let bits = bursts();
+    let mut waveform = Waveform::new(&[720, 721]);
+    let mut diagnostics = TxDiagnostics::default();
+    // Model one skipped RX timeslot: the router remains one slot behind the
+    // completed RX slot. Exercise the real modulator gate, not a clock mock.
+    for router_slot in 100..1100 {
+        let actual_rx_slot = router_slot + 1;
+        let modem_sample = (actual_rx_slot + 1) * 1020 + 16;
+        waveform.block = (modem_sample / 108 + 2) as fcfb::BlockCount;
+        let slots = batch(&bits, router_slot + 1, [true, true]);
+        assert!(!modulate_tx_block(&mut waveform.bank, &mut waveform.channels, waveform.block, &slots));
+        diagnostics.record_wait(TxWaitReason::SlotNotReady);
+    }
+    assert_eq!(diagnostics.slot_not_ready_returns, 1000);
+    assert_eq!(diagnostics.hw_ahead_returns, 0);
+    assert_eq!(diagnostics.rx_ahead_returns, 0);
+    assert_eq!(diagnostics.write_attempts, 0);
+    assert_eq!(diagnostics.written_blocks, 0);
+}
+
+#[test]
+fn tx_slot_time_report_keeps_each_supplied_carrier_time() {
+    let slots = [
+        TxSlotBits { carrier_num: 721, time: TdmaTime::from_int(7), slot: None },
+        TxSlotBits { carrier_num: 720, time: TdmaTime::from_int(8), slot: None },
+    ];
+    let expected = format!("{:?}", [(721_u16, TdmaTime::from_int(7)), (720_u16, TdmaTime::from_int(8))]);
+    assert_eq!(format!("{:?}", TxSlotTimes(&slots)), expected);
+}
