@@ -360,7 +360,7 @@
     "gateway_live_identity": "netcore-node-gateway",
     "core_health_endpoint": "/api/v1/core-services"
   },
-  "next_acceptance": "Run fixed diagnostic commit29f891f with guarded Pi binary build/stage while inactive/disabled; no automatic RF start. Then bounded manual run records driver-write/RX/slot return counters before selecting the actual stall remedy.",
+  "next_acceptance": "Retry corrected helper using existing clean checkout /home/jan/netcore-txdiag-29f891f186f0.0s34kP/source; then controlled20-second manual capture and stop. ARM64 build/install and actual TX branch remain unconfirmed.",
   "operator_gateway_health": {
     "requested_from": "srv-m-tbs-03",
     "base_url": "http://10.0.1.179:8080",
@@ -1360,7 +1360,7 @@
   "diagnostic_binary_stage_plan": {
     "helper": "tools/operator/pi-txdiag-build-stage.sh",
     "test_path": "system-backend/deployment-core/tests/test_txdiag_stage.py",
-    "local_filesystem_guard_tests_passed": 8,
+    "local_filesystem_guard_tests_passed": 14,
     "shell_and_embedded_python_syntax_passed": true,
     "test_service_and_root_ownership_mocked": true,
     "image_rust_version_pinned": true,
@@ -1372,9 +1372,47 @@
     "hardware_opened": false,
     "service_start_or_enable": false,
     "vm119_recipe_cache_modified": false,
-    "host_execution_confirmed": false,
+    "host_execution_confirmed": true,
     "unresolved_library_shell_guard_tested": true,
-    "helper_sha256": "17f6c38c81c1fe54687b8220d46010cd8438cfae42017ff0cf175c3868b6e943",
-    "independent_review": "PASS after fixing and testing unresolved-library Bash guard"
+    "helper_sha256": "f6b74546c36da2ea5633e0affe1775f83ba684244d0a0acf98ec2abcb44fc3be",
+    "independent_review": "PASS after fixing and testing unresolved-library Bash guard",
+    "runtime_guard_actual_git_comparison_passed": true,
+    "optional_clean_checkout_reuse": true,
+    "arm64_build_confirmed": false,
+    "binary_replacement_confirmed": false
+  },
+  "operator_stage_source_guard_abort_2026_10_12": {
+    "helper_commit": "abf8a92e6f95a653aa8990da86b050285298ad59",
+    "helper_checksum_passed": true,
+    "helper_download_bytes": 9311,
+    "diagnostic_checkout_commit": "29f891f186f0b85d1930ba38ea8ac38157bc78ad",
+    "checkout_path": "/home/jan/netcore-txdiag-29f891f186f0.0s34kP/source",
+    "error": "Unexpected runtime source changes; refusing this build",
+    "stage": "Source scope guard, before Rust installation / compile / executable replacement / caller RF start",
+    "additional_verified_markdown_paths": [
+      "system-backend/shared/README.md",
+      "system-backend/shared/contracts/README.md",
+      "system-backend/shared/web-ui/README.md",
+      "system-backend/shared/contracts/ASSET_MANAGEMENT_V1.md",
+      "system-backend/shared/contracts/COMMAND_MODEL_V1.md",
+      "system-backend/shared/contracts/EVENT_MODEL_V1.md",
+      "system-backend/shared/contracts/TASK_MODEL_V1.md"
+    ],
+    "full_guarded_git_diff_path_count": 11,
+    "rust_diagnostic_path_count": 2,
+    "documentation_path_count": 9,
+    "unexpected_runtime_or_ui_change_found": false,
+    "installed_binary_changed_by_attempt": false,
+    "rf_started_by_attempt": false,
+    "fix": "Add only exact verified Markdown paths; preserve all runtime scopes and both mandatory diagnostic files. Reuse only isolated clean checkout matching requested diagnostic commit; failed git status aborts before build.",
+    "validation": {
+      "local_total_tests": 14,
+      "new_source_guard_cases": 3,
+      "new_resume_cases": 3,
+      "real_git_guard_passed": true,
+      "shell_syntax_passed": true,
+      "independent_scope_review": "PASS"
+    },
+    "retry_executed": false
   }
 }

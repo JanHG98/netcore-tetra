@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run as the ordinary SSH user on srv-m-tbs-03; stages only the reviewed diagnostic binary.
-# Usage: bash pi-txdiag-build-stage.sh FULL_DIAGNOSTIC_COMMIT FULL_OLD_BINARY_SHA256
+# Usage: bash pi-txdiag-build-stage.sh FULL_DIAGNOSTIC_COMMIT FULL_OLD_BINARY_SHA256 [EXISTING_SOURCE]
 # Builds and replaces only the TBS executable. It never starts/enables RF.
 # The diagnostic commit must be published, reviewed and tested before use.
 # Native Soapy/codec build dependencies are those already installed in the image.
@@ -9,6 +9,7 @@ umask 0022
 
 NC_DIAG_SHA=${1:?Full reviewed diagnostic commit required}
 NC_OLD_SHA=${2:?Full current bluestation-bs SHA-256 required}
+NC_RESUME_SOURCE=${3:-}
 NC_BASE_SHA=1595259a2a76abfc9eff08842409156473b585a7
 NC_BIN=/usr/local/bin/bluestation-bs
 [[ $EUID -ne 0 ]] || { echo 'Run as the ordinary SSH user, not root.' >&2; exit 1; }
@@ -37,19 +38,36 @@ pkg-config --exists SoapySDR || { echo 'SoapySDR development package missing.' >
 # The image retains its source checkout, but removes the target and root Rustup
 # caches. Use a separate user-owned clone; leave both agent-managed source and
 # VM119 recipe/cache untouched. No APT, installer, native-codec or driver update.
-NC_WORK=$(mktemp -d "$HOME/netcore-txdiag-${NC_DIAG_SHA:0:12}.XXXXXX")
-NC_SRC=$NC_WORK/source
+if [[ -n $NC_RESUME_SOURCE ]]; then
+    NC_SRC=$(readlink -e "$NC_RESUME_SOURCE")
+    [[ -d $NC_SRC && $NC_SRC == "$HOME/netcore-txdiag-${NC_DIAG_SHA:0:12}."*/source ]] || {
+        echo 'Resume source must be an existing isolated diagnostic checkout.' >&2
+        exit 1
+    }
+    NC_GIT_STATUS=$(git -C "$NC_SRC" status --porcelain --untracked-files=all)
+    [[ -z $NC_GIT_STATUS ]] || {
+        echo 'Resume checkout has local changes; refusing to build.' >&2
+        exit 1
+    }
+    NC_WORK=${NC_SRC%/source}
+else
+    NC_WORK=$(mktemp -d "$HOME/netcore-txdiag-${NC_DIAG_SHA:0:12}.XXXXXX")
+    NC_SRC=$NC_WORK/source
+    git clone --filter=blob:none --no-checkout https://github.com/JanHG98/netcore-tetra.git "$NC_SRC"
+    git -C "$NC_SRC" fetch origin "$NC_DIAG_SHA"
+    git -C "$NC_SRC" checkout --detach "$NC_DIAG_SHA"
+fi
+[[ $(git -C "$NC_SRC" rev-parse HEAD) == "$NC_DIAG_SHA" ]] || {
+    echo 'Checkout does not match the requested diagnostic commit.' >&2
+    exit 1
+}
+git -C "$NC_SRC" cat-file -e "$NC_BASE_SHA^{commit}"
 NC_TARGET="$HOME/.cache/netcore-tetra-txdiag-target"
 mkdir -p "$NC_TARGET"
-git clone --filter=blob:none --no-checkout https://github.com/JanHG98/netcore-tetra.git "$NC_SRC"
-git -C "$NC_SRC" fetch origin "$NC_DIAG_SHA"
-git -C "$NC_SRC" checkout --detach "$NC_DIAG_SHA"
-[[ $(git -C "$NC_SRC" rev-parse HEAD) == "$NC_DIAG_SHA" ]]
-git -C "$NC_SRC" cat-file -e "$NC_BASE_SHA^{commit}"
 
-# Independently enforce the full runtime baseline comparison. These two README
-# differences were verified before the diagnostic patch; every other runtime
-# source difference must be one of the two reviewed Soapy diagnostic files.
+# Independently enforce the full runtime baseline comparison. Exact Markdown
+# moves were verified against both Git trees; every other runtime source change
+# must be one of the two reviewed Soapy diagnostic files. No extension wildcard.
 python3 -B - "$NC_SRC" "$NC_BASE_SHA" "$NC_DIAG_SHA" <<'PY'
 import subprocess, sys
 source, baseline, diagnostic = sys.argv[1:]
@@ -65,6 +83,13 @@ patch = {
 allowed = patch | {
     'bins/netcore-control-room/README.md',
     'tetra-codec-master/README.md',
+    'system-backend/shared/README.md',
+    'system-backend/shared/contracts/README.md',
+    'system-backend/shared/contracts/ASSET_MANAGEMENT_V1.md',
+    'system-backend/shared/contracts/COMMAND_MODEL_V1.md',
+    'system-backend/shared/contracts/EVENT_MODEL_V1.md',
+    'system-backend/shared/contracts/TASK_MODEL_V1.md',
+    'system-backend/shared/web-ui/README.md',
 }
 if not patch <= changed or not changed <= allowed:
     raise SystemExit('Unexpected runtime source changes; refusing this build: ' + repr(sorted(changed)))

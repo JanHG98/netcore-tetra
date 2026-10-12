@@ -18,6 +18,23 @@ from unittest.mock import patch
 HELPER = Path(__file__).resolve().parents[3] / "tools/operator/pi-txdiag-build-stage.sh"
 PROGRAMS = re.findall(r"<<'PY'\n(.*?)\nPY", HELPER.read_text(), re.S)
 STAGE_PROGRAM = PROGRAMS[-1]
+PATCH_PATHS = {
+    "crates/tetra-entities/src/phy/components/soapy_dev.rs",
+    "crates/tetra-entities/src/phy/components/soapy_dev_tests.rs",
+}
+# Exact paths emitted by the operator's failed attempt, independently checked
+# against both complete Git trees. Four old contract Markdown files were moved.
+OPERATOR_CHANGED_PATHS = PATCH_PATHS | {
+    "bins/netcore-control-room/README.md",
+    "tetra-codec-master/README.md",
+    "system-backend/shared/README.md",
+    "system-backend/shared/contracts/README.md",
+    "system-backend/shared/contracts/ASSET_MANAGEMENT_V1.md",
+    "system-backend/shared/contracts/COMMAND_MODEL_V1.md",
+    "system-backend/shared/contracts/EVENT_MODEL_V1.md",
+    "system-backend/shared/contracts/TASK_MODEL_V1.md",
+    "system-backend/shared/web-ui/README.md",
+}
 
 
 class StageTests(unittest.TestCase):
@@ -66,6 +83,81 @@ class StageTests(unittest.TestCase):
         self.assertEqual(len(PROGRAMS), 3)
         for program in PROGRAMS:
             ast.parse(program)
+
+    def run_source_guard(self, changed):
+        argv = ["source-guard", str(self.root), "1" * 40, "2" * 40]
+        output = "\n".join(sorted(changed)) + "\n"
+        with patch.object(sys, "argv", argv), patch("subprocess.check_output", return_value=output) as git, \
+                contextlib.redirect_stdout(io.StringIO()):
+            exec(compile(PROGRAMS[0], str(HELPER) + ":source-guard", "exec"), {})
+        self.assertIn("system-backend/shared", git.call_args.args[0])
+
+    def test_source_guard_accepts_exact_operator_document_moves(self):
+        self.assertEqual(len(OPERATOR_CHANGED_PATHS), 11)
+        self.run_source_guard(OPERATOR_CHANGED_PATHS)
+
+    def test_source_guard_rejects_runtime_and_unreviewed_document_changes(self):
+        for extra in ["system-backend/shared/contracts/src/lib.rs", "Cargo.lock",
+                      "system-backend/shared/web-ui/assets/service-design.css",
+                      "system-backend/shared/UNREVIEWED.md"]:
+            with self.subTest(extra=extra), self.assertRaises(SystemExit):
+                self.run_source_guard(OPERATOR_CHANGED_PATHS | {extra})
+
+    def test_source_guard_requires_both_diagnostic_files(self):
+        for missing in PATCH_PATHS:
+            with self.subTest(missing=missing), self.assertRaises(SystemExit):
+                self.run_source_guard(OPERATOR_CHANGED_PATHS - {missing})
+
+    def run_resume_guard(self, source, *, dirty=False, wrong_head=False, status_failed=False):
+        script = HELPER.read_text()
+        start = script.index("if [[ -n $NC_RESUME_SOURCE ]]; then")
+        end = script.index('NC_TARGET="$HOME/.cache/netcore-tetra-txdiag-target"', start)
+        # Use the actual shell branch with Git's state responses simulated.
+        # readlink, path checks, and the Bash failure/exit behavior remain real.
+        git_function = '''git() {
+case "$*" in
+  *"status --porcelain"*) printf '%s' "$NC_TEST_DIRTY"; return "$NC_TEST_STATUS_EXIT" ;;
+  *"rev-parse HEAD"*) printf '%s' "$NC_TEST_HEAD" ;;
+  *"cat-file -e"*) return 0 ;;
+  *) return 99 ;;
+esac
+}
+'''
+        diagnostic = "2" * 40
+        result = subprocess.run(
+            ["bash", "-c", "set -Eeuo pipefail\n" + git_function + script[start:end] + "\nprintf reused"],
+            env={**os.environ, "NC_RESUME_SOURCE": str(source), "NC_DIAG_SHA": diagnostic,
+                 "NC_BASE_SHA": "1" * 40, "NC_TEST_DIRTY": " M Cargo.lock" if dirty else "",
+                 "NC_TEST_STATUS_EXIT": "128" if status_failed else "0",
+                 "NC_TEST_HEAD": "3" * 40 if wrong_head else diagnostic},
+            text=True, capture_output=True,
+        )
+        return result
+
+    def make_resume_checkout(self):
+        temporary = tempfile.TemporaryDirectory(prefix="netcore-txdiag-222222222222.", dir=Path.home())
+        self.addCleanup(temporary.cleanup)
+        source = Path(temporary.name) / "source"
+        source.mkdir()
+        return source
+
+    def test_resume_uses_clean_isolated_checkout_at_requested_commit(self):
+        result = self.run_resume_guard(self.make_resume_checkout())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "reused")
+
+    def test_resume_rejects_local_changes_wrong_commit_or_git_failure(self):
+        source = self.make_resume_checkout()
+        for changes in [{"dirty": True}, {"wrong_head": True}, {"status_failed": True}]:
+            with self.subTest(changes=changes):
+                result = self.run_resume_guard(source, **changes)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, "")
+
+    def test_resume_rejects_checkout_outside_isolated_build_directory(self):
+        result = self.run_resume_guard(self.root)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
 
     def test_unresolved_dynamic_dependency_cannot_pass_shell_guard(self):
         guard = re.search(r"if grep -q 'not found'[^\n]*\n.*?^fi$", HELPER.read_text(), re.S | re.M)
