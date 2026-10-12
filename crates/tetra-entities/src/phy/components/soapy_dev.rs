@@ -440,6 +440,76 @@ impl RxDsp {
     }
 }
 
+/// Allocation-free accounting for production, intentional waits, and late skips.
+#[derive(Default)]
+struct TxDiagnostics {
+    process_attempts: u64,
+    write_attempts: u64,
+    written_blocks: u64,
+    hw_ahead_returns: u64,
+    rx_ahead_returns: u64,
+    slot_not_ready_returns: u64,
+    late_skip_events: u64,
+    late_skipped_blocks: u64,
+    next_late_warning_block: fcfb::BlockCount,
+}
+
+enum TxWaitReason {
+    HardwareAhead,
+    RxAhead,
+    SlotNotReady,
+}
+
+impl TxDiagnostics {
+    fn record_wait(&mut self, reason: TxWaitReason) {
+        let counter = match reason {
+            TxWaitReason::HardwareAhead => &mut self.hw_ahead_returns,
+            TxWaitReason::RxAhead => &mut self.rx_ahead_returns,
+            TxWaitReason::SlotNotReady => &mut self.slot_not_ready_returns,
+        };
+        *counter = counter.saturating_add(1);
+    }
+
+    fn record_write_result(&mut self, result: Result<(), RxTxDevError>) -> Result<(), RxTxDevError> {
+        self.write_attempts = self.write_attempts.saturating_add(1);
+        result?;
+        // This counts successful driver writes, not samples confirmed on air.
+        self.written_blocks = self.written_blocks.saturating_add(1);
+        Ok(())
+    }
+
+    fn record_late_skip(
+        &mut self,
+        next_block: fcfb::BlockCount,
+        skipped_blocks: fcfb::BlockCount,
+        warning_interval_blocks: fcfb::BlockCount,
+    ) -> bool {
+        self.late_skip_events = self.late_skip_events.saturating_add(1);
+        self.late_skipped_blocks = self.late_skipped_blocks.saturating_add(skipped_blocks.max(0) as u64);
+        if next_block < self.next_late_warning_block {
+            return false;
+        }
+        // Use the SDR timeline, with no wall-clock read or allocation per block.
+        // Every missed block remains visible in the unthrottled counters.
+        self.next_late_warning_block = next_block.saturating_add(warning_interval_blocks);
+        true
+    }
+}
+
+/// Format carrier/time pairs only when the periodic tracing event is emitted.
+/// Keeping a borrowed view avoids collecting a diagnostic Vec on every TX call.
+struct TxSlotTimes<'a, 'b>(&'a [TxSlotBits<'b>]);
+
+impl std::fmt::Debug for TxSlotTimes<'_, '_> {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut list = formatter.debug_list();
+        for slot in self.0 {
+            list.entry(&(slot.carrier_num, slot.time));
+        }
+        list.finish()
+    }
+}
+
 // Was: Bündelt die zusammengehörigen Werte für tx dsp in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 struct TxDsp {
@@ -448,8 +518,7 @@ struct TxDsp {
     initial_time: i64,
     continuity_report_interval_blocks: fcfb::BlockCount,
     next_continuity_report_block: fcfb::BlockCount,
-    late_skip_events: u64,
-    late_skipped_blocks: u64,
+    diagnostics: TxDiagnostics,
     modulators: Vec<ModulatorChannel>,
     monitor: Option<TxSignalMonitor>,
     /// Scratch buffer reused for cloning the fcfb output when the TX monitor
@@ -493,8 +562,7 @@ impl TxDsp {
             initial_time: 0, // TODO: get it from RX
             continuity_report_interval_blocks,
             next_continuity_report_block: continuity_report_interval_blocks,
-            late_skip_events: 0,
-            late_skipped_blocks: 0,
+            diagnostics: TxDiagnostics::default(),
             modulators,
             monitor,
             tx_signal_scratch: Vec::new(),
@@ -509,6 +577,7 @@ impl TxDsp {
         latest_rx_block: Option<fcfb::BlockCount>,
         tx_slot: &[TxSlotBits],
     ) -> Result<bool, RxTxDevError> {
+        self.diagnostics.process_attempts = self.diagnostics.process_attempts.saturating_add(1);
         let current_sample = sdr.tx_current_count()?;
         // Current time as block count
         let current_block = current_sample.div_euclid(self.fcfb.output_block_size() as SampleCount);
@@ -519,29 +588,44 @@ impl TxDsp {
         if d < dmin {
             let new_block_count = current_block + dmin;
             let skipped_blocks = new_block_count - self.block_count;
-            self.late_skip_events += 1;
-            self.late_skipped_blocks = self.late_skipped_blocks.saturating_add(skipped_blocks.max(0) as u64);
-            tracing::warn!(
-                "Too late to produce TX block {}, skipping {} TX blocks",
-                self.block_count,
-                skipped_blocks
-            );
+            if self
+                .diagnostics
+                .record_late_skip(new_block_count, skipped_blocks, self.continuity_report_interval_blocks)
+            {
+                tracing::warn!(
+                    late_skip_events = self.diagnostics.late_skip_events,
+                    late_skipped_blocks = self.diagnostics.late_skipped_blocks,
+                    "Too late to produce TX block {}, skipping {} TX blocks (detail limited to one per SDR 5 s)",
+                    self.block_count,
+                    skipped_blocks
+                );
+            }
             self.block_count = new_block_count;
         }
 
         // A radio-side REREG can be caused by a short serving-cell downlink gap even when
         // MAC/MM continue to look healthy. Report the actual SDR timeline every five seconds
         // so field logs prove whether TX stayed ahead of hardware time between attach and
-        // REREG. The existing warning remains the per-event detail; these cumulative counters
-        // make absence of an omitted or throttled warning explicit.
+        // REREG. Rate-limit late-warning detail so a stall cannot hide its startup
+        // evidence through journal suppression. These cumulative counters retain
+        // every event and distinguish clock advancement from actual driver writes.
         if self.block_count >= self.next_continuity_report_block {
             let tx_status = sdr.poll_tx_status();
             tracing::info!(
                 tx_block = self.block_count,
                 hw_block = current_block,
                 lead_blocks = self.block_count - current_block,
-                late_skip_events = self.late_skip_events,
-                late_skipped_blocks = self.late_skipped_blocks,
+                latest_rx_block = ?latest_rx_block,
+                tx_rx_lead_blocks = ?latest_rx_block.map(|rx_block| self.block_count - rx_block),
+                tx_slot_times = ?TxSlotTimes(tx_slot),
+                tx_process_attempts = self.diagnostics.process_attempts,
+                tx_write_attempts = self.diagnostics.write_attempts,
+                tx_written_blocks = self.diagnostics.written_blocks,
+                tx_hw_ahead_returns = self.diagnostics.hw_ahead_returns,
+                tx_rx_ahead_returns = self.diagnostics.rx_ahead_returns,
+                tx_slot_not_ready_returns = self.diagnostics.slot_not_ready_returns,
+                late_skip_events = self.diagnostics.late_skip_events,
+                late_skipped_blocks = self.diagnostics.late_skipped_blocks,
                 hw_status_supported = tx_status.supported,
                 hw_status_events = tx_status.events,
                 hw_underflows = tx_status.underflows,
@@ -556,6 +640,7 @@ impl TxDsp {
         // Limit how far into future TX blocks are generated
         let dmax = 60;
         if d > dmax {
+            self.diagnostics.record_wait(TxWaitReason::HardwareAhead);
             return Ok(false);
         }
         // Also limit how far from the latest RX block TX blocks are generated.
@@ -569,11 +654,13 @@ impl TxDsp {
         if let Some(latest_rx_block) = latest_rx_block {
             let d_rx = self.block_count - latest_rx_block;
             if d_rx > dmax {
+                self.diagnostics.record_wait(TxWaitReason::RxAhead);
                 return Ok(false);
             }
         }
 
         if !modulate_tx_block(&mut self.fcfb, &mut self.modulators, self.block_count, tx_slot) {
+            self.diagnostics.record_wait(TxWaitReason::SlotNotReady);
             return Ok(false);
         }
 
@@ -608,14 +695,15 @@ impl TxDsp {
         // so we do not end up producing the same block again even if transmit fails.
         self.block_count += 1;
 
-        if want_monitor {
+        let write_result = if want_monitor {
             let sdr_sample_count = self.tx_signal_scratch.len() as SampleCount * block_count_now;
-            sdr.transmit(&self.tx_signal_scratch, Some(sdr_sample_count))?;
+            sdr.transmit(&self.tx_signal_scratch, Some(sdr_sample_count))
         } else {
             let tx_signal = self.fcfb.process();
             let sdr_sample_count = tx_signal.len() as SampleCount * block_count_now;
-            sdr.transmit(tx_signal, Some(sdr_sample_count))?;
-        }
+            sdr.transmit(tx_signal, Some(sdr_sample_count))
+        };
+        self.diagnostics.record_write_result(write_result)?;
 
         // tracing::trace!("Produced transmit block {} ({} samples in future)",
         //     self.block_count - 1,
