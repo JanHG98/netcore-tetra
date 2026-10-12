@@ -54,7 +54,9 @@ class StageTests(unittest.TestCase):
         self.new_sha = hashlib.sha256(self.new).hexdigest()
 
     def run_stage(self, *, active=False, reactivate=False, old_sha=None, new_sha=None):
-        path_type = Path
+        # Python 3.11's abstract Path constructor consults the global Path
+        # symbol, which is mocked below. Keep the concrete platform class.
+        path_type = type(self.root)
         checks = 0
 
         def rooted_path(value):

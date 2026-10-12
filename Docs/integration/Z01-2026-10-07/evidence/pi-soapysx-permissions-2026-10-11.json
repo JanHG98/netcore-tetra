@@ -1414,5 +1414,25 @@
       "independent_scope_review": "PASS"
     },
     "retry_executed": false
+  },
+  "stage_test_fixture_python311_correction_2026_10_12": {
+    "observed_workflow_run": 38226568083,
+    "observed_head": "abf8a92e6f95a653aa8990da86b050285298ad59",
+    "failed_job": 114735417390,
+    "failed_tests": 6,
+    "python_version": "3.11.17",
+    "error": "AttributeError: type object Path has no attribute _flavour",
+    "cause": "Abstract pathlib.Path constructor consults the mocked global Path symbol in Python3.11.",
+    "fix": "Use concrete type(self.root) in the temporary filesystem fixture.",
+    "local_python_version": "3.12.14",
+    "local_tests_passed": 14,
+    "helper_bytes_changed": false,
+    "diagnostic_rust_changed": false,
+    "prior_successful_jobs": [
+      "rust-ui and default-feature TBS link",
+      "image-engine ubuntu-24.04",
+      "image-engine ubuntu-26.04"
+    ],
+    "fresh_python311_ci_acceptance_confirmed": false
   }
 }
