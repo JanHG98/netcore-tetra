@@ -16,6 +16,7 @@ on:
       - tools/test_sip_network_runtime.py
       - tools/test_sip_number_routing.py
       - crates/tetra-entities/src/phy/**
+      - crates/tetra-entities/src/messagerouter.rs
       - crates/tetra-entities/src/lmac/**
       - crates/tetra-entities/src/umac/**
       - crates/tetra-entities/src/cmce/**
@@ -52,6 +53,10 @@ jobs:
       - name: Test carrier mapping and continuous TX waveforms
         run: |
           cargo test --locked -p tetra-entities --features recording,asterisk --lib phy::components::soapy_dev::tests:: -- --nocapture
+      - name: Test base-station recovery after lost RX slots
+        run: |
+          cargo test --locked -p tetra-entities --features recording,asterisk --lib messagerouter::tests:: -- --nocapture
+          cargo test --locked -p tetra-entities --features recording,asterisk --lib phy::phy_bs::tests:: -- --nocapture
       - name: Test assigned control, group lifecycle and asynchronous recording
         run: |
           test_status=0

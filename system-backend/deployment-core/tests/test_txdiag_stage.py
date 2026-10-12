@@ -22,6 +22,10 @@ PATCH_PATHS = {
     "crates/tetra-entities/src/phy/components/soapy_dev.rs",
     "crates/tetra-entities/src/phy/components/soapy_dev_tests.rs",
 }
+RECOVERY_PATHS = {
+    "crates/tetra-entities/src/messagerouter.rs",
+    "crates/tetra-entities/src/phy/phy_bs.rs",
+}
 # Exact paths emitted by the operator's failed attempt, independently checked
 # against both complete Git trees. Four old contract Markdown files were moved.
 OPERATOR_CHANGED_PATHS = PATCH_PATHS | {
@@ -94,21 +98,31 @@ class StageTests(unittest.TestCase):
             exec(compile(PROGRAMS[0], str(HELPER) + ":source-guard", "exec"), {})
         self.assertIn("system-backend/shared", git.call_args.args[0])
 
-    def test_source_guard_accepts_exact_operator_document_moves(self):
+    def test_source_guard_rejects_pre_repair_diagnostic_source(self):
         self.assertEqual(len(OPERATOR_CHANGED_PATHS), 11)
-        self.run_source_guard(OPERATOR_CHANGED_PATHS)
+        with self.assertRaises(SystemExit):
+            self.run_source_guard(OPERATOR_CHANGED_PATHS)
+
+    def test_source_guard_accepts_exact_reviewed_rx_time_recovery_files(self):
+        recovery = OPERATOR_CHANGED_PATHS | RECOVERY_PATHS
+        self.assertEqual(len(recovery), 13)
+        self.run_source_guard(recovery)
+        with self.assertRaises(SystemExit):
+            self.run_source_guard(recovery | {
+                "crates/tetra-entities/src/unreviewed_recovery.rs",
+            })
 
     def test_source_guard_rejects_runtime_and_unreviewed_document_changes(self):
         for extra in ["system-backend/shared/contracts/src/lib.rs", "Cargo.lock",
                       "system-backend/shared/web-ui/assets/service-design.css",
                       "system-backend/shared/UNREVIEWED.md"]:
             with self.subTest(extra=extra), self.assertRaises(SystemExit):
-                self.run_source_guard(OPERATOR_CHANGED_PATHS | {extra})
+                self.run_source_guard(OPERATOR_CHANGED_PATHS | RECOVERY_PATHS | {extra})
 
-    def test_source_guard_requires_both_diagnostic_files(self):
-        for missing in PATCH_PATHS:
+    def test_source_guard_requires_all_diagnostic_and_recovery_files(self):
+        for missing in PATCH_PATHS | RECOVERY_PATHS:
             with self.subTest(missing=missing), self.assertRaises(SystemExit):
-                self.run_source_guard(OPERATOR_CHANGED_PATHS - {missing})
+                self.run_source_guard((OPERATOR_CHANGED_PATHS | RECOVERY_PATHS) - {missing})
 
     def run_resume_guard(self, source, *, dirty=False, wrong_head=False, status_failed=False):
         script = HELPER.read_text()

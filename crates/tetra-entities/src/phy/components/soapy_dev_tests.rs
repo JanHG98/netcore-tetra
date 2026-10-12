@@ -214,6 +214,58 @@ fn tx_stale_slots_show_waits_without_claiming_driver_writes() {
 }
 
 #[test]
+fn tx_recovers_after_eleven_skipped_rx_slots_with_actual_rx_time() {
+    let mut demod = demodulator::Demodulator::new(demodulator::Mode::Ul, 720);
+    // Production RX processes 108 modem samples per FCFB block. Reproduce
+    // the boot capture's 114-block jump after receiving half of slot 3.
+    let last_sample = 3 * 1020 + 500 + 16;
+    for sample in 0..=last_sample {
+        demod.sample(ComplexSample::ZERO, sample);
+    }
+    let before = demod.take_demodulated_slot().expect("preceding UL slot").time;
+    assert_eq!(before, TdmaTime::from_int(0)); // Completed DL slot 2, UL offset -2.
+
+    let first_after_gap = last_sample + 1 + 114 * 108;
+    demod.sample(ComplexSample::ZERO, first_after_gap);
+    let after = demod.take_demodulated_slot().expect("UL slot after gap").time;
+    assert_eq!(after.diff(before), 12); // Eleven missed slots plus the next completion.
+
+    let bits = bursts();
+    let mut recovered = Waveform::new(&[720, 721]);
+    let in_flight_dl = before.add_timeslots(3);
+    let pending_tx = in_flight_dl.add_timeslots(1);
+    recovered.block = (pending_tx.to_int() as SampleCount * 1020 / 108) as fcfb::BlockCount;
+    recovered.push(&batch(&bits, pending_tx.to_int(), [true, true]), 0);
+    assert!(recovered.channels.iter().all(|channel| channel.buffer_i > 0));
+
+    // Hardware continues advancing while the caller's old TDMA clock does not.
+    // The existing block-jump path must discard the old partial waveform.
+    recovered.block = (first_after_gap / 108 + 2) as fcfb::BlockCount;
+    recovered.samples.clear();
+    let stale_next_tx = in_flight_dl.add_timeslots(2);
+    assert!(!modulate_tx_block(
+        &mut recovered.bank,
+        &mut recovered.channels,
+        recovered.block,
+        &batch(&bits, stale_next_tx.to_int(), [true, true]),
+    ));
+
+    // Use actual UL time +2 for the completed DL slot, +1 for the next tick,
+    // and +1 for MAC's TX-ahead slot. No local modulation epoch is shifted.
+    let corrected_next_tx = after.add_timeslots(4);
+    assert_eq!(corrected_next_tx.diff(stale_next_tx), 11);
+    let mut fresh = Waveform::new(&[720, 721]);
+    fresh.block = recovered.block;
+    for offset in 0..4 {
+        let slots = batch(&bits, corrected_next_tx.add_timeslots(offset).to_int(), [true, true]);
+        recovered.push(&slots, 2);
+        fresh.push(&slots, 0);
+    }
+    assert_waveforms_match(&recovered.samples, &fresh.samples);
+    assert!(recovered.samples.iter().any(|sample| sample.norm() > 0.01));
+}
+
+#[test]
 fn tx_slot_time_report_keeps_each_supplied_carrier_time() {
     let slots = [
         TxSlotBits { carrier_num: 721, time: TdmaTime::from_int(7), slot: None },
