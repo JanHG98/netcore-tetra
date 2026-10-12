@@ -1,0 +1,55 @@
+{
+  "observed_at": "2026-10-12T21:24:29+02:00",
+  "sources": [
+    "operator_report",
+    "live_build_ui",
+    "downloaded_manifest"
+  ],
+  "manifest": {
+    "id": "53a280bdf70e4b11935ce4f6a197ff73",
+    "filename": "netcore-srv-m-tbs-01-0770e903b7df-53a280bd.img.xz",
+    "profile": {
+      "name": "SRV-M-TBS-01",
+      "mcc": 901,
+      "mnc": 1510,
+      "issi": 4010001,
+      "la": 1,
+      "cc": 1
+    },
+    "hostname": "srv-m-tbs-01",
+    "commit": "0770e903b7dfc2f8410ad6f32cdc35e014adbbc7",
+    "created": 1791831035.2892385,
+    "base": {
+      "id": "raspios-bookworm-arm64",
+      "label": "Raspberry Pi OS Lite · Bookworm 64 Bit · Pi 4 / 5",
+      "url": "https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2025-05-13/2025-05-13-raspios-bookworm-arm64-lite.img.xz",
+      "sha256": "62d025b9bc7ca0e1facfec74ae56ac13978b6745c58177f081d39fbb8041ed45",
+      "soapy_repository": "https://github.com/tejeez/sxxcvr.git",
+      "soapy_commit": "9705147dd8c189625071f3f163ea56119bda4a05"
+    },
+    "recipe": "a9d44dc387d72b81a361f7f99f99189180b13ec3475c39f906c458c27c8dab3f",
+    "versions": {
+      "commit": "0770e903b7dfc2f8410ad6f32cdc35e014adbbc7",
+      "soapy_commit": "9705147dd8c189625071f3f163ea56119bda4a05",
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)"
+    },
+    "sha256": "453735ce9c2d657e515371ceb692d78cf36c90e4a0a9a71c98f51951176c3fd9",
+    "size_bytes": 2016192144,
+    "uncompressed_bytes": 5117050880,
+    "overlay": "eeprom",
+    "boot_tested": false,
+    "note": "Auf der VM vorinstalliert. Ein physischer Pi-/SDR-Start ist damit noch nicht geprüft."
+  },
+  "build_checks": {
+    "arm64_release": true,
+    "ldd_resolved": true,
+    "gpio_recipe_installed": true,
+    "soapy_factory_sx_as_netcore": true
+  },
+  "operator_report": "Build fertig; SD-Schreiben und physischer Boot angekündigt.",
+  "profile_selection_intent_confirmed": false,
+  "download_payload_sha256_verified": false,
+  "sd_write_verified": false,
+  "physical_boot_verified": false,
+  "rf_acceptance_verified": false
+}
