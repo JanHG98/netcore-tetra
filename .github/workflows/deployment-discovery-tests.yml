@@ -63,6 +63,8 @@ jobs:
           /usr/bin/python3 system-backend/deployment-core/tests/vm_install_smoke.py
       - name: Native Ubuntu Python compatibility
         run: /usr/bin/python3 -m unittest discover -s system-backend/deployment-core/tests -v
+      - name: Native systemd image recording and audio directories
+        run: sudo /usr/bin/python3 system-backend/deployment-core/tests/image_runtime_dirs_smoke.py --disposable-runner
       - name: Real Raspberry Pi OS image and ARM64 personalization
         run: sudo unshare --mount --pid --fork --kill-child --propagation private python3 system-backend/deployment-core/tests/image_smoke.py
       - name: Service logs on failure
