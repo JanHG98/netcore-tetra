@@ -556,9 +556,18 @@ colour_code = 1
         assert_eq!(trace.ticks, (2..=15).map(TdmaTime::from_int).collect::<Vec<_>>());
         assert_eq!(trace.ends, trace.ticks);
         assert_eq!(trace.physical_tx.len(), 3);
-        for (slots, time) in trace.physical_tx.iter().zip([3, 4, 16]) {
-            assert_eq!(slots, &vec![(720, TdmaTime::from_int(time)), (721, TdmaTime::from_int(time))]);
-        }
+        // The idle secondary carrier has no burst in air TS4 (absolute slot 3).
+        // Its TS1 control/guard burst is present in slots 4 and 16, including
+        // the first physical exchange after the RX gap. Keep exact batches so
+        // recovering the clock cannot hide a lost carrier or an extra RF call.
+        assert_eq!(
+            trace.physical_tx,
+            [
+                vec![(720, TdmaTime::from_int(3))],
+                vec![(720, TdmaTime::from_int(4)), (721, TdmaTime::from_int(4))],
+                vec![(720, TdmaTime::from_int(16)), (721, TdmaTime::from_int(16))],
+            ]
+        );
         assert_eq!(trace.uplink_delivery, [(720, TdmaTime::from_int(14))]);
         assert_eq!(router.ts, TdmaTime::from_int(16));
     }
