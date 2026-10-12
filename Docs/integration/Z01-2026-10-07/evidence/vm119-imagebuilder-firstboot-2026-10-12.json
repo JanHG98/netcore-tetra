@@ -1,0 +1,115 @@
+{
+  "observed_at": "2026-10-12T21:32:06+02:00",
+  "source_file": "Eingefügter Text(20261012-193158).txt",
+  "image_build_id": "53a280bdf70e4b11935ce4f6a197ff73",
+  "image_commit": "0770e903b7dfc2f8410ad6f32cdc35e014adbbc7",
+  "station": {
+    "hostname": "srv-m-tbs-01",
+    "name": "SRV-M-TBS-01",
+    "mcc": 901,
+    "mnc": 1510,
+    "issi": 4010001,
+    "la": 1,
+    "cc": 1,
+    "overlay": "eeprom",
+    "architecture": "aarch64"
+  },
+  "rootfs": {
+    "device": "/dev/mmcblk0p2",
+    "size": "29G",
+    "used": "3.1G",
+    "available": "25G"
+  },
+  "services": {
+    "netcore-firstboot.service": {
+      "active": "active",
+      "substate": "exited",
+      "result": "success",
+      "pid": 0,
+      "restarts": 0
+    },
+    "netcore-sx-gpio-compat.service": {
+      "active": "active",
+      "substate": "exited",
+      "result": "success",
+      "pid": 0,
+      "restarts": 0
+    },
+    "tetra.service": {
+      "active": "active",
+      "substate": "running",
+      "result": "success",
+      "pid": 1011,
+      "restarts": 0
+    },
+    "netcore-discovery.service": {
+      "active": "active",
+      "substate": "running",
+      "result": "success",
+      "pid": 1052,
+      "restarts": 0
+    }
+  },
+  "recovery": {
+    "rx_overrun_samples": 73800,
+    "router_missed_slots": 8,
+    "before": {
+      "tx_block": 19998,
+      "tx_written_blocks": 19919,
+      "late_skip_events": 5,
+      "late_skipped_blocks": 79
+    },
+    "after": {
+      "tx_block": 23331,
+      "tx_written_blocks": 23102,
+      "late_skip_events": 10,
+      "late_skipped_blocks": 229
+    },
+    "write_delta": 3183,
+    "permanent_stall_observed": false,
+    "continuous_loss_free_operation_verified": false,
+    "hw_status_supported": false
+  },
+  "live_ui": {
+    "node_gateway_connected": true,
+    "core_critical_services_online": [
+      "call-control",
+      "group-core",
+      "media-switch",
+      "mobility-core",
+      "sds-router",
+      "subscriber-core"
+    ],
+    "subscriber_issi": 5102,
+    "affiliation_groups": [
+      15501,
+      15201
+    ],
+    "call_setup": {
+      "destination_gssi": 15201,
+      "ts": 2,
+      "call_id": 4,
+      "grant": "Granted",
+      "brew_forwarded": true
+    },
+    "voice_quality_confirmed_by_operator": false,
+    "recording_disabled_permission_denied": true,
+    "audio_player_disabled_permission_denied": true
+  },
+  "clock": {
+    "wall_clock_jump_observed": true,
+    "ntp_synchronized_verified": false,
+    "causality_assigned": false
+  },
+  "acceptance": {
+    "fresh_boot": true,
+    "sd_expanded": true,
+    "gpio_startup": true,
+    "tbs_and_discovery_autostart": true,
+    "bounded_rx_recovery": true,
+    "long_run": false,
+    "full_rf_functionality": false,
+    "vpn": false
+  },
+  "next_action": "Run a later monotonic TX/clock snapshot; correct canonical recording/audio directory provisioning in the image unit and verify natively. Do not hot-repair the live Pi during the operator's radio test."
+}
