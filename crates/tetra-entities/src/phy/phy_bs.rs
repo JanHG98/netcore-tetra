@@ -7,7 +7,7 @@ use tetra_config::bluestation::SharedConfig;
 use tetra_core::tetra_entities::TetraEntity;
 use tetra_core::{BitBuffer, BurstType, PhyBlockNum, PhyBlockType, Sap, TdmaTime, TrainingSequence, unimplemented_log};
 use tetra_pdus::phy::traits::rxtx_dev::RxBurstBits;
-use tetra_pdus::phy::traits::rxtx_dev::{RxTxDev, TxSlotBits};
+use tetra_pdus::phy::traits::rxtx_dev::{RxSlotBits, RxTxDev, TxSlotBits};
 use tetra_saps::tp::TpUnitdataInd;
 use tetra_saps::{SapMsg, SapMsgInner};
 
@@ -17,6 +17,16 @@ use crate::umac::subcomp::bs_sched::MACSCHED_TX_AHEAD;
 use crate::{MessageQueue, TetraEntityTrait};
 
 use super::components::phy_io_file::PhyIoFile;
+
+/// UL demodulator labels are two slots behind the completed DL clock.
+/// Compare them across hyperframe wrap, without requiring a decoded burst.
+fn latest_completed_dl_time(rx: &[Option<RxSlotBits<'_>>]) -> Option<TdmaTime> {
+    rx.iter()
+        .flatten()
+        .filter(|slot| slot.time.is_valid())
+        .map(|slot| slot.time.add_timeslots(2))
+        .reduce(|latest, time| if time.diff(latest) > 0 { time } else { latest })
+}
 
 // Was: Bündelt die zusammengehörigen Werte für phy Basisstation in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
@@ -332,6 +342,10 @@ impl<D: RxTxDev> PhyBs<D> {
         }
 
         let rx = self.rxtxdev.rxtx_timeslot(&tx_slots).expect("Got error from rxtx_timeslot");
+        let completed_dl_time = latest_completed_dl_time(&rx).filter(|time| time.diff(self.dltime) >= 0);
+        if let Some(time) = completed_dl_time {
+            queue.observe_bs_dl_time(time);
+        }
 
         // With adjacent dual carriers, the secondary-channel demodulator can sometimes
         // lock onto the same uplink burst that was already decoded on the primary
@@ -400,6 +414,11 @@ impl<D: RxTxDev> PhyBs<D> {
             let Some(rx_slot) = rx_slot else {
                 continue;
             };
+            if !rx_slot.time.is_valid() || Some(rx_slot.time.add_timeslots(2)) != completed_dl_time {
+                // A carrier with an older completed slot must not be classified
+                // against the newer clock when the held batch is delivered.
+                continue;
+            }
 
             let mut push_candidate = |subslot_id: u8, label: &'static str, burst: &RxBurstBits<'_>| {
                 if burst.train_type == TrainingSequence::NotFound {
@@ -542,5 +561,37 @@ impl<D: RxTxDev + Send + 'static> TetraEntityTrait for PhyBs<D> {
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, _queue: &mut MessageQueue, ts: TdmaTime) {
         self.dltime = ts;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn completed_rx_clock_ignores_invalid_and_stale_times_even_without_decoded_bursts() {
+        assert_eq!(latest_completed_dl_time(&[]), None);
+        assert_eq!(latest_completed_dl_time(&[None]), None);
+        let invalid = TdmaTime { h: 0, m: 0, f: 0, t: 0 };
+        let invalid_slot = Some(RxSlotBits {
+            time: invalid,
+            ..Default::default()
+        });
+        assert_eq!(latest_completed_dl_time(&[invalid_slot]), None);
+        // UL -2 maps to completed DL zero, across the hyperframe boundary.
+        // Neither carrier contains a decoded training sequence in this test.
+        let rx = [
+            Some(RxSlotBits {
+                carrier_num: 721,
+                time: TdmaTime::from_int(-3),
+                ..Default::default()
+            }),
+            Some(RxSlotBits {
+                carrier_num: 720,
+                time: TdmaTime::from_int(-2),
+                ..Default::default()
+            }),
+        ];
+        assert_eq!(latest_completed_dl_time(&rx), Some(TdmaTime::default()));
     }
 }

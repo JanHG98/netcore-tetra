@@ -2,7 +2,7 @@
 # Run as the ordinary SSH user on srv-m-tbs-03; stages only the reviewed diagnostic binary.
 # Usage: bash pi-txdiag-build-stage.sh FULL_DIAGNOSTIC_COMMIT FULL_OLD_BINARY_SHA256 [EXISTING_SOURCE]
 # Builds and replaces only the TBS executable. It never starts/enables RF.
-# The diagnostic commit must be published, reviewed and tested before use.
+# The diagnostic/recovery commit must be published, reviewed and tested before use.
 # Native Soapy/codec build dependencies are those already installed in the image.
 set -Eeuo pipefail
 umask 0022
@@ -67,7 +67,8 @@ mkdir -p "$NC_TARGET"
 
 # Independently enforce the full runtime baseline comparison. Exact Markdown
 # moves were verified against both Git trees; every other runtime source change
-# must be one of the two reviewed Soapy diagnostic files. No extension wildcard.
+# must be one of the reviewed Soapy diagnostic or RX-time recovery files.
+# No extension wildcard.
 python3 -B - "$NC_SRC" "$NC_BASE_SHA" "$NC_DIAG_SHA" <<'PY'
 import subprocess, sys
 source, baseline, diagnostic = sys.argv[1:]
@@ -79,6 +80,8 @@ changed = set(subprocess.check_output([
 patch = {
     'crates/tetra-entities/src/phy/components/soapy_dev.rs',
     'crates/tetra-entities/src/phy/components/soapy_dev_tests.rs',
+    'crates/tetra-entities/src/messagerouter.rs',
+    'crates/tetra-entities/src/phy/phy_bs.rs',
 }
 allowed = patch | {
     'bins/netcore-control-room/README.md',
@@ -123,6 +126,12 @@ CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$NC_TARGET" \
     "$HOME/.cargo/bin/cargo" +"$NC_RUST_VERSION" test --locked \
         -p tetra-entities --lib phy::components::soapy_dev::tests
 CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$NC_TARGET" \
+    "$HOME/.cargo/bin/cargo" +"$NC_RUST_VERSION" test --locked \
+        -p tetra-entities --lib messagerouter::tests
+CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$NC_TARGET" \
+    "$HOME/.cargo/bin/cargo" +"$NC_RUST_VERSION" test --locked \
+        -p tetra-entities --lib phy::phy_bs::tests
+CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$NC_TARGET" \
     "$HOME/.cargo/bin/cargo" +"$NC_RUST_VERSION" build --locked --release -p bluestation-bs
 NC_NEW=$NC_TARGET/release/bluestation-bs
 [[ -f $NC_NEW && -x $NC_NEW ]]
@@ -135,6 +144,7 @@ if grep -q 'not found' "$NC_WORK/ldd.txt"; then
 fi
 grep -a -Fq 'tx_written_blocks' "$NC_NEW"
 grep -a -Fq 'tx_slot_not_ready_returns' "$NC_NEW"
+grep -a -Fq 'PHY RX clock advanced' "$NC_NEW"
 NC_NEW_SHA=$(sha256sum "$NC_NEW" | awk '{print $1}')
 sha256sum "$NC_NEW"
 nc_require_stopped
