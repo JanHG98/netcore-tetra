@@ -55,6 +55,12 @@ pub enum WifiError {
     Io(String),
     /// nmcli took too long to respond.
     Timeout,
+    /// A hardware killswitch cannot be removed by a dashboard action.
+    HardwareBlocked,
+    /// NetworkManager did not clear its software radio block.
+    RadioBlocked,
+    /// No wireless device is currently available.
+    NoDevice,
 }
 
 // Was: Implementiert das zugehörige Verhalten für `std::fmt::Display for WifiError`.
@@ -66,10 +72,19 @@ impl std::fmt::Display for WifiError {
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match self {
-            WifiError::NotAvailable => write!(f, "NetworkManager (nmcli) not installed"),
+            WifiError::NotAvailable => write!(f, "NetworkManager (nmcli) ist nicht installiert"),
             WifiError::Failed(s) => write!(f, "nmcli failed: {}", s),
             WifiError::Io(s) => write!(f, "nmcli exec error: {}", s),
             WifiError::Timeout => write!(f, "nmcli timed out"),
+            WifiError::HardwareBlocked => write!(
+                f,
+                "WLAN ist durch einen Hardware-Schalter gesperrt. Den Schalter am Gerät freigeben."
+            ),
+            WifiError::RadioBlocked => write!(
+                f,
+                "WLAN bleibt softwareseitig gesperrt. NetworkManager-Berechtigungen und WLAN-Ländereinstellung prüfen."
+            ),
+            WifiError::NoDevice => write!(f, "Kein WLAN-Gerät verfügbar"),
         }
     }
 }
@@ -113,6 +128,10 @@ pub struct WifiStatus {
     pub device_present: bool,
     /// True if NetworkManager has Wi-Fi radio enabled.
     pub radio_enabled: bool,
+    pub soft_blocked: bool,
+    pub hard_blocked: bool,
+    /// Actual wireless interface, also used by the disconnect endpoint.
+    pub interface: Option<String>,
     /// SSID currently connected to, if any.
     pub connected_ssid: Option<String>,
     /// Signal strength of the active connection, 0-100.
@@ -168,7 +187,11 @@ pub fn scan() -> Result<Vec<WifiScanResult>, WifiError> {
     // We do this *after* the scan call so the scan can fail fast if nmcli is
     // gone; if listing saved profiles fails we just treat everything as
     // not-saved rather than aborting the whole scan.
-    let saved_ssids: std::collections::HashSet<String> = list_saved().unwrap_or_default().into_iter().map(|p| p.name).collect();
+    let saved_ssids: std::collections::HashSet<String> = list_saved()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|p| p.name)
+        .collect();
 
     let mut results = Vec::new();
     // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
@@ -248,10 +271,18 @@ pub fn list_saved() -> Result<Vec<WifiSavedProfile>, WifiError> {
 // Was: Diese Funktion verbindet saved.
 // Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
 pub fn connect_saved(uuid: &str) -> Result<(), WifiError> {
+    connect_saved_with(uuid, run_nmcli)
+}
+
+fn connect_saved_with<F>(uuid: &str, mut run: F) -> Result<(), WifiError>
+where
+    F: FnMut(&[&str]) -> Result<String, WifiError>,
+{
+    ensure_radio_enabled(&mut run)?;
     // --wait gives nmcli up to 12 s to actually associate before returning;
     // without it nmcli returns immediately after starting the connection and
     // the dashboard never knows whether it worked.
-    run_nmcli(&["--wait", "12", "connection", "up", "uuid", uuid])?;
+    run(&["--wait", "12", "connection", "up", "uuid", uuid])?;
     Ok(())
 }
 
@@ -261,6 +292,14 @@ pub fn connect_saved(uuid: &str) -> Result<(), WifiError> {
 // Was: Diese Funktion verbindet new.
 // Warum: Der Verbindungsaufbau wird dadurch zentral überwacht und kann sauber fehlschlagen.
 pub fn connect_new(ssid: &str, psk: &str, hidden: bool) -> Result<(), WifiError> {
+    connect_new_with(ssid, psk, hidden, run_nmcli)
+}
+
+fn connect_new_with<F>(ssid: &str, psk: &str, hidden: bool, mut run: F) -> Result<(), WifiError>
+where
+    F: FnMut(&[&str]) -> Result<String, WifiError>,
+{
+    ensure_radio_enabled(&mut run)?;
     // We build the argument vector dynamically because nmcli rejects an
     // empty --password value with a confusing error; open networks need the
     // flag entirely omitted.
@@ -273,7 +312,7 @@ pub fn connect_new(ssid: &str, psk: &str, hidden: bool) -> Result<(), WifiError>
         args.push("hidden");
         args.push("yes");
     }
-    run_nmcli(&args)?;
+    run(&args)?;
     Ok(())
 }
 
@@ -300,8 +339,48 @@ pub fn forget(uuid: &str) -> Result<(), WifiError> {
 // Was: Diese Funktion setzt radio.
 // Warum: Änderungen am Zustand laufen dadurch über einen klaren und kontrollierbaren Weg.
 pub fn set_radio(enabled: bool) -> Result<(), WifiError> {
-    run_nmcli(&["radio", "wifi", if enabled { "on" } else { "off" }])?;
+    if enabled {
+        ensure_radio_enabled(&mut run_nmcli)?;
+    } else {
+        run_nmcli(&["radio", "wifi", "off"])?;
+    }
     Ok(())
+}
+
+/// Use NetworkManager's authorized D-Bus operation: it clears the kernel's
+/// soft rfkill and its own persisted disabled state together. Reading or
+/// scanning never turns a deliberately disabled radio on.
+fn ensure_radio_enabled<F>(run: &mut F) -> Result<(), WifiError>
+where
+    F: FnMut(&[&str]) -> Result<String, WifiError>,
+{
+    let (hardware, enabled) = radio_state(&run(&["-t", "-f", "WIFI-HW,WIFI", "radio"])?);
+    if hardware == "disabled" {
+        return Err(WifiError::HardwareBlocked);
+    }
+    if hardware == "missing" {
+        return Err(WifiError::NoDevice);
+    }
+    if enabled {
+        return Ok(());
+    }
+    run(&["radio", "wifi", "on"])?;
+    let (hardware, enabled) = radio_state(&run(&["-t", "-f", "WIFI-HW,WIFI", "radio"])?);
+    if hardware == "disabled" {
+        return Err(WifiError::HardwareBlocked);
+    }
+    if !enabled {
+        return Err(WifiError::RadioBlocked);
+    }
+    Ok(())
+}
+
+fn radio_state(output: &str) -> (String, bool) {
+    let fields = parse_terse_line(output.trim());
+    (
+        fields.first().cloned().unwrap_or_default(),
+        fields.get(1).map(|v| v == "enabled").unwrap_or(false),
+    )
 }
 
 /// Current state: device present, radio state, connected SSID, IPv4.
@@ -312,13 +391,18 @@ pub fn status() -> Result<WifiStatus, WifiError> {
     // we'd rather fail one cheap call than try to parse a long composite.
 
     // 1) Radio enabled?
-    let radio_enabled = run_nmcli(&["-t", "-f", "WIFI", "radio"])
-        .map(|s| s.trim().eq_ignore_ascii_case("enabled"))
-        .unwrap_or(false);
+    let (hardware, radio_enabled) =
+        radio_state(&run_nmcli(&["-t", "-f", "WIFI-HW,WIFI", "radio"])?);
 
     // 2) Find the Wi-Fi device + its state + SSID in a single nmcli call.
     //    Output looks like:  wlan0:wifi:connected:MyNetwork
-    let dev_out = run_nmcli(&["-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device", "status"])?;
+    let dev_out = run_nmcli(&[
+        "-t",
+        "-f",
+        "DEVICE,TYPE,STATE,CONNECTION",
+        "device",
+        "status",
+    ])?;
     let mut device_present = false;
     let mut connected_ssid: Option<String> = None;
     let mut wifi_dev: Option<String> = None;
@@ -345,7 +429,16 @@ pub fn status() -> Result<WifiStatus, WifiError> {
     let mut ip_address: Option<String> = None;
     if let (Some(_ssid), Some(dev)) = (connected_ssid.as_ref(), wifi_dev.as_ref()) {
         // Active scan entry gives signal strength of the AP we're on.
-        if let Ok(out) = run_nmcli(&["-t", "-f", "IN-USE,SIGNAL", "device", "wifi", "list", "ifname", dev]) {
+        if let Ok(out) = run_nmcli(&[
+            "-t",
+            "-f",
+            "IN-USE,SIGNAL",
+            "device",
+            "wifi",
+            "list",
+            "ifname",
+            dev,
+        ]) {
             // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
             // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for line in out.lines() {
@@ -376,6 +469,9 @@ pub fn status() -> Result<WifiStatus, WifiError> {
     Ok(WifiStatus {
         device_present,
         radio_enabled,
+        soft_blocked: !radio_enabled,
+        hard_blocked: hardware == "disabled",
+        interface: wifi_dev,
         connected_ssid,
         signal,
         ip_address,
@@ -399,6 +495,8 @@ fn run_nmcli(args: &[&str]) -> Result<String, WifiError> {
     // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let mut child = match Command::new("nmcli")
         .args(args)
+        // Parsing uses stable English nmcli field values, independent of OS locale.
+        .env("LC_ALL", "C")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -423,7 +521,9 @@ fn run_nmcli(args: &[&str]) -> Result<String, WifiError> {
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match child.try_wait() {
             Ok(Some(status)) => {
-                let output = child.wait_with_output().map_err(|e| WifiError::Io(e.to_string()))?;
+                let output = child
+                    .wait_with_output()
+                    .map_err(|e| WifiError::Io(e.to_string()))?;
                 let stdout = String::from_utf8_lossy(&output.stdout).to_string();
                 let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
                 if status.success() {
@@ -440,6 +540,7 @@ fn run_nmcli(args: &[&str]) -> Result<String, WifiError> {
                     // Best-effort cleanup. If kill() fails the child may
                     // linger but the OS will reap it eventually.
                     let _ = child.kill();
+                    let _ = child.wait();
                     return Err(WifiError::Timeout);
                 }
                 std::thread::sleep(Duration::from_millis(50));
@@ -474,4 +575,154 @@ fn parse_terse_line(line: &str) -> Vec<String> {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn command_runner(
+        expected: Vec<(Vec<&'static str>, Result<String, WifiError>)>,
+    ) -> impl FnMut(&[&str]) -> Result<String, WifiError> {
+        let mut steps = expected.into_iter();
+        move |args| {
+            let (command, result) = steps.next().expect("unexpected command");
+            assert_eq!(args, command);
+            result
+        }
+    }
+
+    #[test]
+    fn new_connection_unblocks_radio_before_associating_and_preserves_arguments() {
+        let mut calls = Vec::new();
+        connect_new_with("AP:One", "secret value", true, |args| {
+            calls.push(args.iter().map(|arg| arg.to_string()).collect::<Vec<_>>());
+            Ok(match calls.len() {
+                1 => "enabled:disabled\n",
+                3 => "enabled:enabled\n",
+                _ => "",
+            }
+            .into())
+        })
+        .unwrap();
+        assert_eq!(calls[1], ["radio", "wifi", "on"]);
+        assert_eq!(
+            calls[3],
+            [
+                "--wait",
+                "12",
+                "device",
+                "wifi",
+                "connect",
+                "AP:One",
+                "password",
+                "secret value",
+                "hidden",
+                "yes"
+            ]
+        );
+    }
+
+    #[test]
+    fn saved_connection_unblocks_and_propagates_connection_failure() {
+        let mut calls = 0;
+        let result = connect_saved_with("profile-id", |args| {
+            calls += 1;
+            match calls {
+                1 => Ok("enabled:disabled\n".into()),
+                2 => {
+                    assert_eq!(args, ["radio", "wifi", "on"]);
+                    Ok(String::new())
+                }
+                3 => Ok("enabled:enabled\n".into()),
+                4 => {
+                    assert_eq!(
+                        args,
+                        ["--wait", "12", "connection", "up", "uuid", "profile-id"]
+                    );
+                    Err(WifiError::Failed("AP unavailable".into()))
+                }
+                _ => panic!("unexpected command"),
+            }
+        });
+        assert!(matches!(result, Err(WifiError::Failed(reason)) if reason == "AP unavailable"));
+    }
+
+    #[test]
+    fn hard_block_and_missing_radio_never_try_to_unblock_or_connect() {
+        for (output, expected) in [
+            ("disabled:disabled", "hard"),
+            ("missing:disabled", "missing"),
+        ] {
+            let mut calls = 0;
+            let result = connect_new_with("AP", "", false, |_| {
+                calls += 1;
+                Ok(output.into())
+            });
+            assert_eq!(calls, 1);
+            match expected {
+                "hard" => assert!(matches!(result, Err(WifiError::HardwareBlocked))),
+                _ => assert!(matches!(result, Err(WifiError::NoDevice))),
+            }
+        }
+    }
+
+    #[test]
+    fn authorization_error_prevents_association_and_surfaces_reason() {
+        let mut run = command_runner(vec![
+            (
+                vec!["-t", "-f", "WIFI-HW,WIFI", "radio"],
+                Ok("enabled:disabled".into()),
+            ),
+            (
+                vec!["radio", "wifi", "on"],
+                Err(WifiError::Failed("Not authorized".into())),
+            ),
+        ]);
+        assert!(
+            matches!(ensure_radio_enabled(&mut run), Err(WifiError::Failed(reason)) if reason == "Not authorized")
+        );
+    }
+
+    #[test]
+    fn persistent_block_is_not_reported_as_a_successful_connection() {
+        let mut run = command_runner(vec![
+            (
+                vec!["-t", "-f", "WIFI-HW,WIFI", "radio"],
+                Ok("enabled:disabled".into()),
+            ),
+            (vec!["radio", "wifi", "on"], Ok(String::new())),
+            (
+                vec!["-t", "-f", "WIFI-HW,WIFI", "radio"],
+                Ok("enabled:disabled".into()),
+            ),
+        ]);
+        assert!(matches!(
+            ensure_radio_enabled(&mut run),
+            Err(WifiError::RadioBlocked)
+        ));
+    }
+
+    #[test]
+    fn already_enabled_radio_does_not_toggle_and_open_ap_has_no_password_flag() {
+        let mut calls = Vec::new();
+        connect_new_with("Open AP", "", false, |args| {
+            calls.push(args.iter().map(|arg| arg.to_string()).collect::<Vec<_>>());
+            Ok("enabled:enabled".into())
+        })
+        .unwrap();
+        assert_eq!(calls.len(), 2);
+        assert_eq!(
+            calls[1],
+            ["--wait", "12", "device", "wifi", "connect", "Open AP"]
+        );
+    }
+
+    #[test]
+    fn terse_parser_preserves_escaped_ssid_characters() {
+        assert_eq!(
+            parse_terse_line(r"*:Lab\:One\\Test:81:WPA2"),
+            ["*", r"Lab:One\Test", "81", "WPA2"]
+        );
+    }
 }

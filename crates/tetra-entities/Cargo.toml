@@ -50,6 +50,7 @@ runtime = [
     "dep:base64",
     "dep:uuid",
     "dep:libc",
+    "dep:toml_edit",
 ]
 
 # Link the native TETRA speech codec for any media feature.
@@ -121,6 +122,7 @@ serde_json = "1.0"
 # Was: Bindet die Abhängigkeit `toml` in dieses Rust-Paket ein.
 # Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 toml = { workspace = true }
+toml_edit = { version = "0.22", optional = true }
 # Was: Bindet die Abhängigkeit `bitcode` in dieses Rust-Paket ein.
 # Warum: Die Bibliothek stellt benötigte Funktionen bereit, sodass sie nicht fehleranfällig selbst nachgebaut werden müssen.
 bitcode = { workspace = true }
@@ -170,3 +172,4 @@ reqwest = { version = "0.12", default-features = false, features = ["blocking", 
 # Was: Setzt die Einstellung `workspace` für lints.
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 workspace = true
+

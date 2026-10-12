@@ -6,6 +6,10 @@ on:
     paths:
       - crates/tetra-entities/src/net_dashboard/**
       - tools/test_dashboard_ui.mjs
+      - tools/test-wifi-policy.mjs
+      - crates/tetra-config/**
+      - Cargo.toml
+      - Cargo.lock
       - .github/workflows/dashboard-ui-tests.yml
   workflow_dispatch:
 
@@ -28,6 +32,8 @@ jobs:
         env:
           NODE_PATH: ${{ runner.temp }}/dashboard-ui/node_modules
         run: node tools/test_dashboard_ui.mjs
+      - name: Verify the scoped NetworkManager policy
+        run: node tools/test-wifi-policy.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -49,4 +55,5 @@ jobs:
       - name: Verify base station and dashboard server
         run: |
           cargo check --locked -p bluestation-bs
-          cargo test --locked -p tetra-entities --features recording,asterisk --lib net_dashboard::server::tests::
+          cargo test --locked -p tetra-entities --features recording,asterisk --lib net_dashboard::
+

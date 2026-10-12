@@ -1,6 +1,12 @@
 # VM119 Imagebuilder – Buildnachweise, NVMe-Recovery und offene Abnahmen
 
 
+## Aktuelle Image-Nachbesserung mit KDE
+
+PR #70 ist auf `main@67b6ef8141b1ad3b584d5c3e5f8dc834ad37a6c4` übernommen. Native systemd-Tests und beide realen ARM64-Personalisierungsjobs sind erfolgreich. Die Verzeichnisrechte sind damit als Quell-/CI-Korrektur belegt; das bereits gestartete Image53a280bd bleibt unverändert.
+
+Der Nutzer erweitert den nächsten Build um **KDE Plasma**, quote-aware Carrier-/Telegram-Konfiguration, WLAN-Bedienung, SIP-Neueinrichtung, kompakte Systemzustand-Dienste und einen Nachbarzellen-Editor. Die zentrale Media Library, Observability, Packet Core und IP-Gateway benötigen gesonderte Serverübernahme. [Aktueller Umfang und nächster Ablauf](image-ui-desktop-fixes-2026-10-12.md). Der konsolidierte VM-Updater ersetzt die notwendigen Rezept-/Builder-UI-Dateien gemeinsam bei leeren Queues; danach kann das neue Formular verwendet werden. Die alten Einzeldatei-Helfer bleiben historische, gepinnte Abläufe.
+
 ## Frischer Boot und begrenzte RX-Recovery bestanden
 
 **Frischer Image-Erststart vom12.10.2026 bestanden:** Der Betreiberbefund bestätigt das ausgelieferte Image53a280bd / Commit0770e903 auf srv-m-tbs-01: aarch64, Profil01 / MCC901 / MNC1510 / ISSI4010001 / LA1 / CC1, Overlay eeprom; SD-Root auf29G erweitert /25G frei. Firstboot und GPIO-Helfer active/exited / Result success, tetra active/running / PID1011 / NRestarts0 und Discovery active/running / PID1052 / NRestarts0. Nach einem tatsächlichen RX-Overrun von73800 Samples meldet der Router acht nachgeholte Protokollslots; TX-Writes steigen19919→23102 (+3183), beide Träger720/721 erscheinen weiter. Der frühere dauerhafte Write-Stillstand tritt im beobachteten Abschnitt nicht auf. Dies ist eine begrenzte Boot-/Recovery-Abnahme; weitere Verluste / Dauerlauf / vollständige Funk-/VPN-Abnahme bleiben offen. Der Journal-Zeitsprung Apr27→Oct12 ist beobachtet, dessen Ursache und NTP-Synchronisierung nicht separat geprüft.
@@ -753,4 +759,5 @@ Validierung des finalen Initramfs-Korrekturstands: Deployment-Core68 Tests /67 b
 ## Bestätigte Initramfs-CI / weiterhin offener Betreiberbuild
 
 Am Quellcommit `1595259a2a76abfc9eff08842409156473b585a7` sind beide main-Workflows erfolgreich abgeschlossen: [Deployment/Discovery](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380374) und [Deployment-/Quellgate](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380390). Der oben datierte Hinweis auf damals noch nicht beobachtete CI bleibt historisch. Diese Ergebnisse bestätigen keinen vollständigen ARM64-NetCore-Build oder physischen Pi-Boot. Die Anlagenübernahme der neuen TBS-Bedienung und des Gastrezepts wird jeweils durch die Betreiber-Ausgabe bestätigt.
+
 

@@ -57,6 +57,10 @@ struct LibraryInner {
     application_gateway_connected: bool,
     dependency_errors: BTreeMap<String, String>,
     last_dependency_probe_at: Option<DateTime<Utc>>,
+    readiness: Arc<Mutex<ReadinessView>>,
+    status_cache: Arc<Mutex<Option<PublishedStatus>>>,
+    storage_used_bytes: u64,
+    storage_usage_checked_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Clone)]
@@ -64,6 +68,24 @@ struct LibraryInner {
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedLibrary {
     inner: Arc<Mutex<LibraryInner>>,
+    readiness: Arc<Mutex<ReadinessView>>,
+    status_cache: Arc<Mutex<Option<PublishedStatus>>>,
+}
+
+#[derive(Clone)]
+struct PublishedStatus {
+    view: StatusView,
+    dedupe_hits: u64,
+    dispatch_frames_sent: u64,
+}
+
+/// Health polling must not traverse the media/NAS filesystem.
+#[derive(Debug, Clone, Serialize)]
+pub struct ReadinessView {
+    pub service: &'static str,
+    pub ready: bool,
+    pub storage_available: bool,
+    pub last_error: Option<String>,
 }
 
 fn archive_timestamp(asset: &AssetRecord) -> DateTime<FixedOffset> {
@@ -211,7 +233,16 @@ impl SharedLibrary {
             }
         }
         let archive_available = archive_roots_available(&config);
+        let readiness = Arc::new(Mutex::new(ReadinessView {
+            service: "media-library",
+            ready: true,
+            storage_available: true,
+            last_error: None,
+        }));
+        let status_cache = Arc::new(Mutex::new(None));
         let library = Self {
+            readiness: readiness.clone(),
+            status_cache: status_cache.clone(),
             inner: Arc::new(Mutex::new(LibraryInner {
                 config,
                 state,
@@ -224,6 +255,10 @@ impl SharedLibrary {
                 application_gateway_connected: false,
                 dependency_errors: BTreeMap::new(),
                 last_dependency_probe_at: None,
+                readiness,
+                status_cache,
+                storage_used_bytes: 0,
+                storage_usage_checked_at: None,
             })),
         };
         {
@@ -233,48 +268,22 @@ impl SharedLibrary {
         Ok(library)
     }
 
+    pub fn readiness(&self) -> ReadinessView {
+        // File import, archive operations and state fsync may own LibraryInner for
+        // a long time. This separate snapshot records the last actual state-write
+        // result and never waits for those operations or probes the filesystem.
+        self.readiness.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).clone()
+    }
+
     // Was: Führt den Arbeitsschritt `status` für Status aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn status(&self) -> StatusView {
-        let inner = lock(&self.inner);
-        let assets = inner.state.assets.values().collect::<Vec<_>>();
-        let jobs = &inner.state.jobs;
-        StatusView {
-            service: "media-library".to_string(),
-            security_mode: OPEN_LAB_MODE.to_string(),
-            operating_mode: inner.config.runtime.operating_mode.clone(),
-            ready: inner.storage_available,
-            storage_available: inner.storage_available,
-            archive_available: inner.archive_available,
-            media_switch_connected: inner.media_switch_connected,
-            recorder_connected: inner.recorder_connected,
-            application_gateway_connected: inner.application_gateway_connected,
-            assets_total: assets.len(),
-            assets_importing: assets
-                .iter()
-                .filter(|asset| asset.state.starts_with("importing"))
-                .count(),
-            assets_processing: assets
-                .iter()
-                .filter(|asset| asset.state.starts_with("processing"))
-                .count(),
-            assets_ready: assets.iter().filter(|asset| asset.state == "ready").count(),
-            assets_failed: assets.iter().filter(|asset| asset.state == "failed").count(),
-            assets_approved: assets
-                .iter()
-                .filter(|asset| asset.approval == "approved")
-                .count(),
-            preview_ready: assets.iter().filter(|asset| asset.preview_ready).count(),
-            broadcast_ready: assets.iter().filter(|asset| asset.broadcast_ready).count(),
-            jobs_queued: jobs.iter().filter(|job| job.state == "queued").count(),
-            jobs_playing: jobs.iter().filter(|job| job.state == "playing").count(),
-            jobs_completed: jobs.iter().filter(|job| job.state == "completed").count(),
-            jobs_failed: jobs.iter().filter(|job| job.state == "failed").count(),
-            storage_used_bytes: media::total_directory_bytes(&inner.config.storage.root),
-            started_at: inner.started_at,
-            last_dependency_probe_at: inner.last_dependency_probe_at,
-            last_error: inner.storage_last_error.clone(),
-        }
+        self.published_status().view
+    }
+
+    fn published_status(&self) -> PublishedStatus {
+        self.status_cache.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+            .as_ref().expect("Media Library status must be published before serving requests").clone()
     }
 
     // Was: Führt den Arbeitsschritt `config_view` für Konfiguration view aus.
@@ -1228,8 +1237,8 @@ impl SharedLibrary {
     // Was: Führt den Arbeitsschritt `metrics` für Messwerte aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn metrics(&self) -> String {
-        let inner = lock(&self.inner);
-        let status = self.status_locked_view(&inner);
+        let snapshot = self.published_status();
+        let status = snapshot.view;
         format!(
             concat!(
                 "# HELP netcore_media_library_up Media Library process state\n",
@@ -1264,14 +1273,14 @@ impl SharedLibrary {
             status.jobs_playing,
             status.jobs_failed,
             status.storage_used_bytes,
-            inner.state.dedupe_hits,
-            inner.state.dispatch_frames_sent,
+            snapshot.dedupe_hits,
+            snapshot.dispatch_frames_sent,
         )
     }
 
     // Was: Führt den Arbeitsschritt `status_locked_view` für Status locked view aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    fn status_locked_view(&self, inner: &LibraryInner) -> StatusView {
+    fn status_locked_view(inner: &LibraryInner) -> StatusView {
         let assets = inner.state.assets.values().collect::<Vec<_>>();
         StatusView {
             service: "media-library".to_string(),
@@ -1295,7 +1304,8 @@ impl SharedLibrary {
             jobs_playing: inner.state.jobs.iter().filter(|job| job.state == "playing").count(),
             jobs_completed: inner.state.jobs.iter().filter(|job| job.state == "completed").count(),
             jobs_failed: inner.state.jobs.iter().filter(|job| job.state == "failed").count(),
-            storage_used_bytes: media::total_directory_bytes(&inner.config.storage.root),
+            storage_used_bytes: inner.storage_used_bytes,
+            storage_usage_checked_at: inner.storage_usage_checked_at,
             started_at: inner.started_at,
             last_dependency_probe_at: inner.last_dependency_probe_at,
             last_error: inner.storage_last_error.clone(),
@@ -1712,15 +1722,25 @@ impl SharedLibrary {
             inner.dependency_errors.remove(service);
         }
         inner.last_dependency_probe_at = Some(Utc::now());
+        publish_status(&inner);
     }
 
     // Was: Führt den Arbeitsschritt `maintenance` für maintenance aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn maintenance(&self, actor_name: Option<String>) -> Result<Value, String> {
+        let config = {
+            let inner = lock(&self.inner);
+            require_management(&inner)?;
+            inner.config.clone()
+        };
+        let archive_available = archive_roots_available(&config);
+        let storage_used_bytes = media::total_directory_bytes(&config.storage.root);
+        let storage_usage_checked_at = Utc::now();
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
-        let archive_available = archive_roots_available(&inner.config);
         inner.archive_available = archive_available;
+        inner.storage_used_bytes = storage_used_bytes;
+        inner.storage_usage_checked_at = Some(storage_usage_checked_at);
         trim_locked(&mut inner);
         audit_locked(
             &mut inner,
@@ -1975,13 +1995,16 @@ fn trim_locked(inner: &mut LibraryInner) {
 // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
 fn persist_locked(inner: &mut LibraryInner) -> Result<(), String> {
     trim_locked(inner);
-    let bytes = serde_json::to_vec_pretty(&inner.state).map_err(|error| error.to_string())?;
+    let commit = serde_json::to_vec_pretty(&inner.state)
+        .map_err(|error| error.to_string())
+        .and_then(|bytes| media::write_atomic(&inner.config.storage.state_file, &bytes, true));
     // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
     // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
-    match media::write_atomic(&inner.config.storage.state_file, &bytes, true) {
+    match commit {
         Ok(()) => {
             inner.storage_available = true;
             inner.storage_last_error = None;
+            publish_readiness(inner);
             // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
             // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for asset in inner.state.assets.values() {
@@ -2003,9 +2026,29 @@ fn persist_locked(inner: &mut LibraryInner) -> Result<(), String> {
         Err(error) => {
             inner.storage_available = false;
             inner.storage_last_error = Some(error.clone());
+            publish_readiness(inner);
             Err(error)
         }
     }
+}
+
+fn publish_readiness(inner: &LibraryInner) {
+    {
+        let mut readiness = inner.readiness.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        readiness.ready = inner.storage_available;
+        readiness.storage_available = inner.storage_available;
+        readiness.last_error = inner.storage_last_error.clone();
+    }
+    publish_status(inner);
+}
+
+fn publish_status(inner: &LibraryInner) {
+    let snapshot = PublishedStatus {
+        view: SharedLibrary::status_locked_view(inner),
+        dedupe_hits: inner.state.dedupe_hits,
+        dispatch_frames_sent: inner.state.dispatch_frames_sent,
+    };
+    *inner.status_cache.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(snapshot);
 }
 
 // Was: Führt den Arbeitsschritt `bool_metric` für bool metric aus.
@@ -2050,3 +2093,155 @@ mod dispatch_mode_tests {
         ));
     }
 }
+
+#[cfg(test)]
+mod readiness_tests {
+    use super::*;
+
+    fn library(storage_available: bool, error: Option<&str>) -> SharedLibrary {
+        let readiness = Arc::new(Mutex::new(ReadinessView {
+            service: "media-library",
+            ready: storage_available,
+            storage_available,
+            last_error: error.map(str::to_string),
+        }));
+        let status_cache = Arc::new(Mutex::new(None));
+        let library = SharedLibrary { readiness: readiness.clone(), status_cache: status_cache.clone(), inner: Arc::new(Mutex::new(LibraryInner {
+            config: MediaLibraryConfig::default(),
+            state: PersistentState::default(),
+            started_at: Utc::now(),
+            storage_available,
+            storage_last_error: error.map(str::to_string),
+            archive_available: false,
+            media_switch_connected: false,
+            recorder_connected: false,
+            application_gateway_connected: false,
+            dependency_errors: BTreeMap::new(),
+            last_dependency_probe_at: None,
+            readiness,
+            status_cache,
+            storage_used_bytes: 0,
+            storage_usage_checked_at: None,
+        })) };
+        publish_status(&lock(&library.inner));
+        library
+    }
+
+    #[test]
+    fn health_snapshot_preserves_real_storage_failure() {
+        let readiness = library(false, Some("state write failed")).readiness();
+        assert!(!readiness.ready);
+        assert!(!readiness.storage_available);
+        assert_eq!(readiness.last_error.as_deref(), Some("state write failed"));
+    }
+
+    #[test]
+    fn health_snapshot_does_not_require_inventory_or_archive_statistics() {
+        let library = library(true, None);
+        {
+            let mut inner = lock(&library.inner);
+            inner.config.storage.root = PathBuf::from("/unavailable-media-nas");
+        }
+        let readiness = serde_json::to_value(library.readiness()).unwrap();
+        assert_eq!(readiness["ready"], true);
+        assert!(readiness.get("storage_used_bytes").is_none());
+        assert!(readiness.get("assets_total").is_none());
+    }
+
+    #[test]
+    fn readiness_status_and_metrics_remain_responsive_while_library_state_is_locked_by_io() {
+        use std::sync::mpsc;
+        use std::time::Duration;
+        let library = library(true, None);
+        let blocked_writer = library.clone();
+        let (held_tx, held_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let writer = std::thread::spawn(move || {
+            let _inner = lock(&blocked_writer.inner);
+            held_tx.send(()).unwrap();
+            release_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        });
+        held_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        let reader = library.clone();
+        let (response_tx, response_rx) = mpsc::channel();
+        let health = std::thread::spawn(move || {
+            response_tx.send((reader.readiness(), reader.status(), reader.metrics())).unwrap()
+        });
+        let response = response_rx.recv_timeout(Duration::from_secs(1));
+        release_tx.send(()).unwrap();
+        writer.join().unwrap();
+        health.join().unwrap();
+        let (ready, status, metrics) = response.unwrap();
+        assert!(ready.ready);
+        assert!(status.ready);
+        assert_eq!(status.assets_total, 0);
+        assert!(metrics.contains("netcore_media_library_ready 1\n"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn actual_failed_state_commit_publishes_failure_and_repaired_commit_recovers() {
+        let directory = std::env::temp_dir().join(format!("netcore-media-readiness-{}", Uuid::new_v4()));
+        fs::create_dir_all(&directory).unwrap();
+        let library = library(true, None);
+        let state_file = directory.join("state.json");
+        // A directory at the commit destination fails even for a root test runner.
+        fs::create_dir(&state_file).unwrap();
+        let error = {
+            let mut inner = lock(&library.inner);
+            inner.config.storage.state_file = state_file.clone();
+            persist_locked(&mut inner).unwrap_err()
+        };
+        let failed = library.readiness();
+        assert!(!failed.ready);
+        assert!(!failed.storage_available);
+        assert_eq!(failed.last_error.as_deref(), Some(error.as_str()));
+        let failed_status = library.status();
+        assert!(!failed_status.ready);
+        assert_eq!(failed_status.last_error.as_deref(), Some(error.as_str()));
+        assert!(library.metrics().contains("netcore_media_library_ready 0\n"));
+        fs::remove_dir(&state_file).unwrap();
+        {
+            let mut inner = lock(&library.inner);
+            inner.state.next_event_seq = 7;
+            persist_locked(&mut inner).unwrap();
+        }
+        let recovered = library.readiness();
+        assert!(recovered.ready);
+        assert!(recovered.storage_available);
+        assert!(recovered.last_error.is_none());
+        assert!(library.status().ready);
+        assert!(library.status().last_error.is_none());
+        assert!(library.metrics().contains("netcore_media_library_ready 1\n"));
+        let committed: PersistentState = serde_json::from_slice(&fs::read(&state_file).unwrap()).unwrap();
+        assert_eq!(committed.next_event_seq, 7);
+        fs::remove_dir_all(&directory).unwrap();
+    }
+    #[cfg(unix)]
+    #[test]
+    fn status_uses_last_background_inventory_until_next_maintenance() {
+        let directory = std::env::temp_dir().join(format!("netcore-media-inventory-{}", Uuid::new_v4()));
+        let media_root = directory.join("media");
+        fs::create_dir_all(&media_root).unwrap();
+        fs::write(media_root.join("first.wav"), b"1234567").unwrap();
+        let library = library(true, None);
+        {
+            let mut inner = lock(&library.inner);
+            inner.config.runtime.operating_mode = "authoritative".to_string();
+            inner.config.storage.root = media_root.clone();
+            inner.config.storage.state_file = directory.join("state.json");
+        }
+        assert!(library.status().storage_usage_checked_at.is_none());
+        library.maintenance(None).unwrap();
+        assert_eq!(library.status().storage_used_bytes, 7);
+        assert!(library.status().storage_usage_checked_at.is_some());
+        fs::write(media_root.join("second.wav"), b"12345").unwrap();
+        // Status requests serve the last completed inventory; they never walk NAS.
+        assert_eq!(library.status().storage_used_bytes, 7);
+        library.maintenance(None).unwrap();
+        assert_eq!(library.status().storage_used_bytes, 12);
+        fs::remove_dir_all(&directory).unwrap();
+    }
+
+}
+

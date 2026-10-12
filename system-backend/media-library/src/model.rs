@@ -185,6 +185,8 @@ pub struct StatusView {
     pub jobs_completed: usize,
     pub jobs_failed: usize,
     pub storage_used_bytes: u64,
+    /// Last completed background inventory; None means capacity is not sampled yet.
+    pub storage_usage_checked_at: Option<DateTime<Utc>>,
     pub started_at: DateTime<Utc>,
     pub last_dependency_probe_at: Option<DateTime<Utc>>,
     pub last_error: Option<String>,

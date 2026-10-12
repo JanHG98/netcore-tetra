@@ -9,6 +9,7 @@ import re
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 import tomllib
 from pathlib import Path
@@ -49,6 +50,30 @@ def atomic_write(path: Path, content: str, mode: int | None = None) -> None:
 
 def atomic_json(path: Path, data: dict[str, Any]) -> None:
     atomic_write(path, json.dumps(data, indent=2, sort_keys=True) + "\n", 0o640)
+
+
+def write_asterisk_config(path: Path, content: str) -> None:
+    """Keep root-rendered includes readable by the Asterisk service user."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(content)
+            stream.flush()
+            if os.name == "posix":
+                if os.geteuid() == 0:
+                    import grp
+                    try:
+                        gid = grp.getgrnam("asterisk").gr_gid
+                    except KeyError:
+                        gid = path.parent.stat().st_gid
+                    os.fchown(stream.fileno(), -1, gid)
+                os.fchmod(stream.fileno(), 0o640)
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
 
 
 def names(cfg: dict[str, Any]) -> dict[str, str]:
@@ -493,7 +518,7 @@ class FailoverController:
             if current != target:
                 self.cli.unregister(self.n["central_reg"] if current == "central" else self.n["pbx_reg"])
                 self.sleeper(max(0, float(self.cfg["failover"].get("unregister_grace_secs", 2))))
-            atomic_write(self.active_file, expected, 0o640)
+            write_asterisk_config(self.active_file, expected)
             self.cli.reload_registrations()
             self.cli.set_mode_db(target)
         except Exception as error:
@@ -501,7 +526,7 @@ class FailoverController:
             self.state["last_error"] = str(error)
             self.state["phase"] = "TRANSITION_FAILED"
             try:
-                atomic_write(self.active_file, render_active_registration(self.cfg, current), 0o640)
+                write_asterisk_config(self.active_file, render_active_registration(self.cfg, current))
                 self.cli.reload_registrations()
                 self.cli.set_mode_db(current)
             finally:
@@ -618,10 +643,13 @@ def render(cfg_path: Path) -> dict[str, Any]:
         Path(fail["central_registration_file"]): render_central_registration(cfg),
         Path(fail["pbx_registration_file"]): render_pbx_registration(cfg),
         Path(fail["active_registration_file"]): render_active_registration(cfg, str(state["mode"])),
-        Path(cfg["asterisk"].get("native_snippet_file", "/etc/netcore/tbs-asterisk-local-snippet.toml")): render_native_snippet(cfg),
     }
     for path, content in files.items():
-        atomic_write(path, content, 0o640 if path.suffix in {".conf", ".toml"} else None)
+        write_asterisk_config(path, content)
+    # Native credentials belong to the NetCore config, not to the PBX reader group.
+    snippet = Path(cfg["asterisk"].get("native_snippet_file", "/etc/netcore/tbs-asterisk-local-snippet.toml"))
+    files[snippet] = render_native_snippet(cfg)
+    atomic_write(snippet, files[snippet], 0o640)
     return {"rendered": [str(path) for path in files], "node_id": cfg["service"]["node_id"], "active_mode": state["mode"]}
 
 
@@ -714,3 +742,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

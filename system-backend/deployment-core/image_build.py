@@ -17,7 +17,7 @@ import urllib.request
 
 from common import ROOT, REPOSITORY, atomic_write, json_file
 from deploy import run
-from image_spec import BASE, BUILD_ID, validate_image
+from image_spec import BASE, BUILD_ID, DESKTOPS, validate_image
 
 GIB = 1024 ** 3
 WORK_GIB = 24
@@ -78,8 +78,10 @@ def sha256(path):
     return digest.hexdigest()
 
 
-def recipe_key(commit):
-    digest = hashlib.sha256(json.dumps({'base': BASE, 'commit': commit, 'revision': 1}, sort_keys=True).encode())
+def recipe_key(commit, desktop='none'):
+    if desktop not in DESKTOPS:
+        raise ValueError('Nicht unterstützte Desktop-Variante')
+    digest = hashlib.sha256(json.dumps({'base': BASE, 'commit': commit, 'desktop': desktop, 'revision': 2}, sort_keys=True).encode())
     for path in sorted([ROOT / 'image_build.py', ROOT / 'image_spec.py', *list((ROOT / 'image').rglob('*'))]):
         if path.is_file() and '__pycache__' not in path.parts:
             digest.update(str(path.relative_to(ROOT)).encode())
@@ -325,7 +327,7 @@ def build(state, key):
     work.mkdir(mode=0o700)
     image, root = work / 'image.img', work / 'root'
     cache = state / 'cache'
-    digest = recipe_key(req['commit'])
+    digest = recipe_key(req['commit'], req['desktop'])
     base = cache / (digest + '.img')
     versions_file = cache / (digest + '.json')
     try:
@@ -346,9 +348,9 @@ def build(state, key):
                     guest_dns(root)
                     print('ARM64-Build auf der VM: Pakete, SoapySX, Codec, NetCore. Der erste Build kann mehrere Stunden dauern.', flush=True)
                     command(['chroot', root, '/bin/bash', '/usr/local/lib/netcore-image/build-guest.sh',
-                             REPOSITORY, req['commit'], BASE['soapy_repository'], BASE['soapy_commit']], timeout=22 * 3600)
+                             REPOSITORY, req['commit'], BASE['soapy_repository'], BASE['soapy_commit'], req['desktop']], timeout=22 * 3600)
                 versions = json_file(root / 'usr/share/netcore-image/versions.json', {})
-                if versions.get('commit') != req['commit']:
+                if versions.get('commit') != req['commit'] or versions.get('desktop', 'none') != req['desktop']:
                     raise RuntimeError('Build-Version konnte nicht verifiziert werden')
                 clean_identity(root)
             shrink(image, root)
@@ -382,7 +384,8 @@ def build(state, key):
                         commit=req['commit'], created=time.time(), base=BASE, recipe=digest,
                         versions=json_file(versions_file, {}), sha256=checksum,
                         size_bytes=artifact.stat().st_size, uncompressed_bytes=image.stat().st_size,
-                        overlay=req['overlay'], boot_tested=False,
+                        overlay=req['overlay'], desktop=req['desktop'], desktop_label=DESKTOPS[req['desktop']],
+                        sip_setup=req['sip_setup'], boot_tested=False,
                         note='Auf der VM vorinstalliert. Ein physischer Pi-/SDR-Start ist damit noch nicht geprüft.')
         pending = work / 'artifact'
         pending.mkdir()
@@ -412,3 +415,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

@@ -45,6 +45,14 @@ const path = require('node:path');
     await page.locator('#job-list').getByText('Erfolgreich',{exact:true}).waitFor({timeout:15000});
     assert.match(await page.locator('#log').textContent(),/simulated installer/);
     assert.equal(await page.locator('#image-controller').inputValue(),'http://10.0.1.50:8320');
+    const imageBuildCount=()=>mutations.filter(request=>request.path==='/api/v1/images/build').length;
+    const sshKey='ssh-ed25519 '+Buffer.concat([Buffer.from([0,0,0,11]),Buffer.from('ssh-ed25519'),Buffer.from([0,0,0,32]),Buffer.alloc(32,1)]).toString('base64')+' browser-fixture';
+    assert.equal(await page.locator('#image-desktop').inputValue(),'kde','new image UI should offer KDE by default');
+    await page.locator('#image-form [name=ssh_key]').fill(sshKey);
+    await page.locator('#image-build').click();
+    assert.equal(imageBuildCount(),0,'KDE requires a login password even when an SSH key was supplied');
+    assert.equal(await page.locator('#image-password').evaluate(input=>input.required&&input.validity.valueMissing),true);
+    assert.match(await page.locator('#image-password-note').textContent(),/KDE/);
     await page.locator('#image-form [name=password]').fill('fixture-only-password');
     await page.locator('#image-build').click();
     await page.locator('#image-artifacts').getByText('Download bereit',{exact:true}).waitFor({timeout:15000});
@@ -53,12 +61,48 @@ const path = require('node:path');
     assert.match(await page.locator('#image-artifacts').textContent(),/bbbbbbbb/);
     const imageSubmission=mutations.find(request=>request.path==='/api/v1/images/build');
     assert.equal(imageSubmission.body.profile,'TBS-02');
+    assert.equal(imageSubmission.body.desktop,'kde');
+    assert.equal(imageSubmission.body.sip_fallback_config,'');
     assert.equal(Object.hasOwn(imageSubmission.body,'ref'),false,'Pi image UI must not submit a branch, tag or commit');
     assert.equal(await page.locator('#image-form [name=password]').inputValue(),'');
     const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#image-artifacts').getByText('Image ↓',{exact:true}).click()]);
     assert.equal(download.suggestedFilename(),'fixture.img.xz');
     const readable=await download.createReadStream();const chunks=[];for await(const chunk of readable)chunks.push(chunk);
     assert.equal(Buffer.concat(chunks).toString(),'fixture image transport only');
+    assert.match(await page.locator('#image-artifacts').textContent(),/KDE Plasma/);
+    assert.match(await page.locator('#image-artifacts').textContent(),/Einrichtung erforderlich/);
+    // The Lite image accepts SSH-key-only access. Private SIP TOML reaches the
+    // offline image request, but public job metadata and the rendered UI omit it.
+    await page.locator('#image-desktop').selectOption('none');
+    assert.equal(await page.locator('#image-password').evaluate(input=>input.required),false);
+    assert.match(await page.locator('#image-password-note').textContent(),/SSH-Public-Key/);
+    const privateSip='[service]\nnode_id="TBS-02"\n[central]\nhost="sip-core.fixture.invalid"\nusername="fixture-central-user"\npassword="fixture-central-private"\n[fallback_pbx]\nhost="pbx.fixture.invalid"\nusername="fixture-pbx-user"\nauth_username="fixture-pbx-auth"\npassword="fixture-pbx-private"\n';
+    await page.locator('#image-sip').setInputFiles({name:'station-sip.toml',mimeType:'text/plain',buffer:Buffer.from(privateSip)});
+    assert.equal(await page.locator('#image-form [name=password]').inputValue(),'');
+    await page.locator('#image-build').click();
+    await page.waitForFunction(()=>document.querySelectorAll('#image-artifacts .image-card').length===2,{},{timeout:15000});
+    const imageSubmissions=mutations.filter(request=>request.path==='/api/v1/images/build');
+    assert.equal(imageSubmissions.length,2);
+    assert.equal(imageSubmissions[1].body.desktop,'none');
+    assert.equal(imageSubmissions[1].body.password,'');
+    assert.equal(imageSubmissions[1].body.ssh_key,sshKey);
+    assert.equal(imageSubmissions[1].body.sip_fallback_config,privateSip);
+    assert.equal(Object.hasOwn(imageSubmissions[1].body,'ref'),false);
+    assert.equal(await page.locator('#image-sip').evaluate(input=>input.files.length),0,'successful import must clear the private file selection');
+    const imageState=await (await page.request.get(url+'/api/v1/images')).json();
+    assert.equal(imageState.artifacts.length,2);
+    const desktopJob=imageState.jobs.find(job=>job.request.desktop==='kde');
+    const liteJob=imageState.jobs.find(job=>job.request.desktop==='none');
+    assert.ok(desktopJob&&liteJob,'both desktop modes must survive the real API roundtrip');
+    assert.equal(desktopJob.request.sip_setup,'setup_required');
+    assert.equal(liteJob.request.sip_setup,'configured');
+    const publicJson=JSON.stringify(imageState);
+    for(const privateValue of ['fixture-only-password','fixture-central-private','fixture-pbx-private','fixture-central-user','fixture-pbx-auth',privateSip,'sip_fallback_config']){
+      assert.equal(publicJson.includes(privateValue),false,'public image jobs must not expose private credentials or configuration');
+      assert.equal((await page.locator('body').textContent()).includes(privateValue),false,'rendered job/artifact/log must not contain private input');
+    }
+    assert.match(await page.locator('#image-artifacts').textContent(),/Ohne Desktop \(Lite\)/);
+    assert.match(await page.locator('#image-artifacts').textContent(),/SIP eingerichtet/);
     // Cancellation, busy/error handling, pending protection and actual successful
     // removal all use the saved-profile UI; successful requests reach the real API.
     await page.locator('#profile-form [name=name]').fill('TBS-03');
@@ -112,7 +156,7 @@ const path = require('node:path');
     assert.equal(await page.locator('#image-hostname').inputValue(),'');
     assert.equal(await page.locator('#image-build').isDisabled(),true);
     await page.waitForFunction(()=>!document.querySelector('[data-remove-profile="TBS-02"]').disabled);
-    assert.equal(await page.locator('#image-artifacts .image-card').count(),1,'Profile removal must preserve existing images');
+    assert.equal(await page.locator('#image-artifacts .image-card').count(),2,'Profile removal must preserve existing images');
     assert.match(await page.locator('#job-list').textContent(),/Erfolgreich/);
     for(const [name,applied] of [['TBS-04',true],['TBS-05',null]]){
       await page.locator('#profile-form [name=name]').fill(name);
@@ -143,7 +187,7 @@ const path = require('node:path');
       const current=await (await page.request.get(url+'/api/v1/profiles')).json();
       assert.deepEqual(current.map(profile=>profile.name),['TBS-02'],'UI must reconcile with the actual persisted profile state after a 503');
       if(applied===true)assert.match(await page.locator('#notice').textContent(),/gelöscht, aber die dauerhafte Speicherung konnte nicht bestätigt werden/);
-      assert.equal(await page.locator('#image-artifacts .image-card').count(),1);
+      assert.equal(await page.locator('#image-artifacts .image-card').count(),2);
     }
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     await page.screenshot({path:'/tmp/netcore-deployment-desktop.png',fullPage:true});
@@ -162,13 +206,17 @@ const path = require('node:path');
     assert.equal(await page.locator('#image-profile').inputValue(),'');
     assert.equal(await page.locator('#image-profile option').count(),1);
     assert.equal(await page.locator('#image-build').isDisabled(),true);
-    assert.equal(await page.locator('#image-artifacts .image-card').count(),1,'Removing the last profile must not remove previously built images');
+    assert.equal(await page.locator('#image-artifacts .image-card').count(),2,'Removing the last profile must not remove previously built images');
     await page.screenshot({path:'/tmp/netcore-deployment-empty-profiles-mobile.png',fullPage:true});
-    page.once('dialog',dialog=>dialog.accept());
-    await page.locator('#image-artifacts').getByText('Löschen',{exact:true}).click();
+    for(let remaining=2;remaining>0;remaining--){
+      page.once('dialog',dialog=>dialog.accept());
+      await page.locator('#image-artifacts').getByText('Löschen',{exact:true}).first().click();
+      await page.waitForFunction(count=>document.querySelectorAll('#image-artifacts .image-card').length===count,remaining-1);
+    }
     await page.getByText('Image gelöscht. Das Buildprotokoll bleibt erhalten.').waitFor();
     assert.equal(await page.locator('#image-artifacts .image-card').count(),0);
     assert.deepEqual(errors,[]);
-    console.log('PASS: real WebUI, discovery, TBS wizard, remote job, automatic-main image submission/download, profile cancel/error/pending/deletion/503 reconciliation/empty state, preserved images, desktop and mobile');
+    console.log('PASS: real WebUI, discovery, TBS wizard, remote job, automatic-main KDE/Lite submission/password/private SIP roundtrip/download, profile cancel/error/pending/deletion/503 reconciliation/empty state, preserved images, desktop and mobile');
   } finally {if(browser)await browser.close();fixture.kill('SIGTERM');}
 })().catch(e=>{console.error(e);process.exitCode=1;});
+

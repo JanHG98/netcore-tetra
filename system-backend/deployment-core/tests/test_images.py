@@ -13,7 +13,7 @@ from urllib.request import Request, urlopen
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common import ROOT, atomic_write, load_config, request_json
 from image_client import ImageClient
-from image_spec import BASE, public_job, validate_image, validate_vpn, wifi_keyfile
+from image_spec import BASE, DESKTOPS, public_job, validate_image, validate_vpn, wifi_keyfile
 from image_worker import Worker, Server as WorkerServer, handler as worker_handler, byte_range
 from main import App, Server, handler
 
@@ -36,7 +36,9 @@ def simulated_build(worker, req, log):
     directory.mkdir()
     (directory / 'image.img.xz').write_bytes(b'fixture image transport only')
     manifest = dict(id=key, filename='fixture.img.xz', profile=req['profile'], commit=req['commit'],
-                    created=time.time(), size_bytes=28, uncompressed_bytes=1024, boot_tested=False)
+                    created=time.time(), size_bytes=28, uncompressed_bytes=1024, boot_tested=False,
+                    desktop=req.get('desktop', 'none'), desktop_label=DESKTOPS[req.get('desktop', 'none')],
+                    sip_setup=req.get('sip_setup', 'setup_required'))
     atomic_write(directory / 'manifest.json', json.dumps(manifest))
     atomic_write(directory / 'image.sha256', 'fixture checksum\n')
     log('Browser/API integration: simulated image builder; no OS build performed')

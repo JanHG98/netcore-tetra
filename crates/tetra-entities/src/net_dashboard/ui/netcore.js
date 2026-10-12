@@ -46,6 +46,7 @@
   let currentPage = 'home';
   let selectedRadio = null;
   let neighbors = null;
+  let neighborRevision=null,neighborDirty=false,neighborBusy=false,neighborConflict=false,neighborEditing=null;
   let sessionReady = false;
 
   // The old sidebar becomes an invisible storage area for context navigation.
@@ -140,7 +141,53 @@
   discoveryLink.href=discoveryUrl.href;discoveryLink.target='_blank';discoveryLink.rel='noopener';
   discoveryLink.dataset.netcoreDiscovery='';discoveryLink.hidden=true;
   byId('core-services-card').querySelector('.card-actions').prepend(discoveryLink);
-  byId('page-neighbors').innerHTML='<div class="card"><div class="card-head"><div><div class="card-title">Konfigurierte Nachbarzellen</div><p class="card-sub">Konfigurationswerte · Verfügbarkeit und Handover werden hier nicht gemessen.</p></div><span class="pill pill-info" id="nc-neighbor-count">—</span></div><div class="table-wrap"><table><thead><tr><th>Zellkennung</th><th>Hauptträger</th><th>MCC / MNC</th><th>Location Area</th><th>Synchronisiert</th><th>Konfigurierte Zelllast</th></tr></thead><tbody id="nc-neighbor-rows"><tr><td colspan="6">Warte auf Konfiguration…</td></tr></tbody></table></div></div><p class="help-text">Änderungen erfolgen weiterhin in der Konfiguration. Live-Detailansichten und weitere Mobilitätsfunktionen sind für eine spätere Erweiterung vorgesehen.</p>';
+  byId('page-neighbors').innerHTML=`
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Konfigurierte Nachbarzellen</div><p class="card-sub">Konfigurationswerte – Verfügbarkeit und Handover werden hier nicht gemessen.</p></div><span class="pill pill-info" id="nc-neighbor-count">–</span></div>
+      <div class="card-body nc-neighbor-toolbar"><button type="button" class="btn" id="nc-neighbor-add" disabled>Nachbarzelle anlegen</button><button type="button" class="btn btn-primary" id="nc-neighbor-save" disabled>Speichern und übernehmen</button><button type="button" class="btn" id="nc-neighbor-reload">Neu laden</button></div>
+      <div class="card-body nc-neighbor-notice" id="nc-neighbor-status" role="status" aria-live="polite">Nachbarzellen werden geladen.</div>
+      <div class="table-wrap"><table><thead><tr><th>Zellkennung</th><th>Hauptträger</th><th>MCC / MNC</th><th>Location Area</th><th>Synchronisiert</th><th>Zelllast</th><th>Bearbeiten</th></tr></thead><tbody id="nc-neighbor-rows"></tbody></table></div>
+      <div class="card-body"><p class="help-text">Bis zu 7 Nachbarzellen. Änderungen bleiben als Entwurf erhalten, bis du speicherst. Beim Übernehmen wird der Funkdienst kurz neu gestartet; laufende Rufe werden unterbrochen.</p></div>
+    </div>
+    <div class="card nc-neighbor-editor" id="nc-neighbor-editor" hidden>
+      <div class="card-head"><div class="card-title" id="nc-neighbor-editor-title">Nachbarzelle bearbeiten</div></div>
+      <form class="card-body" id="nc-neighbor-form">
+        <div class="nc-neighbor-fields" id="nc-neighbor-fields"></div>
+        <label class="nc-neighbor-check"><input type="checkbox" id="nc-n-neighbor_cell_synchronized"> Zelle ist synchronisiert</label>
+        <details class="nc-neighbor-advanced"><summary>Erweiterte Parameter</summary><div class="nc-neighbor-fields" id="nc-neighbor-advanced-fields"></div><p class="help-text">Leere optionale Felder übernehmen die Standardwerte der Funkkonfiguration. Weitere bestehende Dienstparameter bleiben erhalten.</p></details>
+        <div class="config-msg" id="nc-neighbor-form-msg" role="alert"></div>
+        <div class="nc-neighbor-toolbar"><button type="submit" class="btn btn-primary">In Entwurf übernehmen</button><button type="button" class="btn" id="nc-neighbor-cancel">Abbrechen</button></div>
+      </form>
+    </div>`;
+  const neighborFields=[
+    ['cell_identifier_ca','Zellkennung (CA)',31,true],
+    ['main_carrier_number','Hauptträgernummer',4095,true],
+    ['mcc','MCC',1023,false],
+    ['mnc','MNC',16383,false],
+    ['location_area','Location Area',16383,false],
+    ['cell_reselection_types_supported','Zellneuauswahl-Typen',3,true],
+    ['cell_load_ca','Konfigurierte Zelllast',3,true],
+    ['main_carrier_number_extension','Trägernummer-Erweiterung',1023,false,true],
+    ['tdma_frame_offset','TDMA-Frame-Offset',63,false,true],
+    ['maximum_ms_transmit_power','Maximale MS-Sendeleistung',7,false,true],
+    ['minimum_rx_access_level','Mindest-Empfangspegel für Zugang',15,false,true],
+    ['subscriber_class','Teilnehmerklasse',65535,false,true],
+    ['timeshare_cell_information_or_security_parameters','Timeshare-/Sicherheitsparameter',31,false,true]
+  ];
+  for(const [key,label,max,required,advanced] of neighborFields){
+    const field=make('label','nc-neighbor-field');
+    const input=make('input','form-input');input.id='nc-n-'+key;input.type='number';input.min='0';input.max=String(max);input.step='1';input.required=required;
+    field.append(make('span','',label+(required?' *':'')),input,make('small','help-text','0–'+max+(required?'':' · optional')));
+    byId(advanced?'nc-neighbor-advanced-fields':'nc-neighbor-fields').append(field);
+  }
+  byId('nc-neighbor-add').addEventListener('click',()=>editNeighbor(null));
+  byId('nc-neighbor-reload').addEventListener('click',()=>{
+    if(neighborDirty&&!window.confirm('Nicht gespeicherte Nachbarzellen verwerfen und neu laden?'))return;
+    loadNeighbors(true);
+  });
+  byId('nc-neighbor-save').addEventListener('click',saveNeighbors);
+  byId('nc-neighbor-cancel').addEventListener('click',closeNeighborEditor);
+  byId('nc-neighbor-form').addEventListener('submit',event=>{event.preventDefault();applyNeighborDraft();});
   byId('page-help').innerHTML='<div class="nc-placeholder"><span class="pill pill-info">In Vorbereitung</span><h2 style="margin-top:18px">Hilfe zur Basisstation</h2><p>Die ausführlichen Hilfetexte werden später ergänzt. Die folgenden Bereiche führen bereits zu den vorhandenen Einstellungen und Diagnoseansichten.</p><div class="nc-help-grid"><div class="nc-help-topic"><h3>Funkbetrieb</h3><p>Teilnehmer, Rufe und TX-DSP-Messwerte.</p><button class="nc-link" onclick="showPage(\'stations\')">Funkgeräte öffnen →</button></div><div class="nc-help-topic"><h3>Diagnose</h3><p>Systemzustand, Protokoll und zentrale Dienste.</p><button class="nc-link" onclick="showPage(\'health\')">Systemzustand öffnen →</button></div><div class="nc-help-topic"><h3>Verwaltung</h3><p>Konfiguration, Host und angebundene Dienste.</p><button class="nc-link" onclick="showPage(\'config\')">Konfiguration öffnen →</button></div></div></div>';
 
   const footer=make('footer','nc-footer');
@@ -242,21 +289,86 @@
     }
     if(!list.children.length)list.append(make('li','help-text','Noch keine Aktivität empfangen.'));
   }
-  async function loadNeighbors(){
-    try{
-      const response=await fetch('/api/btsinfo',{credentials:'same-origin'});
-      if(!response.ok)throw new Error('HTTP '+response.status);
-      const data=await response.json();neighbors=Array.isArray(data.neighbors)?data.neighbors:null;
-      byId('nc-neighbor-count').textContent=(data.neighbor_count??neighbors?.length??0)+' Nachbarn';
-      const body=byId('nc-neighbor-rows');body.replaceChildren();
-      if(!neighbors?.length){const row=make('tr','');const cell=make('td','',neighbors?'Keine Nachbarzellen konfiguriert.':'Nachbarzellendetails sind auf diesem Server noch nicht verfügbar.');cell.colSpan=6;row.append(cell);body.append(row);return;}
-      for(const neighbor of neighbors){
-        const row=make('tr','');
-        const vals=[neighbor.cell_identifier_ca,neighbor.main_carrier_number,[neighbor.mcc??'—',neighbor.mnc??'—'].join(' / '),neighbor.location_area,neighbor.neighbor_cell_synchronized==null?'—':neighbor.neighbor_cell_synchronized?'Ja':'Nein',neighbor.cell_load_ca];
-        for(const value of vals)row.append(make('td','',value==null?'—':String(value)));body.append(row);
-      }
-    }catch(error){byId('nc-neighbor-rows').innerHTML='<tr><td colspan="6">Nachbarzellen konnten nicht geladen werden. Erneut aktualisieren.</td></tr>';}
+  function neighborStatus(message,error=false){
+    byId('nc-neighbor-status').textContent=message;
+    byId('nc-neighbor-status').classList.toggle('is-error',error);
   }
+  function renderNeighbors(){
+    const body=byId('nc-neighbor-rows');body.replaceChildren();
+    byId('nc-neighbor-count').textContent=(neighbors?.length??0)+' Nachbarn'+(neighborDirty?' · Entwurf':'');
+    byId('nc-neighbor-add').disabled=neighborBusy||!neighbors||neighbors.length>=7||neighborEditing!==null;
+    byId('nc-neighbor-save').disabled=neighborBusy||!neighborDirty||neighborConflict||!neighborRevision||neighborEditing!==null;
+    byId('nc-neighbor-reload').disabled=neighborBusy;
+    if(!neighbors?.length){const row=make('tr','');const cell=make('td','help-text',neighbors?'Keine Nachbarzellen konfiguriert.':'Nachbarzellen werden geladen.');cell.colSpan=7;row.append(cell);body.append(row);return;}
+    neighbors.forEach((neighbor,index)=>{
+      const row=make('tr','');
+      const vals=[neighbor.cell_identifier_ca,neighbor.main_carrier_number,[neighbor.mcc??'–',neighbor.mnc??'–'].join(' / '),neighbor.location_area,neighbor.neighbor_cell_synchronized?'Ja':'Nein',neighbor.cell_load_ca];
+      for(const value of vals)row.append(make('td','',value==null?'–':String(value)));
+      const actions=make('td','nc-neighbor-row-actions');
+      const edit=make('button','btn btn-sm','Bearbeiten');edit.type='button';edit.disabled=neighborBusy||neighborEditing!==null;edit.setAttribute('aria-label','Zellkennung '+neighbor.cell_identifier_ca+' bearbeiten');edit.addEventListener('click',()=>editNeighbor(index));
+      const remove=make('button','btn btn-sm btn-warn','Löschen');remove.type='button';remove.disabled=neighborBusy||neighborEditing!==null;remove.setAttribute('aria-label','Zellkennung '+neighbor.cell_identifier_ca+' löschen');remove.addEventListener('click',()=>{
+        neighbors.splice(index,1);neighborDirty=true;closeNeighborEditor();renderNeighbors();neighborStatus('Nachbarzelle aus dem Entwurf gelöscht. Zum Übernehmen speichern.');
+      });
+      actions.append(edit,remove);row.append(actions);body.append(row);
+    });
+  }
+  function closeNeighborEditor(){
+    neighborEditing=null;byId('nc-neighbor-editor').hidden=true;byId('nc-neighbor-form-msg').textContent='';renderNeighbors();
+  }
+  function editNeighbor(index){
+    if(neighborBusy||!neighbors)return;
+    neighborEditing=index===null?-1:index;
+    const row=index===null?{cell_identifier_ca:Array.from({length:32},(_,i)=>i).find(i=>!neighbors.some(n=>n.cell_identifier_ca===i)),cell_reselection_types_supported:0,cell_load_ca:0}:neighbors[index];
+    for(const [key] of neighborFields)byId('nc-n-'+key).value=row[key]??'';
+    byId('nc-n-neighbor_cell_synchronized').checked=row.neighbor_cell_synchronized===true;
+    byId('nc-neighbor-form-msg').textContent='';
+    byId('nc-neighbor-editor-title').textContent=index===null?'Nachbarzelle anlegen':'Nachbarzelle bearbeiten';
+    byId('nc-neighbor-editor').hidden=false;renderNeighbors();byId('nc-n-cell_identifier_ca').focus();
+    byId('nc-neighbor-editor').scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+  function applyNeighborDraft(){
+    if(neighborBusy||neighborEditing===null||!byId('nc-neighbor-form').reportValidity())return;
+    const row=neighborEditing<0?{}:JSON.parse(JSON.stringify(neighbors[neighborEditing]));
+    for(const [key,label,max,required] of neighborFields){
+      const value=byId('nc-n-'+key).value.trim();
+      if(!value){if(required)return;delete row[key];continue;}
+      const number=Number(value);
+      if(!Number.isInteger(number)||number<0||number>max){byId('nc-neighbor-form-msg').textContent=label+': Ganze Zahl von 0 bis '+max+' erforderlich.';return;}
+      row[key]=number;
+    }
+    if(neighbors.some((n,i)=>i!==neighborEditing&&n.cell_identifier_ca===row.cell_identifier_ca)){byId('nc-neighbor-form-msg').textContent='Diese Zellkennung ist bereits vorhanden. Jede CA-Kennung darf nur einmal vorkommen.';byId('nc-n-cell_identifier_ca').focus();return;}
+    row.neighbor_cell_synchronized=byId('nc-n-neighbor_cell_synchronized').checked;
+    if(neighborEditing<0)neighbors.push(row);else neighbors[neighborEditing]=row;
+    neighborDirty=true;closeNeighborEditor();neighborStatus('Entwurf geändert. Zum Übernehmen speichern.');
+  }
+  async function loadNeighbors(force=false){
+    if(neighborBusy||(!force&&(neighborDirty||neighborEditing!==null)))return;
+    neighborBusy=true;renderNeighbors();neighborStatus('Nachbarzellen werden geladen.');
+    try{
+      const response=await fetch('/api/neighbours',{credentials:'same-origin',cache:'no-store'});
+      if(!response.ok)throw new Error('HTTP '+response.status);
+      const data=await response.json();
+      if(!Array.isArray(data.neighbors)||typeof data.revision!=='string')throw new Error('Ungültige Antwort');
+      neighbors=JSON.parse(JSON.stringify(data.neighbors));neighborRevision=data.revision;neighborDirty=false;neighborConflict=false;
+      neighborEditing=null;byId('nc-neighbor-editor').hidden=true;
+      neighborStatus(data.restart_required?'Gespeicherte Nachbarzellen weichen noch vom laufenden Funkdienst ab.':'Nachbarzellen geladen. Du kannst sie anlegen, bearbeiten und löschen.');
+    }catch(error){neighborStatus('Nachbarzellen konnten nicht geladen werden. Bitte erneut laden. ('+error.message+')',true);}
+    finally{neighborBusy=false;renderNeighbors();}
+  }
+  async function saveNeighbors(){
+    if(neighborBusy||!neighborDirty||neighborConflict||!neighborRevision||neighborEditing!==null)return;
+    neighborBusy=true;renderNeighbors();neighborStatus('Nachbarzellen werden gespeichert.');
+    try{
+      const response=await fetch('/api/neighbours',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({neighbors,revision:neighborRevision})});
+      const data=await response.json();
+      if(response.status===409){neighborConflict=true;neighborStatus('Die Konfiguration wurde inzwischen geändert. Lade die Nachbarzellen neu und prüfe deine Änderungen.',true);return;}
+      if(!response.ok||data.ok===false)throw new Error(typeof data.error==='string'?data.error:'HTTP '+response.status);
+      neighborDirty=false;neighborRevision=null;neighborStatus(data.restarting?'Gespeichert. Der Funkdienst startet kurz neu und übernimmt die Nachbarzellen.':'Nachbarzellen gespeichert.');
+      if(data.restarting)setTimeout(()=>loadNeighbors(true),4000);else await loadNeighborsAfterSave();
+    }catch(error){neighborStatus('Speichern fehlgeschlagen: '+error.message+'. Der Entwurf bleibt erhalten.',true);}
+    finally{neighborBusy=false;renderNeighbors();}
+  }
+  async function loadNeighborsAfterSave(){neighborBusy=false;await loadNeighbors(true);}
 
   // Extend existing render hooks, preserving their implementation and return values.
   function after(name,callback){const original=window[name];if(typeof original!=='function')return;window[name]=function(...args){const result=original.apply(this,args);callback();return result;};}
@@ -277,3 +389,4 @@
   setInterval(()=>{if(sessionReady&&!document.hidden&&!document.body.classList.contains('nc-public')){renderHome();if(currentPage==='stations'&&selectedRadio)renderRadioDetail();}},2000);
   syncRadios();renderHome();
 })();
+

@@ -20,6 +20,11 @@ jobs:
         run: python3 -m unittest discover -s system-backend/deployment-core/tests -v
       - name: VM119 targeted update and rollback guards
         run: python3 -B -m unittest discover -s tests/integration -p 'test_vm119_*.py' -v
+      - name: Image desktop and private SIP provisioning
+        run: |
+          python3 tools/test_image_desktop.py
+          python3 tools/test_image_sip_setup.py
+          python3 tools/test_tbs_sip_config_permissions.py
       - name: Installer and existing Python UI syntax
         run: |
           for script in system-backend/deployment-core/install/*.sh system-backend/deployment-core/image/*.sh; do bash -n "$script"; done
@@ -85,5 +90,8 @@ jobs:
           sudo ldconfig
       - name: Build affected backend UI strings
         run: cargo check --locked --workspace
+      - name: Verify central HTTP framing, persistence and readiness
+        run: cargo test --locked -p netcore-packet-core -p netcore-ip-gateway -p netcore-observability -p netcore-media-library
       - name: Link the default-feature TBS binary used in images
         run: cargo build --locked -p bluestation-bs
+

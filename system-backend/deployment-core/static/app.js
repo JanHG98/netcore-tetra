@@ -52,6 +52,12 @@ function renderJobs() {
   if (job) { $('log-title').textContent = `${labels[job.status]} · ${job.id.slice(0,8)}`; $('log').textContent = job.log || 'Auftrag wartet auf Ausführung.'; }
 }
 const gib = bytes => `${(bytes / 1024 ** 3).toLocaleString('de-DE', {maximumFractionDigits:1})} GiB`;
+const desktopLabel = desktop => desktop === 'kde' ? 'KDE Plasma' : 'Ohne Desktop (Lite)';
+function renderDesktopLogin() {
+  const graphical = $('image-desktop').value === 'kde';
+  $('image-password').required = graphical;
+  $('image-password-note').textContent = graphical ? 'Für die KDE-Anmeldung, SSH und Konsole des Pi. Ein SSH-Key allein genügt nicht für KDE.' : 'Für SSH und Konsole des Pi. Ohne Desktop genügt auch ein SSH-Public-Key.';
+}
 function renderProfileList() {
   $('profile-list').innerHTML = savedProfiles.length ? savedProfiles.map(p=>`<article class="saved-profile"><a href="/bootstrap.sh?profile=${encodeURIComponent(p.name)}" download="${esc(p.name)}-bootstrap.sh">${esc(p.name)} · Bootstrap ↓</a><button type="button" class="quiet profile-remove" data-remove-profile="${esc(p.name)}" ${profileDeleting?'disabled':''}>${profileDeleting===p.name?'Wird gelöscht …':'Profil löschen'}</button></article>`).join('') : '<div class="profile-empty"><p>Noch keine TBS-Profile gespeichert.</p><a href="#profile-form">TBS-Profil anlegen ↑</a></div>';
 }
@@ -75,12 +81,12 @@ function renderImages() {
   $('image-build').disabled = !state.available || !$('image-profile').value || imageSubmitting;
   const builds = state.jobs || [];
   if (!selectedImageJob && builds.length) selectedImageJob = builds[0].id;
-  $('image-job-list').innerHTML = builds.length ? builds.map(j => `<button class="job ${selectedImageJob===j.id?'selected':''}" data-image-job="${esc(j.id)}"><b>${esc(j.request.profile?.name || 'Pi-Image')}</b><small>${esc(short(j.request.commit))} · ${new Date(j.created*1000).toLocaleString('de-DE')}</small><span class="badge ${j.status==='succeeded'?'ok':j.status==='failed'?'bad':'warn'}">${labels[j.status] || esc(j.status)}</span></button>`).join('') : '<p class="empty">Dein erster Image-Build beginnt hier.</p>';
+  $('image-job-list').innerHTML = builds.length ? builds.map(j => `<button class="job ${selectedImageJob===j.id?'selected':''}" data-image-job="${esc(j.id)}"><b>${esc(j.request.profile?.name || 'Pi-Image')}</b><small>${esc(short(j.request.commit))} · ${esc(desktopLabel(j.request.desktop))} · ${new Date(j.created*1000).toLocaleString('de-DE')}</small><span class="badge ${j.status==='succeeded'?'ok':j.status==='failed'?'bad':'warn'}">${labels[j.status] || esc(j.status)}</span></button>`).join('') : '<p class="empty">Dein erster Image-Build beginnt hier.</p>';
   const job = builds.find(j => j.id === selectedImageJob);
   if (job) { $('image-log-title').textContent = `${labels[job.status] || job.status} · ${job.request.profile?.name || 'Pi-Image'}`; $('image-log').textContent = job.log || 'Der Build wartet auf einen freien Platz.'; }
   const artifacts = state.artifacts || [];
   $('image-count').textContent = `${artifacts.length} ${artifacts.length === 1 ? 'Image' : 'Images'} verfügbar`;
-  $('image-artifacts').innerHTML = artifacts.map(a => `<article class="panel image-card"><div><span class="badge ok">Download bereit</span><h3>${esc(a.profile.name)}</h3><p>${esc(short(a.commit))} · ${gib(a.size_bytes)} Download · ${gib(a.uncompressed_bytes)} auf SD</p><small>${new Date(a.created*1000).toLocaleString('de-DE')} · Boot-/Funkprüfung auf dem Pi noch offen</small></div><div class="image-actions"><a class="button" href="/api/v1/images/${esc(a.id)}/image" download>Image ↓</a><a href="/api/v1/images/${esc(a.id)}/sha256" download>SHA256</a><a href="/api/v1/images/${esc(a.id)}/manifest" download>Manifest</a><button class="quiet" data-remove-image="${esc(a.id)}">Löschen</button></div></article>`).join('');
+  $('image-artifacts').innerHTML = artifacts.map(a => `<article class="panel image-card"><div><span class="badge ok">Download bereit</span><h3>${esc(a.profile.name)}</h3><p>${esc(short(a.commit))} · ${esc(desktopLabel(a.desktop))} · ${gib(a.size_bytes)} Download · ${gib(a.uncompressed_bytes)} auf SD</p><p>${a.sip_setup==='configured'?'SIP eingerichtet':a.sip_setup==='remote_configured'?'Externer SIP-Zugang übernommen':'SIP: Einrichtung erforderlich'}</p><small>${new Date(a.created*1000).toLocaleString('de-DE')} · Boot-/Funkprüfung auf dem Pi noch offen</small></div><div class="image-actions"><a class="button" href="/api/v1/images/${esc(a.id)}/image" download>Image ↓</a><a href="/api/v1/images/${esc(a.id)}/sha256" download>SHA256</a><a href="/api/v1/images/${esc(a.id)}/manifest" download>Manifest</a><button class="quiet" data-remove-image="${esc(a.id)}">Löschen</button></div></article>`).join('');
 }
 async function refresh() {
   if (busy) return;
@@ -162,6 +168,7 @@ $('profile-list').onclick=async event=>{
 };
 $('profile-form').onsubmit=guarded(async()=>{const data=Object.fromEntries(new FormData($('profile-form')));for(const k of ['mcc','mnc','issi','la','cc'])data[k]=Number(data[k]);await api('/api/v1/profiles',data);notice('TBS-Profil angelegt. Du kannst jetzt ein Pi-Image erstellen oder den Bootstrap verwenden.');await refresh();$('image-profile').value=data.name;$('image-profile').dispatchEvent(new Event('change'));});
 $('image-profile').onchange=()=>{$('image-hostname').value=$('image-profile').value.toLowerCase().replace(/[^a-z0-9-]/g,'-').slice(0,63).replace(/-+$/,'');renderImages();};
+$('image-desktop').onchange=renderDesktopLogin;
 $('image-job-list').onclick=event=>{const button=event.target.closest('[data-image-job]');if(button){selectedImageJob=button.dataset.imageJob;renderImages();}};
 $('image-form').onsubmit=guarded(async()=>{
   if(imageSubmitting)return;
@@ -170,8 +177,9 @@ $('image-form').onsubmit=guarded(async()=>{
     const data=Object.fromEntries(new FormData($('image-form')));
     data.trusted_ssids=$('image-trusted-ssids').value.split('\n').map(x=>x.trim()).filter(Boolean);
     const vpn=$('image-vpn').files[0];data.vpn_config=vpn ? await vpn.text() : '';
+    const sip=$('image-sip').files[0];data.sip_fallback_config=sip ? await sip.text() : '';
     const job=await api('/api/v1/images/build',data);selectedImageJob=job.id;
-    $('image-form').elements.password.value='';$('image-form').elements.wifi_password.value='';$('image-vpn').value='';
+    $('image-form').elements.password.value='';$('image-form').elements.wifi_password.value='';$('image-vpn').value='';$('image-sip').value='';
     notice('Image-Build eingereiht. Fortschritt und Download erscheinen unter Builds & Downloads.');
     await refresh();
   } finally {imageSubmitting=false;$('image-build').textContent='Image erstellen →';renderImages();}
@@ -183,3 +191,4 @@ $('image-artifacts').onclick=async event=>{
   try{await api('/api/v1/images/remove',{id:button.dataset.removeImage});notice('Image gelöscht. Das Buildprotokoll bleibt erhalten.');await refresh();}catch(error){notice(error.message,true);}
 };
 (async()=>{try{catalog=await api('/api/v1/catalog');selectOptions($('target-service'),catalog,s=>s.name,s=>s.name);await refresh();if(new URLSearchParams(location.search).get('scan')==='1'){await api('/api/v1/discovery/scan',{});notice('Auto Discovery gestartet.');}}catch(error){notice(error.message,true);}setInterval(refresh,4000);})();
+

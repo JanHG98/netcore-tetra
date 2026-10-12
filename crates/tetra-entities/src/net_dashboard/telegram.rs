@@ -3,11 +3,44 @@
 
 //! Dashboard-side persistence and helpers for Telegram alerts.
 //!
-//! Mirrors `wx_service.rs`: a surgical TOML writer that regenerates only the `[telegram_alerts]`
-//! section (preserving the rest of the file and creating a backup), plus a helper to mask the
-//! bot token before it is returned to the browser.
+//! Telegram's semantic TOML editor preserves image-generated quoted headers,
+//! unrelated settings and comments, and publishes edits atomically. Helpers
+//! expose setup gaps and mask the bot token before responding to the browser.
 
 use tetra_config::bluestation::TelegramRuntimeOverride;
+
+/// Configuration gaps are setup information, not a failed bot connection.
+pub fn setup_required(token: &str, chat_ids: &[i64]) -> Vec<&'static str> {
+    let mut missing = Vec::new();
+    if token.trim().is_empty() {
+        missing.push("bot_token");
+    }
+    if chat_ids.is_empty() {
+        missing.push("chat_ids");
+    }
+    missing
+}
+
+pub fn missing_token_response() -> String {
+    serde_json::json!({
+        "ok": false,
+        "code": "token_missing",
+        "error": "Kein Bot-Token hinterlegt. Trage den Token von BotFather ein und speichere die Einstellungen."
+    })
+    .to_string()
+}
+
+pub fn token_acceptable(t: &str) -> bool {
+    t.is_empty() || (t.contains(':') && t.chars().all(|c| !c.is_whitespace() && !c.is_control()))
+}
+
+/// Empty fields preserve the stored secret; display masks never become tokens.
+pub fn resolve_token(incoming: Option<&str>, current: &str) -> String {
+    match incoming.map(str::trim) {
+        Some(value) if !value.is_empty() && !value.contains('…') && !value.chars().all(|c| c == '•') => value.to_string(),
+        _ => current.to_string(),
+    }
+}
 
 /// Mask a bot token for display: keep the numeric bot id and the last few chars, hide the rest.
 /// Returns an empty string for an empty token. e.g. "123456:ABCdef...WXYZ" → "123456:AB…WXYZ".
@@ -55,105 +88,60 @@ pub fn json_escape(s: &str) -> String {
     out
 }
 
-/// Rewrite (or insert) the `[telegram_alerts]` section in the TOML file, preserving everything
-/// else. The whole section is regenerated from the override values; an existing block (from its
-/// header until the next section header or EOF) is replaced. A `.telegram.bak` backup is made.
-/// Mirrors [`crate::net_dashboard::wx_service::write_wx_to_toml`].
-// Was: Diese Funktion schreibt telegram to toml.
-// Warum: Die Ausgabe wird dadurch einheitlich erzeugt und Schreibfehler können behandelt werden.
+/// Update Telegram settings by the semantic TOML key, including quoted image
+/// headers. Keep all other fields (such as alert_health), comments and tables.
 pub fn write_telegram_to_toml(config_path: &str, ov: &TelegramRuntimeOverride) -> std::io::Result<()> {
+    use toml_edit::{Array, Item, Table, Value};
+    let _guard = super::config_edit::CONFIG_EDIT_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let original = std::fs::read_to_string(config_path)?;
-
-    let token_escaped = ov.bot_token.replace('\\', "\\\\").replace('"', "\\\"");
-    let chat_ids = ov.chat_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
-    let brew_register_prefix = ov.brew_register_prefix.replace('\\', "\\\\").replace('"', "\\\"");
-    let brew_register_issi_whitelist = ov
-        .brew_register_issi_whitelist
-        .iter()
-        .map(|issi| issi.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
-    let brew_register_issi_blacklist = ov
-        .brew_register_issi_blacklist
-        .iter()
-        .map(|issi| issi.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
-    let section = format!(
-        "[telegram_alerts]\n\
-         enabled = {}\n\
-         bot_token = \"{}\"\n\
-         chat_ids = [{}]\n\
-         alert_connect = {}\n\
-         alert_disconnect = {}\n\
-         alert_t351 = {}\n\
-         alert_lip = {}\n\
-         alert_backhaul = {}\n\
-         alert_critical_logs = {}\n\
-         alert_brew_register = {}\n\
-         brew_register_prefix = \"{}\"\n\
-         brew_register_issi_whitelist = [{}]\n\
-         brew_register_issi_blacklist = [{}]",
-        ov.enabled,
-        token_escaped,
-        chat_ids,
-        ov.alert_connect,
-        ov.alert_disconnect,
-        ov.alert_t351,
-        ov.alert_lip,
-        ov.alert_backhaul,
-        ov.alert_critical_logs,
-        ov.alert_brew_register,
-        brew_register_prefix,
-        brew_register_issi_whitelist,
-        brew_register_issi_blacklist,
-    );
-
-    let lines: Vec<&str> = original.lines().collect();
-    let mut out: Vec<String> = Vec::with_capacity(lines.len() + 12);
-    let mut i = 0;
-    let mut replaced = false;
-
-    // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-    // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-    while i < lines.len() {
-        let trimmed = lines[i].trim_start();
-        if trimmed.starts_with("[telegram_alerts]") {
-            // Replace this whole section: emit the regenerated block, then skip the old section's
-            // body up to (but not including) the next section header / EOF.
-            out.push(section.clone());
-            replaced = true;
-            i += 1;
-            // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
-            // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-            while i < lines.len() {
-                let t = lines[i].trim_start();
-                if t.starts_with('[') && t.contains(']') {
-                    break;
-                }
-                i += 1;
-            }
-            continue;
+    let invalid = |reason: String| std::io::Error::new(std::io::ErrorKind::InvalidData, reason);
+    // Parser diagnostics may quote a token-bearing source line. Return a
+    // generic reason rather than leaking config secrets into HTTP/log errors.
+    let mut doc = super::config_edit::document(&original)
+        .map_err(|_| invalid("Die bestehende TOML-Konfiguration ist ungültig; keine Änderungen gespeichert".into()))?;
+    if !doc.contains_key("telegram_alerts") {
+        doc.insert("telegram_alerts", Item::Table(Table::new()));
+    }
+    let table = doc
+        .get_mut("telegram_alerts")
+        .and_then(Item::as_table_like_mut)
+        .ok_or_else(|| invalid("telegram_alerts must be a TOML table".into()))?;
+    for (key, value) in [
+        ("enabled", ov.enabled),
+        ("alert_connect", ov.alert_connect),
+        ("alert_disconnect", ov.alert_disconnect),
+        ("alert_t351", ov.alert_t351),
+        ("alert_lip", ov.alert_lip),
+        ("alert_backhaul", ov.alert_backhaul),
+        ("alert_critical_logs", ov.alert_critical_logs),
+        ("alert_brew_register", ov.alert_brew_register),
+    ] {
+        super::config_edit::set_scalar(table, key, value.into());
+    }
+    super::config_edit::set_scalar(table, "bot_token", ov.bot_token.clone().into());
+    super::config_edit::set_scalar(table, "brew_register_prefix", ov.brew_register_prefix.clone().into());
+    for (key, values) in [
+        ("chat_ids", ov.chat_ids.clone()),
+        (
+            "brew_register_issi_whitelist",
+            ov.brew_register_issi_whitelist.iter().map(|value| i64::from(*value)).collect(),
+        ),
+        (
+            "brew_register_issi_blacklist",
+            ov.brew_register_issi_blacklist.iter().map(|value| i64::from(*value)).collect(),
+        ),
+    ] {
+        let mut array = Array::new();
+        for value in values {
+            array.push(value);
         }
-        out.push(lines[i].to_string());
-        i += 1;
+        super::config_edit::set_scalar(table, key, Value::Array(array));
     }
-
-    if !replaced {
-        if !out.is_empty() && !out.last().map(|l| l.is_empty()).unwrap_or(true) {
-            out.push(String::new());
-        }
-        out.push(section);
-    }
-
-    let mut new_content = out.join("\n");
-    if original.ends_with('\n') {
-        new_content.push('\n');
-    }
-
-    let backup = format!("{config_path}.telegram.bak");
-    let _ = std::fs::copy(config_path, &backup);
-    std::fs::write(config_path, new_content)
+    let replacement = doc.to_string();
+    // Check the entire candidate before atomic publication of that exact content.
+    super::config_edit::document(&replacement)
+        .map_err(|_| invalid("Die Telegram-Änderung erzeugt keine gültige TOML-Konfiguration".into()))?;
+    super::config_edit::write_checked(config_path, &original, &replacement)
 }
 
 #[cfg(test)]
@@ -161,6 +149,27 @@ pub fn write_telegram_to_toml(config_path: &str, ov: &TelegramRuntimeOverride) -
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
+
+    #[test]
+    fn missing_settings_are_setup_gaps_without_secrets() {
+        assert_eq!(setup_required("", &[]), vec!["bot_token", "chat_ids"]);
+        assert_eq!(setup_required("123:secret", &[]), vec!["chat_ids"]);
+        assert!(setup_required("123:secret", &[42]).is_empty());
+        let response: serde_json::Value = serde_json::from_str(&missing_token_response()).unwrap();
+        assert_eq!(response["code"], "token_missing");
+        assert!(response["error"].as_str().unwrap().contains("BotFather"));
+        assert!(!response.to_string().contains("123:secret"));
+    }
+
+    #[test]
+    fn blank_and_masked_inputs_preserve_token_but_fresh_input_replaces_it() {
+        for incoming in [None, Some(""), Some("  "), Some("123456:A…WXYZ"), Some("•••••")] {
+            assert_eq!(resolve_token(incoming, "123:stored"), "123:stored");
+        }
+        assert_eq!(resolve_token(Some(" 456:fresh "), "123:stored"), "456:fresh");
+        assert!(!token_acceptable("123:bad\nvalue"));
+        assert!(!token_acceptable("invalid"));
+    }
 
     // Was: Führt den Arbeitsschritt `ov` für ov aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
@@ -253,6 +262,15 @@ mod tests {
         let cfg = "config_version = \"0.6\"\nstack_mode = \"Bs\"\n\n[phy_io]\nbackend = \"None\"\n\n[net_info]\nmcc = 901\nmnc = 9999\n\n[cell_info]\nmain_carrier = 1584\nfreq_band = 4\nfreq_offset = 0\nduplex_spacing = 4\nreverse_operation = false\nlocation_area = 1\n";
         let dir = std::env::temp_dir();
         let path = dir.join("fs_tg_test_roundtrip.toml");
+        // Use valid paths on both Windows and Linux rather than depending on
+        // Linux-only media defaults in an unrelated section of the parser.
+        let cfg = format!(
+            "{cfg}\n[audio_player]\ndirectory = {}\ncache_directory = {}\n\n[tts]\ncache_directory = {}\ntemplate_directory = {}\n",
+            toml::Value::String(dir.join("tg-audio").to_string_lossy().into_owned()),
+            toml::Value::String(dir.join("tg-cache").to_string_lossy().into_owned()),
+            toml::Value::String(dir.join("tg-tts-cache").to_string_lossy().into_owned()),
+            toml::Value::String(dir.join("tg-tts-templates").to_string_lossy().into_owned()),
+        );
         std::fs::write(&path, cfg).unwrap();
         write_telegram_to_toml(path.to_str().unwrap(), &ov()).unwrap();
         let parsed = tetra_config::bluestation::parsing::from_file(path.to_str().unwrap()).expect("written telegram section must parse");
@@ -261,5 +279,56 @@ mod tests {
         assert_eq!(tg.chat_ids, vec![987654321, -1001234567890]);
         assert!(!tg.alert_disconnect);
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn prefix_with_newline_and_quotes_cannot_corrupt_toml() {
+        let mut values = ov();
+        values.brew_register_prefix = "Station \"A\"\nZeile zwei".into();
+        let path = std::env::temp_dir().join("fs_tg_test_escaped_prefix.toml");
+        std::fs::write(&path, "[other]\nkeep = true\n").unwrap();
+        write_telegram_to_toml(path.to_str().unwrap(), &values).unwrap();
+        let out = std::fs::read_to_string(&path).unwrap();
+        let parsed: toml::Value = toml::from_str(&out).unwrap();
+        assert_eq!(
+            parsed["telegram_alerts"]["brew_register_prefix"].as_str(),
+            Some(values.brew_register_prefix.as_str())
+        );
+        assert_eq!(parsed["other"]["keep"].as_bool(), Some(true));
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(format!("{}.telegram.bak", path.display()));
+    }
+
+    #[test]
+    fn image_quoted_header_is_updated_once_and_preserves_comments_and_health() {
+        let path = std::env::temp_dir().join("fs_tg_test_quoted_image.toml");
+        let original = "# Image configuration\n[\"telegram_alerts\"]\nenabled = false # operator switch\nbot_token = \"old\"\nalert_health = false # keep this value\n\n[\"cell_info\"]\nmain_carrier = 720 # RF setting\n";
+        std::fs::write(&path, original).unwrap();
+        for _ in 0..2 {
+            write_telegram_to_toml(path.to_str().unwrap(), &ov()).unwrap();
+            let out = std::fs::read_to_string(&path).unwrap();
+            let parsed: toml::Value = toml::from_str(&out).expect("quoted table must not be duplicated");
+            assert_eq!(parsed["telegram_alerts"]["enabled"].as_bool(), Some(true));
+            assert_eq!(parsed["telegram_alerts"]["bot_token"].as_str(), Some("123456:ABC-DEF"));
+            assert_eq!(parsed["telegram_alerts"]["alert_health"].as_bool(), Some(false));
+            assert_eq!(parsed["cell_info"]["main_carrier"].as_integer(), Some(720));
+            assert_eq!(out.matches("[\"telegram_alerts\"]").count(), 1);
+            assert!(out.contains("# operator switch"));
+            assert!(out.contains("# keep this value"));
+            assert!(out.contains("# RF setting"));
+        }
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn invalid_source_is_not_modified_or_disclosed_in_errors() {
+        let path = std::env::temp_dir().join("fs_tg_test_invalid_source.toml");
+        let original = "[\"telegram_alerts\"]\nbot_token = \"123:secret-never-in-errors\n";
+        std::fs::write(&path, original).unwrap();
+        let error = write_telegram_to_toml(path.to_str().unwrap(), &ov()).unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
+        assert!(!error.to_string().contains("secret-never-in-errors"));
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+        std::fs::remove_file(path).unwrap();
     }
 }

@@ -112,7 +112,7 @@ fn route(
         ("GET", "/") => html(&service_design::render(INDEX_HTML, "Media Library", "open-lab")),
         ("GET", "/health/live") => json_response(200, &json!({"status":"live"})),
         ("GET", "/health/ready") => {
-            let status = library.status();
+            let status = library.readiness();
             json_response(if status.ready { 200 } else { 503 }, &status)
         }
         ("GET", "/api/v1/status") => json_response(200, &library.status()),
@@ -714,3 +714,4 @@ fn hex(value: u8) -> Option<u8> {
 // Was: Legt den festen Wert `INDEX_HTML` für index html fest.
 // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const INDEX_HTML: &str = include_str!("../web-ui/index.html");
+

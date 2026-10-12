@@ -4314,7 +4314,8 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
             <span class="sw-text" data-i18n="tg_enabled">Telegram-Benachrichtigungen aktivieren</span>
             <span class="sw"><input type="checkbox" id="tg-enabled"><i></i></span>
           </label>
-          <div class="config-msg" id="tg-msg"></div>
+          <div class="config-msg" id="tg-msg" role="status" aria-live="polite"></div>
+          <p class="help-text" id="tg-setup-hint" role="status"></p>
         </div>
       </div>
 
@@ -4337,8 +4338,8 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
             Das Token von @BotFather sieht beispielsweise so aus: 123456789:AAExampleTokenString.
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <input type="text" id="tg-token" class="form-input" placeholder="123456789:AA…"
-                   autocomplete="off" spellcheck="false" oninput="tgTokenDirty=true"
+            <input type="password" id="tg-token" class="form-input" placeholder="Bot-Token von BotFather" aria-label="Neues Telegram-Bot-Token"
+                   autocomplete="new-password" spellcheck="false" oninput="tgTokenDirty=true;tgUpdateSetupHint()"
                    style="flex:1;min-width:220px">
             <button class="btn" onclick="verifyTelegram()"><span class="btn-icon" data-icon="search"></span><span data-i18n="tg_verify">Prüfen</span></button>
           </div>
@@ -4499,8 +4500,8 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
         <div id="health-integrations-grid" class="h-grid">
           <div class="sds-empty" style="padding:12px 0">Zustand der Integrationen wird geladen…</div>
         </div>
-        <div class="h-sec">Systemweite Dienste</div>
-        <div id="health-core-services-grid" class="core-service-grid">
+        <div class="nc-health-services-head"><div class="h-sec">Systemweite Dienste</div><button type="button" class="nc-link" onclick="showPage('services')">Alle Dienste und Details →</button></div>
+        <div id="health-core-services-grid" class="nc-health-service-chips" aria-label="Dienstestatus in Kurzform">
           <div class="sds-empty" style="grid-column:1/-1;padding:18px 0">Dienstestatus wird geladen…</div>
         </div>
         <div class="h-note">
@@ -5477,13 +5478,20 @@ function wifiRenderStatus(){
   // The radio toggle label flips based on current state so the button reads
   // as the *action* it will perform, not the current state.
   if(radioBtn){
-    radioBtn.textContent = s.radio_enabled ? (t('wifi_radio_off')||'Disable WiFi')
-                                           : (t('wifi_radio_on') ||'Enable WiFi');
+    radioBtn.textContent = (s.radio_enabled&&!s.soft_blocked&&!s.hard_blocked) ? (t('wifi_radio_off')||'WLAN deaktivieren')
+                                           : (t('wifi_radio_on') ||'WLAN aktivieren');
+    radioBtn.disabled=!s.device_present||s.hard_blocked===true;
   }
 
   if(!s.device_present){
     el.innerHTML = '<div class="wifi-status-loading">'+(t('wifi_no_device')||'No WiFi device detected on this host.')+'</div>';
     return;
+  }
+  if(s.hard_blocked){
+    el.innerHTML='<div class="callout wifi-warn">WLAN ist durch die Hardware gesperrt. Prüfe den WLAN-Schalter oder die Hardware-Sperre am Gerät.</div>';return;
+  }
+  if(s.soft_blocked){
+    el.innerHTML='<div class="callout wifi-warn">WLAN ist gesperrt. Mit „WLAN aktivieren“ kannst du die Sperre aufheben.</div>';return;
   }
   if(!s.radio_enabled){
     el.innerHTML = '<div class="wifi-status-loading">'+(t('wifi_radio_disabled')||'WiFi radio is disabled.')+'</div>';
@@ -5517,7 +5525,7 @@ function wifiRenderStatus(){
 function wifiRenderStatusError(err){
   const el = document.getElementById('wifi-status-grid');
   if(!el) return;
-  const msg = err && err.msg ? err.msg : (typeof err === 'string' ? err : 'Fehler');
+  const msg = wifiErrorText(err);
   el.innerHTML = `<div class="wifi-status-loading" style="color:var(--danger)">${escHtml(msg)}</div>`;
 }
 
@@ -5528,7 +5536,7 @@ async function wifiLoadSaved(){
   try{
     const r = await fetch('/api/wifi/saved');
     const j = await r.json();
-    if(!j.ok){ el.innerHTML = `<div class="wifi-list-empty" style="color:var(--danger)">${escHtml(j.error&&j.error.msg||'Fehler')}</div>`; return; }
+    if(!j.ok){ el.innerHTML = `<div class="wifi-list-empty" style="color:var(--danger)">${escHtml(wifiErrorText(j.error))}</div>`; return; }
     wifiState.saved = j.profiles || [];
     if(cnt) cnt.textContent = wifiState.saved.length ? `${wifiState.saved.length}` : '';
     if(wifiState.saved.length === 0){
@@ -5561,7 +5569,7 @@ async function wifiScan(){
   try{
     const r = await fetch('/api/wifi/scan');
     const j = await r.json();
-    if(!j.ok){ el.innerHTML = `<div class="wifi-list-empty" style="color:var(--danger)">${escHtml(j.error&&j.error.msg||'Fehler')}</div>`; return; }
+    if(!j.ok){ el.innerHTML = `<div class="wifi-list-empty" style="color:var(--danger)">${escHtml(wifiErrorText(j.error))}</div>`; return; }
     wifiState.scan = j.networks || [];
     if(wifiState.scan.length === 0){
       el.innerHTML = `<div class="wifi-list-empty">${t('wifi_no_networks')||'No networks in range.'}</div>`;
@@ -5701,7 +5709,7 @@ async function wifiModalSubmit(){
     msg.textContent = t('wifi_connected_ok')||'Connected.';
     setTimeout(()=>{ wifiCloseModal(); wifiRefresh(); }, 800);
   } else {
-    const errMsg = r && r.error ? (r.error.msg || JSON.stringify(r.error)) : 'Failed';
+    const errMsg = wifiErrorText(r?.error);
     msg.textContent = errMsg;
     msg.className = 'wifi-modal-msg';
   }
@@ -5720,7 +5728,7 @@ async function wifiForget(uuid, name){
 
 async function wifiToggleRadio(){
   const s = wifiState.status;
-  const newEnabled = s ? !s.radio_enabled : false;
+  const newEnabled = s ? !(s.radio_enabled&&!s.soft_blocked&&!s.hard_blocked) : true;
   await wifiCall('/api/wifi/radio', { enabled: newEnabled });
   await wifiRefresh();
 }
@@ -5732,10 +5740,22 @@ async function wifiCall(url, body){
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(body),
     });
-    return await r.json();
+    const result=await r.json();
+    wifiActionResult(result);return result;
   }catch(e){
-    return { ok:false, error:{ kind:'Io', msg:String(e) } };
+    const result={ok:false,error:{kind:'Io',msg:'WLAN-Änderung konnte nicht übertragen werden.'}};
+    wifiActionResult(result);return result;
   }
+}
+function wifiErrorText(error){
+  const messages={HardwareBlocked:'WLAN ist durch die Hardware gesperrt. Prüfe den WLAN-Schalter oder die Hardware-Sperre am Gerät.',RadioBlocked:'WLAN konnte nicht aktiviert werden. Bitte die WLAN-Sperre am Gerät prüfen.',NoDevice:'Kein WLAN-Gerät auf diesem Host erkannt.'};
+  return messages[error?.kind]||error?.msg||(typeof error==='string'?error:'WLAN-Änderung fehlgeschlagen.');
+}
+function wifiActionResult(result){
+  let message=document.getElementById('wifi-action-msg');
+  if(!message){message=document.createElement('div');message.id='wifi-action-msg';message.className='config-msg';message.setAttribute('role','status');message.setAttribute('aria-live','polite');document.getElementById('wifi-status-grid')?.after(message);}
+  message.textContent=result?.ok?'Änderung übernommen.':wifiErrorText(result?.error);
+  message.style.color=result?.ok?'var(--accent)':'var(--danger)';
 }
 
 function escAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/'/g,"&#39;").replace(/"/g,'&quot;'); }
@@ -8683,10 +8703,23 @@ function setWxMsg(txt,ok){const el=document.getElementById('wx-msg');el.textCont
 let tgChats=[];            // recipient chat IDs (numbers)
 let tgChatNames={};        // id -> best-effort friendly name (display only)
 let tgDetected=[];         // last "detect" result, for the Add buttons
+let tgTokenSet=false;
 let tgTokenDirty=false;    // true once the user edits the token field (so we send it)
 function tgEsc(s){return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 // The token to send: a freshly-typed value (never the masked placeholder), else '' = keep saved.
-function tgTokenField(){const v=(document.getElementById('tg-token').value||'').trim();return (tgTokenDirty&&v&&!v.includes('…'))?v:'';}
+function tgTokenField(){return tgTokenDirty?(document.getElementById('tg-token').value||'').trim():'';}
+function tgUpdateSetupHint(){
+  const missing=[];
+  if(!tgTokenSet&&!tgTokenField())missing.push('Bot-Token von BotFather eintragen');
+  if(!tgChats.length)missing.push('mindestens eine Empfänger-Chat-ID hinzufügen');
+  const hint=document.getElementById('tg-setup-hint');
+  if(hint)hint.textContent=missing.length?'Einrichtung erforderlich: '+missing.join(' und ')+'. Danach die Einstellungen speichern.':'Bot-Token und Empfänger sind vorhanden. Änderungen mit „Speichern“ übernehmen.';
+}
+function tgRequireToken(){
+  if(tgTokenSet||tgTokenField())return true;
+  setTgMsg('Kein Bot-Token hinterlegt. Trage den Token von BotFather ein.',false);
+  tgUpdateSetupHint();document.getElementById('tg-token').focus();return false;
+}
 async function loadTelegram(){
   try{
     const r=await fetch('/api/telegram');
@@ -8694,10 +8727,11 @@ async function loadTelegram(){
     const d=await r.json();
     document.getElementById('tg-enabled').checked=!!d.enabled;
     const tok=document.getElementById('tg-token');
-    tok.value=d.token_set?(d.bot_token_masked||''):'';
+    tgTokenSet=!!d.token_set;
+    tok.value='';tok.placeholder=tgTokenSet?'Token gespeichert – leer lassen, um ihn beizubehalten':'Bot-Token von BotFather';
     tgTokenDirty=false;
     tgChats=(d.chat_ids||[]).slice();
-    renderTgChips();
+    renderTgChips();tgUpdateSetupHint();
     document.getElementById('tg-connect').checked=!!d.alert_connect;
     document.getElementById('tg-disconnect').checked=!!d.alert_disconnect;
     document.getElementById('tg-t351').checked=!!d.alert_t351;
@@ -8713,6 +8747,7 @@ async function loadTelegram(){
   }catch{setTgMsg(t('conn_error'),false);}
 }
 function renderTgChips(){
+  tgUpdateSetupHint();
   const box=document.getElementById('tg-chips');
   if(!tgChats.length){box.innerHTML='<span style="color:var(--muted);font-size:13px">'+t('tg_no_recipients')+'</span>';return;}
   box.innerHTML=tgChats.map(id=>{
@@ -8731,6 +8766,7 @@ function addRecipient(){
 function removeRecipient(id){tgChats=tgChats.filter(x=>x!==id);renderTgChips();}
 function addDetected(i){const c=tgDetected[i];if(!c)return;if(!tgChats.includes(c.id)){tgChats.push(c.id);tgChatNames[c.id]=c.name;renderTgChips();}}
 async function verifyTelegram(){
+  if(!tgRequireToken())return;
   const st=document.getElementById('tg-verify-status');
   st.textContent=t('tg_verifying');st.style.color='var(--muted)';
   try{
@@ -8741,6 +8777,7 @@ async function verifyTelegram(){
   }catch{st.textContent=t('conn_error');st.style.color='var(--danger)';}
 }
 async function detectTelegramChats(){
+  if(!tgRequireToken())return;
   const box=document.getElementById('tg-detected');
   box.innerHTML='<span style="color:var(--muted);font-size:13px">'+t('tg_detecting')+'</span>';
   try{
@@ -8758,6 +8795,10 @@ async function detectTelegramChats(){
   }catch{box.innerHTML='<span style="color:var(--danger);font-size:13px">'+t('conn_error')+'</span>';}
 }
 async function saveTelegram(){
+  if(document.getElementById('tg-enabled').checked){
+    if(!tgRequireToken())return;
+    if(!tgChats.length){setTgMsg('Mindestens eine Empfänger-Chat-ID hinzufügen, bevor du Telegram aktivierst.',false);document.getElementById('tg-chat-input').focus();return;}
+  }
   const brewWhite=geoIssiListBody('tg-brew-register-white','Brew REGISTER whitelist');
   if(brewWhite===null)return;
   const brewBlack=geoIssiListBody('tg-brew-register-black','Brew REGISTER blacklist');
@@ -8780,10 +8821,12 @@ async function saveTelegram(){
   try{
     const r=await fetch('/api/telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(r.ok){setTgMsg(t('saved'),true);loadTelegram();}
-    else setTgMsg(t('save_fail')+': '+await r.text(),false);
+    else{const message=await r.text();setTgMsg(message||t('save_fail'),false);}
   }catch{setTgMsg(t('conn_error'),false);}
 }
 async function testTelegram(){
+  if(!tgRequireToken())return;
+  if(!tgChats.length){setTgMsg('Für die Testnachricht mindestens eine Empfänger-Chat-ID hinzufügen.',false);return;}
   setTgMsg(t('tg_testing'),true);
   const body={chat_ids:tgChats};const tok=tgTokenField();if(tok)body.bot_token=tok;
   try{
@@ -8953,6 +8996,19 @@ function setCoreStat(cardId,valueId,subId,cardClass,value,sub){
   const val=document.getElementById(valueId);if(val)val.textContent=value;
   const subEl=document.getElementById(subId);if(subEl)subEl.textContent=sub;
 }
+function renderHealthServiceChips(services){
+  const grid=document.getElementById('health-core-services-grid');if(!grid)return;
+  grid.replaceChildren();
+  for(const service of services){
+    const meta=CORE_LEVEL_META[service.level]||CORE_LEVEL_META.unknown;
+    const chip=document.createElement('button');chip.type='button';chip.className='nc-health-service-chip '+meta.card;
+    chip.setAttribute('aria-label',service.name+': '+meta.label+'. Dienstedetails öffnen.');
+    chip.title=service.name+' – '+meta.label;
+    const label=document.createElement('span');label.textContent=service.name;
+    const status=document.createElement('span');status.className='nc-health-service-status';status.textContent=meta.label;
+    chip.append(label,status);chip.addEventListener('click',()=>showPage('services'));grid.append(chip);
+  }
+}
 function renderCoreServiceGrid(gridId,services,d){
   const grid=document.getElementById(gridId);
   if(!grid)return;
@@ -9027,7 +9083,7 @@ function renderEdgeFallback(){
   }
 
   renderCoreServiceGrid('core-services-grid',services,d);
-  renderCoreServiceGrid('health-core-services-grid',services,d);
+  renderHealthServiceChips(services);
   if(typeof paintIcons==='function')paintIcons(document.getElementById('core-services-card'));
   updateSysHero();
 }
@@ -10866,3 +10922,4 @@ async function pollPublic(){
 <script>boot();</script>
 </body>
 </html>
+

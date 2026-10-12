@@ -1,8 +1,11 @@
 // NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für Metriken, Protokolle und Betriebsüberwachung.
 // NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
+#[path = "../../shared/http-response.rs"]
+mod http_response;
+
 use std::collections::BTreeMap;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::net::{TcpStream, ToSocketAddrs};
 use std::thread;
 use std::time::Duration as StdDuration;
@@ -194,54 +197,8 @@ pub(crate) fn http_get(url: &str, timeout_ms: u64, max_bytes: usize) -> Result<H
         parsed.path, parsed.host, parsed.port
     );
     stream.write_all(request.as_bytes()).map_err(|error| error.to_string())?;
-    let mut raw = Vec::new();
-    let mut buffer = [0u8; 8192];
-    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
-    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
-    loop {
-        let count = stream.read(&mut buffer).map_err(|error| error.to_string())?;
-        if count == 0 { break; }
-        if raw.len() + count > max_bytes + 16_384 {
-            return Err(format!("response exceeds {} bytes", max_bytes));
-        }
-        raw.extend_from_slice(&buffer[..count]);
-    }
-    let header_end = raw.windows(4).position(|window| window == b"\r\n\r\n")
-        .ok_or_else(|| "invalid HTTP response".to_string())?;
-    let headers = String::from_utf8_lossy(&raw[..header_end]);
-    let status = headers.lines().next()
-        .and_then(|line| line.split_whitespace().nth(1))
-        .and_then(|value| value.parse::<u16>().ok())
-        .ok_or_else(|| "invalid HTTP status line".to_string())?;
-    let mut body = raw[header_end + 4..].to_vec();
-    if headers.to_ascii_lowercase().contains("transfer-encoding: chunked") {
-        body = decode_chunked(&body)?;
-    }
-    if body.len() > max_bytes { return Err(format!("response body exceeds {} bytes", max_bytes)); }
-    Ok(HttpResult { status, body })
-}
-
-// Was: Diese Funktion dekodiert chunked.
-// Warum: Empfangene Protokolldaten müssen vor der weiteren Nutzung eindeutig verstanden und geprüft werden.
-fn decode_chunked(raw: &[u8]) -> Result<Vec<u8>, String> {
-    let mut output = Vec::new();
-    let mut cursor = 0usize;
-    // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
-    // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
-    loop {
-        let line_end = raw[cursor..].windows(2).position(|window| window == b"\r\n")
-            .map(|value| cursor + value)
-            .ok_or_else(|| "invalid chunked response".to_string())?;
-        let size_text = String::from_utf8_lossy(&raw[cursor..line_end]);
-        let size = usize::from_str_radix(size_text.split(';').next().unwrap_or("0").trim(), 16)
-            .map_err(|_| "invalid chunk size".to_string())?;
-        cursor = line_end + 2;
-        if size == 0 { break; }
-        if cursor + size + 2 > raw.len() { return Err("truncated chunked response".to_string()); }
-        output.extend_from_slice(&raw[cursor..cursor + size]);
-        cursor += size + 2;
-    }
-    Ok(output)
+    let response = http_response::read_response(stream, max_bytes)?;
+    Ok(HttpResult { status: response.status, body: response.body })
 }
 
 // Was: Bündelt die zusammengehörigen Werte für parsed url in einem Datentyp.
@@ -372,3 +329,39 @@ fn parse_value(value: &str) -> Result<f64, ()> {
     let parsed = value.parse::<f64>().map_err(|_| ())?;
     if parsed.is_finite() { Ok(parsed) } else { Err(()) }
 }
+
+#[cfg(test)]
+mod response_tests {
+    use super::*;
+    use std::io::Read;
+    use std::net::TcpListener;
+    use std::sync::mpsc;
+
+    #[test]
+    fn collector_receives_chunked_metrics_before_persistent_peer_closes() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let (release, hold) = mpsc::channel();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(StdDuration::from_secs(2))).unwrap();
+            let mut request = Vec::new();
+            let mut buffer = [0; 256];
+            while !request.windows(4).any(|part| part == b"\r\n\r\n") {
+                let count = stream.read(&mut buffer).unwrap();
+                assert!(count > 0);
+                request.extend_from_slice(&buffer[..count]);
+            }
+            assert!(request.starts_with(b"GET /metrics HTTP/1.1\r\n"));
+            stream.write_all(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nup 1\n\r\n0\r\n\r\n").unwrap();
+            let _ = hold.recv_timeout(StdDuration::from_secs(2));
+        });
+        let response = http_get(&format!("http://{address}/metrics"), 150, 1024);
+        let _ = release.send(());
+        server.join().unwrap();
+        let response = response.unwrap();
+        assert_eq!(response.status, 200);
+        assert_eq!(response.body, b"up 1\n");
+    }
+}
+

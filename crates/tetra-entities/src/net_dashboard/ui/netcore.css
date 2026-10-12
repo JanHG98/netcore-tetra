@@ -236,3 +236,32 @@ body #nc-radio-filter{width:auto;flex:0 1 330px;min-width:180px}
 .modal,.sheet,.read-pop{color:var(--text);background:var(--bg2);border-color:var(--border2)}
 .modal-title{color:var(--text);font-family:var(--sans);letter-spacing:0;text-transform:none}
 @media(max-width:700px){body #nc-radio-filter{flex:1 1 100%;width:100%;font-size:16px}body #content thead th{font-size:12px}}
+
+
+/* Compact service health and editable, staged neighbour configuration. */
+.nc-health-services-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:22px 0 10px;}
+.nc-health-services-head .h-sec{margin:0;}
+.nc-health-service-chips{display:flex;flex-wrap:wrap;gap:7px;}
+.nc-health-service-chip{display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r-chip);background:var(--bg2);color:var(--text);font:inherit;font-size:12px;cursor:pointer;min-height:38px;text-align:left;}
+.nc-health-service-chip::before{content:'';width:6px;height:6px;flex-shrink:0;border-radius:50%;background:var(--text3);}
+.nc-health-service-chip.is-ok::before{background:var(--ok);}
+.nc-health-service-chip.is-warn::before{background:var(--warn);}
+.nc-health-service-chip.is-danger::before{background:var(--danger);}
+.nc-health-service-chip:hover{border-color:var(--accent);}
+.nc-health-service-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.nc-health-service-status{font-family:var(--mono);font-size:9px;color:var(--text2);}
+.nc-neighbor-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.nc-neighbor-notice{padding-top:0;font-size:13px;color:var(--text2);}
+.nc-neighbor-notice.is-error{color:var(--danger);}
+.nc-neighbor-row-actions{white-space:nowrap;}
+.nc-neighbor-row-actions .btn + .btn{margin-left:6px;}
+.nc-neighbor-editor[hidden]{display:none!important;}
+.nc-neighbor-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:14px;}
+.nc-neighbor-field{display:flex;flex-direction:column;gap:5px;font-size:12px;}
+.nc-neighbor-field .form-input{min-width:0;width:100%;}
+.nc-neighbor-field small{font-size:11px;}
+.nc-neighbor-check{display:flex;align-items:center;gap:8px;margin:18px 0;font-size:13px;}
+.nc-neighbor-advanced{margin:18px 0;}
+.nc-neighbor-advanced summary{cursor:pointer;font-weight:600;margin-bottom:16px;}
+@media(max-width:700px){.nc-health-service-chip{max-width:100%;flex:1 1 155px;justify-content:space-between;}.nc-health-service-status{font-size:8px;}.nc-neighbor-toolbar .btn{flex:1 1 180px;}}
+

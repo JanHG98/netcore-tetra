@@ -21,6 +21,18 @@ BASE = {
 }
 NETWORKS = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.0/8']
 BUILD_ID = re.compile(r'[0-9a-f]{32}\Z')
+DESKTOPS = {'none': 'Ohne Desktop (Lite)', 'kde': 'KDE Plasma'}
+
+
+def sip_setup_state(config, fallback):
+    if fallback.strip():
+        return 'configured'
+    sip = config.get('asterisk', {})
+    # Preserve explicitly configured external legacy gateways.
+    host = sip.get('remote_host', '')
+    if sip.get('enabled') is True and host and host not in ('localhost', '127.0.0.1', '::1'):
+        return 'remote_configured'
+    return 'setup_required'
 
 
 def text(data, key, default='', maximum=4096):
@@ -136,6 +148,12 @@ def validate_image(data, networks=None, hash_password=True):
         raise ValueError('Ungültiger Passwort-Hash')
     if not (public_key or password or password_hash):
         raise ValueError('SSH-Public-Key oder Betriebssystem-Passwort für den Pi angeben')
+    # Old API requests and existing artifacts remain Lite. The new UI selects KDE.
+    desktop = text(data, 'desktop', 'none', 16)
+    if desktop not in DESKTOPS:
+        raise ValueError('Desktop: none oder kde auswählen')
+    if desktop == 'kde' and not (password or password_hash):
+        raise ValueError('KDE Plasma benötigt ein Betriebssystem-Passwort für die grafische Anmeldung; ein SSH-Key allein genügt nicht')
     if password and hash_password:
         password_hash = subprocess.run(['openssl', 'passwd', '-6', '-stdin'], input=password + '\n',
                                        text=True, capture_output=True, check=True, timeout=10).stdout.strip()
@@ -170,18 +188,27 @@ def validate_image(data, networks=None, hash_password=True):
     environment = text(data, 'environment', 'netcore-openlab', 64)
     from common import identifier
     identifier(environment)
+    sip_fallback = text(data, 'sip_fallback_config', maximum=65536)
+    # The same helper is copied beside image_spec.py inside the ARM64 guest.
+    try:
+        from image.sip_setup import validate_sip_config
+    except ModuleNotFoundError:
+        from sip_setup import validate_sip_config
+    validate_sip_config(sip_fallback, profile['name'])
     return dict(profile=profile, base=BASE['id'], commit=commit, config=template, hostname=hostname,
                 username=username, timezone=timezone, ssh_key=public_key, password_hash=password_hash,
                 wifi_ssid=ssid, wifi_password=wifi_password, wifi_country=country, overlay=overlay,
                 vpn_config=vpn, trusted_ssids=trusted_ssids, trusted_lan=trusted_lan,
-                controller_url=seed, environment=environment, allowed_networks=networks or NETWORKS)
+                controller_url=seed, environment=environment, allowed_networks=networks or NETWORKS,
+                desktop=desktop, sip_fallback_config=sip_fallback,
+                sip_setup=sip_setup_state(parsed, sip_fallback))
 
 
 def public_job(job):
     """Never publish TBS, WLAN, VPN or OS credentials in the job API."""
     job = copy.deepcopy(job)
     req = job['request']
-    job['request'] = {k: req[k] for k in ('build_id', 'profile', 'base', 'commit', 'hostname') if k in req}
+    job['request'] = {k: req[k] for k in ('build_id', 'profile', 'base', 'commit', 'hostname', 'desktop', 'sip_setup') if k in req}
     return job
 
 
@@ -194,3 +221,4 @@ def wifi_keyfile(ssid, password):
             '[wifi]\nmode=infrastructure\nssid=' + keyfile_escape(ssid) + '\n\n'
             '[wifi-security]\nkey-mgmt=wpa-psk\npsk=' + keyfile_escape(password) + '\n\n'
             '[ipv4]\nmethod=auto\n\n[ipv6]\nmethod=auto\n')
+

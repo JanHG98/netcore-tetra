@@ -91,7 +91,11 @@ impl TelegramClient {
         let url = Self::method_url(token, "getMe");
         let json = self.get_json(&url)?;
         let result = ok_result(&json)?;
-        let username = result.get("username").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let username = result
+            .get("username")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         Ok(BotInfo { username })
     }
 
@@ -100,10 +104,15 @@ impl TelegramClient {
     // Was: Diese Funktion liest updates.
     // Warum: Der Zugriff auf den Wert bleibt dadurch gekapselt und kann später zentral angepasst werden.
     pub fn get_updates(&self, token: &str) -> Result<Vec<DetectedChat>, String> {
-        let url = format!("{}?timeout=0&limit=100", Self::method_url(token, "getUpdates"));
+        let url = format!(
+            "{}?timeout=0&limit=100",
+            Self::method_url(token, "getUpdates")
+        );
         let json = self.get_json(&url)?;
         let result = ok_result(&json)?;
-        let updates = result.as_array().ok_or_else(|| "unexpected getUpdates response".to_string())?;
+        let updates = result
+            .as_array()
+            .ok_or_else(|| "unexpected getUpdates response".to_string())?;
 
         let mut seen: Vec<DetectedChat> = Vec::new();
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
@@ -112,7 +121,12 @@ impl TelegramClient {
             // A chat can show up under several update kinds; check the common ones.
             // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
             // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
-            for key in ["message", "edited_message", "channel_post", "my_chat_member"] {
+            for key in [
+                "message",
+                "edited_message",
+                "channel_post",
+                "my_chat_member",
+            ] {
                 if let Some(chat) = upd.get(key).and_then(|m| m.get("chat"))
                     && let Some(detected) = chat_to_detected(chat)
                     && !seen.iter().any(|c| c.id == detected.id)
@@ -140,8 +154,10 @@ impl TelegramClient {
             .post(&url)
             .json(&body)
             .send()
-            .map_err(|e| format!("request failed: {e}"))?;
-        let json: serde_json::Value = resp.json().map_err(|e| format!("read failed: {e}"))?;
+            .map_err(|e| format!("Telegram-Anfrage fehlgeschlagen: {}", e.without_url()))?;
+        let json: serde_json::Value = resp
+            .json()
+            .map_err(|e| format!("Telegram-Antwort nicht lesbar: {}", e.without_url()))?;
         ok_result(&json).map(|_| ())
     }
 
@@ -151,9 +167,9 @@ impl TelegramClient {
         self.http
             .get(url)
             .send()
-            .map_err(|e| format!("request failed: {e}"))?
+            .map_err(|e| format!("Telegram-Anfrage fehlgeschlagen: {}", e.without_url()))?
             .json::<serde_json::Value>()
-            .map_err(|e| format!("read failed: {e}"))
+            .map_err(|e| format!("Telegram-Antwort nicht lesbar: {}", e.without_url()))
     }
 }
 
@@ -162,7 +178,10 @@ impl TelegramClient {
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn ok_result(json: &serde_json::Value) -> Result<serde_json::Value, String> {
     if json.get("ok").and_then(|v| v.as_bool()).unwrap_or(false) {
-        Ok(json.get("result").cloned().unwrap_or(serde_json::Value::Null))
+        Ok(json
+            .get("result")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null))
     } else {
         let desc = json
             .get("description")
@@ -177,7 +196,11 @@ fn ok_result(json: &serde_json::Value) -> Result<serde_json::Value, String> {
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 fn chat_to_detected(chat: &serde_json::Value) -> Option<DetectedChat> {
     let id = chat.get("id").and_then(|v| v.as_i64())?;
-    let kind = chat.get("type").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let kind = chat
+        .get("type")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
 
     let title = chat.get("title").and_then(|v| v.as_str());
     let first = chat.get("first_name").and_then(|v| v.as_str());
@@ -187,7 +210,10 @@ fn chat_to_detected(chat: &serde_json::Value) -> Option<DetectedChat> {
     let name = if let Some(t) = title {
         t.to_string()
     } else if first.is_some() || last.is_some() {
-        [first.unwrap_or(""), last.unwrap_or("")].join(" ").trim().to_string()
+        [first.unwrap_or(""), last.unwrap_or("")]
+            .join(" ")
+            .trim()
+            .to_string()
     } else if let Some(u) = username {
         format!("@{u}")
     } else {
@@ -202,6 +228,33 @@ fn chat_to_detected(chat: &serde_json::Value) -> Option<DetectedChat> {
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 mod tests {
     use super::*;
+
+    #[test]
+    fn unreadable_response_does_not_disclose_token_in_error() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let worker = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+            let mut request = [0u8; 4096];
+            let _ = stream.read(&mut request).unwrap();
+            stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 4\r\nConnection: close\r\n\r\noops").unwrap();
+        });
+        let token = "123:never-return-this-secret";
+        let error = TelegramClient::new()
+            .get_json(&format!("http://{address}/bot{token}/getMe"))
+            .unwrap_err();
+        worker.join().unwrap();
+        assert!(
+            !error.contains(token),
+            "request URLs must be removed from errors"
+        );
+        assert!(!error.contains("/bot"));
+        assert!(error.contains("nicht lesbar"));
+    }
 
     #[test]
     // Was: Führt den Arbeitsschritt `method_url_builds` für method url builds aus.

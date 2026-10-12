@@ -1,7 +1,10 @@
 // NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für die Kopplung von TETRA-Paketdaten an IP-Netze.
 // NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
-use std::io::{Read, Write};
+#[path = "../../shared/http-response.rs"]
+mod http_response;
+
+use std::io::Write;
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
@@ -135,11 +138,10 @@ impl PacketCoreClient {
             .and_then(|()| stream.write_all(body))
             .map_err(|error| format!("write Packet Core request: {error}"))?;
 
-        let mut response = Vec::new();
-        stream
-            .read_to_end(&mut response)
+        // Read the declared message length, not the lifetime of the TCP connection.
+        let response = http_response::read_response(stream, 16 * 1024 * 1024)
             .map_err(|error| format!("read Packet Core response: {error}"))?;
-        parse_http_response(&response)
+        Ok(HttpResponse { status: response.status, body: response.body })
     }
 }
 
@@ -201,22 +203,41 @@ fn resolve_one(host: &str, port: u16) -> Result<SocketAddr, String> {
         .ok_or_else(|| format!("Packet Core {host}:{port} resolved to no address"))
 }
 
-// Was: Diese Funktion liest und prüft HTTP response.
-// Warum: Ungültige oder unvollständige Eingaben werden dadurch erkannt, bevor sie den Systemzustand beeinflussen.
-fn parse_http_response(bytes: &[u8]) -> Result<HttpResponse, String> {
-    let split = bytes
-        .windows(4)
-        .position(|window| window == b"\r\n\r\n")
-        .ok_or_else(|| "Packet Core response has no header terminator".to_string())?;
-    let header = std::str::from_utf8(&bytes[..split]).map_err(|error| error.to_string())?;
-    let status = header
-        .lines()
-        .next()
-        .and_then(|line| line.split_whitespace().nth(1))
-        .and_then(|value| value.parse::<u16>().ok())
-        .ok_or_else(|| "Packet Core response has invalid status line".to_string())?;
-    Ok(HttpResponse {
-        status,
-        body: bytes[split + 4..].to_vec(),
-    })
+#[cfg(test)]
+mod response_tests {
+    use super::*;
+    use std::io::Read;
+    use std::net::TcpListener;
+    use std::sync::mpsc;
+
+    #[test]
+    fn packet_core_client_receives_json_before_persistent_peer_closes() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let (release, hold) = mpsc::channel();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+            let mut request = Vec::new();
+            let mut buffer = [0; 256];
+            while !request.windows(4).any(|part| part == b"\r\n\r\n") {
+                let count = stream.read(&mut buffer).unwrap();
+                assert!(count > 0);
+                request.extend_from_slice(&buffer[..count]);
+            }
+            assert!(request.starts_with(b"GET /api/v1/status HTTP/1.1\r\n"));
+            stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\n{}").unwrap();
+            let _ = hold.recv_timeout(Duration::from_secs(2));
+        });
+        let client = PacketCoreClient {
+            base: HttpBase { host: "127.0.0.1".to_string(), port: address.port(), base_path: String::new() },
+            timeout: Duration::from_millis(150),
+        };
+        let response: Result<serde_json::Value, _> = client.get_json("/api/v1/status");
+        let _ = release.send(());
+        server.join().unwrap();
+        assert_eq!(response.unwrap(), serde_json::json!({}));
+    }
 }
+
+

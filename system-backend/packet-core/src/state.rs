@@ -5,6 +5,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs;
 use std::io::Write;
 use std::net::Ipv4Addr;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
@@ -282,6 +283,7 @@ struct PacketCoreState {
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct SharedPacketCore {
     inner: Arc<Mutex<PacketCoreState>>,
+    persistence: Arc<Mutex<()>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -346,6 +348,7 @@ impl SharedPacketCore {
                 reassembly_completed: 0,
                 reassembly_failed: 0,
             })),
+            persistence: Arc::new(Mutex::new(())),
         })
     }
 
@@ -463,7 +466,8 @@ impl SharedPacketCore {
                 );
             }
         }
-        state.persist_logged();
+        drop(state);
+        self.persist_logged();
     }
 
     // Was: Führt den Arbeitsschritt `ingest_edge_event` für ingest edge Ereignis aus.
@@ -471,7 +475,8 @@ impl SharedPacketCore {
     pub fn ingest_edge_event(&self, event: EdgeEventInput) -> Result<Vec<EdgeActionRecord>, String> {
         let mut state = self.lock();
         let actions = state.ingest_edge_event(event)?;
-        state.persist().map_err(|error| error.to_string())?;
+        drop(state);
+        self.persist().map_err(|error| error.to_string())?;
         Ok(actions)
     }
 
@@ -501,7 +506,8 @@ impl SharedPacketCore {
             result.context_id.clone(),
             json!({"action_id":id,"message":input.message}),
         );
-        state.persist().map_err(|error| error.to_string())?;
+        drop(state);
+        self.persist().map_err(|error| error.to_string())?;
         Ok(result)
     }
 
@@ -510,7 +516,8 @@ impl SharedPacketCore {
     pub fn queue_downlink(&self, input: DownlinkNpduInput) -> Result<Vec<EdgeActionRecord>, String> {
         let mut state = self.lock();
         let actions = state.queue_downlink(input)?;
-        state.persist().map_err(|error| error.to_string())?;
+        drop(state);
+        self.persist().map_err(|error| error.to_string())?;
         Ok(actions)
     }
 
@@ -524,7 +531,8 @@ impl SharedPacketCore {
     ) -> Result<(Vec<EdgeActionRecord>, Vec<BackendRequest>), String> {
         let mut state = self.lock();
         let result = state.context_action(context_id, action, input)?;
-        state.persist().map_err(|error| error.to_string())?;
+        drop(state);
+        self.persist().map_err(|error| error.to_string())?;
         Ok(result)
     }
 
@@ -538,7 +546,8 @@ impl SharedPacketCore {
             return Err("N-PDU not found".to_string());
         }
         state.touch();
-        state.persist().map_err(|error| error.to_string())
+        drop(state);
+        self.persist().map_err(|error| error.to_string())
     }
 
     // Was: Diese Funktion bearbeitet den vorgesehenen Arbeitsschritt.
@@ -546,7 +555,8 @@ impl SharedPacketCore {
     pub fn tick(&self) -> Vec<BackendRequest> {
         let mut state = self.lock();
         let requests = state.tick();
-        state.persist_logged();
+        drop(state);
+        self.persist_logged();
         requests
     }
 
@@ -599,6 +609,36 @@ impl SharedPacketCore {
             "npdu_outbox": state.database.npdu_outbox,
             "events": state.database.events,
         })
+    }
+
+    fn persist_logged(&self) {
+        if let Err(error) = self.persist() {
+            tracing::error!("Packet Core state persistence failed: {error}");
+        }
+    }
+
+    fn persist(&self) -> std::io::Result<()> {
+        self.persist_with(|config, bytes| {
+            write_database(&config.storage.database_path, &config.storage.backup_path, bytes)
+        })
+    }
+
+    fn persist_with<F>(&self, write: F) -> std::io::Result<()>
+    where
+        F: FnOnce(&PacketCoreConfig, &[u8]) -> std::io::Result<()>,
+    {
+        // Serialize commits before capturing the current database so an older
+        // snapshot can never replace a newer one after a slow filesystem write.
+        let _commit = self.persistence.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let (config, database) = {
+            let state = self.lock();
+            (state.config.clone(), state.database.clone())
+        };
+        // JSON, backup copies and filesystem sync must not hold the live state
+        // mutex used by HTTP readers and gateway connection updates.
+        let bytes = serde_json::to_vec_pretty(&database)
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
+        write(&config, &bytes)
     }
 
     // Was: Führt den Arbeitsschritt `lock` für lock aus.
@@ -2302,34 +2342,32 @@ impl PacketCoreState {
         self.database.revision = self.database.revision.saturating_add(1);
     }
 
-    // Was: Diese Funktion speichert logged.
-    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
-    fn persist_logged(&self) {
-        if let Err(error) = self.persist() {
-            tracing::error!("Packet Core state persistence failed: {error}");
-        }
-    }
 
-    // Was: Diese Funktion speichert den vorgesehenen Arbeitsschritt.
-    // Warum: Wichtiger Zustand bleibt dadurch über Neustarts hinweg erhalten.
-    fn persist(&self) -> std::io::Result<()> {
-        if let Some(parent) = self.config.storage.database_path.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        let bytes = serde_json::to_vec_pretty(&self.database)
-            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
-        let temp = self.config.storage.database_path.with_extension("json.tmp");
-        let mut file = fs::File::create(&temp)?;
-        file.write_all(&bytes)?;
+}
+
+fn write_database(path: &Path, backup: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let temp = path.with_extension(format!("json.tmp-{}", Uuid::new_v4()));
+    let result = (|| {
+        let mut file = fs::OpenOptions::new().write(true).create_new(true).open(&temp)?;
+        file.write_all(bytes)?;
         file.sync_all()?;
-        if self.config.storage.database_path.exists() {
-            if let Some(parent) = self.config.storage.backup_path.parent() {
+        drop(file);
+        if path.exists() {
+            if let Some(parent) = backup.parent() {
                 fs::create_dir_all(parent)?;
             }
-            let _ = fs::copy(&self.config.storage.database_path, &self.config.storage.backup_path);
+            // Preserve the existing best-effort backup policy.
+            let _ = fs::copy(path, backup);
         }
-        fs::rename(temp, &self.config.storage.database_path)
+        fs::rename(&temp, path)
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&temp);
     }
+    result
 }
 
 // Was: Diese Funktion liest backup.
@@ -2433,6 +2471,153 @@ pub fn decode_hex(value: &str) -> Result<Vec<u8>, String> {
 // Warum: Alle Gegenstellen erhalten dadurch dasselbe erwartete Protokollformat.
 pub fn encode_hex(value: &[u8]) -> String {
     value.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+#[cfg(test)]
+mod persistence_tests {
+    use super::*;
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::Duration;
+
+    fn service() -> SharedPacketCore {
+        SharedPacketCore {
+            inner: Arc::new(Mutex::new(PacketCoreState {
+                config: PacketCoreConfig::default(),
+                database: PacketDatabase::default(),
+                started_at: now_iso(),
+                node_gateway_connected: true,
+                node_gateway_last_error: None,
+                pending_commands: BTreeMap::new(),
+                reassembly_completed: 0,
+                reassembly_failed: 0,
+            })),
+            persistence: Arc::new(Mutex::new(())),
+        }
+    }
+
+    #[test]
+    fn blocked_database_write_does_not_block_health_or_gateway_state() {
+        let service = service();
+        let writer_service = service.clone();
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let writer = thread::spawn(move || {
+            writer_service.persist_with(|_, _| {
+                entered_tx.send(()).unwrap();
+                release_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+                Ok(())
+            })
+        });
+        entered_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+        let reader_service = service.clone();
+        let (status_tx, status_rx) = mpsc::channel();
+        let reader = thread::spawn(move || {
+            reader_service.gateway_disconnected("test disconnect".to_string());
+            status_tx.send(reader_service.status()).unwrap();
+        });
+        let status = status_rx.recv_timeout(Duration::from_secs(1));
+        release_tx.send(()).unwrap();
+        writer.join().unwrap().unwrap();
+        reader.join().unwrap();
+        assert!(!status.expect("live state waited for the blocked database write").node_gateway_connected);
+    }
+
+    #[test]
+    fn commits_stay_ordered_and_next_snapshot_includes_newer_database() {
+        let service = service();
+        service.lock().database.revision = 1;
+        let first_service = service.clone();
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let (committed_tx, committed_rx) = mpsc::channel();
+        let first_committed_tx = committed_tx.clone();
+        let first = thread::spawn(move || {
+            first_service.persist_with(|_, bytes| {
+                let database: PacketDatabase = serde_json::from_slice(bytes).unwrap();
+                entered_tx.send(database.revision).unwrap();
+                release_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+                first_committed_tx.send(database.revision).unwrap();
+                Ok(())
+            })
+        });
+        assert_eq!(entered_rx.recv_timeout(Duration::from_secs(5)).unwrap(), 1);
+        service.lock().database.revision = 2;
+        let second_service = service.clone();
+        let (attempt_tx, attempt_rx) = mpsc::channel();
+        let second = thread::spawn(move || {
+            attempt_tx.send(()).unwrap();
+            second_service.persist_with(|_, bytes| {
+                let database: PacketDatabase = serde_json::from_slice(bytes).unwrap();
+                committed_tx.send(database.revision).unwrap();
+                Ok(())
+            })
+        });
+        attempt_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+        let premature = committed_rx.recv_timeout(Duration::from_millis(100));
+        release_tx.send(()).unwrap();
+        first.join().unwrap().unwrap();
+        second.join().unwrap().unwrap();
+        assert!(matches!(premature, Err(mpsc::RecvTimeoutError::Timeout)));
+        assert_eq!(committed_rx.recv_timeout(Duration::from_secs(5)).unwrap(), 1);
+        assert_eq!(committed_rx.recv_timeout(Duration::from_secs(5)).unwrap(), 2);
+    }
+
+    #[test]
+    fn failed_writer_returns_error_and_does_not_hold_commit_lock() {
+        let service = service();
+        let error = service
+            .persist_with(|_, _| Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "blocked storage")))
+            .unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::PermissionDenied);
+        service.persist_with(|_, _| Ok(())).unwrap();
+        assert!(service.status().node_gateway_connected);
+    }
+
+    struct TestDirectory(std::path::PathBuf);
+
+    impl TestDirectory {
+        fn new() -> Self {
+            let path = std::env::temp_dir().join(format!("netcore-packet-persistence-{}", Uuid::new_v4()));
+            fs::create_dir(&path).unwrap();
+            Self(path)
+        }
+    }
+
+    impl Drop for TestDirectory {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn real_file_publication_keeps_complete_database_and_previous_backup() {
+        let directory = TestDirectory::new();
+        let service = service();
+        let path = directory.0.join("database.json");
+        let backup = directory.0.join("backup").join("database.json");
+        let unrelated_temp = directory.0.join("database.json.tmp");
+        fs::write(&unrelated_temp, b"unrelated temporary file").unwrap();
+        {
+            let mut state = service.lock();
+            state.config.storage.database_path = path.clone();
+            state.config.storage.backup_path = backup.clone();
+            state.database.revision = 1;
+        }
+        service.persist().unwrap();
+        service.lock().database.revision = 2;
+        service.persist().unwrap();
+        let current: PacketDatabase = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        let previous: PacketDatabase = serde_json::from_slice(&fs::read(&backup).unwrap()).unwrap();
+        assert_eq!(current.revision, 2);
+        assert_eq!(previous.revision, 1);
+        assert_eq!(fs::read(unrelated_temp).unwrap(), b"unrelated temporary file");
+        assert!(
+            fs::read_dir(&directory.0)
+                .unwrap()
+                .all(|entry| !entry.unwrap().file_name().to_string_lossy().starts_with("database.json.tmp-"))
+        );
+    }
 }
 
 #[cfg(test)]
