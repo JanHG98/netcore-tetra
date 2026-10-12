@@ -188,6 +188,11 @@ Path(''' + repr(str(marker)) + ''').write_text(json.dumps({'uid': uid, 'gid': gi
         if created_user:
             call('userdel', 'netcore')
         for name in reversed(created_groups):
+            # userdel can remove the matching private primary group itself.
+            try:
+                grp.getgrnam(name)
+            except KeyError:
+                continue
             call('groupdel', name)
         os.umask(old_umask)
 
