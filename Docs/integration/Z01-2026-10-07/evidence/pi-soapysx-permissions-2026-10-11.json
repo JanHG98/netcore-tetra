@@ -360,7 +360,7 @@
     "gateway_live_identity": "netcore-node-gateway",
     "core_health_endpoint": "/api/v1/core-services"
   },
-  "next_acceptance": "Retry corrected helper using existing clean checkout /home/jan/netcore-txdiag-29f891f186f0.0s34kP/source; then controlled20-second manual capture and stop. ARM64 build/install and actual TX branch remain unconfirmed.",
+  "next_acceptance": "No rebuild: controlled60-second manual run, baseline after10s, require same PID/no restarts, increasing successful writes and unchanged cumulative skip count; stop on deviation and finally inactive/disabled. Prior stall cause, boot/duration, physical RF and feature acceptance remain open.",
   "operator_gateway_health": {
     "requested_from": "srv-m-tbs-03",
     "base_url": "http://10.0.1.179:8080",
@@ -1355,7 +1355,7 @@
       "openlab_ci_run": 38224342791,
       "all_three_ci_success": true
     },
-    "arm64_runtime_installation_confirmed": false
+    "arm64_runtime_installation_confirmed": true
   },
   "diagnostic_binary_stage_plan": {
     "helper": "tools/operator/pi-txdiag-build-stage.sh",
@@ -1378,8 +1378,8 @@
     "independent_review": "PASS after fixing and testing unresolved-library Bash guard",
     "runtime_guard_actual_git_comparison_passed": true,
     "optional_clean_checkout_reuse": true,
-    "arm64_build_confirmed": false,
-    "binary_replacement_confirmed": false
+    "arm64_build_confirmed": true,
+    "binary_replacement_confirmed": true
   },
   "operator_stage_source_guard_abort_2026_10_12": {
     "helper_commit": "abf8a92e6f95a653aa8990da86b050285298ad59",
@@ -1413,7 +1413,7 @@
       "shell_syntax_passed": true,
       "independent_scope_review": "PASS"
     },
-    "retry_executed": false
+    "retry_executed": true
   },
   "stage_test_fixture_python311_correction_2026_10_12": {
     "observed_workflow_run": 38226568083,
@@ -1433,6 +1433,161 @@
       "image-engine ubuntu-24.04",
       "image-engine ubuntu-26.04"
     ],
-    "fresh_python311_ci_acceptance_confirmed": false
+    "fresh_python311_ci_acceptance_confirmed": true,
+    "corrected_commit": "12e09020ae323d54242858ebad9f8f99c186a659",
+    "successful_openlab_run": 38229127762,
+    "successful_source_gate_run": 38229127744
+  },
+  "operator_arm64_diagnostic_stage_and_short_run_2026_10_12": {
+    "evidence_source": "Operator pasted guarded helper release/stage and manual capture output",
+    "helper_package_expected_from_prior_instruction": "12e09020ae323d54242858ebad9f8f99c186a659",
+    "diagnostic_commit": "29f891f186f0b85d1930ba38ea8ac38157bc78ad",
+    "image_runtime_base": "1595259a2a76abfc9eff08842409156473b585a7",
+    "rustc_version": "1.99.0",
+    "release_build_elapsed_seconds": 335,
+    "architecture": "AArch64 ELF64",
+    "listed_dynamic_libraries_resolved": true,
+    "old_binary_sha256": "e4180b8580a5e37431bd84a7f9796eb7ea17a2e8619a4ba338163c0f6b39698e",
+    "new_binary_sha256": "56c9d4cf66ff4eccd2d7af7bb29a9e7cc000a5c86f207a57c6e23aaebaf1025e",
+    "installed_binary_sha256_matches": true,
+    "backup_path": "/var/backups/netcore-tetra/txdiag-29f891f186f0-uvdxq7hy/bluestation-bs.before",
+    "build_tree": "/home/jan/netcore-txdiag-29f891f186f0.0s34kP",
+    "helper_requested_rf_start": false,
+    "separate_manual_run_requested_seconds": 20,
+    "arm64_test_summary_in_supplied_excerpt": false,
+    "during_manual_run": {
+      "MainPID": 18079,
+      "NRestarts": 0,
+      "ActiveState": "active",
+      "SubState": "running"
+    },
+    "final_state": {
+      "MainPID": 0,
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "UnitFileState": "disabled"
+    },
+    "settings": {
+      "rx_center_freq": 408012500,
+      "tx_center_freq": 418012500,
+      "sample_rate": 600000,
+      "period_samples": 900,
+      "rx_ant": "RX",
+      "tx_ant": "TX",
+      "rx_gain": {
+        "LNA": 42,
+        "PGA": 16
+      },
+      "tx_gain": {
+        "DAC": 9,
+        "MIXER": 30
+      }
+    },
+    "startup_rx_alignment": {
+      "reported_lost_samples_signed": -1200,
+      "additional_samples_skipped": 900,
+      "processing_blocks_skipped": 1
+    },
+    "samples": [
+      {
+        "at": "2026-10-12T11:31:58.976+02:00",
+        "tx_block": 3333,
+        "hw_block": 3318,
+        "latest_rx_block": 3315,
+        "lead_blocks": 15,
+        "tx_rx_lead_blocks": 18,
+        "tx_process_attempts": 6572,
+        "tx_write_attempts": 3258,
+        "tx_written_blocks": 3258,
+        "tx_hw_ahead_returns": 0,
+        "tx_rx_ahead_returns": 10,
+        "tx_slot_not_ready_returns": 3303,
+        "late_skip_events": 4,
+        "late_skipped_blocks": 75,
+        "tx_slot_times": [
+          [
+            720,
+            "0/05/17/1"
+          ],
+          [
+            721,
+            "0/05/17/1"
+          ]
+        ],
+        "hw_status_supported": false,
+        "hw_status_events": 0,
+        "hw_underflows": 0,
+        "hw_time_errors": 0,
+        "hw_other_errors": 0
+      },
+      {
+        "at": "2026-10-12T11:32:03.977+02:00",
+        "tx_block": 6666,
+        "hw_block": 6651,
+        "latest_rx_block": 6649,
+        "lead_blocks": 15,
+        "tx_rx_lead_blocks": 17,
+        "tx_process_attempts": 13239,
+        "tx_write_attempts": 6591,
+        "tx_written_blocks": 6591,
+        "tx_hw_ahead_returns": 0,
+        "tx_rx_ahead_returns": 10,
+        "tx_slot_not_ready_returns": 6637,
+        "late_skip_events": 4,
+        "late_skipped_blocks": 75,
+        "tx_slot_times": [
+          [
+            720,
+            "0/10/15/2"
+          ]
+        ],
+        "hw_status_supported": false,
+        "hw_status_events": 0,
+        "hw_underflows": 0,
+        "hw_time_errors": 0,
+        "hw_other_errors": 0
+      },
+      {
+        "at": "2026-10-12T11:32:08.976+02:00",
+        "tx_block": 9999,
+        "hw_block": 9984,
+        "latest_rx_block": 9982,
+        "lead_blocks": 15,
+        "tx_rx_lead_blocks": 17,
+        "tx_process_attempts": 19905,
+        "tx_write_attempts": 9924,
+        "tx_written_blocks": 9924,
+        "tx_hw_ahead_returns": 0,
+        "tx_rx_ahead_returns": 10,
+        "tx_slot_not_ready_returns": 9970,
+        "late_skip_events": 4,
+        "late_skipped_blocks": 75,
+        "tx_slot_times": [
+          [
+            720,
+            "0/15/13/3"
+          ]
+        ],
+        "hw_status_supported": false,
+        "hw_status_events": 0,
+        "hw_underflows": 0,
+        "hw_time_errors": 0,
+        "hw_other_errors": 0
+      }
+    ],
+    "measured_periodic_report_interval_ms": 10000,
+    "delta_tx_blocks": 6666,
+    "delta_successful_driver_writes": 6666,
+    "delta_hardware_blocks": 6666,
+    "delta_skipped_blocks": 0,
+    "per_sample_tx_minus_written_equals_initial_skips": true,
+    "per_sample_process_attempt_accounting_consistent": true,
+    "slot_waits_with_continuing_writes": "Normal retry path after RX processing; increasing wait count alone is not a stall.",
+    "slot_times_are_complete_configured_carrier_inventory": false,
+    "persistent_stall_reproduced": false,
+    "causal_remedy_confirmed": false,
+    "physical_underflow_or_on_air_acceptance": false,
+    "boot_or_duration_acceptance": false,
+    "independent_counter_and_source_review": "PASS"
   }
 }
