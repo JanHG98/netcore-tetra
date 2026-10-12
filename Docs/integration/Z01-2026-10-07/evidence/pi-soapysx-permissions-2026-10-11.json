@@ -65,11 +65,12 @@
     "vm119_installation_confirmed": false
   },
   "limits": [
-    "Automatic TBS boot/process/Gateway reconnection passed; new postboot TX deadline events prevent TX continuity acceptance. Fault duration/cause, sustained RF/On-Air, functional Core/controller/VPN remain open",
+    "2026-10-12 bounded capture confirms15-second TX production stall conditional on pinned runtime code; exact RX/slot cause and remedy, sustained RF/On-Air and functional Core/controller/VPN acceptance remain open",
     "media-library and observability reported unavailable; no diagnosis yet",
     "17 monitored backend records do not constitute complete26-service fleet acceptance",
     "Image source fixes not confirmed installed on VM119; no new complete ARM64 build",
-    "Hardware TX status API unsupported; zero reported hardware counters do not prove absence of physical underflows"
+    "Hardware TX status API unsupported; zero reported hardware counters do not prove absence of physical underflows",
+    "New invocation771/8af0 differs from prior780/138a; displayed wall-clock start versus16min uptime does not establish overnight duration. No positive RX-history or kernel-clean acceptance from missing journal matches."
   ],
   "post_repair_operator_result": {
     "driver_check": "PRESENT",
@@ -359,7 +360,7 @@
     "gateway_live_identity": "netcore-node-gateway",
     "core_health_endpoint": "/api/v1/core-services"
   },
-  "next_acceptance": "Bounded20–30-second live TX/RX timing and CPU/thread/cgroup/thermal diagnostic; determine whether skips continue before a targeted remedy. No speculative radio or scheduler changes.",
+  "next_acceptance": "Stop and temporarily disable tetra.service (not yet confirmed executed), retain executable hash and invocation-scoped startup/SDR/RX/suppression evidence; distinguish RX/slot gating before a targeted fix or instrumentation. No additional load loop or speculative tuning.",
   "operator_gateway_health": {
     "requested_from": "srv-m-tbs-03",
     "base_url": "http://10.0.1.179:8080",
@@ -1092,5 +1093,159 @@
       "host_load_diagnostic_received": false
     },
     "interpretation": "New software TX lead<2 deadline events well after initial0–75 startupcluster. Truncatedtail spans only92ms and cannot establish preceding duration or cause. Keep prior bounded manual result historical; no claim of hardware underflow or RF-quality PASS."
+  },
+  "operator_tx_stall_diagnostic_2026_10_12": {
+    "source": "Operator-pasted bounded live SSH diagnostic; no direct host access",
+    "date": "2026-10-12",
+    "timezone": "Europe/Berlin",
+    "unit_before": {
+      "MainPID": 771,
+      "NRestarts": 0,
+      "InvocationID": "8af0dbe98d1e4d38a9fdaeb12d33b439",
+      "ExecMainStartTimestamp": "Sun 2026-10-11 22:40:35 CEST",
+      "CPUQuotaPerSecUSec": "infinity",
+      "AllowedCPUs": "",
+      "Nice": -10,
+      "CPUSchedulingPolicy": 0,
+      "CPUSchedulingPriority": 0,
+      "CPUAffinity": ""
+    },
+    "unit_after": {
+      "MainPID": 771,
+      "NRestarts": 0,
+      "InvocationID": "8af0dbe98d1e4d38a9fdaeb12d33b439",
+      "ActiveState": "active",
+      "SubState": "running"
+    },
+    "previous_invocation_same": false,
+    "cgroup_cpu_max_error": "No such file or directory",
+    "cgroup_cpu_stat_before": {
+      "usage_usec": 122332602,
+      "user_usec": 68164289,
+      "system_usec": 54168313,
+      "nice_usec": 0
+    },
+    "cgroup_cpu_stat_after": {
+      "usage_usec": 125007552,
+      "user_usec": 69619556,
+      "system_usec": 55387996,
+      "nice_usec": 0
+    },
+    "cgroup_usage_delta_usec": 2674950,
+    "cgroup_quota_throttle_metrics_received": false,
+    "top": {
+      "first_time": "10:12:34",
+      "second_time": "10:12:35",
+      "uptime_reported": "16 min",
+      "threads": 17,
+      "second_main_thread_cpu_percent": 10.0,
+      "second_global_idle_percent": 96.6,
+      "second_global_iowait_percent": 2.9,
+      "memory_total_mib": 8063.0,
+      "memory_free_mib": 7426.4,
+      "swap_total_mib": 512.0,
+      "swap_free_mib": 512.0
+    },
+    "thread_scheduler": {
+      "class": "TS",
+      "nice": -10,
+      "rtprio": "-"
+    },
+    "pi": {
+      "get_throttled": "0x0",
+      "temperature_celsius": 46.6,
+      "arm_clock_hz": 1600020224
+    },
+    "tx_continuity": [
+      {
+        "timestamp": "2026-10-12T10:12:37.021+02:00",
+        "tx_block": 653268,
+        "hw_block": 653266,
+        "lead_blocks": 2,
+        "late_skip_events": 632402,
+        "late_skipped_blocks": 633302,
+        "hw_status_supported": false,
+        "hw_status_events": 0,
+        "hw_underflows": 0,
+        "hw_time_errors": 0,
+        "hw_other_errors": 0
+      },
+      {
+        "timestamp": "2026-10-12T10:12:47.020+02:00",
+        "tx_block": 659934,
+        "hw_block": 659932,
+        "lead_blocks": 2,
+        "late_skip_events": 639066,
+        "late_skipped_blocks": 639968,
+        "hw_status_supported": false,
+        "hw_status_events": 0,
+        "hw_underflows": 0,
+        "hw_time_errors": 0,
+        "hw_other_errors": 0
+      },
+      {
+        "timestamp": "2026-10-12T10:12:52.019+02:00",
+        "tx_block": 663267,
+        "hw_block": 663265,
+        "lead_blocks": 2,
+        "late_skip_events": 642393,
+        "late_skipped_blocks": 643301,
+        "hw_status_supported": false,
+        "hw_status_events": 0,
+        "hw_underflows": 0,
+        "hw_time_errors": 0,
+        "hw_other_errors": 0
+      }
+    ],
+    "measured_tx_interval_ms": 14998,
+    "delta_tx_block": 9999,
+    "delta_hw_block": 9999,
+    "delta_late_skip_events": 9991,
+    "delta_late_skipped_blocks": 9999,
+    "pinned_code_normal_transmit_path_progress": 0,
+    "pinned_code_inference_condition": "Running binary matches source1595259 and sampled same uninterrupted invocation; block count advances by skip increments plus one before each transmit call.",
+    "latest_tx_warning_times": [
+      "2026-10-12T10:12:56.746+02:00",
+      "2026-10-12T10:12:56.747+02:00",
+      "2026-10-12T10:12:56.749+02:00",
+      "2026-10-12T10:12:56.750+02:00",
+      "2026-10-12T10:12:56.752+02:00",
+      "2026-10-12T10:12:56.753+02:00"
+    ],
+    "latest_tx_warning_blocks": [
+      666417,
+      666418,
+      666419,
+      666420,
+      666421,
+      666422
+    ],
+    "latest_tx_warning_skips_each": 1,
+    "rx_journal_filter_result": "No entries",
+    "kernel_diagnostic_independently_confirmed": false,
+    "limits": [
+      "No retained matching RX entries is not evidence of healthy RX or complete startup journal",
+      "Unit wall-clock start differs from uptime/currenttime; no overnight-run or clock-causation claim",
+      "Frequency1.6GHz alone is not evidence of a cap",
+      "No hardware TX status API; physical underflow/RF quality unmeasured",
+      "Exact RX/slot early-return branch not yet measured"
+    ],
+    "next_action": {
+      "stop_requested": true,
+      "temporary_autostart_disable_requested": true,
+      "execution_confirmed": false,
+      "invocation_startup_binary_suppression_read_requested": true
+    },
+    "production_source_changed": false,
+    "driver_time_source": {
+      "repository": "tejeez/sxxcvr",
+      "commit": "9705147dd8c189625071f3f163ea56119bda4a05",
+      "path": "SoapySX/SoapySX.cpp",
+      "tx_clock": "TX sample position minus ALSA pcm_delay, converted to nanoseconds",
+      "rx_timestamp": "RX sample position before read advances",
+      "wall_clock_used": false,
+      "literal_CLOCK_MONOTONIC_API": false,
+      "stream_origin_alignment_verified": false
+    }
   }
 }
