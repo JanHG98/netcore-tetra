@@ -1,5 +1,26 @@
 # VM119 Imagebuilder – Buildnachweise, NVMe-Recovery und offene Abnahmen
 
+
+## Gemeinsame Rezeptübernahme für das nächste vollständige Image
+
+Betreiberbefund vom12.10.2026: Login jhoffmeister / UID1000 auf VM-H-DEPLOY-01, beide Dienste active. image_build.py und build-guest.sh entsprechen noch exakt1595259; gpio-compat.py fehlt, image_worker.py hat bereits den aktuellen Hash343c8414. Der nötige Umfang ist dadurch auf drei Rezeptdateien begrenzt.
+
+[`vm119-image-recipe-update.py`](vm119-image-recipe-update.py) verwendet den geprüften vorhandenen VM119-Guard. Er akzeptiert ausschließlich die gemeldeten alten oder bereits aktualisierten Dateihashes, verlangt den unveränderten aktuellen Worker, prüft Quellhashes / Python- und Bashsyntax und unterbricht keine aktiven Imageaufträge. Bei untätigen Diensten stoppt er kurz Controller und Builder, ersetzt die drei Rezeptdateien gemeinsam und prüft danach Verfügbarkeit und unveränderte Standortdateien. Fehler führen zum Rückweg einschließlich Entfernung eines erst von ihm hinzugefügten GPIO-Helfers. Ein bereits aktueller Stand benötigt keinen Neustart. Kein Installer-, APT-, Cache- oder Artefaktbereinigungslauf.
+
+Als jhoffmeister den vollständigen bereitgestellten Commit in einem separaten Checkout holen und dort ausführen:
+
+```bash
+sudo python3 -B "$NC_SRC/Docs/integration/Z01-2026-10-07/vm119-image-recipe-update.py"
+```
+
+Der neue GPIO-Helfer wird nur als Rezeptdatei abgelegt. Erst build-guest.sh installiert dessen Service und TBS-Abhängigkeit innerhalb des ARM64-Gasts. Die VM besitzt keinen SXceiver und wird nicht darauf geprüft. Der geänderte Rezeptkey erzeugt für den folgenden Imagekandidaten automatisch eine neue Softwarebasis; vorhandene Downloads/Images bleiben erhalten. Der Updater selbst startet keinen Build. Danach einen neuen Imageauftrag über die vorhandene WebUI mit dem gewünschten Stationsprofil anlegen; der aktualisierte Workflow holt dafür origin/main frisch und hält diesen Commit im Auftrag fest. Abnahme erfolgt am neuen frisch geflashten Image, nicht allein am zuvor reparierten Pi.
+
+[Regressionen](../../../tests/integration/test_vm119_image_recipe_update.py):14 Fälle, lokal12 bestanden / zwei Windows-Plattformskips; Linux-CI für Bash/Symlink und die tatsächliche Anlagenübernahme sind getrennte nächste Nachweise.
+
+**Bestätigte Übernahme / CI vom12.10.2026:** Der Betreiber meldet `phase: passed` für den gemeinsamen Updater auf VM119. Damit sind die drei Rezeptdateien einschließlich gpio-compat.py nach den Helferprüfungen übernommen, Controller und Builder wieder verfügbar und die geschützten Standortdateien erhalten. Native Linux-Regression:14/14 ohne Skip. [Quellgate38244540657](https://github.com/JanHG98/netcore-tetra/actions/runs/38244540657), [OpenLab38244540660](https://github.com/JanHG98/netcore-tetra/actions/runs/38244540660) und [Radio-CI38244540672](https://github.com/JanHG98/netcore-tetra/actions/runs/38244540672) sind erfolgreich abgeschlossen. Die oben genannten offenen Übernahme-/CI-Nachweise sind damit erbracht; der vollständige neue Imagebuild, sein frischer Pi-Boot und die physische Funkabnahme bleiben offen.
+
+**Jetzt das vorbereitete Imageformular abschließen:** Die WebUI zeigte zunächst nur das gespeicherte Profil SRV-M-TBS-01; das zuvor geprüfte Image gehört zu SRV-M-TBS-03. SRV-M-TBS-03 wurde aus dem geprüften Stationsstand mit MCC901 / MNC1510 / ISSI4010003 / LA3 / CC1 neu angelegt und ausgewählt. Das Formular ist mit Hostname srv-m-tbs-03, Benutzer jan, Controlleradresse http://10.0.1.131:8320 und bestätigter HAT-EEPROM-Auswahl vorbereitet. Ein neues Image wurde noch nicht angefordert: OS-Passwort oder SSH-Public-Key muss der Betreiber lokal ergänzen. Danach **Image erstellen →** genau einmal absenden, den Auftrag über seine vorhandene ID verfolgen, Manifest und vollständige Download-Prüfsumme prüfen und das Image auf frisch geschriebener Karte abnehmen: Boot, SXceiver, TBS/Gateway und TX ohne nachträgliche Pi-Handreparatur.
+
 ## Aktueller Nachweisstand vom 11.10.2026
 
 Der vollständige ARM64-NetCore-Build an `1595259a2a76abfc9eff08842409156473b585a7` ist technisch dokumentiert: Erfolgsauftrag `f141c06d4b2f48699486e149c4887b16`, Artefakt `2e2603beacd942dfaddc7119b85a4af0`, 2.043.954.184 Bytes, SHA-256 und `Fertig:`-Abschlussmarker. Die spätere Dateiprüfung fand dieses fertige Image nicht; der passende Softwarecache wurde bestätigt. Der erfolgreiche Build und die aktuelle Verfügbarkeit der Datei sind deshalb getrennte Befunde.
@@ -718,3 +739,4 @@ Validierung des finalen Initramfs-Korrekturstands: Deployment-Core68 Tests /67 b
 ## Bestätigte Initramfs-CI / weiterhin offener Betreiberbuild
 
 Am Quellcommit `1595259a2a76abfc9eff08842409156473b585a7` sind beide main-Workflows erfolgreich abgeschlossen: [Deployment/Discovery](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380374) und [Deployment-/Quellgate](https://github.com/JanHG98/netcore-tetra/actions/runs/37804380390). Der oben datierte Hinweis auf damals noch nicht beobachtete CI bleibt historisch. Diese Ergebnisse bestätigen keinen vollständigen ARM64-NetCore-Build oder physischen Pi-Boot. Die Anlagenübernahme der neuen TBS-Bedienung und des Gastrezepts wird jeweils durch die Betreiber-Ausgabe bestätigt.
+
