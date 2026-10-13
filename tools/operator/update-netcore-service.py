@@ -259,6 +259,9 @@ def prepare_plan(spec, target, props, commit, root=ROOT, prepare_build_deps=Fals
     if not SHA.fullmatch(commit):
         raise ValueError('Vollständiger Git-SHA erforderlich')
     files = prepare(spec, target, root, commit, prepare_build_deps)
+    # New package files inherit the proven runtime's owner, including installations
+    # with a dedicated service account. Existing destinations keep their own metadata.
+    primary_info = target.stat()
     prepared_root = root / '.netcore-prepared'
     prepared_root.mkdir(mode=0o700, parents=True, exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix=spec['name'] + '-', dir=prepared_root))
@@ -277,7 +280,8 @@ def prepare_plan(spec, target, props, commit, root=ROOT, prepare_build_deps=Fals
             records.append(dict(target=str(dest), snapshot=str(snapshot.relative_to(root)),
                                 sha256=digest(snapshot), previous_sha256=digest(dest) if existing else None,
                                 created=not existing, mode=mode,
-                                uid=info.st_uid if info else 0, gid=info.st_gid if info else 0))
+                                uid=info.st_uid if info else primary_info.st_uid,
+                                gid=info.st_gid if info else primary_info.st_gid))
         primary = next(r for r in records if r['target'] == str(target))
         with (root / primary['snapshot']).open('rb') as stream:
             kind = 'elf' if stream.read(4) == b'\x7fELF' else 'python'

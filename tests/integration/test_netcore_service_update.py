@@ -217,6 +217,19 @@ class FileTransactionTests(Fixture):
         self.assertEqual(module.read_bytes(), destination.read_bytes())
         self.assertTrue(receipt['files'][1]['created'])
 
+    def test_new_owned_file_inherits_proven_primary_runtime_owner(self):
+        module = self.root / 'newmodule.py'
+        module.write_bytes(b'VALUE=1\n')
+        destination = self.root / 'package' / 'module.py'
+        owner = self.target.stat()
+        plan = self.plan([(self.source, self.target), (module, destination)])
+        added = plan['files'][1]
+        self.assertEqual((owner.st_uid, owner.st_gid), (added['uid'], added['gid']))
+        with self.mocks():
+            self.apply(plan)
+        installed = destination.stat()
+        self.assertEqual((owner.st_uid, owner.st_gid), (installed.st_uid, installed.st_gid))
+
     def test_liveness_failure_restores_old_files_removes_new_files_and_keeps_commit_unknown(self):
         old = self.target.read_bytes()
         module = self.root / 'newmodule.py'
