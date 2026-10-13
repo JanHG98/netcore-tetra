@@ -2,10 +2,12 @@
 
 **13.10.2026 – Z01.4 Pi-Abnahme:** KDE-Boot, Rufe, SDS, lokale Aufzeichnung/RF-Wiedergabe und WLAN-Bedienung durch Jan bestätigt. Nachbarzellen-Eingabe und softwareseitiger Broadcast belegt; die dabei gefundene falsche Broadcast-Ankündigung wird in der Bedienung korrigiert und kann im aktuellen Image über `neighbor_cell_broadcast=2` übernommen werden. [Abnahme und begrenzte Korrektur](../integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md#pi-funktionstest-vom-13102026). SIP, VPN, MS-Zellwechsel, Dauerlauf und zentrale LXC-Updatebelege bleiben offen.
 
+**14.10.2026 – Z01.4 OpenVPN-Import:** Der gemeldete portable Clientexport wurde wegen `lport 0` vom Importfilter abgewiesen. [PR #81](https://github.com/JanHG98/netcore-tetra/pull/81) ergänzt numerische lokale Ports, erhält Zertifikatsprüfung und Inline-TLS-Material, trennt die Zugangsdaten und nennt bei weiteren Importfehlern die Originalzeile ohne deren Inhalt. [Linux-/Browser-Nachweis am produktiven Commit `4b2e5c7`](https://github.com/JanHG98/netcore-tetra/actions/runs/38475483431/job/115564992303): 24 VPN-, 18 Desktop-, 116 Backend- und 143 VM-Regressionen sowie der echte WebUI-Ablauf bestanden; Quellgate ebenfalls bestanden. **Nächster Schritt:** den [aktuellen VM119-Updater](../integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md#vm119-auf-den-aktuellen-main-stand-aktualisieren) bei untätigen Aufträgen ausführen, Formular neu laden und die eigene `.ovpn` mit VPN-Benutzer/Passwort importieren. Tatsächliche VPN-Verbindung und Wechsel zwischen lokalen und fremden Netzen bleiben auf dem Pi abzunehmen.
+
 | Feld | Wert |
 | --- | --- |
 | Roadmap-ID | NETCORE-MASTER-01 |
-| Erstellt / aktualisiert | 2026-10-05 / 2026-10-13, Europe/Berlin |
+| Erstellt / aktualisiert | 2026-10-05 / 2026-10-14, Europe/Berlin |
 | Geltungsbereich | Gesamtes NetCore-Tetra-Repository: TBS / Funkstack, Core, Deployment, Betrieb, IAM, Drive, Plugins und weitere Integrationen |
 | Geprüfter Ausgangsstand | Z01: `main@dae9363062a1442664a083e1fc32e6944b3be9a6`, historische Quelle `bbf039729b9b05f8d623b11195ca24a124f68d16`; Integration `67b2f0d6e2fbcbf7013ee9b0dae9b2a25c2d9315` auf `feature/z01-deployment-consolidation` |
 | Ergänzende Gruppenprüfung | `main@07609fb56f412ebe6e36655323e8fc6359cf90ec`, 2026-10-05; statischer Befund für Z02.5 |
@@ -273,6 +275,7 @@ Regelmäßige NetCore-Projektstatusläufe verwenden diese Gesamtroadmap als Eins
 
 | Datum | Änderung | Nachweisgrenze |
 | --- | --- | --- |
+| 2026-10-14 | Z01.4: OpenVPN-Clientexport mit `lport 0` gezielt unterstützt; sichere Zeilendiagnose, Portprüfung und Konflikt mit `nobind` ergänzt; [PR #81](https://github.com/JanHG98/netcore-tetra/pull/81) | 24 VPN-/18 Desktop-Tests lokal und nativ, 116 Backend-/143 VM-Tests sowie Browser-Ablauf bestanden. VM-Übernahme und tatsächliche VPN-Verbindung mit den echten Zertifikaten bleiben offen; Dummy-Zertifikate sind kein Verbindungsnachweis |
 | 2026-10-13 | Z01.4: Auf Nutzerwunsch alle 26 regulären Laufzeitrollen und sieben weitere Dienste / Komponenten mit eigenen kopierbaren Updateblöcken ergänzt; geprüfte Quellstände35dc385c / e1617b28, tatsächliche Runtime-/Bestandspfade, Benutzer / Host und abschließende Readiness-/Unit-Prüfungen dokumentiert | 33 Dienstblöcke, vollständiger Runtime-/Agentenkatalog, Bash-Syntax und Python-AST lokal geprüft sowie unabhängig gegengelesen. Keine Dienste auf der Anlage aktualisiert; zentrale Fachpfade, KDE-Image und physische Abnahmen bleiben offen |
 | 2026-10-13 | Regelmäßiger Quellenabgleich: `main@e1617b28`, Release weiterhin v1.9.0. PR #70 bis #72 und ihre Nachweise sind dokumentiert. Fünf Upstreams unverändert; Bost FlowStation neu bei `ccae4632` mit SS-AL/LIP-/Standorttelemetrie-Änderungen | Keine ungeprüfte Portierung. Ambient Listening nur mit ausdrücklichem Ressourcenrecht, Audit und Endgeräte-/On-Air-Abnahme bewerten; Standorttelemetrie gegen vorhandene Node-Identity/LIP-Pfade vergleichen. Z01.4 bleibt vorrangig |
 | 2026-10-12 | Z01.4: Betreiber bestätigt gemeinsame VM119-Rezeptübernahme mit phase: passed; native14 Updaterfälle ohne Skip, Quellgate38244540657 / OpenLab38244540660 / Radio38244540672 vollständig erfolgreich. Stationsprofil SRV-M-TBS-03 wieder angelegt und Imageformular vorbereitet | Lokales OS-Passwort oder SSH-Public-Key ergänzen; noch kein neuer Build abgesendet. Neues Image / frischer Boot / Funkabnahme offen |
@@ -323,6 +326,7 @@ Regelmäßige NetCore-Projektstatusläufe verwenden diese Gesamtroadmap als Eins
 
 
 | 2026-10-12 | Z01.4: PR #71 auf main4041cee übernommen; alle sechs Workflows am d3ea8283 erfolgreich. Native120 VM-Guardfälle,14 KDE-,10 SIP-Setup-,9 SIP-Rechte-,72 Dashboard-Rust-,64 zentrale Backendfälle und149 Dashboard-Browserprüfungen bestanden; beide realen ARM64-Personalisierungen / systemd-Verzeichnistests PASS. KDE-Auswahl, Nachbar-CRUD, kompakte Dienste und quote-aware Carrier/Telegram fertig | [Gepinnter VM-Update-/Rolloutweg](../integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md); VM-Übernahme / neues volles KDE-Image / echte Desktop-, WLAN-, Telegram-, Medien-, SIP-, zentrale Readiness-, Dauerlauf- und On-Air-Abnahmen offen. Vorbereitung ist keine Anlagenänderung |
+
 
 
 
