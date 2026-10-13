@@ -19,7 +19,11 @@ jobs:
       - name: Discovery, API, Git pinning and persistence
         run: python3 -m unittest discover -s system-backend/deployment-core/tests -v
       - name: VM119 targeted update and rollback guards
-        run: python3 -B -m unittest discover -s tests/integration -p 'test_vm119_*.py' -v
+        run: |
+          # The immutable updater's payload check must read its historical Git
+          # objects, independently of the current desktop/VPN source checkout.
+          git fetch --depth 1 origin e842197c2ede8337267a913304816da11664f7a8
+          python3 -B -m unittest discover -s tests/integration -p 'test_vm119_*.py' -v
       - name: Image desktop and private SIP/VPN provisioning
         run: |
           python3 tools/test_image_desktop.py

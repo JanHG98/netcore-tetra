@@ -61,6 +61,10 @@ def main():
                          'for g in netcore spi gpio; do getent group "$g" || groupadd --system "$g"; done; '
                          'useradd --system --gid netcore --groups audio,spi,gpio --shell /usr/sbin/nologin netcore'])
                 if args.desktop != 'none':
+                    # Production sets this before any APT operation. Desktop
+                    # dependencies can trigger initramfs generation in the chroot.
+                    atomic_write(root / 'etc/initramfs-tools/conf.d/zz-netcore-image.conf',
+                                 '# NetCore portable Pi image\nMODULES=most\n', 0o644)
                     command(['chroot', root, '/bin/bash', '-c',
                              'set -Eeuo pipefail; export DEBIAN_FRONTEND=noninteractive; '
                              'NC_APT=(apt-get -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold); '

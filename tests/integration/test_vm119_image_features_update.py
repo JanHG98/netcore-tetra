@@ -490,8 +490,15 @@ class ImageFeaturesUpdateTests(unittest.TestCase):
         self.assertEqual(self.updater.SOURCE_COMMIT, "e842197c2ede8337267a913304816da11664f7a8")
         for name, pins in type(self).source_manifest.items():
             with self.subTest(file=name):
-                self.assertEqual(digest((type(self).source_root / name).read_bytes()), pins["new"])
+                # The immutable updater pins its reviewed historical commit.
+                # Current desktop/VPN recipes are allowed to evolve separately.
+                body = subprocess.check_output([
+                    "git", "-C", str(WORKSPACE), "show",
+                    self.updater.SOURCE_COMMIT + ":system-backend/deployment-core/" + name,
+                ])
+                self.assertEqual(digest(body), pins["new"])
 
 
 if __name__ == "__main__":
     unittest.main()
+
