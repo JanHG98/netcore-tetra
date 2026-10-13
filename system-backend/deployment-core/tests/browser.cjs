@@ -48,12 +48,35 @@ const path = require('node:path');
     const imageBuildCount=()=>mutations.filter(request=>request.path==='/api/v1/images/build').length;
     const sshKey='ssh-ed25519 '+Buffer.concat([Buffer.from([0,0,0,11]),Buffer.from('ssh-ed25519'),Buffer.from([0,0,0,32]),Buffer.alloc(32,1)]).toString('base64')+' browser-fixture';
     assert.equal(await page.locator('#image-desktop').inputValue(),'kde','new image UI should offer KDE by default');
+    assert.deepEqual(await page.locator('#image-desktop option').evaluateAll(options=>options.map(o=>o.value)),['kde','xfce','gnome','pios','none']);
+    assert.equal(await page.locator('#image-vpn-credentials').isVisible(),false);
+    assert.equal(await page.locator('#image-vpn-username').isDisabled(),true);
     await page.locator('#image-form [name=ssh_key]').fill(sshKey);
     await page.locator('#image-build').click();
     assert.equal(imageBuildCount(),0,'KDE requires a login password even when an SSH key was supplied');
     assert.equal(await page.locator('#image-password').evaluate(input=>input.required&&input.validity.valueMissing),true);
     assert.match(await page.locator('#image-password-note').textContent(),/KDE/);
+    for(const [desktop,label] of [['xfce','XFCE'],['gnome','GNOME'],['pios','Raspberry Pi OS Desktop']]){
+      await page.locator('#image-desktop').selectOption(desktop);
+      assert.match(await page.locator('#image-password-note').textContent(),new RegExp(label));
+      await page.locator('#image-build').click();
+      assert.equal(imageBuildCount(),0,`${label} also needs a graphical login password`);
+      assert.equal(await page.locator('#image-password').evaluate(input=>input.required&&input.validity.valueMissing),true);
+    }
+    await page.locator('#image-desktop').selectOption('kde');
     await page.locator('#image-form [name=password]').fill('fixture-only-password');
+    await page.locator('#image-vpn').setInputFiles({name:'incomplete.ovpn',mimeType:'text/plain',buffer:Buffer.from('client\ndev tun\nremote vpn.fixture.invalid 1194\n<auth-user-pass>\nold-user\n</auth-user-pass>\n')});
+    await page.waitForFunction(()=>document.querySelector('#image-vpn-username').required);
+    await page.locator('#image-build').click();
+    assert.equal(imageBuildCount(),0,'An inline username without password also needs the VPN fields');
+    const privateVpn='client\ndev tun\nremote vpn.fixture.invalid 1194\nauth-user-pass\n<ca>\nFIXTURECERT\n</ca>\n';
+    await page.locator('#image-vpn').setInputFiles({name:'station.ovpn',mimeType:'text/plain',buffer:Buffer.from(privateVpn)});
+    await page.waitForFunction(()=>document.querySelector('#image-vpn-username').required);
+    assert.equal(await page.locator('#image-vpn-credentials').isVisible(),true);
+    await page.locator('#image-build').click();
+    assert.equal(imageBuildCount(),0,'VPN auth-user-pass needs credentials before submission');
+    await page.locator('#image-vpn-username').fill('fixture-vpn-user');
+    await page.locator('#image-vpn-password').fill('fixture-vpn-private');
     await page.locator('#image-build').click();
     await page.locator('#image-artifacts').getByText('Download bereit',{exact:true}).waitFor({timeout:15000});
     assert.match(await page.locator('#image-log').textContent(),/simulated image builder/);
@@ -62,9 +85,15 @@ const path = require('node:path');
     const imageSubmission=mutations.find(request=>request.path==='/api/v1/images/build');
     assert.equal(imageSubmission.body.profile,'TBS-02');
     assert.equal(imageSubmission.body.desktop,'kde');
+    assert.equal(imageSubmission.body.vpn_config,privateVpn);
+    assert.equal(imageSubmission.body.vpn_username,'fixture-vpn-user');
+    assert.equal(imageSubmission.body.vpn_password,'fixture-vpn-private');
     assert.equal(imageSubmission.body.sip_fallback_config,'');
     assert.equal(Object.hasOwn(imageSubmission.body,'ref'),false,'Pi image UI must not submit a branch, tag or commit');
     assert.equal(await page.locator('#image-form [name=password]').inputValue(),'');
+    assert.equal(await page.locator('#image-vpn-username').inputValue(),'');
+    assert.equal(await page.locator('#image-vpn-password').inputValue(),'');
+    assert.equal(await page.locator('#image-vpn-credentials').isVisible(),false);
     const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#image-artifacts').getByText('Image ↓',{exact:true}).click()]);
     assert.equal(download.suggestedFilename(),'fixture.img.xz');
     const readable=await download.createReadStream();const chunks=[];for await(const chunk of readable)chunks.push(chunk);
@@ -97,7 +126,7 @@ const path = require('node:path');
     assert.equal(desktopJob.request.sip_setup,'setup_required');
     assert.equal(liteJob.request.sip_setup,'configured');
     const publicJson=JSON.stringify(imageState);
-    for(const privateValue of ['fixture-only-password','fixture-central-private','fixture-pbx-private','fixture-central-user','fixture-pbx-auth',privateSip,'sip_fallback_config']){
+    for(const privateValue of ['fixture-only-password','fixture-central-private','fixture-pbx-private','fixture-central-user','fixture-pbx-auth',privateSip,'sip_fallback_config','fixture-vpn-user','fixture-vpn-private',privateVpn,'vpn_password','vpn_username']){
       assert.equal(publicJson.includes(privateValue),false,'public image jobs must not expose private credentials or configuration');
       assert.equal((await page.locator('body').textContent()).includes(privateValue),false,'rendered job/artifact/log must not contain private input');
     }
@@ -216,7 +245,8 @@ const path = require('node:path');
     await page.getByText('Image gelöscht. Das Buildprotokoll bleibt erhalten.').waitFor();
     assert.equal(await page.locator('#image-artifacts .image-card').count(),0);
     assert.deepEqual(errors,[]);
-    console.log('PASS: real WebUI, discovery, TBS wizard, remote job, automatic-main KDE/Lite submission/password/private SIP roundtrip/download, profile cancel/error/pending/deletion/503 reconciliation/empty state, preserved images, desktop and mobile');
+    console.log('PASS: real WebUI, discovery, TBS wizard, remote job, all desktop choices/login gating, automatic-main KDE/Lite submission, private SIP/VPN credentials roundtrip/download/cleanup, profile cancel/error/pending/deletion/503 reconciliation/empty state, preserved images, desktop and mobile');
   } finally {if(browser)await browser.close();fixture.kill('SIGTERM');}
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
 

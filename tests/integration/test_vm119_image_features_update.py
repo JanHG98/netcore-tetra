@@ -1,497 +1,358 @@
-"""Behavioral tests for the VM119 image-features transaction.
+"""VM119 coherent-package/idle/rollback tests with real files and SQLite.
 
-Run with ``python -m unittest discover -s tests/integration -p
-test_vm119_image_features_update.py``. Service control and HTTP are simulated;
-the files, SQLite job databases, replacements and rollback are real. On
-Windows only POSIX ownership/directory sync and unavailable Bash are isolated.
+systemd and HTTP are transport fixtures. These tests never stop a host service
+and do not claim a desktop/image build or an actual VM rollout.
 """
-from contextlib import ExitStack, closing
-import hashlib
+from __future__ import annotations
+
+from contextlib import contextmanager, redirect_stdout
 import importlib.util
+import io
+import hashlib
+import json
 import os
 from pathlib import Path
-import shutil
 import sqlite3
 import stat
 import subprocess
-import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
-from unittest import mock
+from unittest.mock import Mock, patch
 
 
-WORKSPACE = Path(__file__).resolve().parents[2]
-SCRIPT = WORKSPACE / "Docs/integration/Z01-2026-10-07/vm119-image-features-update.py"
+ROOT = Path(__file__).resolve().parents[2]
+SPEC = importlib.util.spec_from_file_location('vm119_update', ROOT / 'tools/operator/update-vm119-image-features.py')
+UPDATE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(UPDATE)
+COMMIT = 'a' * 40
 
 
-def digest(body):
-    return hashlib.sha256(body).hexdigest()
+@contextmanager
+def database(path):
+    connection = sqlite3.connect(path)
+    try:
+        with connection:
+            yield connection
+    finally:
+        connection.close()
 
 
-def load_updater():
-    name = "vm119_image_features_update_under_test"
-    spec = importlib.util.spec_from_file_location(name, SCRIPT)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-class ImageFeaturesUpdateTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.updater = load_updater()
-        cls.source_manifest = cls.updater.PINS.copy()
-        cls.source_root = cls.updater.SOURCE
-
+class VM119PackageTests(unittest.TestCase):
     def setUp(self):
-        self.stack = ExitStack()
-        self.addCleanup(self.stack.close)
-        self.root = Path(self.stack.enter_context(tempfile.TemporaryDirectory()))
-        self.library = self.root / "installed"
-        self.source = self.root / "reviewed"
-        self.state = self.root / "controller-state"
-        self.build_state = self.root / "builder-state"
-        for directory in (self.library, self.source, self.state, self.build_state):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.source, self.library = self.root / 'source', self.root / 'library'
+        self.state, self.builder = self.root / 'state', self.root / 'builder'
+        self.backup, self.config = self.root / 'backups', self.root / 'deployment.toml'
+        for directory in (self.source, self.library, self.state, self.builder):
             directory.mkdir()
-        (self.library / "image").mkdir()
-        (self.source / "image").mkdir()
-        self.original = {
-            "image_build.py": b"IMAGE_VERSION = 'old'\n",
-            "image_spec.py": b"DESKTOP_OPTIONS = ('none',)\n",
-            "image/personalize.py": b"PERSONALIZE_VERSION = 'old'\n",
-            "image/build-guest.sh": b"#!/bin/bash\nset -eu\nprintf 'old\\n'\n",
-            "image/systemd/tetra.service": b"[Unit]\nDescription=old\n[Service]\nUser=netcore\nExecStart=/usr/local/bin/bluestation-bs /etc/netcore/config.toml\n[Install]\nWantedBy=multi-user.target\n",
-            "image/desktop-setup.sh": None,
-            "image/sip_setup.py": None,
-            "image/49-netcore-networkmanager.rules": None,
-            "static/index.html": b"<!doctype html><html><head></head><body><form id=\"image-form\"></form><script src=\"/app.js\"></script></body></html>",
-            "static/app.js": b"'use strict'; const version = 'old';\n",
+        self.source_files = {
+            'main.py': b"VERSION = 'new'\n",
+            'image_worker.py': b"VERSION = 'new'\n",
+            'image_spec.py': b"DESKTOPS = ('none','kde','xfce','gnome','pios')\n",
+            'catalog.json': b'[]\n',
+            'static/index.html': b'<html><body>current</body></html>\n',
+            'static/app.js': b'const version = "new";\n',
+            'image/vpn-policy.py': b"VERSION = 'new'\n",
+            'image/desktop-setup.sh': b'#!/bin/sh\nexit 0\n',
+            'image/systemd/tetra.service': b'[Unit]\nDescription=Guest recipe\n',
+            'install/prepare-host.sh': b'#!/bin/sh\nexit 0\n',
+            'install/install-tbs.sh': b'#!/bin/sh\nexit 0\n',
+            'image/new/sub/module.py': b"VPN_FIELDS = ('username','password')\n",
         }
-        self.reviewed = {
-            "image_build.py": b"IMAGE_VERSION = 'reviewed'\n",
-            "image_spec.py": b"DESKTOP_OPTIONS = ('kde', 'none')\n",
-            "image/personalize.py": b"PERSONALIZE_VERSION = 'reviewed'\n",
-            "image/build-guest.sh": b"#!/bin/bash\nset -eu\nprintf 'reviewed\\n'\n",
-            "image/systemd/tetra.service": b"[Unit]\nDescription=reviewed\n[Service]\nUser=netcore\nExecStart=/usr/local/bin/bluestation-bs /etc/netcore/config.toml\n[Install]\nWantedBy=multi-user.target\n",
-            "image/desktop-setup.sh": b"#!/bin/bash\nset -eu\nprintf 'desktop\\n'\n",
-            "image/sip_setup.py": b"SIP_PLATFORM = 'pi'\n",
-            "image/49-netcore-networkmanager.rules": b"polkit.addRule(function(action, subject) { if (subject.user !== 'netcore') { return; } });\n",
-            "static/index.html": b"<!doctype html><html><head></head><body><form id=\"image-form\"><select id=\"image-desktop\"><option value=\"kde\">KDE</option></select></form><script src=\"/app.js\"></script></body></html>",
-            "static/app.js": b"'use strict'; const version = 'reviewed';\n",
-        }
-        self.pins = {}
-        self.metadata = {}
-        for name, before in self.original.items():
-            target = self.library / name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            (self.source / name).parent.mkdir(parents=True, exist_ok=True)
-            if before is not None:
-                target.write_bytes(before)
-                target.chmod(0o750 if name.endswith(".sh") else 0o640)
-                self.metadata[name] = target.stat()
-            (self.source / name).write_bytes(self.reviewed[name])
-            self.pins[name] = {"old": [digest(before) if before is not None else None],
-                               "new": digest(self.reviewed[name])}
-        self.worker = self.library / "image_worker.py"
-        self.worker_bytes = b"WORKER_VERSION = 'unchanged'\n"
-        self.worker.write_bytes(self.worker_bytes)
-        self.gpio = self.library / "image/gpio-compat.py"
-        self.gpio_bytes = b"GPIO_PLATFORM = 'unchanged'\n"
-        self.gpio.write_bytes(self.gpio_bytes)
-        self.protected = [
-            self.root / "deployment.toml", self.state / "settings.json",
-            self.state / "profiles.json", self.state / "tbs-site-template.toml",
-        ]
-        for index, path in enumerate(self.protected):
-            path.write_bytes(f"protected fixture {index}\n".encode())
-        for directory in (self.state, self.build_state):
-            with closing(sqlite3.connect(directory / "jobs.sqlite3")) as database:
-                with database:
-                    database.execute("CREATE TABLE jobs (id TEXT, status TEXT, request TEXT, result TEXT)")
-        self.artifacts = self.build_state / "artifacts"
-        self.artifacts.mkdir()
-        self.artifact = self.artifacts / "existing.img.xz"
-        self.artifact.write_bytes(b"existing image payload")
-        self.cache = self.build_state / "cache"
-        self.cache.mkdir()
-        (self.cache / "base-image.img").write_bytes(b"existing base image")
-        self.events = []
-        self.controller_jobs = []
-        self.builder_jobs = []
-        self.active = {self.updater.GUARD.CONTROLLER: True,
-                       self.updater.GUARD.BUILDER: True}
-        self.on_command = None
-        for attr, value in (("LIBRARY", self.library), ("SOURCE", self.source),
-                            ("PINS", self.pins), ("INVARIANTS", {"image_worker.py": digest(self.worker_bytes), "image/gpio-compat.py": digest(self.gpio_bytes)})):
-            self.stack.enter_context(mock.patch.object(self.updater, attr, value))
-        guard = self.updater.GUARD
-        self.stack.enter_context(mock.patch.object(guard, "LIBRARY", self.library))
-        self.stack.enter_context(mock.patch.object(guard, "BUILD_STATE", self.build_state))
-        self.stack.enter_context(mock.patch.object(guard, "api", side_effect=self.api))
-        self.stack.enter_context(mock.patch.object(guard, "builder_status", side_effect=self.builder_status))
-        self.stack.enter_context(mock.patch.object(guard, "command", side_effect=self.command))
-        # New GPIO files are root-owned in production. Unprivileged Linux CI
-        # can use its own uid/gid without stubbing the atomic file operations.
-        if os.name != "nt" and os.geteuid() != 0:
-            attributes = self.updater.attributes
+        self.git_payload = dict(self.source_files)
+        self.git_objects = {}
+        for name, body in self.source_files.items():
+            path = self.source / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(body)
+            if name != 'image/new/sub/module.py':
+                target = self.library / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(b"OLD = True\n" if path.suffix == '.py' else b'old bytes\n')
+        self.config.write_text('role = "controller"\n# preserve comments\n', encoding='utf-8')
+        self.protected = [self.config]
+        for name in ('settings.json', 'profiles.json', 'tbs-site-template.toml'):
+            path = self.state / name
+            path.write_text('private original bytes\n', encoding='utf-8')
+            self.protected.append(path)
+        self.units = {}
+        for unit in (UPDATE.CONTROLLER, UPDATE.BUILDER):
+            path = self.root / unit
+            path.write_text('[Service]\nEnvironment=LOCAL_OVERRIDE=1\n', encoding='utf-8')
+            self.protected.append(path)
+            script = 'main.py' if unit == UPDATE.CONTROLLER else 'image_worker.py'
+            pid = '1001' if unit == UPDATE.CONTROLLER else '1002'
+            command = f'/usr/bin/python3 {self.library / script}'
+            if unit == UPDATE.CONTROLLER:
+                command += ' --config ' + str(self.config)
+            self.units[unit] = {'InvocationID': '0' * 32, 'LoadState': 'loaded', 'ActiveState': 'active',
+                                'MainPID': pid, 'FragmentPath': str(path), 'DropInPaths': '', 'ExecStart': command}
+            proc = self.root / 'proc' / pid
+            proc.mkdir(parents=True)
+            argv = [b'/usr/bin/python3', os.fsencode(self.library / script)]
+            if unit == UPDATE.CONTROLLER:
+                argv += [b'--config', os.fsencode(self.config)]
+            (proc / 'cmdline').write_bytes(b'\0'.join(argv) + b'\0')
+        for state in (self.state, self.builder):
+            with database(state / 'jobs.sqlite3') as db:
+                db.execute('CREATE TABLE jobs (id TEXT, status TEXT, request TEXT, result TEXT)')
+        self.commands, self.events = [], []
 
-            def runner_attributes(metadata):
-                return (os.getuid(), os.getgid(), 0o644) if metadata is None else attributes(metadata)
-
-            self.stack.enter_context(mock.patch.object(self.updater, "attributes", side_effect=runner_attributes))
-        if os.name == "nt":
-            self.stack.enter_context(mock.patch.object(self.updater, "sync_directory"))
-            self.stack.enter_context(mock.patch.object(os, "fchown", create=True))
-            attributes = self.updater.attributes
-
-            def windows_attributes(metadata):
-                # Windows exposes a writable regular file as 0666 regardless
-                # of POSIX group/other write bits passed to fchmod.
-                return (0, 0, 0o666) if metadata is None else attributes(metadata)
-
-            self.stack.enter_context(mock.patch.object(self.updater, "attributes", side_effect=windows_attributes))
-
-    def api(self, path):
-        if path == "/health/ready":
-            return {"ready": True}
-        if path == "/api/v1/jobs":
-            return self.controller_jobs
-        raise AssertionError(f"Unexpected API path: {path}")
-
-    def builder_status(self):
-        return {"available": True, "jobs": self.builder_jobs}
-
-    def command(self, *args):
-        self.events.append(args)
-        if self.on_command is not None:
-            self.on_command(args)
-        if args[:2] == ("bash", "-n"):
-            if os.name != "nt":
-                subprocess.run(args, check=True, timeout=10)
-            return
-        if args[:2] == ("systemctl", "stop"):
-            self.active[args[2]] = False
-            return
-        if args[:2] == ("systemctl", "start"):
-            self.active[args[2]] = True
-            return
-        if args[:3] == ("systemctl", "is-active", "--quiet"):
-            if not all(self.active[service] for service in args[3:]):
-                raise subprocess.CalledProcessError(3, args)
-            return
-        raise AssertionError(f"Unexpected system command: {args}")
-
-    def service_mutations(self):
-        return [event for event in self.events if event[:2] in
-                (("systemctl", "stop"), ("systemctl", "start"))]
-
-    def assert_original_files(self):
-        for name, before in self.original.items():
-            target = self.library / name
-            if before is None:
-                self.assertFalse(target.exists(), name)
+        def run(args, **kwargs):
+            self.commands.append(args)
+            if 'ls-tree' in args:
+                rows = []
+                self.git_objects.clear()
+                for name, body in sorted(self.git_payload.items()):
+                    object_id = hashlib.sha1(b'blob ' + str(len(body)).encode() + b'\0' + body).hexdigest()
+                    self.git_objects[object_id] = body
+                    rows.append(f'100644 blob {object_id}\tsystem-backend/deployment-core/{name}'.encode() + b'\0')
+                return SimpleNamespace(stdout=b''.join(rows))
+            if 'cat-file' in args:
+                return SimpleNamespace(stdout=self.git_objects[args[-1]])
+            if args[:2] == ['bash', '-n']:
+                return SimpleNamespace(stdout='')
+            if args[:2] == ['systemctl', 'stop']:
+                self.events.append(('stop', args[2]))
+            elif args[:2] == ['systemctl', 'start']:
+                self.events.append(('start', args[2]))
+                self.units[args[2]]['InvocationID'] = '1' * 32
             else:
-                self.assertEqual(target.read_bytes(), before, name)
-                self.assertEqual(stat.S_IMODE(target.stat().st_mode),
-                                 stat.S_IMODE(self.metadata[name].st_mode), name)
+                raise AssertionError('Unexpected operation: ' + repr(args))
+            return SimpleNamespace(stdout='')
 
-    def assert_untouched_payloads(self):
-        self.assertEqual(self.worker.read_bytes(), self.worker_bytes)
-        self.assertEqual(self.gpio.read_bytes(), self.gpio_bytes)
-        self.assertEqual(self.artifact.read_bytes(), b"existing image payload")
-        self.assertEqual((self.cache / "base-image.img").read_bytes(), b"existing base image")
-        self.assertEqual(list(self.artifacts.iterdir()), [self.artifact])
+        @contextmanager
+        def exclusive(path):
+            self.events.append(('lock', str(path)))
+            yield
+            self.events.append(('unlock', str(path)))
 
-    def put_running_builder_job(self):
-        self.builder_jobs = [{"id": "image-racing", "status": "running",
-                              "request": {"kind": "image_build"}, "result": {}}]
-        with closing(sqlite3.connect(self.build_state / "jobs.sqlite3")) as database:
-            with database:
-                database.execute("INSERT INTO jobs VALUES (?, ?, ?, ?)",
-                                 ("image-racing", "running", '{"kind":"image_build"}', '{}'))
+        self.run = Mock(side_effect=run)
+        self.ready, self.wait_ready = Mock(), Mock()
+        original_replace = UPDATE.replace
 
-    def test_success_adds_helpers_and_preserves_config_modes_cache_and_artifacts(self):
-        protected_before = {path: path.read_bytes() for path in self.protected}
-        result = self.updater.update(self.state, self.protected)
-        self.assertEqual(result["phase"], "passed")
-        self.assertEqual(len(result["changed_files"]), len(self.reviewed))
-        for name, body in self.reviewed.items():
-            target = self.library / name
-            self.assertEqual(target.read_bytes(), body)
-            if name in self.metadata:
-                self.assertEqual(stat.S_IMODE(target.stat().st_mode),
-                                 stat.S_IMODE(self.metadata[name].st_mode))
-        if os.name != "nt":
-            self.assertEqual(stat.S_IMODE((self.library / "image/sip_setup.py").stat().st_mode), 0o644)
-        self.assertEqual(self.service_mutations(), [
-            ("systemctl", "stop", self.updater.GUARD.CONTROLLER),
-            ("systemctl", "stop", self.updater.GUARD.BUILDER),
-            ("systemctl", "start", self.updater.GUARD.BUILDER),
-            ("systemctl", "start", self.updater.GUARD.CONTROLLER),
-        ])
-        self.assertTrue(all(self.active.values()))
-        self.assertEqual({path: path.read_bytes() for path in self.protected}, protected_before)
-        self.assertEqual(result["protected_sha256"], self.updater.GUARD.snapshot(self.protected))
-        self.assertIn(("bash", "-n", str(self.source / "image/build-guest.sh")), self.events)
-        self.assert_untouched_payloads()
+        def replace(path, body, metadata=None):
+            self.events.append(('replace', str(path)))
+            # Test actual atomic filesystem writes on Windows too, while
+            # ownership/fchmod are verified by the POSIX CI environment.
+            with patch.object(UPDATE.os, 'fchown', create=True), patch.object(UPDATE, 'fsync_directory'):
+                if os.name == 'nt':
+                    with patch.object(UPDATE.os, 'fchmod', create=True):
+                        return original_replace(path, body, metadata)
+                return original_replace(path, body, metadata)
 
-    def test_already_current_does_not_restart_services(self):
-        for name, body in self.reviewed.items():
-            (self.library / name).write_bytes(body)
-        result = self.updater.update(self.state, self.protected)
-        self.assertEqual(result["phase"], "already_current")
-        self.assertEqual(result["changed_files"], [])
-        self.assertEqual(self.service_mutations(), [])
-        self.assert_untouched_payloads()
+        self.replace = Mock(side_effect=replace)
+        patches = {
+            'SOURCE': self.source, 'LIBRARY': self.library, 'STATE': self.state,
+            'BUILD_STATE': self.builder, 'CONFIG': self.config, 'BACKUP_ROOT': self.backup,
+            'PROC_ROOT': self.root / 'proc',
+            'run': self.run, 'ready': self.ready, 'wait_ready': self.wait_ready,
+            'installed_paths': Mock(return_value=(self.protected, {k: dict(v) for k, v in self.units.items()})),
+            'properties': Mock(side_effect=lambda unit: dict(self.units[unit])),
+            'exclusive': Mock(side_effect=exclusive), 'replace': self.replace,
+            # These are unprivileged filesystem tests, not POSIX owner checks.
+            # The disposable root VM smoke verifies actual owner/mode behavior.
+            'attributes': lambda info: (0, 0, 0o644 if os.name == 'nt' else stat.S_IMODE(info.st_mode)),
+        }
+        for name, value in patches.items():
+            patcher = patch.object(UPDATE, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
-    def test_unexpected_installed_recipe_fails_before_stop(self):
-        (self.library / "image_build.py").write_bytes(b"UNEXPECTED = True\n")
-        with self.assertRaises(RuntimeError):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assertFalse((self.library / "image/sip_setup.py").exists())
+    def insert_job(self, state, key, status, kind='image', result=None):
+        with database(state / 'jobs.sqlite3') as db:
+            db.execute('INSERT INTO jobs VALUES (?,?,?,?)',
+                       (key, status, json.dumps({'kind': kind}), json.dumps(result or {})))
 
-    def test_unexpected_reviewed_source_fails_before_stop(self):
-        (self.source / "image/sip_setup.py").write_bytes(b"UNREVIEWED = True\n")
-        with self.assertRaises(RuntimeError):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assert_original_files()
+    def update(self, apply=True):
+        with redirect_stdout(io.StringIO()):
+            return UPDATE.update(COMMIT, apply)
 
-    def test_changed_worker_fails_before_stop(self):
-        self.worker.write_bytes(b"UNEXPECTED_WORKER = True\n")
-        with self.assertRaises(RuntimeError):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assert_original_files()
+    def test_plan_is_read_only_and_covers_module_ui_recipe_and_install_helpers(self):
+        before = UPDATE.snapshot(self.protected)
+        result = self.update(apply=False)
+        self.assertEqual(result['phase'], 'planned')
+        self.assertEqual(result['package_files'], len(self.source_files))
+        self.assertCountEqual(result['changed_files'], self.source_files)
+        self.assertEqual(UPDATE.snapshot(self.protected), before)
+        self.assertFalse(self.backup.exists())
+        self.assertFalse(self.events)
 
-    def test_invalid_python_source_fails_before_stop_even_with_matching_digest(self):
-        invalid = b"def broken(:\n"
-        (self.source / "image/sip_setup.py").write_bytes(invalid)
-        self.pins["image/sip_setup.py"]["new"] = digest(invalid)
-        with self.assertRaises((SyntaxError, RuntimeError)):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assert_original_files()
+    def test_full_package_published_only_after_both_services_stop_and_worker_lock(self):
+        before = UPDATE.snapshot(self.protected)
+        result = self.update()
+        self.assertEqual(result['phase'], 'passed')
+        stop_controller = self.events.index(('stop', UPDATE.CONTROLLER))
+        stop_builder = self.events.index(('stop', UPDATE.BUILDER))
+        worker_lock = self.events.index(('lock', str(self.builder / 'worker.lock')))
+        first_write = next(i for i, event in enumerate(self.events) if event[0] == 'replace')
+        self.assertLess(stop_controller, stop_builder)
+        self.assertLess(stop_builder, worker_lock)
+        self.assertLess(worker_lock, first_write)
+        self.assertLess(self.events.index(('start', UPDATE.BUILDER)),
+                        self.events.index(('start', UPDATE.CONTROLLER)))
+        for name, body in self.source_files.items():
+            self.assertEqual((self.library / name).read_bytes(), body)
+        self.assertEqual(UPDATE.snapshot(self.protected), before)
+        self.assertTrue(Path(result['backup']).is_dir())
+        self.assertEqual(len(result['files']), len(self.source_files))
 
-    @unittest.skipIf(os.name == "nt", "Bash is unavailable in the Windows execution sandbox")
-    def test_invalid_bash_source_fails_before_stop_even_with_matching_digest(self):
-        invalid = b"#!/bin/bash\nif then\n"
-        (self.source / "image/build-guest.sh").write_bytes(invalid)
-        self.pins["image/build-guest.sh"]["new"] = digest(invalid)
-        with self.assertRaises((RuntimeError, subprocess.CalledProcessError)):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assert_original_files()
+    def test_identical_package_returns_already_current_without_restart(self):
+        for name, body in self.source_files.items():
+            path = self.library / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(body)
+        self.assertEqual(self.update()['phase'], 'already_current')
+        self.assertFalse(self.events)
+        self.assertFalse(self.backup.exists())
 
-    def test_installed_symlink_is_rejected_before_stop(self):
-        target = self.library / "image_build.py"
-        original = target.read_bytes()
-        external = self.root / "external.py"
-        external.write_bytes(original)
-        target.unlink()
-        try:
-            target.symlink_to(external)
-        except OSError as error:
-            self.skipTest(f"Symlinks unavailable for this runner: {error}")
-        with self.assertRaises(RuntimeError):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assertEqual(external.read_bytes(), original)
+    def test_active_job_in_either_full_database_blocks_before_stop(self):
+        for state in (self.state, self.builder):
+            with self.subTest(state=state):
+                self.insert_job(state, 'active-job', 'running')
+                with self.assertRaisesRegex(RuntimeError, 'Aktiver Auftrag'):
+                    self.update()
+                self.assertFalse(self.events)
+                with database(state / 'jobs.sqlite3') as db:
+                    db.execute('DELETE FROM jobs')
 
-    def test_active_builder_job_fails_before_stop(self):
-        self.put_running_builder_job()
-        with self.assertRaises(RuntimeError):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assert_original_files()
+    def test_remote_uncertain_terminal_job_blocks_even_outside_status_page(self):
+        for i in range(45):
+            self.insert_job(self.state, f'terminal-{i}', 'succeeded', result={'remote_uncertain': i == 0})
+        with self.assertRaisesRegex(RuntimeError, 'Ungeklaerter Remote'):
+            self.update()
+        self.assertFalse(self.events)
 
-    def test_racing_builder_job_after_controller_stop_prevents_file_mutation(self):
-        def race(args):
-            if args == ("systemctl", "stop", self.updater.GUARD.CONTROLLER):
-                self.put_running_builder_job()
-        self.on_command = race
-        with self.assertRaises(RuntimeError):
-            self.updater.update(self.state, self.protected)
-        self.assert_original_files()
-        self.assertIn(("systemctl", "stop", self.updater.GUARD.CONTROLLER), self.events)
-        self.assertNotIn(("systemctl", "stop", self.updater.GUARD.BUILDER), self.events)
-        self.assertTrue(all(self.active.values()))
+    def test_read_only_startup_check_is_the_only_allowed_active_job(self):
+        self.insert_job(self.state, 'check', 'running', kind='check')
+        UPDATE.both_idle(allow_checks=True)
+        with self.assertRaisesRegex(RuntimeError, 'Aktiver Auftrag'):
+            UPDATE.both_idle()
+        self.insert_job(self.builder, 'build', 'queued', kind='check')
+        with self.assertRaisesRegex(RuntimeError, 'Aktiver Auftrag'):
+            UPDATE.both_idle(allow_checks=True)
 
-    def test_second_replacement_failure_rolls_back_prior_replacement(self):
-        replace = self.updater.replace
-        fail_once = [True]
-        def injected(path, body, metadata):
-            if path == self.library / "image/build-guest.sh" and body == self.reviewed["image/build-guest.sh"] and fail_once[0]:
-                fail_once[0] = False
-                raise OSError("injected replacement failure")
-            return replace(path, body, metadata)
-        with mock.patch.object(self.updater, "replace", side_effect=injected):
-            with self.assertRaises(OSError):
-                self.updater.update(self.state, self.protected)
-        self.assert_original_files()
-        self.assertTrue(all(self.active.values()))
-        self.assert_untouched_payloads()
+    def test_missing_or_malformed_database_cannot_be_treated_as_idle(self):
+        (self.builder / 'jobs.sqlite3').unlink()
+        with self.assertRaises(sqlite3.OperationalError):
+            self.update()
+        self.assertFalse(self.events)
 
-    def test_fsync_failure_after_new_helper_publication_removes_new_file_on_rollback(self):
-        sync_directory = self.updater.sync_directory
-        fail_once = [True]
-        gpio = self.library / "image/sip_setup.py"
-        def injected(path):
-            sync_directory(path)
-            if path == gpio.parent and gpio.exists() and gpio.read_bytes() == self.reviewed["image/sip_setup.py"] and fail_once[0]:
-                fail_once[0] = False
-                raise OSError("injected directory fsync failure after publication")
-        with mock.patch.object(self.updater, "sync_directory", side_effect=injected):
-            with self.assertRaises(OSError):
-                self.updater.update(self.state, self.protected)
-        self.assert_original_files()
-        self.assertTrue(all(self.active.values()))
-        self.assert_untouched_payloads()
+    def test_bad_python_payload_refuses_before_any_stop(self):
+        self.git_payload['main.py'] = b'def incomplete('
+        with self.assertRaises(SyntaxError):
+            self.update()
+        self.assertFalse(self.events)
 
-    def test_controller_start_failure_restores_all_payload_files(self):
-        fail_once = [True]
-        def fail_start(args):
-            if args == ("systemctl", "start", self.updater.GUARD.CONTROLLER) and fail_once[0]:
-                fail_once[0] = False
-                raise subprocess.CalledProcessError(1, args)
-        self.on_command = fail_start
-        with self.assertRaises(subprocess.CalledProcessError):
-            self.updater.update(self.state, self.protected)
-        self.assert_original_files()
-        self.assertTrue(all(self.active.values()))
-        self.assert_untouched_payloads()
+    def test_new_job_after_controller_stop_aborts_without_replacing_code(self):
+        original_run = self.run.side_effect
+        def queue_build(args, **kwargs):
+            result = original_run(args, **kwargs)
+            if args == ['systemctl', 'stop', UPDATE.CONTROLLER]:
+                self.insert_job(self.builder, 'unexpected', 'queued')
+            return result
+        self.run.side_effect = queue_build
+        with self.assertRaisesRegex(RuntimeError, 'Aktiver Auftrag'):
+            self.update()
+        self.replace.assert_not_called()
 
-    def test_protected_config_change_before_mutation_aborts_and_restarts_services(self):
-        before = self.protected[0].read_bytes()
-        def external_change(args):
-            if args == ("systemctl", "stop", self.updater.GUARD.BUILDER):
-                self.protected[0].write_bytes(before + b"external concurrent edit\n")
-        self.on_command = external_change
-        with self.assertRaises(RuntimeError):
-            self.updater.update(self.state, self.protected)
-        self.assert_original_files()
-        self.assertTrue(all(self.active.values()))
-        # The transaction must neither overwrite nor roll back another actor's
-        # configuration edit when it detects the protected-file race.
-        self.assertEqual(self.protected[0].read_bytes(), before + b"external concurrent edit\n")
+    def test_ready_failure_rolls_back_all_changed_code_and_new_helper(self):
+        original = {name: (self.library / name).read_bytes() for name in self.source_files
+                    if (self.library / name).exists()}
+        protected = UPDATE.snapshot(self.protected)
+        self.wait_ready.side_effect = [RuntimeError('new runtime failed'), None]
+        with self.assertRaisesRegex(RuntimeError, 'new runtime failed'):
+            self.update()
+        for name, body in original.items():
+            self.assertEqual((self.library / name).read_bytes(), body)
+        self.assertFalse((self.library / 'image/new/sub/module.py').exists())
+        self.assertEqual(UPDATE.snapshot(self.protected), protected)
+        self.assertEqual(self.wait_ready.call_count, 2)
 
-    def alter_source(self, name, body):
-        (self.source / name).write_bytes(body)
-        self.pins[name]["new"] = digest(body)
+    def test_failure_after_rename_is_included_in_rollback(self):
+        original_replace = self.replace.side_effect
+        failed = False
+        def fail_after_publish(path, body, metadata=None):
+            nonlocal failed
+            result = original_replace(path, body, metadata)
+            if not failed:
+                failed = True
+                raise OSError('fsync failed after rename')
+            return result
+        self.replace.side_effect = fail_after_publish
+        before = (self.library / 'catalog.json').read_bytes()
+        with self.assertRaisesRegex(OSError, 'fsync failed'):
+            self.update()
+        self.assertEqual((self.library / 'catalog.json').read_bytes(), before)
 
-    def test_unfinished_source_pin_fails_before_service_stop(self):
-        self.pins["image_spec.py"]["new"] = "__UNFINISHED_PIN__"
-        with self.assertRaisesRegex(RuntimeError, "nicht final"):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assert_original_files()
+    def test_no_new_invocation_is_not_a_successful_vm_update(self):
+        UPDATE.properties.side_effect = lambda unit: dict(self.units[unit], InvocationID='0' * 32)
+        with self.assertRaisesRegex(RuntimeError, 'nicht neu gestartet'):
+            self.update()
 
-    def test_gpio_invariant_is_checked_independently_from_new_helpers(self):
-        self.gpio.write_bytes(b"unexpected gpio content")
-        with self.assertRaises(RuntimeError):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assert_original_files()
+    def test_protected_site_change_after_restart_refuses_success(self):
+        def alter_site():
+            self.config.write_text('externally changed\n', encoding='utf-8')
+        self.wait_ready.side_effect = alter_site
+        with self.assertRaisesRegex(RuntimeError, 'Lokale Konfiguration'):
+            self.update()
 
-    def test_invalid_html_with_matching_pin_fails_before_stop(self):
-        self.alter_source("static/index.html", b"<html><head></head><body><form></body></html>")
-        with self.assertRaisesRegex(RuntimeError, "HTML"):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assert_original_files()
+    def test_untracked_payload_and_live_checkout_edits_cannot_change_pinned_bytes(self):
+        (self.source / 'untracked.py').write_text('INJECTED = True\n', encoding='utf-8')
+        (self.source / 'main.py').write_text('INJECTED = True\n', encoding='utf-8')
+        result = self.update()
+        self.assertEqual(result['phase'], 'passed')
+        self.assertEqual((self.library / 'main.py').read_bytes(), self.git_payload['main.py'])
+        self.assertFalse((self.library / 'untracked.py').exists())
 
-    def test_missing_desktop_control_with_matching_pin_fails_before_stop(self):
-        self.alter_source("static/index.html", self.original["static/index.html"])
-        with self.assertRaisesRegex(RuntimeError, "Desktopfeld"):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assert_original_files()
+    def test_tampered_git_object_refuses_before_service_stop(self):
+        original_run = self.run.side_effect
+        def corrupted_blob(args, **kwargs):
+            result = original_run(args, **kwargs)
+            if 'cat-file' in args:
+                result.stdout += b'changed'
+            return result
+        self.run.side_effect = corrupted_blob
+        with self.assertRaisesRegex(RuntimeError, 'Fingerprint'):
+            self.update()
+        self.assertFalse(self.events)
 
-    def test_invalid_guest_unit_with_matching_pin_fails_before_stop(self):
-        self.alter_source("image/systemd/tetra.service", b"[Unit]\nDescription=bad\n[Service]\nUser=root\n[Install]\nWantedBy=multi-user.target\n")
-        with self.assertRaisesRegex(RuntimeError, "Gast-TBS"):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assert_original_files()
+    def test_effective_unit_change_is_not_hidden_by_unchanged_unit_bytes(self):
+        def alter_effective_unit():
+            self.units[UPDATE.CONTROLLER]['ExecStart'] += ' --new-override'
+        self.wait_ready.side_effect = alter_effective_unit
+        with self.assertRaisesRegex(RuntimeError, 'Effektive VM-Unit'):
+            self.update()
 
-    @unittest.skipUnless(shutil.which("node"), "Native CI validates JavaScript when Node is unavailable locally")
-    def test_invalid_javascript_and_policy_matching_pins_fail_before_stop(self):
-        for name in ("static/app.js", "image/49-netcore-networkmanager.rules"):
-            with self.subTest(file=name):
-                self.alter_source(name, b"const invalid = ;\n")
-                with self.assertRaises(subprocess.CalledProcessError):
-                    self.updater.update(self.state, self.protected)
-                self.assertEqual(self.service_mutations(), [])
-                self.assert_original_files()
-                self.alter_source(name, self.reviewed[name])
+    def test_fake_active_without_main_pid_is_not_a_process_proof(self):
+        def no_process():
+            self.units[UPDATE.BUILDER]['MainPID'] = '0'
+        self.wait_ready.side_effect = no_process
+        with self.assertRaisesRegex(RuntimeError, 'MainPID'):
+            self.update()
 
-    def test_node_absence_requires_no_install_and_is_reported_explicitly(self):
-        with mock.patch.object(self.updater.shutil, "which", return_value=None):
-            result = self.updater.update(self.state, self.protected)
-        self.assertEqual(result["phase"], "passed")
-        for name in ("static/app.js", "image/49-netcore-networkmanager.rules"):
-            self.assertIn("nativer CI", result["validation"][name])
-        self.assertTrue(all(self.active.values()))
-        self.assert_untouched_payloads()
+    def test_systemctl_execstart_runtime_pid_and_timestamps_do_not_change_configuration(self):
+        before_units = {}
+        for unit, current in self.units.items():
+            command = current['ExecStart']
+            stable = f'path=/usr/bin/python3 ; argv[]={command} ; ignore_errors=no'
+            before_units[unit] = dict(current, ExecStart='{ ' + stable + ' ; start_time=old ; pid=10 ; code=0 ; }')
+            current['ExecStart'] = '{ ' + stable + ' ; start_time=new ; pid=20 ; code=0 ; }'
+        UPDATE.installed_paths.return_value = (self.protected, before_units)
+        self.assertEqual(self.update()['phase'], 'passed')
 
-    def test_all_new_helpers_are_removed_after_late_restart_failure(self):
-        failed = [False]
-        def fail_start(args):
-            if args == ("systemctl", "start", self.updater.GUARD.CONTROLLER) and not failed[0]:
-                failed[0] = True
-                raise subprocess.CalledProcessError(1, args)
-        self.on_command = fail_start
-        with self.assertRaises(subprocess.CalledProcessError):
-            self.updater.update(self.state, self.protected)
-        for name, original in self.original.items():
-            if original is None:
-                self.assertFalse((self.library / name).exists(), name)
-        self.assert_original_files()
-        self.assertTrue(all(self.active.values()))
-        self.assert_untouched_payloads()
-
-    def test_failed_but_remote_uncertain_job_blocks_update(self):
-        self.controller_jobs = [{"id":"uncertain", "status":"failed",
-                                 "request":{"kind":"deploy"}, "result":{"remote_uncertain":True}}]
-        with self.assertRaisesRegex(RuntimeError, "Remote"):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assert_original_files()
-
-    def test_database_only_active_job_blocks_even_when_http_lists_are_idle(self):
-        with closing(sqlite3.connect(self.build_state / "jobs.sqlite3")) as database:
-            with database:
-                database.execute("INSERT INTO jobs VALUES (?, ?, ?, ?)",
-                                 ("db-only", "running", '{"kind":"image_build"}', '{}'))
-        with self.assertRaisesRegex(RuntimeError, "Aktiver Auftrag"):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.service_mutations(), [])
-        self.assert_original_files()
-
-    def test_foreign_protected_edit_after_restart_is_preserved_during_rollback(self):
-        original = self.protected[1].read_bytes()
-        edited = original + b"external edit after restart\n"
-        once = [False]
-        def edit(args):
-            if args == ("systemctl", "start", self.updater.GUARD.CONTROLLER) and not once[0]:
-                once[0] = True
-                self.protected[1].write_bytes(edited)
-        self.on_command = edit
-        with self.assertRaisesRegex(RuntimeError, "Standortdateien nach Update"):
-            self.updater.update(self.state, self.protected)
-        self.assertEqual(self.protected[1].read_bytes(), edited)
-        self.assert_original_files()
-        self.assert_untouched_payloads()
-
-    def test_manifest_pins_all_ten_reviewed_repository_payload_blobs(self):
-        self.assertEqual(len(type(self).source_manifest), 10)
-        self.assertEqual(self.updater.SOURCE_COMMIT, "e842197c2ede8337267a913304816da11664f7a8")
-        for name, pins in type(self).source_manifest.items():
-            with self.subTest(file=name):
-                self.assertEqual(digest((type(self).source_root / name).read_bytes()), pins["new"])
+    @unittest.skipIf(os.name == 'nt', 'POSIX permission bits are checked in Linux CI')
+    def test_concurrent_mode_change_is_not_overwritten_from_stale_metadata(self):
+        target = self.library / 'catalog.json'
+        self.ready.side_effect = lambda: target.chmod(0o640)
+        with self.assertRaisesRegex(RuntimeError, 'Owner/Mode'):
+            self.update()
+        self.assertFalse(self.events)
+        self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o640)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

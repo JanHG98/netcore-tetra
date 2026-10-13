@@ -52,12 +52,36 @@ function renderJobs() {
   if (job) { $('log-title').textContent = `${labels[job.status]} · ${job.id.slice(0,8)}`; $('log').textContent = job.log || 'Auftrag wartet auf Ausführung.'; }
 }
 const gib = bytes => `${(bytes / 1024 ** 3).toLocaleString('de-DE', {maximumFractionDigits:1})} GiB`;
-const desktopLabel = desktop => desktop === 'kde' ? 'KDE Plasma' : 'Ohne Desktop (Lite)';
+const desktopLabels = {kde:'KDE Plasma', xfce:'XFCE', gnome:'GNOME', pios:'Raspberry Pi OS Desktop', none:'Ohne Desktop (Lite)'};
+const desktopLabel = desktop => desktopLabels[desktop ?? 'none'] || desktop;
 function renderDesktopLogin() {
-  const graphical = $('image-desktop').value === 'kde';
+  const graphical = $('image-desktop').value !== 'none';
   $('image-password').required = graphical;
-  $('image-password-note').textContent = graphical ? 'Für die KDE-Anmeldung, SSH und Konsole des Pi. Ein SSH-Key allein genügt nicht für KDE.' : 'Für SSH und Konsole des Pi. Ohne Desktop genügt auch ein SSH-Public-Key.';
+  $('image-password-note').textContent = graphical ? `Für die Anmeldung an ${desktopLabel($('image-desktop').value)}, SSH und Konsole des Pi. Ein SSH-Key allein genügt nicht für die grafische Anmeldung.` : 'Für SSH und Konsole des Pi. Ohne Desktop genügt auch ein SSH-Public-Key.';
 }
+let vpnNeedsCredentials = false;
+function renderVpnCredentials() {
+  const selected = Boolean($('image-vpn').files[0]);
+  const username = $('image-vpn-username'), password = $('image-vpn-password');
+  $('image-vpn-credentials').hidden = !selected;
+  username.disabled = password.disabled = !selected;
+  username.required = selected && (vpnNeedsCredentials || Boolean(password.value));
+  password.required = selected && (vpnNeedsCredentials || Boolean(username.value));
+  $('image-vpn-auth-note').textContent = vpnNeedsCredentials ? 'Dieses VPN-Profil benötigt Benutzer und Passwort für die Verbindung.' : 'Falls das VPN Benutzer und Passwort benötigt, beide Felder ausfüllen. Bei reiner Zertifikatsanmeldung oder eingebetteten Zugangsdaten können sie leer bleiben.';
+}
+$('image-vpn').onchange = guarded(async()=>{
+  const file = $('image-vpn').files[0];
+  vpnNeedsCredentials = Boolean(file);
+  if (!file) { $('image-vpn-username').value=''; $('image-vpn-password').value=''; }
+  renderVpnCredentials();
+  const content = file ? await file.text() : '';
+  if ($('image-vpn').files[0] !== file) return;
+  const hasAuth = /^\s*(?:--)?auth-user-pass(?:\s|$)/m.test(content) || /^\s*<auth-user-pass>[ \t]*$/m.test(content);
+  const completeInlineAuth = /^\s*<auth-user-pass>[ \t]*\r?\n[^\r\n]+\r?\n[^\r\n]+\r?\n[ \t]*<\/auth-user-pass>[ \t]*$/m.test(content);
+  vpnNeedsCredentials = hasAuth && !completeInlineAuth;
+  renderVpnCredentials();
+});
+$('image-vpn-username').oninput = $('image-vpn-password').oninput = renderVpnCredentials;
 function renderProfileList() {
   $('profile-list').innerHTML = savedProfiles.length ? savedProfiles.map(p=>`<article class="saved-profile"><a href="/bootstrap.sh?profile=${encodeURIComponent(p.name)}" download="${esc(p.name)}-bootstrap.sh">${esc(p.name)} · Bootstrap ↓</a><button type="button" class="quiet profile-remove" data-remove-profile="${esc(p.name)}" ${profileDeleting?'disabled':''}>${profileDeleting===p.name?'Wird gelöscht …':'Profil löschen'}</button></article>`).join('') : '<div class="profile-empty"><p>Noch keine TBS-Profile gespeichert.</p><a href="#profile-form">TBS-Profil anlegen ↑</a></div>';
 }
@@ -176,10 +200,11 @@ $('image-form').onsubmit=guarded(async()=>{
   try {
     const data=Object.fromEntries(new FormData($('image-form')));
     data.trusted_ssids=$('image-trusted-ssids').value.split('\n').map(x=>x.trim()).filter(Boolean);
-    const vpn=$('image-vpn').files[0];data.vpn_config=vpn ? await vpn.text() : '';
-    const sip=$('image-sip').files[0];data.sip_fallback_config=sip ? await sip.text() : '';
+    const vpn=$('image-vpn').files[0], sip=$('image-sip').files[0];
+    data.vpn_config=vpn ? await vpn.text() : '';
+    data.sip_fallback_config=sip ? await sip.text() : '';
     const job=await api('/api/v1/images/build',data);selectedImageJob=job.id;
-    $('image-form').elements.password.value='';$('image-form').elements.wifi_password.value='';$('image-vpn').value='';$('image-sip').value='';
+    $('image-form').elements.password.value='';$('image-form').elements.wifi_password.value='';$('image-vpn-username').value='';$('image-vpn-password').value='';$('image-vpn').value='';$('image-sip').value='';vpnNeedsCredentials=false;renderVpnCredentials();
     notice('Image-Build eingereiht. Fortschritt und Download erscheinen unter Builds & Downloads.');
     await refresh();
   } finally {imageSubmitting=false;$('image-build').textContent='Image erstellen →';renderImages();}
@@ -191,4 +216,5 @@ $('image-artifacts').onclick=async event=>{
   try{await api('/api/v1/images/remove',{id:button.dataset.removeImage});notice('Image gelöscht. Das Buildprotokoll bleibt erhalten.');await refresh();}catch(error){notice(error.message,true);}
 };
 (async()=>{try{catalog=await api('/api/v1/catalog');selectOptions($('target-service'),catalog,s=>s.name,s=>s.name);await refresh();if(new URLSearchParams(location.search).get('scan')==='1'){await api('/api/v1/discovery/scan',{});notice('Auto Discovery gestartet.');}}catch(error){notice(error.message,true);}setInterval(refresh,4000);})();
+
 

@@ -2,7 +2,7 @@
 
 **Neu: [direkt kopierbare Updatebefehle für jeden Dienst](#updatebefehle-für-jeden-dienst)** mit Zielhost, Quellcommit und anschließender Prüfung. Der Dienstindex steht direkt bei den Blöcken.
 
-Stand: 12.10.2026. Diese Arbeiten gehören zu **Z01.4**. Ausgangspunkt ist das tatsächlich gestartete Image `53a280bd` am Commit `0770e903`, Profil **SRV-M-TBS-01**. Der laufende Pi wurde für diese Quelländerungen nicht verändert.
+Stand: **13.10.2026**. Diese Arbeiten gehören zu **Z01.4**. Der aktuelle [VM119-Updateblock](#vm119-auf-den-aktuellen-main-stand-aktualisieren) übernimmt Controller, Builder, Image-Rezept und Formular gemeinsam aus dem beim Start aufgelösten `main`. Historischer Ausgangspunkt war das gestartete Image `53a280bd` am Commit `0770e903`, Profil **SRV-M-TBS-01**; der später praktisch getestete KDE-Stand ist unten gesondert belegt.
 
 ## Was belegt ist
 
@@ -19,11 +19,51 @@ Stand: 12.10.2026. Diese Arbeiten gehören zu **Z01.4**. Ausgangspunkt ist das t
 
 Der HTTP-EOF-Fehler ist reproduziert. Er beweist nicht, dass jeder beobachtete Packet-Core-Timeout dieselbe Ursache hatte. Status darf bei realem Dienstausfall weiterhin 503 melden. Codeprüfung und CI ersetzen keinen Abnahmetest auf den zentralen Rollen.
 
-## KDE Plasma im Image
+## Desktop im Image auswählen
 
-Das neue Imageformular wählt **KDE Plasma** vor. **Ohne Desktop (Lite)** bleibt auswählbar; alte API-Aufträge ohne `desktop` behalten Lite. Beide Varianten besitzen unterschiedliche Recipekeys. KDE wird bereits im ARM64-Gast installiert: Plasma/X11, SDDM, Konsole, Dolphin und Netzwerk-/Systemeinstellungen. Paketinstallation und vorhandene Plasma-Sitzung werden vor erfolgreichem Build geprüft; `graphical.target` und SDDM werden offline aktiviert.
+Nach dem VM-Update bietet das Imageformular diese fünf Varianten. **KDE Plasma** bleibt vorausgewählt. Jede Variante hat einen eigenen Recipekey; alte API-Aufträge ohne `desktop` behalten Lite.
 
-Die grafische Anmeldung verwendet den im Formular festgelegten persönlichen Pi-Benutzer und dessen Betriebssystem-Passwort. Ein SSH-Public-Key allein ermöglicht keine grafische Anmeldung; das Formular lehnt diese KDE-Kombination vor dem Auftrag ab. Es wird kein gemeinsames Desktop-Passwort und keine automatische Anmeldung eingerichtet. `station.json` und Manifest nennen die Desktopvariante. Ein tatsächlicher KDE-Boot mit Bildschirm und Anmeldung ist eine separate Abnahme.
+| Auswahl | Kennung | Sitzung und Anmeldung |
+| --- | --- | --- |
+| KDE Plasma | `kde` | Plasma/X11 mit SDDM |
+| XFCE | `xfce` | XFCE mit LightDM |
+| GNOME | `gnome` | GNOME/Wayland mit GDM3 |
+| Raspberry Pi OS Desktop | `pios` | Raspberry Pi Labwc-Sitzung mit LightDM und Pi-Greeter |
+| Ohne Desktop (Lite) | `none` | Konsole und SSH |
+
+Das Rezept installiert die gewählte Umgebung im ARM64-Gast und prüft Pakete, Anmeldesitzung, Display-Manager und Netzwerk-/VPN-Editoren. Desktop-Images erhalten außerdem OpenVPN-Core, GTK-Editor/Auth-Dialog und `nm-connection-editor`; KDE erhält seinen Plasma-OpenVPN-Editor. Diese Rezeptprüfungen sind keine bereits ausgeführten Bildschirm-/Anmeldetests der drei neuen Desktopvarianten.
+
+Die grafische Anmeldung verwendet den im Formular festgelegten persönlichen Pi-Benutzer und dessen **Betriebssystem-Passwort**. Ein SSH-Public-Key allein ermöglicht keine grafische Anmeldung; diese Kombination wird für alle Desktopvarianten vor dem Auftrag abgewiesen. Es gibt keine automatische Anmeldung. `station.json` und Manifest nennen die Desktopvariante.
+
+## VPN im Buildformular vorbereiten
+
+Im [Imageformular](http://10.0.1.131:8320/#images) **WLAN und VPN vorbereiten** öffnen und die `.ovpn`-Datei unter **OpenVPN-Profil** auswählen. Danach erscheinen **VPN-Benutzer** und **VPN-Passwort**. Das sind die Zugangsdaten des VPN-Servers; sie sind unabhängig vom Betriebssystem-Passwort des Pi.
+
+Bei `auth-user-pass` müssen beide VPN-Felder ausgefüllt sein. Ein vollständig eingebetteter Login kann übernommen werden; ein vorhandener Auth-Dateiverweis wird nicht vom Bedienrechner gelesen. Das Image schreibt die Zugangsdaten in `/etc/openvpn/client/netcore.auth` mit root-Besitzer und Modus `0600`. Passwort und Profilmaterial erscheinen nicht in der öffentlichen Job-/Manifestausgabe. Zertifikatbasierte Profile ohne Benutzeranmeldung können ohne diese beiden Felder verwendet werden.
+
+Mit diesem Profil übernimmt der vorhandene VPN-Timer die Umschaltung: in den eingetragenen lokalen WLANs oder im LAN `10.0.1.0/24` VPN aus, in anderen Netzen VPN an. Die Zugangsdaten gehören in das Formular; sie müssen nicht im Chat oder im Repository hinterlegt werden.
+
+### VPN auf dem bereits laufenden KDE-Pi bearbeiten
+
+Das VM-Update ändert den Builder und zukünftige Images. Für den schon gebooteten Pi `10.0.1.20` lassen sich die fehlenden Editoren direkt ergänzen. **In der SSH-Sitzung als `jan` auf dem Pi**:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends \
+  network-manager-openvpn network-manager-openvpn-gnome \
+  network-manager-gnome plasma-nm
+```
+
+Danach auf dem **KDE-Bildschirm des Pi** die Netzwerkverbindungen neu öffnen oder `nm-connection-editor` starten. Über **Hinzufügen → Gespeicherte VPN-Konfiguration importieren** die `.ovpn`-Datei auswählen. Im OpenVPN-Editor je nach Profil **TLS mit Passwort** beziehungsweise **Passwort** wählen und VPN-Benutzer/Passwort eintragen. Zertifikate und CA aus dem eigenen Profil beibehalten. Wenn Plasma noch den alten Editor zeigt, einmal ab- und wieder anmelden. Für die automatische Umschaltung des neuen Images ist der zuvor beschriebene Import im Buildformular vorgesehen.
+
+Hat dieses Image bereits den automatischen NetCore-OpenVPN-Client für **dasselbe Profil** eingerichtet und soll die Verbindung jetzt manuell über NetworkManager laufen, zuerst den bisherigen Timer und Client auf dem Pi abschalten:
+
+```bash
+sudo systemctl disable --now netcore-vpn-policy.timer
+sudo systemctl stop netcore-vpn-policy.service openvpn-client@netcore.service
+```
+
+Ohne zuvor eingerichtetes Image-VPN ist dieser Schritt nicht nötig. Der Desktopeditor verwaltet seine eigene NetworkManager-Verbindung; die im Buildformular vorbereitete Verbindung wird durch den OpenVPN-Dienst und den NetCore-Timer verwaltet.
 
 ## SIP neu einrichten
 
@@ -79,11 +119,28 @@ Die nativen systemd-Medienverzeichnistests von PR #70 bestanden an `4595be7a` au
 Der vollständige Nachbesserungsstand `d3ea8283f3f837296742a2445070364ad7fa4813` ist nach allen sechs erfolgreichen Workflows über PR #71 auf `main@4041ceee34383adf451f4e3689bdb192eaa8417c` übernommen. Linux: 120/120 VM-Guardfälle, 14/14 Desktopfälle, 10/10 SIP-Provisionierung, 9/9 SIP-Rechte; 72/72 Dashboard-Rustfälle und 64/64 zentrale Backendfälle. Browser: 149/149 Dashboardprüfungen sowie vollständiger Deployment-Desktop-/Mobilfall. Beide realen ARM64-Personalisierungsjobs und nativen systemd-Verzeichnistests sind erfolgreich. [Strukturierter CI-/Übernahmebeleg](evidence/image-ui-kde-ci-2026-10-12.json). Der spätere vollständige KDE-ARM64-NetCore-Build sowie Bildschirm-, WLAN-, SIP-, Medien-, Dauerlauf- und On-Air-Abnahmen bleiben eigene Nachweise.
 
 
-## Gepinnter VM-Updatebefehl
+## VM119 auf den aktuellen main-Stand aktualisieren
 
-Den [vollständigen Deployment-Core-Block](#deployment-core) in einer SSH-Sitzung als **jhoffmeister auf VM-H-DEPLOY-01 (`10.0.1.131`)** ausführen. Der Block aktualisiert das gemeinsame VM-Rezept und die Formulare; bei aktiven oder ungeklärten Jobs verweigert der Helfer den Eingriff.
+**In der bestehenden SSH-Sitzung als `jhoffmeister` auf VM-H-DEPLOY-01 (`10.0.1.131`)** ausführen. Das ist der gemeinsame aktuelle Updateweg für Controller, Imagebuilder, Desktop-/VPN-Rezept und Formular. Der historische Zehn-Dateien-Updater bleibt als damaliger Beleg erhalten; er installiert die hier beschriebenen neuen Funktionen nicht.
 
-Erwartetes Ergebnis: `phase: passed` oder bei identischen Dateien `already_current`. Anschließend [Deployment-WebUI](http://10.0.1.131:8320/#images) neu laden und einen neuen Imageauftrag mit **KDE Plasma**, **SRV-M-TBS-01** und persönlichem OS-Passwort anlegen. Der bisherige Download53a280bd bekommt durch das Rezeptupdate keinen Desktop. Das Formular löst für den neuen Auftrag main frisch auf.
+```bash
+(
+set -euo pipefail
+NC_VM_SRC=$(mktemp -d /tmp/netcore-vm-current.XXXXXX)
+git -C "$NC_VM_SRC" init -q
+git -C "$NC_VM_SRC" fetch --depth 1 \
+  https://github.com/JanHG98/netcore-tetra.git refs/heads/main
+NC_VM_COMMIT=$(git -C "$NC_VM_SRC" rev-parse FETCH_HEAD)
+git -C "$NC_VM_SRC" checkout --detach "$NC_VM_COMMIT"
+printf 'VM119-Update aus main: %s\n' "$NC_VM_COMMIT"
+sudo python3 -B "$NC_VM_SRC/tools/operator/update-vm119-image-features.py" \
+  --commit "$NC_VM_COMMIT" --apply
+)
+```
+
+Der Helfer liest die vollständigen Paketdateien aus den Git-Objekten dieses einen Commits. Er prüft beide vollständigen Auftragsdatenbanken einschließlich ungeklärter Remote-Aufträge. Controller und Builder werden nur bei leerer Warteschlange gestoppt; der Worker-Lock verhindert einen Austausch neben einem laufenden Build. Paketdateien werden gesichert, ausgetauscht und nach dem Start über Fingerprints, neue Prozesse und Readiness geprüft. Lokale Konfiguration, Profile, Standorttemplate, effektive VM-Units/Drop-ins sowie Images und Caches bleiben erhalten. Ein Fehler löst den Rückweg auf die vorherigen Paketdateien aus; Rückwegfehler werden ausdrücklich gemeldet.
+
+Erwartet wird **`phase: passed`** oder bei identischen Paketdateien **`already_current`**, jeweils mit dem aufgelösten Quellcommit. Anschließend die [Deployment-WebUI](http://10.0.1.131:8320/#images) mit **Strg+F5** neu laden. **SRV-M-TBS-01**, Desktop und persönliches Pi-Passwort auswählen; bei Bedarf `.ovpn` sowie VPN-Benutzer/Passwort ergänzen und einen **neuen** Imageauftrag starten. Das Rezeptupdate startet keinen Build und verändert keinen bisherigen Download.
 
 ## Zentrale Backends gezielt übernehmen
 
@@ -783,6 +840,11 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
 
 ### Deployment Core
 
+**Aktueller Updateweg:** den [gemeinsamen VM119-Block aus dem aktuellen main](#vm119-auf-den-aktuellen-main-stand-aktualisieren) verwenden. Er übernimmt die neuen Desktop-/VPN-Funktionen und beide VM-Dienste gemeinsam.
+
+<details>
+<summary>Historischer Zehn-Dateien-Block vom 12.10.2026 — für neue Desktop-/VPN-Funktionen überholt</summary>
+
 **Auf VM-H-DEPLOY-01 / `10.0.1.131` als `jhoffmeister`**: `ssh jhoffmeister@10.0.1.131`. Für diesen geprüften Stand ist der gezielte Zehn-Dateien-Updater der passende Weg. Er übernimmt Builder-UI, Rezept und die Image-Helfer in einer Idle-/Fingerprint-/Rollback-Transaktion. Einstellungen, Profile, Template und vorhandene Artefakte werden geprüft. Der Controller und Builder werden dafür kurz neu gestartet.
 
 ```bash
@@ -797,7 +859,14 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
 )
 ```
 
+</details>
+
 ### Imagebuilder
+
+**Aktueller Updateweg:** derselbe [gemeinsame VM119-Block](#vm119-auf-den-aktuellen-main-stand-aktualisieren). Ein zweiter Updateaufruf für den Builder ist nicht erforderlich. Danach im Formular einen neuen Imageauftrag mit der gewünschten Desktop-/VPN-Auswahl anlegen.
+
+<details>
+<summary>Historischer Imagebuilder-Block vom 12.10.2026 — durch den aktuellen VM119-Block ersetzt</summary>
 
 **Ebenfalls auf VM-H-DEPLOY-01 / `10.0.1.131` als `jhoffmeister`**. Imagebuilder und Deployment-Formular gehören zu derselben geprüften Feature-Transaktion. Dieser eigene Block verwendet deshalb denselben idempotenten Helfer; nach dem vorigen Deployment-Core-Block ist `already_current` das erwartete Ergebnis. Er startet keinen Imageauftrag.
 
@@ -812,6 +881,8 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   sudo python3 -B "$NC_SRC/Docs/integration/Z01-2026-10-07/vm119-image-features-update.py"
 )
 ```
+
+</details>
 
 ### Discovery-Agent
 
@@ -1059,7 +1130,7 @@ printf 'Brew HTTP-Smokecheck bestanden; Funk-/Verbindungstest folgt separat.\n'
 
 **Auf dem Pi `10.0.1.20`**, zuerst `ssh jan@10.0.1.20`, dann `sudo -i`. Der folgende Block betrifft die bestehende Image-TBS mit `/etc/netcore/config.toml`. Er erkennt die tatsächliche Unit und startet den Funkprozess nach dem Binary-Austausch neu. Der vorhandene Updater kann lokale TTS-Konfiguration migrieren und lokalen Piper deaktivieren.
 
-Für KDE und die neuen Image-Verzeichnisrechte ist der neue SD-Imagebuild vorgesehen; ein TBS-Binary-Update ist keine Desktopinstallation.
+Der folgende Block löst `main` einmal auf und übernimmt auch die bereits gemergte automatische Nachbarzellen-Ankündigung. Danach einmal die bestehende Nachbarliste im aktualisierten Dashboard speichern; die GUI repariert einen bisher falschen Broadcast-Wert. Für das weiterhin gebootete alte Image bleibt die oben dokumentierte Konfigurationskorrektur auf `2` der unmittelbar verfügbare Weg. Desktopwechsel und neue Build-VPN-Daten kommen über ein neues SD-Image; die Desktop-VPN-Editoren lassen sich mit dem Paketblock oben separat ergänzen.
 
 ```bash
 (
@@ -1067,12 +1138,15 @@ Für KDE und die neuen Image-Verzeichnisrechte ist der neue SD-Imagebuild vorges
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Pi zuerst sudo -i ausführen.' >&2; exit 1; }
   NC_CONFIG=/etc/netcore/config.toml
   test -s "$NC_CONFIG"
-  NC_REF=e1617b28e6f2e8f79958f88e84bc1dc1606c59ed
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/tbs-update.XXXXXX)
-  git clone --filter=blob:none --no-checkout https://github.com/JanHG98/netcore-tetra.git "$NC_SRC"
+  git -C "$NC_SRC" init -q
+  git -C "$NC_SRC" fetch --depth 1 \
+    https://github.com/JanHG98/netcore-tetra.git refs/heads/main
+  NC_REF=$(git -C "$NC_SRC" rev-parse FETCH_HEAD)
   git -C "$NC_SRC" checkout --detach "$NC_REF"
   [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  printf 'TBS-Update aus main: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   cd "$NC_SRC"
   export PATH="/root/.cargo/bin:$PATH"
@@ -1090,5 +1164,6 @@ NC_TBS_UNIT
   systemctl show "$NC_UNIT" -p ActiveState -p MainPID -p NRestarts
 )
 ```
+
 
 
