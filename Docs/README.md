@@ -6,6 +6,8 @@
 
 Detaildokumentation liegt zentral unter `Docs/`. Im Quellbaum führen kurze READMEs zur jeweiligen Komponente und zur passenden Anleitung.
 
+**Updates der bestehenden Anlage:** [Gemeinsamer Proxmox-Lauf und einzelne NetCore-Dienste](deployment/netcore-dienste-aktualisieren.md), einschließlich getrenntem VM119-Image-Rezept-Update.
+
 | Bereich | Inhalt |
 | --- | --- |
 | [Roadmaps](roadmaps/README.md) | Gesamtreihenfolge, Fachplanung und Abnahmen |
@@ -29,3 +31,4 @@ Detaildokumentation liegt zentral unter `Docs/`. Im Quellbaum führen kurze READ
 | [Archiv](archive/README.md) | Gesprächsarchive, Referenzassets und historische Wiki-Importe |
 
 [Ablageregeln](dokumentationsablage.md) · [Repository](../README.md) · [Verhaltenskodex](../CODE_OF_CONDUCT.md)
+

@@ -65,6 +65,8 @@ Erwartetes Ergebnis: `phase: passed` oder bei identischen Dateien `already_curre
 
 ## Zentrale Backends gezielt übernehmen
 
+**Konkrete SSH-/Proxmox-Befehle für die gesamte Flotte:** [NetCore-Dienste aktualisieren](../../deployment/netcore-dienste-aktualisieren.md). Die Anleitung enthält einen gemeinsamen Proxmox-Host-Block, die vollständige Rollenliste, ein Einzelupdate je gewählter Rolle, den getrennten VM119-Block und die Ausnahmen für Pi/Brew/externe Anwendungen. Der Runtime-Updater baut vor dem Dienststopp und erhält bestehende Konfigurationen, Daten und Units.
+
 In der Deployment-WebUI unter **Gezielt ausrollen** für jeden registrierten Zielagenten den zugehörigen Dienst **Packet Core**, **IP-Gateway**, **Observability** beziehungsweise **Media Library** wählen, Aktion **Aktualisieren**, Git-Referenz `d3ea8283f3f837296742a2445070364ad7fa4813`. **Plan anzeigen** prüft Ziel/Dienst, dann **Diesen Plan ausführen**. Keine TBS-Aktualisierung am laufenden Funkversuchs-Pi aus diesem zentralen Schritt ableiten. Der Dienst-Update startet den ausgewählten zentralen Dienst neu; danach dessen Readiness und die Verbindungen im TBS-Dashboard prüfen. Ist ein Zielagent nicht registriert oder offline, zuerst genau diese Registrierung klären; keine Ersatz-IP oder Zugangsdaten raten.
 
 ## Private SIP-Importdatei vorbereiten
@@ -74,3 +76,4 @@ Der [vorbereitete Operatorhelfer](setup-image-sip-01.sh) wird ausschließlich in
 Der Helfer verwendet einen vorhandenen echten zentralen TBS-01-Zugang oder legt den fehlenden Zugang über den vorhandenen `add-tbs-openlab.sh`-Installer an. Er reserviert die private Ausgabe vor dieser Änderung und verweigert vorhandene Dateien oder Symlinks. Als sudo-Benutzer landet die Datei0600 im tatsächlich zugehörigen Home; bei einer root-Sitzung unter `/root`. Die Ausgabe nennt den konkreten Pfad und Besitzer. Diese Datei als Besitzer per SCP auf den Bedienrechner herunterladen und in **SIP-Fallback-Konfiguration** im Imageformular importieren. Passwort/Dateiinhalt nicht in Git oder den Chat übernehmen.
 
 Die Operatorprüfung umfasst Bash-Syntax und die AST des tatsächlich eingebetteten Python-Programms; sie startet keine Dienste und erzeugt keinen echten SIP-Zugang. Ein erfolgreicher SIP-Register-/Ruftest bleibt nach dem neuen Pi-Boot erforderlich.
+

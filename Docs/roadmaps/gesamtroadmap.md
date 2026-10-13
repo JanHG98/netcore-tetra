@@ -3,7 +3,7 @@
 | Feld | Wert |
 | --- | --- |
 | Roadmap-ID | NETCORE-MASTER-01 |
-| Erstellt / aktualisiert | 2026-10-05 / 2026-10-12, Europe/Berlin |
+| Erstellt / aktualisiert | 2026-10-05 / 2026-10-13, Europe/Berlin |
 | Geltungsbereich | Gesamtes NetCore-Tetra-Repository: TBS / Funkstack, Core, Deployment, Betrieb, IAM, Drive, Plugins und weitere Integrationen |
 | Geprüfter Ausgangsstand | Z01: `main@dae9363062a1442664a083e1fc32e6944b3be9a6`, historische Quelle `bbf039729b9b05f8d623b11195ca24a124f68d16`; Integration `67b2f0d6e2fbcbf7013ee9b0dae9b2a25c2d9315` auf `feature/z01-deployment-consolidation` |
 | Ergänzende Gruppenprüfung | `main@07609fb56f412ebe6e36655323e8fc6359cf90ec`, 2026-10-05; statischer Befund für Z02.5 |
@@ -18,6 +18,8 @@
 **Dokumentationspflege vom 09.10.2026:** Detailanleitungen, Fachroadmaps und Wiki liegen jetzt zentral nach Themen unter `Docs/`; der [Dokumentationsindex](../README.md) und die [Ablageregeln](../dokumentationsablage.md) führen durch die Struktur. Aufgaben-IDs, technische Statusangaben und datierte Nachweise bleiben erhalten. Dies ist eine Ablagebereinigung; offene technische Abnahmen behalten ihren bisherigen Status.
 
 ## 1. Aktueller nächster Schritt
+
+**Nachtrag 13.10.2026, Z01.4:** Auf Nutzerwunsch ist der konkrete [Proxmox-/Einzelupdateweg für alle zentralen NetCore-Rollen](../deployment/netcore-dienste-aktualisieren.md) vorbereitet. Der Quellaudit an `e1617b28` belegt Build-/Datenmigrationrisiken in mehreren bisherigen Installerskripten; der neue Runtime-Updater baut zuerst und erhält installierte Units, Konfigurationen und Nutzdaten. VM119 bleibt beim eigenen geprüften Rezept-Updater; Pi-Image und externe Anwendungen bleiben eigene Übernahmeschritte. Quell-/Regressionsergebnisse stehen in der Anleitung. Noch kein tatsächlicher Proxmox-/Flottenrollout; nächster Betreiberbeleg ist dessen vollständiger Bericht und anschließende zentrale Readiness-/Fachprüfung.
 
 **Z01.4 – Installation, Upgrade und Recovery auf dem gemeinsamen Stand abnehmen.**
 
@@ -311,3 +313,4 @@ Regelmäßige NetCore-Projektstatusläufe verwenden diese Gesamtroadmap als Eins
 
 
 | 2026-10-12 | Z01.4: PR #71 auf main4041cee übernommen; alle sechs Workflows am d3ea8283 erfolgreich. Native120 VM-Guardfälle,14 KDE-,10 SIP-Setup-,9 SIP-Rechte-,72 Dashboard-Rust-,64 zentrale Backendfälle und149 Dashboard-Browserprüfungen bestanden; beide realen ARM64-Personalisierungen / systemd-Verzeichnistests PASS. KDE-Auswahl, Nachbar-CRUD, kompakte Dienste und quote-aware Carrier/Telegram fertig | [Gepinnter VM-Update-/Rolloutweg](../integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md); VM-Übernahme / neues volles KDE-Image / echte Desktop-, WLAN-, Telegram-, Medien-, SIP-, zentrale Readiness-, Dauerlauf- und On-Air-Abnahmen offen. Vorbereitung ist keine Anlagenänderung |
+
