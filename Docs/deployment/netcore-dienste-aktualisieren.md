@@ -38,6 +38,8 @@ Der abschließende Pfad **Bericht: .../report.json** enthält Commit, erkannte C
 
 Konfigurationen, Zugangsdaten, Datenbanken, Aufnahmen, Archivpfade, Sprachmodelle und vorhandene systemd-Units/Drop-ins werden von diesem Runtime-Update nicht geschrieben. Es gibt keine Seed-Importe, Archivmigrationen, Piper-Neuinstallation, Betriebssystem-Upgrades oder Reboots. Observabilitys bereits installierter Python-Loghelfer gehört zum Update; bei geänderten Dateien werden die zuvor aktiven betroffenen Preview-/Archivunits koordiniert gestoppt und wieder gestartet. Das ist ein Runtime-Update bestehender Installationen, keine Neuinstallation oder allgemeine Schema-/Unitmigration.
 
+**Für jeden Dienst ein eigener Block:** Die [33 vollständig ausgeschriebenen Einzelblöcke](../integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md#updatebefehle-für-jeden-dienst) enthalten den Dienstnamen bereits und nennen Zielhost / Benutzer. Sie umfassen auch die gesonderten VM-, Syslog-, Brew- und TBS-Schritte.
+
 ## Vollständige Rollenliste
 
 Diese 26 zentralen NetCore-Rollen sind im Updateweg enthalten. Die Dateien des [vorhandenen Agentenkatalogs](../../system-backend/deployment-core/catalog.json) liefern Unit, Konfigurationspfad, Binary und Abhängigkeiten.
@@ -121,7 +123,7 @@ Das ist der bereits geprüfte, konsolidierte Rezept-/Formular-Updater. Aktive/un
 - **Physischer Pi `10.0.1.20`:** Die aktuellen Carrier-/Telegram-/Nachbar-/WLAN-/Medienrechte-/Desktop-/SIP-Fallback-Korrekturen kommen über das neu gebaute Image. Der Proxmox-Lauf startet keinen Funkdienst und überschreibt den Pi nicht.
 - **Piper/TTS:** externer Provider innerhalb der Media-Library-Installation, keine eigene neue NetCore-Programmquelle. Provider, virtuelle Umgebung, Modelle und Cache bleiben erhalten; das Media-Library-Backend wird aktualisiert.
 - **FreePBX/Asterisk und Home Assistant:** externe Anwendungen. Asterisk-AGI des NetCore-SIP-Switches ist enthalten; PBX-, SIP-Zugangsdaten und Routen werden nicht automatisch eingerichtet.
-- **Brew:** Der vorhandene Discovery-Agent kann aktualisiert werden. Die Brew-Anwendung selbst hat mehrere inkompatible historische Python-/Rustvarianten; ein ungeprüftes Überschreiben könnte den Backhaul-Port8080 entfernen. Ihre tatsächliche Installation ist noch nicht belegt. Dieser lesende Block auf dem Brew-Server liefert die nötige Grundlage für seinen konkreten Updateweg:
+- **Brew:** Der vorhandene Discovery-Agent kann aktualisiert werden. Die Brew-Anwendung selbst hat mehrere inkompatible historische Python-/Rustvarianten; ein ungeprüftes Überschreiben könnte den Backhaul-Port8080 entfernen. Für die im historischen Inventar dokumentierte Python-Variante `netcore-brew.service` / `/var/opt/netcore-tetra/server.py` gibt es einen [eigenen Updateblock mit Prüfung der Variante und Erhalt lokaler Einstellungen](../integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md#python-brew). Seine Prüfungen müssen zum tatsächlichen Bestand passen. Für andere Brew-Varianten liefert dieser lesende Block auf dem Brew-Server liefert die nötige Grundlage für seinen konkreten Updateweg:
 
 ```bash
 systemctl show brew-server.service \
@@ -139,4 +141,5 @@ Ausgangsvergleich: Die zuletzt gemeldeten zentralen Fehler liegen in den Rust-Ru
 Die gezielten Regressionen umfassen 60 Fälle: 29 für Proxmox-Inventar/Planung und 31 für Runtime-Austausch, Buildfehler, Architektur, Rückweg, Konfigurationserhalt und Dienstzustände. Unter Windows bestanden 59 Fälle; nur der tatsächliche POSIX-Eigentümer-/Modustest ist dort nicht ausführbar. Der ergänzte Linux-CI-Schritt führt denselben Satz einschließlich der nativen Metadatenprüfung aus. Die Tests verwenden echte Dateiaustausche und gemockte systemd-/pct-Aufrufe; sie sind kein ausgeführter Anlagenrollout.
 
 Eine tatsächliche Aktualisierung auf Jans Proxmox/LXCs und deren Fach-/Funkabnahme ist noch nicht ausgeführt. Betriebsprotokolle des Operators sind der nächste Nachweis für Z01.4.
+
 

@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-13",
+  "task": "Z01.4",
+  "repository": "JanHG98/netcore-tetra",
+  "base_commit": "5c83bfbdd48bd3de257125ae68a57e584c77ee86",
+  "runtime_helper_commit": "35dc385ca97fd02c8554db3c5b9afd81ec251d40",
+  "special_updates_commit": "e1617b28e6f2e8f79958f88e84bc1dc1606c59ed",
+  "document": "Docs/integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md",
+  "scope": "Documentation of independent commands only; no runtime updates executed.",
+  "coverage": {
+    "registry_runtime_roles": 26,
+    "catalog_roles": 27,
+    "service_component_blocks": 33,
+    "runtime_helper_blocks": 28
+  },
+  "validation": {
+    "bash_syntax": "passed (Git for Windows bash -n)",
+    "embedded_python_ast": "passed",
+    "role_coverage": "passed against pinned services.toml and catalog.json",
+    "heading_links": "passed",
+    "independent_source_review": "completed; TBS checkout access corrected; Directory listener/seed preflight added",
+    "bash_snippets_checked": 33,
+    "embedded_python_programs_checked": 3,
+    "heading_links_checked": 39
+  },
+  "limits": [
+    "Historical host addresses are source inventory, not live reachability measurements.",
+    "Runtime helper keeps deliberately inactive units stopped and reports readiness separately from liveness.",
+    "Directory block requires a running known SQLite variant on its standard listener without --seed.",
+    "Brew block is guarded to the documented Python variant; no Rust migration.",
+    "No service restart, backend update, Proxmox rollout, new image build or physical acceptance was performed."
+  ]
+}
