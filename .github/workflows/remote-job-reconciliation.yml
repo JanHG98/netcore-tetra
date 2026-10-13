@@ -1,0 +1,55 @@
+name: Remote job reconciliation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['main']
+    paths:
+      - 'tools/operator/reconcile-remote-job.py'
+      - 'tools/test_remote_job_reconcile.py'
+      - 'tools/test_remote_job_reconcile_native.py'
+      - 'Docs/deployment/netcore-dienste-aktualisieren.md'
+      - '.github/workflows/remote-job-reconciliation.yml'
+  pull_request:
+    paths:
+      - 'tools/operator/reconcile-remote-job.py'
+      - 'tools/test_remote_job_reconcile.py'
+      - 'tools/test_remote_job_reconcile_native.py'
+      - 'Docs/deployment/netcore-dienste-aktualisieren.md'
+      - '.github/workflows/remote-job-reconciliation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  reconciliation:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax of the documented VM recovery command
+        run: |
+          /usr/bin/python3 -B - <<'PY'
+          from pathlib import Path
+          import re
+          import subprocess
+          guide = Path('Docs/deployment/netcore-dienste-aktualisieren.md').read_text()
+          heading = '### Ungeklärten Remote-Auftrag vor dem VM-Update abgleichen'
+          section = guide[guide.index(heading):]
+          following = section.find('\n### ', 1)
+          if following >= 0:
+              section = section[:following]
+          blocks = re.findall(r'^```bash\n(.*?)^```', section, re.MULTILINE | re.DOTALL)
+          assert blocks, 'The remote reconciliation instructions need a Bash command block.'
+          for block in blocks:
+              subprocess.run(['bash', '-n'], input=block, text=True, check=True)
+          print(f'Bash syntax passed for {len(blocks)} recovery command block(s).')
+          PY
+      - name: HTTP and SQLite regression tests as the unprivileged runner
+        run: /usr/bin/python3 -B tools/test_remote_job_reconcile.py -v
+      - name: Disposable systemd fixture with a private service-owned database
+        run: sudo /usr/bin/python3 -B tools/test_remote_job_reconcile_native.py --disposable-runner
