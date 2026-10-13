@@ -6,7 +6,7 @@ use netcore_contracts::NetCoreEvent;
 use reqwest::blocking::Client;
 
 use crate::config::{EventSourceConfig, IotGatewayConfig};
-use crate::state::{EnqueueOutcome, SharedGateway};
+use crate::state::{EnqueueOutcome, EventEnqueueError, SharedGateway};
 
 #[derive(Clone)]
 pub struct PollControl {
@@ -91,16 +91,35 @@ fn poll_source(
     let mut enqueued = 0_u64;
     let mut duplicates = 0_u64;
     let mut invalid = 0_u64;
+    let mut deferred = 0_u64;
     for event in events {
         seen = seen.saturating_add(1);
         match state.enqueue_event(&event) {
             Ok(EnqueueOutcome::Enqueued) => enqueued = enqueued.saturating_add(1),
             Ok(EnqueueOutcome::Duplicate) => duplicates = duplicates.saturating_add(1),
-            Err(error) => {
+            Ok(EnqueueOutcome::Deferred) => {
+                deferred = deferred.saturating_add(1);
+                state.record_bridge_event(
+                    "event.deferred",
+                    serde_json::json!({
+                        "source":source.id,
+                        "event_id":event.event_id,
+                        "reason":"outbox_capacity"
+                    }),
+                );
+                // The event stays outside dedup and can be retried on the next
+                // poll while it remains in the source's event history.
+                break;
+            }
+            Err(EventEnqueueError::Invalid(error)) => {
                 invalid = invalid.saturating_add(1);
                 state.record_invalid_event(&source.id, error);
             }
+            Err(EventEnqueueError::Storage(error)) => {
+                state.record_source_failure(&source.id, format!("event storage failed: {error}"));
+                return;
+            }
         }
     }
-    state.record_source_success(&source.id, seen, enqueued, duplicates, invalid);
+    state.record_source_success(&source.id, seen, enqueued, duplicates, invalid, deferred);
 }

@@ -46,6 +46,7 @@ pub struct SourceStatus {
     pub events_enqueued: u64,
     pub duplicates_skipped: u64,
     pub invalid_events: u64,
+    pub events_deferred: u64,
 }
 
 impl SourceStatus {
@@ -63,6 +64,7 @@ impl SourceStatus {
             events_enqueued: 0,
             duplicates_skipped: 0,
             invalid_events: 0,
+            events_deferred: 0,
         }
     }
 }
@@ -186,6 +188,7 @@ pub struct GatewayStatus {
     pub events_seen: u64,
     pub events_enqueued: u64,
     pub events_published: u64,
+    pub events_deferred: u64,
     pub duplicates_skipped: u64,
     pub invalid_events: u64,
     /// Compatibility alias for the Phase-3 status field.

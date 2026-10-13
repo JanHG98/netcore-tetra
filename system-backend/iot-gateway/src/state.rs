@@ -24,7 +24,16 @@ use crate::model::{
 pub enum EnqueueOutcome {
     Enqueued,
     Duplicate,
+    Deferred,
 }
+
+#[derive(Debug)]
+pub enum EventEnqueueError {
+    Invalid(String),
+    Storage(String),
+}
+
+const OUTBOX_BATCH_SIZE: usize = 256;
 
 struct GatewayState {
     config: IotGatewayConfig,
@@ -42,6 +51,7 @@ struct GatewayState {
     command_order: VecDeque<Uuid>,
     virtual_devices: BTreeMap<String, VirtualDeviceState>,
     startup_virtual_states_pending: VecDeque<String>,
+    outbox_batch: VecDeque<PathBuf>,
     external_entities: BTreeMap<String, ExternalEntityState>,
     homematic_states: BTreeMap<String, HomematicDatapointState>,
     home_assistant_discovery_runs: u64,
@@ -54,6 +64,7 @@ struct GatewayState {
     events_seen: u64,
     events_enqueued: u64,
     events_published: u64,
+    events_deferred: u64,
     duplicates_skipped: u64,
     invalid_events: u64,
     commands_received: u64,
@@ -117,6 +128,7 @@ impl SharedGateway {
             command_order,
             virtual_devices,
             startup_virtual_states_pending,
+            outbox_batch: VecDeque::new(),
             external_entities,
             homematic_states,
             home_assistant_discovery_runs: 0,
@@ -129,6 +141,7 @@ impl SharedGateway {
             events_seen: 0,
             events_enqueued: 0,
             events_published: 0,
+            events_deferred: 0,
             duplicates_skipped: 0,
             invalid_events: 0,
             commands_received: 0,
@@ -224,6 +237,7 @@ impl SharedGateway {
             events_seen: state.events_seen,
             events_enqueued: state.events_enqueued,
             events_published: state.events_published,
+            events_deferred: state.events_deferred,
             duplicates_skipped: state.duplicates_skipped,
             invalid_events: state.invalid_events,
             commands_observed: state.commands_received,
@@ -847,6 +861,7 @@ impl SharedGateway {
         enqueued: u64,
         duplicates: u64,
         invalid: u64,
+        deferred: u64,
     ) {
         let mut state = self.0.lock().expect("IoT Gateway state poisoned");
         let now = now_iso();
@@ -861,6 +876,7 @@ impl SharedGateway {
             source.events_enqueued = source.events_enqueued.saturating_add(enqueued);
             source.duplicates_skipped = source.duplicates_skipped.saturating_add(duplicates);
             source.invalid_events = source.invalid_events.saturating_add(invalid);
+            source.events_deferred = source.events_deferred.saturating_add(deferred);
             (recovered, Some(source.clone()))
         } else {
             (false, None)
@@ -922,19 +938,23 @@ impl SharedGateway {
         );
     }
 
-    pub fn enqueue_event(&self, event: &NetCoreEvent) -> Result<EnqueueOutcome, String> {
-        event.validate().map_err(|error| error.to_string())?;
+    pub fn enqueue_event(&self, event: &NetCoreEvent) -> Result<EnqueueOutcome, EventEnqueueError> {
+        event.validate().map_err(|error| EventEnqueueError::Invalid(error.to_string()))?;
         let mut state = self.0.lock().expect("IoT Gateway state poisoned");
         state.events_seen = state.events_seen.saturating_add(1);
         if state.dedup.contains(&event.event_id) {
             state.duplicates_skipped = state.duplicates_skipped.saturating_add(1);
             return Ok(EnqueueOutcome::Duplicate);
         }
-        ensure_outbox_capacity(&state, if event.subject.is_some() { 2 } else { 1 })?;
+        if ensure_outbox_capacity(&state, if event.subject.is_some() { 2 } else { 1 }).is_err() {
+            state.events_deferred = state.events_deferred.saturating_add(1);
+            return Ok(EnqueueOutcome::Deferred);
+        }
 
         let prefix = state.config.mqtt.topic_prefix.trim_matches('/');
         let event_topic = format!("{prefix}/events/{}", event.event_type.replace('.', "/"));
-        let payload = serde_json::to_string(event).map_err(|error| error.to_string())?;
+        let payload = serde_json::to_string(event)
+            .map_err(|error| EventEnqueueError::Storage(error.to_string()))?;
         let event_message = OutboundMessage {
             id: Uuid::new_v4(),
             created_at: now_iso(),
@@ -945,7 +965,8 @@ impl SharedGateway {
             payload: payload.clone(),
             source_event_id: Some(event.event_id),
         };
-        let event_path = write_outbox_message(&state.config.outbox_dir(), &event_message)?;
+        let event_path = write_outbox_message(&state.config.outbox_dir(), &event_message)
+            .map_err(EventEnqueueError::Storage)?;
 
         let mut additional_path = None;
         if let Some(subject) = &event.subject {
@@ -968,7 +989,7 @@ impl SharedGateway {
                 Ok(path) => additional_path = Some(path),
                 Err(error) => {
                     let _ = fs::remove_file(event_path);
-                    return Err(error);
+                    return Err(EventEnqueueError::Storage(error));
                 }
             }
         }
@@ -980,7 +1001,8 @@ impl SharedGateway {
                 state.dedup.remove(&oldest);
             }
         }
-        persist_dedup(&state.config.dedup_path(), &state.dedup_order)?;
+        persist_dedup(&state.config.dedup_path(), &state.dedup_order)
+            .map_err(EventEnqueueError::Storage)?;
         state.events_enqueued = state.events_enqueued.saturating_add(1);
         push_event_locked(
             &mut state,
@@ -1403,28 +1425,46 @@ impl SharedGateway {
     }
 
     pub fn next_outbox_message(&self) -> Option<(PathBuf, OutboundMessage)> {
-        let config = self.config();
-        let mut files = outbox_files(&config.outbox_dir());
-        files.sort();
-        files.into_iter().find_map(|path| {
-            let raw = fs::read_to_string(&path).ok()?;
+        let mut state = self.0.lock().expect("IoT Gateway state poisoned");
+        if state.outbox_batch.is_empty() {
+            let mut files = outbox_files(&state.config.outbox_dir());
+            files.sort();
+            state.outbox_batch.extend(files.into_iter().take(OUTBOX_BATCH_SIZE));
+        }
+        while let Some(path) = state.outbox_batch.front().cloned() {
+            let raw = match fs::read_to_string(&path) {
+                Ok(raw) => raw,
+                Err(_) => {
+                    state.outbox_batch.pop_front();
+                    continue;
+                }
+            };
             match serde_json::from_str::<OutboundMessage>(&raw) {
-                Ok(message) => Some((path, message)),
+                // Leave the head in place until publication and deletion succeed.
+                Ok(message) => return Some((path, message)),
                 Err(error) => {
-                    self.record_bridge_event(
+                    push_event_locked(
+                        &mut state,
                         "outbox.invalid_file",
                         json!({"path":path,"error":error.to_string()}),
                     );
                     let _ = fs::rename(&path, path.with_extension("invalid"));
-                    None
+                    state.outbox_batch.pop_front();
                 }
             }
-        })
+        }
+        None
     }
 
     pub fn complete_outbox_message(&self, path: &Path, message: &OutboundMessage) {
         match fs::remove_file(path) {
             Ok(()) => {
+                {
+                    let mut state = self.0.lock().expect("IoT Gateway state poisoned");
+                    if state.outbox_batch.front().map(PathBuf::as_path) == Some(path) {
+                        state.outbox_batch.pop_front();
+                    }
+                }
                 self.record_publish_ack(message);
                 if let Err(error) = self.enqueue_startup_virtual_states() {
                     tracing::warn!("Failed to enqueue deferred startup state: {}", error);
@@ -1460,6 +1500,12 @@ impl SharedGateway {
                 "# HELP netcore_iot_gateway_events_published MQTT messages acknowledged by the broker.\n",
                 "# TYPE netcore_iot_gateway_events_published counter\n",
                 "netcore_iot_gateway_events_published {}\n",
+                "# HELP netcore_iot_gateway_events_deferred Event admission attempts deferred because the outbox is full.\n",
+                "# TYPE netcore_iot_gateway_events_deferred counter\n",
+                "netcore_iot_gateway_events_deferred {}\n",
+                "# HELP netcore_iot_gateway_invalid_events Events rejected by contract validation.\n",
+                "# TYPE netcore_iot_gateway_invalid_events counter\n",
+                "netcore_iot_gateway_invalid_events {}\n",
                 "# HELP netcore_iot_gateway_commands_received MQTT commands received.\n",
                 "# TYPE netcore_iot_gateway_commands_received counter\n",
                 "netcore_iot_gateway_commands_received {}\n",
@@ -1481,6 +1527,8 @@ impl SharedGateway {
             status.sources_healthy,
             status.events_enqueued,
             status.events_published,
+            status.events_deferred,
+            status.invalid_events,
             status.commands_received,
             status.commands_rejected,
             status.commands_executed,
@@ -1622,6 +1670,7 @@ fn enqueue_source_state_locked(
     state: &GatewayState,
     source: &SourceStatus,
 ) -> Result<PathBuf, String> {
+    ensure_outbox_capacity(state, 1)?;
     let prefix = state.config.mqtt.topic_prefix.trim_matches('/');
     let message = OutboundMessage {
         id: Uuid::new_v4(),
@@ -2114,6 +2163,108 @@ mod tests {
             gateway.complete_outbox_message(&path, &message);
             assert_eq!(gateway.status().outbox_pending, expected);
         }
+    }
+
+    #[test]
+    fn full_outbox_defers_valid_events_without_marking_them_invalid_or_deduplicated() {
+        let directory = TestDirectory::new();
+        let config = directory.config(3);
+        directory.seed_outbox(&config, 3);
+        let gateway = SharedGateway::new(config).unwrap();
+        let event = NetCoreEvent::new(
+            "subscriber.route_changed",
+            netcore_contracts::EventSource::service("mobility-core"),
+            netcore_contracts::Severity::Info,
+            Some(netcore_contracts::EventSubject::new("subscriber", "26000001")),
+            json!({"test":true}),
+        );
+        assert_eq!(gateway.enqueue_event(&event).unwrap(), EnqueueOutcome::Deferred);
+        assert_eq!(gateway.status().events_deferred, 1);
+        assert_eq!(gateway.status().invalid_events, 0);
+        assert_eq!(gateway.status().outbox_pending, 3);
+        while let Some((path, message)) = gateway.next_outbox_message() {
+            gateway.complete_outbox_message(&path, &message);
+        }
+        assert_eq!(gateway.enqueue_event(&event).unwrap(), EnqueueOutcome::Enqueued);
+        assert_eq!(gateway.status().outbox_pending, 2);
+        assert_eq!(gateway.enqueue_event(&event).unwrap(), EnqueueOutcome::Duplicate);
+        let mut invalid = event.clone();
+        invalid.schema = "unsupported".to_string();
+        assert!(matches!(gateway.enqueue_event(&invalid), Err(EventEnqueueError::Invalid(_))));
+    }
+
+    #[test]
+    fn source_health_snapshots_respect_the_outbox_limit() {
+        let directory = TestDirectory::new();
+        let config = directory.config(3);
+        let source_id = config.sources[0].id.clone();
+        directory.seed_outbox(&config, 3);
+        let gateway = SharedGateway::new(config).unwrap();
+        gateway.record_source_success(&source_id, 1, 0, 0, 0, 1);
+        let source = gateway.sources().into_iter().find(|s| s.id == source_id).unwrap();
+        assert!(source.healthy);
+        assert_eq!(source.events_deferred, 1);
+        assert_eq!(source.invalid_events, 0);
+        assert_eq!(gateway.status().outbox_pending, 3);
+        gateway.record_source_failure(&source_id, "HTTP unavailable");
+        assert_eq!(gateway.status().outbox_pending, 3);
+    }
+
+    #[test]
+    fn event_storage_errors_are_distinct_from_invalid_events() {
+        let directory = TestDirectory::new();
+        let config = directory.config(10);
+        let gateway = SharedGateway::new(config.clone()).unwrap();
+        fs::remove_dir_all(config.outbox_dir()).unwrap();
+        fs::write(config.outbox_dir(), b"not a directory").unwrap();
+        let event = NetCoreEvent::new(
+            "subscriber.route_changed",
+            netcore_contracts::EventSource::service("mobility-core"),
+            netcore_contracts::Severity::Info,
+            None,
+            json!({}),
+        );
+        assert!(matches!(gateway.enqueue_event(&event), Err(EventEnqueueError::Storage(_))));
+        assert_eq!(gateway.status().invalid_events, 0);
+    }
+
+    #[test]
+    fn outbox_batches_preserve_order_retry_the_head_and_find_new_messages() {
+        let directory = TestDirectory::new();
+        let config = directory.config(1000);
+        directory.seed_outbox(&config, OUTBOX_BATCH_SIZE + 2);
+        let gateway = SharedGateway::new(config).unwrap();
+        let (first_path, first) = gateway.next_outbox_message().unwrap();
+        assert_eq!(gateway.next_outbox_message().unwrap().0, first_path);
+        gateway.complete_outbox_message(&directory.0.join("missing.json"), &first);
+        assert_eq!(gateway.status().broker_publish_acks, 0);
+        assert_eq!(gateway.next_outbox_message().unwrap().0, first_path);
+        gateway.enqueue_manual_message(
+            "netcore/v1/test/new".to_string(), "{}".to_string(), 1, false,
+        ).unwrap();
+        let mut topics = Vec::new();
+        while let Some((path, message)) = gateway.next_outbox_message() {
+            topics.push(message.topic.clone());
+            gateway.complete_outbox_message(&path, &message);
+        }
+        for (index, topic) in topics.iter().take(OUTBOX_BATCH_SIZE + 2).enumerate() {
+            assert_eq!(*topic, format!("netcore/v1/test/backlog/{index}"));
+        }
+        assert_eq!(topics.last().unwrap(), "netcore/v1/test/new");
+        assert_eq!(gateway.status().outbox_pending, 0);
+    }
+
+    #[test]
+    fn outbox_batch_skips_missing_files_and_quarantines_invalid_json() {
+        let directory = TestDirectory::new();
+        let config = directory.config(10);
+        let files = directory.seed_outbox(&config, 3);
+        let gateway = SharedGateway::new(config).unwrap();
+        assert_eq!(gateway.next_outbox_message().unwrap().0, files[0].0);
+        fs::remove_file(&files[0].0).unwrap();
+        fs::write(&files[1].0, b"invalid JSON").unwrap();
+        assert_eq!(gateway.next_outbox_message().unwrap().0, files[2].0);
+        assert!(files[1].0.with_extension("invalid").exists());
     }
 
     #[test]

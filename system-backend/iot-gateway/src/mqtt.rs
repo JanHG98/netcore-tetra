@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::io::{self, Read, Write};
-use std::net::{TcpStream, ToSocketAddrs};
+use std::net::{Shutdown, TcpStream, ToSocketAddrs};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
@@ -17,9 +17,75 @@ struct PublishRequest {
     response: mpsc::Sender<Result<(), String>>,
 }
 
+enum ConnectionEvent {
+    Publish(PublishRequest),
+    Packet(Packet),
+    ReaderError(String),
+    Wake,
+}
+
+// Reading a fragmented packet may block, but must not delay a new publish.
+// Keep a single writer and wake it for either socket input or outgoing work.
+struct PacketReader {
+    stream: TcpStream,
+    stopping: Arc<AtomicBool>,
+    thread: Option<thread::JoinHandle<()>>,
+}
+
+impl PacketReader {
+    fn spawn(stream: &TcpStream, sender: mpsc::SyncSender<ConnectionEvent>) -> Result<Self, String> {
+        let mut input = stream.try_clone().map_err(|error| error.to_string())?;
+        let shutdown = stream.try_clone().map_err(|error| error.to_string())?;
+        let stopping = Arc::new(AtomicBool::new(false));
+        let reader_stopping = stopping.clone();
+        let thread = thread::spawn(move || {
+            while !reader_stopping.load(Ordering::SeqCst) {
+                let event = match read_connection_packet(&mut input) {
+                    Ok(packet) => ConnectionEvent::Packet(packet),
+                    Err(PacketReadError::Timeout) => continue,
+                    Err(error) => ConnectionEvent::ReaderError(packet_error(error)),
+                };
+                let failed = matches!(&event, ConnectionEvent::ReaderError(_));
+                let mut queued = event;
+                loop {
+                    if reader_stopping.load(Ordering::SeqCst) {
+                        return;
+                    }
+                    match sender.try_send(queued) {
+                        Ok(()) => break,
+                        Err(mpsc::TrySendError::Full(event)) => {
+                            queued = event;
+                            thread::sleep(Duration::from_millis(1));
+                        }
+                        Err(mpsc::TrySendError::Disconnected(_)) => return,
+                    }
+                }
+                if failed {
+                    break;
+                }
+            }
+        });
+        Ok(Self {
+            stream: shutdown,
+            stopping,
+            thread: Some(thread),
+        })
+    }
+}
+
+impl Drop for PacketReader {
+    fn drop(&mut self) {
+        self.stopping.store(true, Ordering::SeqCst);
+        let _ = self.stream.shutdown(Shutdown::Both);
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct MqttPublisher {
-    sender: Arc<Mutex<Option<mpsc::Sender<PublishRequest>>>>,
+    sender: Arc<Mutex<Option<mpsc::SyncSender<ConnectionEvent>>>>,
     timeout: Duration,
 }
 
@@ -40,17 +106,27 @@ impl MqttPublisher {
             .ok_or_else(|| "MQTT broker is not connected".to_string())?;
         let (response_tx, response_rx) = mpsc::channel();
         sender
-            .send(PublishRequest {
+            .try_send(ConnectionEvent::Publish(PublishRequest {
                 message,
                 response: response_tx,
-            })
-            .map_err(|_| "MQTT connection worker is unavailable".to_string())?;
+            }))
+            .map_err(|error| match error {
+                mpsc::TrySendError::Full(_) => "MQTT connection worker is busy".to_string(),
+                mpsc::TrySendError::Disconnected(_) => {
+                    "MQTT connection worker is unavailable".to_string()
+                }
+            })?;
         response_rx
             .recv_timeout(self.timeout)
-            .map_err(|_| "MQTT publish acknowledgement timed out".to_string())?
+            .map_err(|error| match error {
+                mpsc::RecvTimeoutError::Timeout => "MQTT publish acknowledgement timed out".to_string(),
+                mpsc::RecvTimeoutError::Disconnected => {
+                    "MQTT connection closed before publish acknowledgement".to_string()
+                }
+            })?
     }
 
-    fn install_sender(&self, sender: mpsc::Sender<PublishRequest>) {
+    fn install_sender(&self, sender: mpsc::SyncSender<ConnectionEvent>) {
         if let Ok(mut slot) = self.sender.lock() {
             *slot = Some(sender);
         }
@@ -66,11 +142,17 @@ impl MqttPublisher {
 #[derive(Clone)]
 pub struct MqttControl {
     force_reconnect: Arc<AtomicBool>,
+    sender: Arc<Mutex<Option<mpsc::SyncSender<ConnectionEvent>>>>,
 }
 
 impl MqttControl {
     pub fn reconnect(&self) {
         self.force_reconnect.store(true, Ordering::SeqCst);
+        if let Ok(sender) = self.sender.lock() {
+            if let Some(sender) = sender.as_ref() {
+                let _ = sender.try_send(ConnectionEvent::Wake);
+            }
+        }
     }
 }
 
@@ -81,6 +163,7 @@ pub fn spawn_mqtt(
     let publisher = MqttPublisher::new(Duration::from_secs(config.mqtt.publish_timeout_secs));
     let control = MqttControl {
         force_reconnect: Arc::new(AtomicBool::new(false)),
+        sender: publisher.sender.clone(),
     };
 
     let connection_publisher = publisher.clone();
@@ -148,11 +231,8 @@ fn run_one_connection(
     write_connect(&mut stream, mqtt)?;
     let connack = read_packet(&mut stream).map_err(packet_error)?;
     validate_connack(&connack)?;
-    stream
-        .set_read_timeout(Some(Duration::from_millis(200)))
-        .map_err(|error| error.to_string())?;
-
-    let (request_tx, request_rx) = mpsc::channel();
+    let (request_tx, request_rx) = mpsc::sync_channel(32);
+    let _reader = PacketReader::spawn(&stream, request_tx.clone())?;
     publisher.install_sender(request_tx);
     state.mark_mqtt_connected();
     tracing::info!(
@@ -218,41 +298,38 @@ fn run_one_connection(
             return Err("manual reconnect requested".to_string());
         }
 
-        while let Ok(request) = request_rx.try_recv() {
-            if request.message.qos == 0 {
-                write_publish(&mut stream, &request.message, None)?;
-                let _ = request.response.send(Ok(()));
-            } else {
-                let packet_id = next_id(&mut next_packet_id);
-                write_publish(&mut stream, &request.message, Some(packet_id))?;
-                pending.insert(packet_id, request.response);
+        match request_rx.recv_timeout(Duration::from_millis(200)) {
+            Ok(ConnectionEvent::Publish(request)) => {
+                if request.message.qos == 0 {
+                    write_publish(&mut stream, &request.message, None)?;
+                    let _ = request.response.send(Ok(()));
+                } else {
+                    let packet_id = next_id(&mut next_packet_id);
+                    write_publish(&mut stream, &request.message, Some(packet_id))?;
+                    pending.insert(packet_id, request.response);
+                }
+                last_io = Instant::now();
             }
-            last_io = Instant::now();
-        }
-
-        match read_packet(&mut stream) {
-            Ok(packet) => {
+            Ok(ConnectionEvent::Packet(packet)) => {
                 last_io = Instant::now();
                 handle_packet(&mut stream, packet, config, state, &mut pending)?;
             }
-            Err(PacketReadError::Timeout) => {
+            Ok(ConnectionEvent::Wake) => {}
+            Err(mpsc::RecvTimeoutError::Timeout) => {
                 let ping_after = Duration::from_secs((u64::from(mqtt.keep_alive_secs) / 2).max(5));
                 if last_io.elapsed() >= ping_after {
                     write_packet(&mut stream, 0xC0, &[])?;
                     last_io = Instant::now();
                 }
             }
-            Err(PacketReadError::Io(error)) => {
+            Ok(ConnectionEvent::ReaderError(error)) => {
                 for (_, response) in pending.drain() {
                     let _ = response.send(Err(format!("MQTT connection lost: {error}")));
                 }
-                return Err(format!("MQTT read failed: {error}"));
-            }
-            Err(PacketReadError::Protocol(error)) => {
-                for (_, response) in pending.drain() {
-                    let _ = response.send(Err(format!("MQTT protocol error: {error}")));
-                }
                 return Err(error);
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                return Err("MQTT connection worker stopped".to_string());
             }
         }
     }
@@ -547,6 +624,25 @@ fn packet_error(error: PacketReadError) -> String {
 }
 
 fn read_packet(stream: &mut TcpStream) -> Result<Packet, PacketReadError> {
+    let header = read_packet_header(stream)?;
+    read_packet_body(stream, header)
+}
+
+fn read_connection_packet(stream: &mut TcpStream) -> Result<Packet, PacketReadError> {
+    // A short idle wait allows prompt reader shutdown on platforms where
+    // shutdown() does not immediately interrupt another thread's read.
+    stream
+        .set_read_timeout(Some(Duration::from_millis(200)))
+        .map_err(PacketReadError::Io)?;
+    let header = read_packet_header(stream)?;
+    // Once the packet starts, allow the remaining bytes to arrive in fragments.
+    stream
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .map_err(PacketReadError::Io)?;
+    read_packet_body(stream, header)
+}
+
+fn read_packet_header(stream: &mut TcpStream) -> Result<u8, PacketReadError> {
     let mut first = [0_u8; 1];
     match stream.read_exact(&mut first) {
         Ok(()) => {}
@@ -555,7 +651,10 @@ fn read_packet(stream: &mut TcpStream) -> Result<Packet, PacketReadError> {
         }
         Err(error) => return Err(PacketReadError::Io(error)),
     }
+    Ok(first[0])
+}
 
+fn read_packet_body(stream: &mut TcpStream, header: u8) -> Result<Packet, PacketReadError> {
     let mut multiplier = 1_usize;
     let mut remaining = 0_usize;
     for index in 0..4 {
@@ -568,7 +667,7 @@ fn read_packet(stream: &mut TcpStream) -> Result<Packet, PacketReadError> {
             let mut body = vec![0_u8; remaining];
             stream.read_exact(&mut body).map_err(PacketReadError::Io)?;
             return Ok(Packet {
-                header: first[0],
+                header,
                 body,
             });
         }
@@ -630,6 +729,29 @@ fn parse_publish(packet: &Packet) -> Result<IncomingPublish, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn packet_reader_accepts_fragmented_puback_and_shuts_down_while_idle() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let connection = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        connection.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+        let (mut broker, _) = listener.accept().unwrap();
+        let (sender, receiver) = mpsc::sync_channel(1);
+        let reader = PacketReader::spawn(&connection, sender).unwrap();
+        broker.write_all(&[0x40]).unwrap();
+        thread::sleep(Duration::from_millis(250));
+        broker.write_all(&[0x02, 0x00, 0x07]).unwrap();
+        match receiver.recv_timeout(Duration::from_secs(2)).unwrap() {
+            ConnectionEvent::Packet(packet) => {
+                assert_eq!(packet.packet_type(), 4);
+                assert_eq!(packet.body, [0x00, 0x07]);
+            }
+            _ => panic!("fragmented PUBACK must remain intact"),
+        }
+        let closing = Instant::now();
+        drop(reader);
+        assert!(closing.elapsed() < Duration::from_secs(2));
+    }
 
     #[test]
     fn remaining_length_encoding_matches_mqtt() {
