@@ -65,6 +65,7 @@ const path = require('node:path');
     }
     await page.locator('#image-desktop').selectOption('kde');
     await page.locator('#image-form [name=password]').fill('fixture-only-password');
+    await page.locator('details.image-options').filter({has:page.locator('#image-vpn')}).locator('summary').click();
     await page.locator('#image-vpn').setInputFiles({name:'incomplete.ovpn',mimeType:'text/plain',buffer:Buffer.from('client\ndev tun\nremote vpn.fixture.invalid 1194\n<auth-user-pass>\nold-user\n</auth-user-pass>\n')});
     await page.waitForFunction(()=>document.querySelector('#image-vpn-username').required);
     await page.locator('#image-build').click();
