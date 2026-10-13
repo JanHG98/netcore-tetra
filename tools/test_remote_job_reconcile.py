@@ -335,12 +335,13 @@ class RemoteReconciliationTests(unittest.TestCase):
         else:
             with self.assertRaisesRegex(HELPER.Pending, 'controller_database_not_private_to_service_owner'):
                 HELPER.safe_file(self.path, private=True, trusted_uid=uid + 1)
-        os.chmod(self.path.parent, 0o777)
-        try:
-            with self.assertRaisesRegex(HELPER.Pending, 'controller_database_parent_writable_by_others'):
-                HELPER.safe_file(self.path, private=True, trusted_uid=uid)
-        finally:
-            os.chmod(self.path.parent, 0o700)
+        for mode in (0o777, 0o1777):
+            os.chmod(self.path.parent, mode)
+            try:
+                with self.assertRaisesRegex(HELPER.Pending, 'controller_database_parent_writable_by_others'):
+                    HELPER.safe_file(self.path, private=True, trusted_uid=uid)
+            finally:
+                os.chmod(self.path.parent, 0o700)
         for mode in (0o640, 0o400, 0o700):
             os.chmod(self.path, mode)
             with self.assertRaisesRegex(HELPER.Pending, 'controller_database_not_private_to_service_owner'):

@@ -85,7 +85,8 @@ def safe_file(path, *, private=False, trusted_uid=None):
                 raise Pending('controller_database_parent_owner_invalid')
             # A root-owned sticky temporary ancestor protects its owned child
             # from foreign renames. Ordinary writable ancestors never qualify.
-            secure_temporary = properties.st_uid == 0 and properties.st_mode & stat.S_ISVTX
+            secure_temporary = (parent != path.parent and properties.st_uid == 0
+                                and properties.st_mode & stat.S_ISVTX)
             if properties.st_mode & 0o022 and not secure_temporary:
                 raise Pending('controller_database_parent_writable_by_others')
     return path
