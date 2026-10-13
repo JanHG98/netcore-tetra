@@ -131,6 +131,46 @@ sudo python3 -B "$NC_VM_SRC/tools/operator/update-vm119-image-features.py" \
 
 Dieser Updater übernimmt Controller, Builder, vollständiges Image-Rezept und Formular gemeinsam aus genau diesem Commit. Aktive oder ungeklärte Deployment-/Imagejobs werden abgelehnt. Erwartet: `passed` oder `already_current`. Danach die WebUI mit **Strg+F5** neu laden. Die UI-Funktionen sind sofort auf der VM verfügbar; ein neues Pi-Image wird gesondert gebaut. [Image-, Desktop- und SIP-Anleitung](../integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md).
 
+
+### Ungeklärten Remote-Auftrag vor dem VM-Update abgleichen
+
+Ein lokal `failed` gespeicherter Auftrag mit `remote_uncertain=true` kann auf dem Agenten weiterlaufen oder dort bereits beendet sein. Der VM-Updater und weitere Updates desselben Ziels bleiben deshalb gesperrt. `tools/operator/reconcile-remote-job.py` prüft die gespeicherte exakte Remote-Job-ID über GET, die Agentenidentität, Umgebung, Dienst/Aktion und den damals angenommenen Commit. Ein vollständiger SHA in `ref` gilt auch bei einem alten Auftrag ohne `commit` als feste Vorgabe. Der Helfer löst für diesen alten Auftrag keinen neuen Branchstand auf.
+
+Der folgende Block läuft **auf VM-H-DEPLOY-01**. Er lädt nur die benötigten Quellbereiche, prüft den Auftrag zunächst ohne Änderung und speichert einen übereinstimmenden Endzustand erst bei gestopptem Controller. Den beispielhaften `NC_JOB` nur bei einem anderen ausdrücklich untersuchten Auftrag ersetzen.
+
+```bash
+(
+  set -Eeuo pipefail
+  NC_JOB=193b08c7b05b4b54951baab1eea95df3
+  NC_VM_SRC=$(mktemp -d /tmp/netcore-vm-reconcile.XXXXXX)
+  git -C "$NC_VM_SRC" init -q
+  git -C "$NC_VM_SRC" remote add origin https://github.com/JanHG98/netcore-tetra.git
+  git -C "$NC_VM_SRC" config http.version HTTP/1.1
+  git -C "$NC_VM_SRC" config remote.origin.promisor true
+  git -C "$NC_VM_SRC" config remote.origin.partialclonefilter blob:none
+  git -C "$NC_VM_SRC" fetch --depth 1 --filter=blob:none origin refs/heads/main
+  NC_VM_COMMIT=$(git -C "$NC_VM_SRC" rev-parse FETCH_HEAD)
+  git -C "$NC_VM_SRC" sparse-checkout init --cone
+  git -C "$NC_VM_SRC" sparse-checkout set tools/operator system-backend/deployment-core
+  git -C "$NC_VM_SRC" checkout --detach "$NC_VM_COMMIT"
+
+  sudo python3 -B "$NC_VM_SRC/tools/operator/reconcile-remote-job.py" "$NC_JOB"
+  trap 'sudo systemctl start netcore-deployment.service' EXIT
+  sudo systemctl stop netcore-deployment.service
+  sudo python3 -B "$NC_VM_SRC/tools/operator/reconcile-remote-job.py" "$NC_JOB" --apply
+  sudo systemctl start netcore-deployment.service
+  trap - EXIT
+  sudo python3 -B "$NC_VM_SRC/tools/operator/update-vm119-image-features.py" \
+    --commit "$NC_VM_COMMIT" --apply
+)
+```
+
+Die Diagnose liefert `phase=verified`, wenn der genaue Remote-Auftrag eindeutig beendet ist. `--apply` prüft ihn erneut, verlangt vollständig inaktive lokale Aufträge einschließlich Checks und vergleicht die komplette ursprüngliche Datenbankzeile innerhalb einer SQLite-Transaktion. Die private Datenbank muss root oder dem tatsächlichen systemd-Dienstbenutzer gehören; der StateDirectory-Pfad wird gegen die effektive Unit geprüft. Vorheriger Zustand und Beleg werden gemeinsam mit der gezielten Änderung in `remote_job_reconciliations` protokolliert. Ein Remote-Fehlschlag oder Abbruch bleibt `failed` beziehungsweise `interrupted`. Wiederholung ist idempotent.
+
+`phase=pending` mit Exitcode2 beendet den Block ohne Abgleich; etwa bei laufendem, nicht erreichbarem oder widersprüchlichem Remote-Auftrag. Nach einem begonnenen Controller-Stop sorgt der EXIT-Trap auch dann für seinen Neustart. Die Endzustandsprüfung sendet kein neues Update. Der abschließende VM-Updater behält seine eigenen Builder-/Jobsperren; weitere ungeklärte Aufträge werden einzeln untersucht.
+
+Betreiberbefund vom 14.10.2026: lokaler Auftrag `193b08c7b05b4b54951baab1eea95df3` für Node-Gateway/`node-gateway`, Update auf `c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf`, verweist auf Agent `10.0.1.179:8321` und Remote-Auftrag `721b00fef0b143b28253123f7a168c7c`. Dessen tatsächlicher Endzustand und die anschließende VM-Übernahme sind noch vom Betreiber zu belegen.
+
 ## Pi und externe Anwendungen
 
 - **Physischer Pi `10.0.1.20`:** Die aktuellen Carrier-/Telegram-/Nachbar-/WLAN-/Medienrechte-/Desktop-/SIP-Fallback-Korrekturen kommen über das neu gebaute Image. Der Proxmox-Lauf startet keinen Funkdienst und überschreibt den Pi nicht.
