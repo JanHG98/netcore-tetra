@@ -1,5 +1,7 @@
 # Roadmaps
 
+**Visuelle Gesamtübersicht:** [Xmind-Map mit kostenlosen Funktionen](xmind-gesamtuebersicht.md) · [Xmind-Datei](netcore-tetra-gesamtuebersicht.xmind) · [Übersichtsgrafik](netcore-tetra-gesamtuebersicht.svg). Momentaufnahme mit zentraler Arbeitsfolge, Fachumfang und vollständigem Dateiinventar; die Gesamtroadmap bleibt für aktuelle Prioritäten maßgeblich.
+
 Die Gesamtroadmap ist der Einstieg für heutige Prioritäten und Abnahmen. Fachroadmaps enthalten ihren jeweiligen Planungsumfang. Historische Phasenabschlüsse und Paketlisten werden ausdrücklich von aktuellem Code und realer Anlagenabnahme getrennt.
 
 [Gesamte Dokumentation](../README.md)
