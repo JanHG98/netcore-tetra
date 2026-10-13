@@ -13,8 +13,10 @@ from unittest import mock
 
 REPO = Path(__file__).resolve().parents[2]
 DRIVER = REPO / 'Docs/integration/Z01-2026-10-07/vm119-tbs-workflow-update.py'
-# Historical updater pins stay immutable as current runtime code evolves.
-HISTORICAL_UI = REPO / 'tests/integration/fixtures/vm119-tbs-workflow-0770'
+# The immutable updater's entire reviewed seven-file source contract is frozen.
+# Six exact source blobs fetched at 62745765 complement the reviewed main below;
+# current deployment runtime files may evolve without changing historical pins.
+HISTORICAL_SOURCES = REPO / 'tests/integration/fixtures/vm119-tbs-workflow-0770'
 # Exact deployment-core/main.py bytes from reviewed commit 5c83bfb; its SHA-256
 # remains a73265fae52e97e0083f5cc6f0b34ae71313a7dfa8537026f1340007ca4a97ea.
 # Runtime provenance added later must not change this historical update contract.
@@ -39,10 +41,8 @@ class WorkflowUpdateTests(unittest.TestCase):
         for name, pins in driver.PINS.items():
             if name == 'main.py':
                 source = HISTORICAL_MAIN
-            elif name in ('static/index.html', 'static/app.js'):
-                source = HISTORICAL_UI / name
             else:
-                source = driver.SOURCE / name
+                source = HISTORICAL_SOURCES / name
             self.assertEqual(driver.digest(source.read_bytes()), pins['new'])
 
     def exercise(self, kind):
