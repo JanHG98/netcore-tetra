@@ -1,0 +1,87 @@
+{
+  "schema": "netcore-operator-runtime-evidence-v1",
+  "evidence_date": "2026-10-14",
+  "timezone": "Europe/Berlin",
+  "source": "Operator-pasted terminal output in this troubleshooting conversation",
+  "host": "10.0.1.119",
+  "service": "netcore-iot-gateway",
+  "source_commit": "b223ecc0f626e5dd8222d3edc0e969c774b8da21",
+  "source_checkout": "/opt/netcore-update-sources/iot-fix-small.2Ml8FO",
+  "source_transfer": {
+    "metadata_pack": "128.80 KiB",
+    "selected_blob_pack": "3.77 MiB",
+    "checkout_files": 1189,
+    "head_verified": true
+  },
+  "build": {
+    "profile": "release",
+    "duration_seconds": 29.85,
+    "rustc": "1.99.0 (b940084d7 2026-09-28)",
+    "cargo": "1.99.0 (5f94df478 2026-08-27)",
+    "packages_already_present": true,
+    "warning": "execute_sandbox is never used"
+  },
+  "update_receipt": {
+    "phase": "inactive_updated",
+    "assets_complete": true,
+    "verified": true,
+    "active_before": "inactive",
+    "target": "/usr/local/bin/netcore-iot-gateway",
+    "sha256": "32acbedd105aa1859db10f034af83fff6baf45c83a84512e99d6dbbb0bf3048d",
+    "previous_sha256": "e9d4e3a22cb2457ccb8d821269ff94de62c7022adcade753f557d860ea34e4c2",
+    "process_at_exchange": {
+      "active": false,
+      "MainPID": 0,
+      "kind": "elf"
+    },
+    "liveness_at_exchange": null,
+    "readiness_at_exchange": null,
+    "receipt_path": "/var/lib/netcore-service-update/iot-gateway.json"
+  },
+  "post_start_http": {
+    "url": "http://10.0.1.119:8240/health/live",
+    "response": {
+      "status": "live"
+    },
+    "initial_connection_refusals_before_live": 2
+  },
+  "initial_gateway_status": {
+    "service": "netcore-iot-gateway",
+    "version": "1.3.0",
+    "phase": 5,
+    "started_at": "2026-10-13T23:12:22.806Z",
+    "mqtt_host": "127.0.0.1",
+    "mqtt_port": 1883,
+    "mqtt_connected": true,
+    "mqtt_connected_at": "2026-10-13T23:12:22.827Z",
+    "mqtt_last_error": null,
+    "mqtt_reconnects": 1,
+    "broker_publish_acks": 0,
+    "sources_total": 4,
+    "sources_enabled": 4,
+    "sources_healthy": 0,
+    "outbox_pending": 20000,
+    "events_seen": 33,
+    "events_enqueued": 0,
+    "events_published": 0,
+    "duplicates_skipped": 0,
+    "invalid_events": 32,
+    "home_assistant_discovery_runs": 0,
+    "last_poll_at": "2026-10-13T23:12:22.826Z"
+  },
+  "confirmed": [
+    "Pinned source fetched and checked out",
+    "Native release build completed",
+    "Runtime file exchange verified",
+    "Post-start HTTP liveness",
+    "Initial MQTT connection established"
+  ],
+  "remaining": [
+    "Measured trend of broker publish acknowledgements and outbox size",
+    "Source-specific error reasons and health",
+    "Home Assistant discovery",
+    "Original cause of the MQTT backlog",
+    "Separate live process identity and readiness evidence"
+  ],
+  "interpretation": "This is one initial status snapshot. Zero publish acknowledgements do not establish a persistent delivery failure. The current poller also counts enqueue errors caused by outbox capacity as invalid_events; no malformed-event cause is established by this counter alone."
+}

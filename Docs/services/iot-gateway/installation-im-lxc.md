@@ -84,4 +84,10 @@ Der folgende vollständige Wiederanlaufblock verwendet den in PR #83 übernommen
 
 Der Sparse-Checkout-Ablauf wurde lokal gegen einen gefilterten Git-Transport geprüft; Cargo löst im entsprechenden reduzierten Quellbaum alle 30 Workspace-Pakete auf, einschließlich `netcore-iot-gateway`. Bash-Syntax und Updater-CLI wurden geprüft. Das bestätigt die Vorbereitung des Rückwegs, nicht dessen tatsächliche Ausführung auf dem Diensthost.
 
+## Bestätigter Wiederanlauf auf dem Diensthost
+
+Am 14. Oktober 2026 bestätigt Jan den reduzierten Checkout mit 128,80 KiB Git-Metadaten und 3,77 MiB Blob-Pack, den nativen Release-Build in 29,85 Sekunden und den verifizierten Austausch von `/usr/local/bin/netcore-iot-gateway` auf SHA-256 `32acbedd105aa1859db10f034af83fff6baf45c83a84512e99d6dbbb0bf3048d`. Nach dem ausdrücklichen Dienststart antwortet `/health/live` mit `live`; `/api/v1/status` meldet MQTT verbunden und keinen MQTT-Verbindungsfehler. Die zwei anfänglichen Verbindungsablehnungen liegen vor dem erfolgreichen HTTP-Antwortnachweis. [Strukturierter Betreiberbeleg](tests/evidence/wiederanlauf-2026-10-14.json).
+
+Die erste Statusaufnahme zeigt noch 20.000 wartende Nachrichten, 0 Broker-Publish-Quittungen und 0 von 4 gesunden Ereignisquellen. Das ist kein Nachweis einer anhaltenden Zustellstörung; Quittierungs-/Outbox-Verlauf und Quellenfehler sind anschließend zu messen. `invalid_events=32` belegt ebenfalls keinen bestimmten Formatfehler: Der aktuelle Poller zählt auch Kapazitätsfehler beim Einreihen als ungültige Ereignisse. Vollständige MQTT-Zustellung, Quellen-Readiness, Home-Assistant-Discovery und die ursprüngliche Rückstauursache bleiben offen.
+
 **Quellabgleich: 14. Oktober 2026.** [Quellcode](../../../system-backend/iot-gateway) · [Konfigurationsvorlagen](../../../system-backend/iot-gateway/config).
