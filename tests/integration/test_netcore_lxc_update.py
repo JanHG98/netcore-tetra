@@ -313,6 +313,22 @@ class RolloutTests(unittest.TestCase):
         self.stage_mock.assert_not_called()
         self.popen_mock.assert_not_called()
 
+    def test_unrelated_guest_without_python_does_not_block_managed_rollout(self):
+        self.pct_output += "140 running unrelated-app\n"
+        original_run = self.run_mock.side_effect
+
+        def unrelated_has_no_netcore_units(args, **kwargs):
+            if "list-unit-files" in args and args[2] == "140":
+                return SimpleNamespace(stdout="ssh.service enabled enabled\n")
+            return original_run(args, **kwargs)
+
+        self.run_mock.side_effect = unrelated_has_no_netcore_units
+        self.assertEqual(self.rollout(apply=True), 0)
+        self.assertEqual([call.args[0] for call in self.scan_mock.call_args_list], [136, 137])
+        self.assertEqual([call.args[0] for call in self.stage_mock.call_args_list], [136, 137])
+        self.assertEqual(self.report["containers"][-1]["phase"], "no_managed_runtime")
+        self.assertEqual(self.popen_mock.call_count, 2)
+
     def test_all_layout_preflights_complete_before_first_runtime_exchange(self):
         self.assertEqual(self.rollout(apply=True), 0)
         self.assertEqual(self.timeline, [("preflight", "core"), ("preflight", "gateway"),
