@@ -1,0 +1,206 @@
+{
+  "version": 1,
+  "source_commit": "e1617b28e6f2e8f79958f88e84bc1dc1606c59ed",
+  "policy": "Runtime assets only. Existing installed units, configs, seed imports, env credentials, database paths and app data remain unchanged.",
+  "roles": {
+    "hardware-gateway": {
+      "files": [
+        {
+          "source": "system-backend/hardware-gateway/src/netcore_hardware_gateway.py",
+          "target": "/usr/local/bin/netcore-hardware-gateway",
+          "mode": "0755"
+        }
+      ]
+    },
+    "rf-monitor": {
+      "files": [
+        {
+          "source": "system-backend/rf-monitor/src/netcore_rf_monitor.py",
+          "target": "/usr/local/bin/netcore-rf-monitor",
+          "mode": "0755"
+        }
+      ]
+    },
+    "alarm-workflow": {
+      "files": [
+        {
+          "source": "system-backend/alarm-workflow/src/netcore_alarm_workflow.py",
+          "target": "/usr/local/lib/netcore-alarm-workflow/netcore_alarm_workflow.py",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/alarm-workflow/src/netcore_alarm_workflow_launcher.py",
+          "target": "/usr/local/bin/netcore-alarm-workflow",
+          "mode": "0755"
+        },
+        {
+          "source": "system-backend/alarm-workflow/web-ui/index.html",
+          "target": "/usr/local/share/netcore-alarm-workflow/index.html",
+          "mode": "0644"
+        }
+      ]
+    },
+    "task-workflow": {
+      "files": [
+        {
+          "source": "system-backend/task-workflow/src/netcore_task_workflow.py",
+          "target": "/usr/local/lib/netcore-task-workflow/netcore_task_workflow.py",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/task-workflow/src/netcore_task_workflow_launcher.py",
+          "target": "/usr/local/bin/netcore-task-workflow",
+          "mode": "0755"
+        },
+        {
+          "source": "system-backend/task-workflow/web-ui/index.html",
+          "target": "/usr/local/share/netcore-task-workflow/index.html",
+          "mode": "0644"
+        }
+      ]
+    },
+    "asset-management": {
+      "files": [
+        {
+          "source": "system-backend/asset-management/src/netcore_asset_management.py",
+          "target": "/usr/local/bin/netcore-asset-management",
+          "mode": "0755"
+        }
+      ]
+    },
+    "sip-switch": {
+      "files": [
+        {
+          "source": "system-backend/sip-switch/src/netcore_sip_switch.py",
+          "target": "/usr/local/bin/netcore-sip-switch",
+          "mode": "0755"
+        },
+        {
+          "source": "system-backend/sip-switch/src/netcore_sip_runtime.py",
+          "target": "/usr/local/bin/netcore_sip_runtime.py",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/sip-switch/agi/netcore-sip-route.py",
+          "target": "/var/lib/asterisk/agi-bin/netcore-sip-route.py",
+          "mode": "0755"
+        }
+      ]
+    },
+    "directory": {
+      "files": [
+        {
+          "source": "system-backend/directory/netcore-directory.py",
+          "target": "/opt/netcore-directory/netcore_directory-server.py",
+          "mode": "0755"
+        }
+      ]
+    },
+    "observability": {
+      "files": [
+        {
+          "source": "system-backend/observability/logging/log_store.py",
+          "target": "/opt/netcore-observability/logging/log_store.py",
+          "mode": "0644"
+        }
+      ],
+      "notes": [
+        "Main Rust binary comes from catalog. Update logging/log_store.py only when destination exists (logging stack already installed). Preserve /etc/netcore/{receiver.rsyslog.conf,syslog.json,openlab-hosts.json}, stack configs, units and archive timer.",
+        "Installed Python log_store.py reads shared configuration and is run by syslog preview/archive units. No source change for recent 0770e903..e1617b28 fixes; binary alone contains current collector/state fixes."
+      ]
+    },
+    "alert-service": {
+      "files": [
+        {
+          "source": "system-backend/alert-service/geometry.py",
+          "target": "/usr/local/lib/netcore-alert-service/geometry.py",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/alert-service/main.py",
+          "target": "/usr/local/lib/netcore-alert-service/main.py",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/alert-service/nina.py",
+          "target": "/usr/local/lib/netcore-alert-service/nina.py",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/alert-service/service.py",
+          "target": "/usr/local/lib/netcore-alert-service/service.py",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/alert-service/static/app.js",
+          "target": "/usr/local/lib/netcore-alert-service/static/app.js",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/alert-service/static/index.html",
+          "target": "/usr/local/lib/netcore-alert-service/static/index.html",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/alert-service/static/service-design.js",
+          "target": "/usr/local/lib/netcore-alert-service/static/service-design.js",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/alert-service/static/service-theme-init.js",
+          "target": "/usr/local/lib/netcore-alert-service/static/service-theme-init.js",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/alert-service/static/style.css",
+          "target": "/usr/local/lib/netcore-alert-service/static/style.css",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/alert-service/static/vendor/LEAFLET-LICENSE.txt",
+          "target": "/usr/local/lib/netcore-alert-service/static/vendor/LEAFLET-LICENSE.txt",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/alert-service/static/vendor/leaflet.css",
+          "target": "/usr/local/lib/netcore-alert-service/static/vendor/leaflet.css",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/alert-service/static/vendor/leaflet.js",
+          "target": "/usr/local/lib/netcore-alert-service/static/vendor/leaflet.js",
+          "mode": "0644"
+        },
+        {
+          "source": "system-backend/alert-service/store.py",
+          "target": "/usr/local/lib/netcore-alert-service/store.py",
+          "mode": "0644"
+        }
+      ],
+      "notes": [
+        "Preserve existing app directory identity plus all configs/env/token/database paths. Existing systemd main.py launched by /usr/bin/python3; Python mode 0644 adequate. Stop service before replacing multiple runtime files; rollback on start/liveness failure."
+      ]
+    },
+    "tbs-sip-fallback": {
+      "unit": "netcore-tbs-sip-failover.service",
+      "files": [
+        {
+          "source": "system-backend/sip-switch/tbs-fallback/src/netcore_tbs_sip_fallback.py",
+          "target": "/usr/local/bin/netcore-tbs-sip-fallback",
+          "mode": "0755"
+        }
+      ],
+      "notes": [
+        "Auxiliary Pi/TBS role, not part of central LXC set. Current 0770e903..e1617b28 fixes include this runtime file (SIP HTTP response handling). Preserve existing tbs-sip-fallback.toml, Asterisk config/includes, unit and disabled/enabled state; replacing runtime file does not require rerender or migration."
+      ]
+    },
+    "piper": {
+      "unit": "netcore-piper.service",
+      "files": [],
+      "notes": [
+        "External Python provider in /opt/netcore-piper venv, imported piper package, port 5005 /voices. No repository runtime Python source to deploy. Do not reinstall or upgrade models/provider merely to update Media Library binary. Media Library update can check existing Piper liveness separately."
+      ]
+    }
+  }
+}
+
