@@ -2,7 +2,7 @@
 
 **Neu: [direkt kopierbare Updatebefehle für jeden Dienst](#updatebefehle-für-jeden-dienst)** mit Zielhost, Quellcommit und anschließender Prüfung. Der Dienstindex steht direkt bei den Blöcken.
 
-Stand: **13.10.2026**. Diese Arbeiten gehören zu **Z01.4**. Der aktuelle [VM119-Updateblock](#vm119-auf-den-aktuellen-main-stand-aktualisieren) übernimmt Controller, Builder, Image-Rezept und Formular gemeinsam aus dem beim Start aufgelösten `main`. Historischer Ausgangspunkt war das gestartete Image `53a280bd` am Commit `0770e903`, Profil **SRV-M-TBS-01**; der später praktisch getestete KDE-Stand ist unten gesondert belegt.
+Stand: **14.10.2026**. Diese Arbeiten gehören zu **Z01.4**. Der aktuelle [VM119-Updateblock](#vm119-auf-den-aktuellen-main-stand-aktualisieren) übernimmt Controller, Builder, Image-Rezept und Formular gemeinsam aus dem beim Start aufgelösten `main`. Historischer Ausgangspunkt war das gestartete Image `53a280bd` am Commit `0770e903`, Profil **SRV-M-TBS-01**; der später praktisch getestete KDE-Stand ist unten gesondert belegt.
 
 ## Was belegt ist
 
