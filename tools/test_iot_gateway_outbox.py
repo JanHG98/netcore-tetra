@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
@@ -149,6 +150,96 @@ def gateway(config: Path, base: str, log: Path):
 
 
 class OutboxRecovery(unittest.TestCase):
+    def test_full_outbox_defers_source_events_and_retries_after_broker_recovery(self):
+        events = [{
+            'schema': 'netcore-event-v1', 'event_id': str(uuid.uuid4()),
+            'event_type': 'subscriber.route_changed',
+            'source': {'service': 'mobility-core', 'instance': 'test'},
+            'timestamp': '2026-10-13T23:18:47Z', 'severity': 'info',
+            'subject': {'type': 'subscriber', 'id': f'2600000{index}'},
+            'payload': {'index': index},
+        } for index in range(3)]
+
+        class Source(BaseHTTPRequestHandler):
+            def do_GET(self):
+                raw = json.dumps(list(reversed(events))).encode()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+
+            def log_message(self, *args):
+                pass
+
+        source = ThreadingHTTPServer(('127.0.0.1', 0), Source)
+        source_thread = threading.Thread(target=lambda: source.serve_forever(poll_interval=0.05), daemon=True)
+        source_thread.start()
+        broker = Broker()
+        try:
+            with tempfile.TemporaryDirectory(prefix='netcore-iot-backpressure-') as tmp:
+                directory = Path(tmp)
+                outbox = directory / 'state/outbox'
+                outbox.mkdir(parents=True)
+                for index in range(100):
+                    message = {
+                        'id': str(uuid.uuid4()), 'created_at': '2026-10-13T22:00:00Z',
+                        'kind': 'event', 'topic': f'netcore/v1/test/backlog/{index}',
+                        'qos': 1, 'retain': False, 'payload': '{}',
+                        'source_event_id': None,
+                    }
+                    (outbox / f'{index:020}.json').write_text(json.dumps(message), encoding='utf-8')
+                with socket.socket() as reservation:
+                    reservation.bind(('127.0.0.1', 0))
+                    http_port = reservation.getsockname()[1]
+                base = f'http://127.0.0.1:{http_port}'
+                config = directory / 'gateway.toml'
+                config.write_text(
+                    '[[sources]]\nid = "test-source"\nurl = '
+                    + json.dumps(f'http://127.0.0.1:{source.server_port}/api/v1/events')
+                    + '\nenabled = true\n[server]\n' + f'bind = "127.0.0.1:{http_port}"\n'
+                    + '[mqtt]\nhost = "127.0.0.1"\n' + f'port = {broker.port}\n'
+                    + 'reconnect_secs = 1\npublish_timeout_secs = 2\n'
+                    + '[polling]\ninterval_ms = 250\n'
+                    + '[home_assistant]\nenabled = false\n'
+                    + '[storage]\nstate_dir = ' + json.dumps(str(directory / 'state'))
+                    + '\noutbox_limit = 100\n', encoding='utf-8')
+                with gateway(config, base, directory / 'gateway.log'):
+                    deadline = time.monotonic() + 3
+                    while time.monotonic() < deadline:
+                        status = json.loads(request(base, '/api/v1/status')[1])
+                        if status['events_deferred'] >= 3:
+                            break
+                        time.sleep(0.05)
+                    self.assertGreaterEqual(status['events_deferred'], 3)
+                    self.assertEqual(status['outbox_pending'], 100)
+                    self.assertEqual(status['sources_healthy'], 1)
+                    self.assertEqual(status['invalid_events'], 0)
+                    self.assertEqual(status['events_enqueued'], 0)
+                    source_status = json.loads(request(base, '/api/v1/sources')[1])[0]
+                    self.assertEqual(source_status['events_seen'], source_status['events_deferred'])
+                    broker.start()
+                    deadline = time.monotonic() + 10
+                    while time.monotonic() < deadline:
+                        status = json.loads(request(base, '/api/v1/status')[1])
+                        if status['events_enqueued'] == 3 and status['broker_publish_acks'] >= 109:
+                            break
+                        time.sleep(0.05)
+                    self.assertEqual(status['events_enqueued'], 3)
+                    self.assertGreaterEqual(status['broker_publish_acks'], 109)
+                    self.assertEqual(status['invalid_events'], 0)
+                    published = [json.loads(payload) for topic, payload in broker.published
+                                 if topic == 'netcore/v1/events/subscriber/route_changed']
+                    self.assertEqual([event['event_id'] for event in published],
+                                     [event['event_id'] for event in events])
+                    self.assertIn('netcore_iot_gateway_events_deferred ',
+                                  request(base, '/metrics')[1].decode())
+        finally:
+            broker.close()
+            source.shutdown()
+            source.server_close()
+            source_thread.join(timeout=2)
+
     def test_http_survives_restart_and_mqtt_replays_full_or_over_limit_backlog(self):
         for pending in (100, 105):
             with self.subTest(pending=pending), tempfile.TemporaryDirectory(prefix='netcore-iot-outbox-') as tmp:
@@ -194,7 +285,10 @@ class OutboxRecovery(unittest.TestCase):
                             if attempt == 0:
                                 continue
                             broker.start()
-                            deadline = time.monotonic() + 45
+                            replay_started = time.monotonic()
+                            # A socket-polling sender needs about 20 seconds for
+                            # this backlog; incoming/outgoing work must wake it.
+                            deadline = time.monotonic() + 10
                             while time.monotonic() < deadline:
                                 self.assertIsNone(process.poll())
                                 status = json.loads(request(base, '/api/v1/status')[1])
@@ -204,6 +298,8 @@ class OutboxRecovery(unittest.TestCase):
                             else:
                                 self.fail(f'backlog did not drain: {status}')
                             self.assertEqual(status['broker_publish_acks'], pending + 3)
+                            print(f'MQTT replay: {pending} backlog messages + 3 startup states '
+                                  f'in {time.monotonic() - replay_started:.3f}s', flush=True)
                             self.assertFalse(list(outbox.glob('*.json')))
                             topics = [topic for topic, _ in broker.published]
                             for index in range(pending):

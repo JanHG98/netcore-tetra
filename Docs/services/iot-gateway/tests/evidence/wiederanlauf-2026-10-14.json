@@ -74,14 +74,156 @@
     "Native release build completed",
     "Runtime file exchange verified",
     "Post-start HTTP liveness",
-    "Initial MQTT connection established"
+    "Initial MQTT connection established",
+    "Operator confirms restored Web UI",
+    "Broker publish acknowledgements increase over 20 seconds",
+    "All four event sources healthy with no last error"
   ],
   "remaining": [
-    "Measured trend of broker publish acknowledgements and outbox size",
-    "Source-specific error reasons and health",
+    "Sustained reduction of the backlog under ongoing source ingress",
+    "Live acceptance of the subsequent MQTT throughput and event backpressure fix",
     "Home Assistant discovery",
     "Original cause of the MQTT backlog",
     "Separate live process identity and readiness evidence"
   ],
-  "interpretation": "This is one initial status snapshot. Zero publish acknowledgements do not establish a persistent delivery failure. The current poller also counts enqueue errors caused by outbox capacity as invalid_events; no malformed-event cause is established by this counter alone."
+  "interpretation": "Initial startup recovery and the subsequent UI/MQTT/source observations are confirmed by operator output. The backlog remains saturated; full message delivery and the throughput follow-up fix still require separate live acceptance.",
+  "follow_up_probes": {
+    "interval_seconds": 10,
+    "probes": [
+      {
+        "probe": 1,
+        "mqtt_connected": true,
+        "mqtt_last_error": null,
+        "broker_publish_acks": 1234,
+        "outbox_pending": 19999,
+        "sources_healthy": 4,
+        "invalid_events": 15022
+      },
+      {
+        "probe": 2,
+        "mqtt_connected": true,
+        "mqtt_last_error": null,
+        "broker_publish_acks": 1273,
+        "outbox_pending": 19997,
+        "sources_healthy": 4,
+        "invalid_events": 15179
+      },
+      {
+        "probe": 3,
+        "mqtt_connected": true,
+        "mqtt_last_error": null,
+        "broker_publish_acks": 1320,
+        "outbox_pending": 19997,
+        "sources_healthy": 4,
+        "invalid_events": 15301
+      }
+    ],
+    "sources": [
+      {
+        "id": "call-control",
+        "healthy": true,
+        "last_error": null
+      },
+      {
+        "id": "mobility-core",
+        "healthy": true,
+        "last_error": null
+      },
+      {
+        "id": "node-gateway",
+        "healthy": true,
+        "last_error": null
+      },
+      {
+        "id": "sds-router",
+        "healthy": true,
+        "last_error": null
+      }
+    ],
+    "recent_events": [
+      {
+        "timestamp": "2026-10-13T23:18:47.601Z",
+        "kind": "event.rejected",
+        "detail": {
+          "reason": "outbox limit 20000 would be exceeded",
+          "source": "sds-router"
+        }
+      },
+      {
+        "timestamp": "2026-10-13T23:18:47.584Z",
+        "kind": "event.rejected",
+        "detail": {
+          "reason": "outbox limit 20000 would be exceeded",
+          "source": "sds-router"
+        }
+      },
+      {
+        "timestamp": "2026-10-13T23:18:47.558Z",
+        "kind": "event.rejected",
+        "detail": {
+          "reason": "outbox limit 20000 would be exceeded",
+          "source": "mobility-core"
+        }
+      },
+      {
+        "timestamp": "2026-10-13T23:18:47.543Z",
+        "kind": "event.rejected",
+        "detail": {
+          "reason": "outbox limit 20000 would be exceeded",
+          "source": "mobility-core"
+        }
+      },
+      {
+        "timestamp": "2026-10-13T23:18:47.525Z",
+        "kind": "event.rejected",
+        "detail": {
+          "reason": "outbox limit 20000 would be exceeded",
+          "source": "node-gateway"
+        }
+      },
+      {
+        "timestamp": "2026-10-13T23:18:47.510Z",
+        "kind": "event.rejected",
+        "detail": {
+          "reason": "outbox limit 20000 would be exceeded",
+          "source": "node-gateway"
+        }
+      },
+      {
+        "timestamp": "2026-10-13T23:18:47.495Z",
+        "kind": "event.rejected",
+        "detail": {
+          "reason": "outbox limit 20000 would be exceeded",
+          "source": "node-gateway"
+        }
+      },
+      {
+        "timestamp": "2026-10-13T23:18:47.480Z",
+        "kind": "event.rejected",
+        "detail": {
+          "reason": "outbox limit 20000 would be exceeded",
+          "source": "node-gateway"
+        }
+      },
+      {
+        "timestamp": "2026-10-13T23:18:47.464Z",
+        "kind": "event.rejected",
+        "detail": {
+          "reason": "outbox limit 20000 would be exceeded",
+          "source": "node-gateway"
+        }
+      },
+      {
+        "timestamp": "2026-10-13T23:18:47.449Z",
+        "kind": "event.rejected",
+        "detail": {
+          "reason": "outbox limit 20000 would be exceeded",
+          "source": "node-gateway"
+        }
+      }
+    ],
+    "operator_ui_confirmation": "Web-UI geht wieder",
+    "interpretation": "Broker publication completes (86 additional acknowledgements in 20 seconds, about 4.3/s); all four HTTP sources are healthy. The outbox remains near its limit. All ten shown rejections are admission-capacity errors. This does not establish that every historical invalid_events increment had this cause.",
+    "live_acceptance_of_throughput_fix": false
+  }
 }
