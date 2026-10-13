@@ -80,6 +80,12 @@ const path = require('node:path');
     await page.locator('#image-vpn-password').fill('fixture-vpn-private');
     await page.locator('#image-build').click();
     await page.locator('#image-artifacts').getByText('Download bereit',{exact:true}).waitFor({timeout:15000});
+    // An artifact can be published before the job/log snapshot finishes. Wait
+    // for the real selected job's completion instead of asserting that race.
+    await page.waitForFunction(()=>
+      document.querySelector('#image-job-list .job.selected .badge')?.textContent==='Erfolgreich' &&
+      document.querySelector('#image-log').textContent.includes('simulated image builder'),
+      null,{timeout:15000});
     assert.match(await page.locator('#image-log').textContent(),/simulated image builder/);
     assert.match(await page.locator('#image-job-list').textContent(),/bbbbbbbb/);
     assert.match(await page.locator('#image-artifacts').textContent(),/bbbbbbbb/);
@@ -111,6 +117,11 @@ const path = require('node:path');
     assert.equal(await page.locator('#image-form [name=password]').inputValue(),'');
     await page.locator('#image-build').click();
     await page.waitForFunction(()=>document.querySelectorAll('#image-artifacts .image-card').length===2,{},{timeout:15000});
+    // Terminal status also means the private request has been scrubbed before
+    // reading public API metadata and asserting credential cleanup below.
+    await page.waitForFunction(()=>
+      document.querySelector('#image-job-list .job.selected .badge')?.textContent==='Erfolgreich',
+      null,{timeout:15000});
     const imageSubmissions=mutations.filter(request=>request.path==='/api/v1/images/build');
     assert.equal(imageSubmissions.length,2);
     assert.equal(imageSubmissions[1].body.desktop,'none');
