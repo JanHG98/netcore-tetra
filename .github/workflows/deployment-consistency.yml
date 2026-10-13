@@ -45,6 +45,8 @@ jobs:
           node-version: '22'
       - name: Inventory, Ready rejection, configuration preservation and audit
         run: python3 tools/check_z01_integration.py
+      - name: Proxmox runtime update, build-before-stop and rollback
+        run: python3 -B -m unittest discover -s tests/integration -p 'test_netcore_*_update.py' -v
       - name: Public alert monitoring keeps the management API protected
         run: python3 -m unittest discover -s system-backend/alert-service/tests -p test_http.py -v
       - name: Generated audit is current
@@ -87,3 +89,4 @@ jobs:
           cargo build --locked -p netcore-observability
           python3 system-backend/observability/tests/native-syslog-smoke.py --browser
           python3 system-backend/observability/tests/native-syslog-loopback.py
+
