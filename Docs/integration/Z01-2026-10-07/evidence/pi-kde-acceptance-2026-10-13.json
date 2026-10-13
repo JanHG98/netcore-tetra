@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "operator_reported_at": "2026-10-13T22:03:57+02:00",
+  "station": "SRV-M-TBS-01",
+  "image_artifact": {
+    "build_id": "c2982243dae94d469e0f18b9185879b3",
+    "filename": "netcore-srv-m-tbs-01-e1617b28e6f2-c2982243.img.xz",
+    "commit": "e1617b28e6f2e8f79958f88e84bc1dc1606c59ed",
+    "desktop": "kde",
+    "sha256": "bc07189176f602fca80c2559c255eab73b7b4a009ed3a29d2f5d398ed43fa8f3",
+    "kde_boot_operator_reported": true
+  },
+  "operator_reported_pass": {
+    "voice_calls": true,
+    "sds": true,
+    "local_recording": true,
+    "recording_rf_playback": true,
+    "wifi_radio_toggle": true,
+    "wifi_connection": true,
+    "neighbor_ui_edit": true
+  },
+  "runtime_log": {
+    "source_file": "Eingefügter Text(20261013-200039).txt",
+    "tetra": {
+      "main_pid": 2358,
+      "state": "active/running",
+      "nrestarts": 2,
+      "restart_causes_not_reconstructed": true
+    },
+    "discovery": {
+      "main_pid": 1102,
+      "state": "active/running",
+      "nrestarts": 0
+    },
+    "tx_window": {
+      "start": "2026-10-13T21:59:46.616+02:00",
+      "end": "2026-10-13T22:00:26.610+02:00",
+      "driver_written_blocks_start": 26588,
+      "driver_written_blocks_end": 53252,
+      "driver_written_delta": 26664,
+      "late_skip_events_start": 4,
+      "late_skip_events_end": 4,
+      "late_skipped_blocks_start": 76,
+      "late_skipped_blocks_end": 76,
+      "hw_status_supported": false
+    },
+    "neighbor": {
+      "software_network_broadcast_logged": true,
+      "broadcast_neighbors": 1,
+      "serving_cell_advertisement": 0,
+      "advertisement_inconsistency_observed": true
+    }
+  },
+  "source_correction": {
+    "scope": "Neighbour editor aligns the broadcast-support bit with periodic broadcasting, detects flag-only changes and shows pending runtime flag changes.",
+    "standard": "ETSI EN 300 392-2 V3.8.1, 18.3.6.1 and 18.5.16 table 18.61",
+    "broadcast_bit": 2,
+    "enquiry_bit": 1,
+    "enquiry_bit_not_automatically_enabled": true,
+    "installed_on_operator_pi": false
+  },
+  "pending_acceptance": [
+    "MS decoding of neighbor information and cell reselection",
+    "SIP calls and failover",
+    "VPN policy transitions",
+    "Continuous long run",
+    "Central LXC update receipts"
+  ],
+  "privacy": "Contains reported technical results only; private WLAN identifiers and credentials from the log are omitted."
+}
+

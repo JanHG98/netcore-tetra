@@ -41,7 +41,36 @@ Der zentrale SIP-Switch liegt gemäß aktuellem Inventar auf `10.0.1.125`, der P
 4. **Deployment-WebUI:** Profil **SRV-M-TBS-01**, KDE und persönliches OS-Passwort auswählen; bei eingerichteten SIP-Zugängen die private Importdatei laden. Einen neuen Build starten und genau dessen Manifest/Checksumme prüfen.
 5. **Pi:** neues Image auf SD schreiben und booten. KDE-Anmeldung, Carrier-/Nachbar-/Telegram-/WLAN-Bedienung, Aufnahme/Abspielen, zentrale Readiness und echte SIP-Rufe separat abnehmen.
 
-Ein Nachbarzellen-Speichern mit Änderungen kündigt einen TBS-Neustart an; unverändertes Speichern startet nicht neu. Eine veraltete Revision liefert 409 und lässt den Entwurf zur Entscheidung des Bedieners stehen. Diese Implementierung hat den laufenden Funkversuch nicht selbst neu gestartet.
+Ein Nachbarzellen-Speichern mit einer geänderten Liste oder korrigierter Broadcast-Ankündigung kündigt einen TBS-Neustart an. Eine bereits unveränderte Liste mit korrekter Ankündigung startet nicht erneut neu. Eine veraltete Revision liefert 409 und lässt den Entwurf zur Entscheidung des Bedieners stehen. Diese Implementierung hat den laufenden Funkversuch nicht selbst neu gestartet.
+
+## Pi-Funktionstest vom 13.10.2026
+
+Jan hat nach dem Schreiben des KDE-Artefakts `c2982243` (`e1617b28`) den KDE-Start sowie Rufe, SDS, lokale Aufzeichnung, RF-Wiedergabe einer Aufzeichnung, WLAN ein/aus, WLAN verbinden und die Nachbarzellen-Eingabe im UI praktisch bestätigt. [Strukturierter Abnahmebeleg](evidence/pi-kde-acceptance-2026-10-13.json).
+
+Der mitgelieferte Laufzeitausschnitt zeigt TBS und Discovery aktiv. TX-Schreibvorgänge steigen in etwa 40 Sekunden um 26.664; die softwareseitigen Late-Zähler bleiben bei 4 Ereignissen/76 Blöcken. `hw_status_supported=false` liefert dabei keinen Messnachweis für Hardware-Unterläufe. `NRestarts=2` lässt sich ohne früheres Journal nicht zuordnen; ein geändertes Nachbarzellen-Speichern löst absichtlich einen kontrollierten Neustart über Exit 75 aus.
+
+### Nachbarzellen-Ankündigung korrigieren
+
+Im beobachteten Image protokolliert die Software `D-NWRK-BROADCAST ... neighbours=1`, während der Serving-Cell-Fingerprint `neighbour_broadcast=0` meldet. Nach ETSI EN 300 392-2 V3.8.1, 18.3.6.1 und 18.5.16/Tabelle 18.61 muss die Ankündigung zur Broadcast-Unterstützung passen: Broadcast-Bit = 2, Enquiry-Bit = 1. Das belegt eine Ankündigungsinkonsistenz; die Interpretation durch ein MS und tatsächliche Zellwechsel sind noch nicht geprüft.
+
+Die korrigierte Nachbarzellen-Bedienung setzt das Broadcast-Bit, wenn eine Nachbarliste oder eine Zeitzone einen periodischen Broadcast aktiviert. Ein vorhandenes Enquiry-Bit bleibt erhalten und wird nicht automatisch ergänzt. Das Speichern einer unveränderten alten Liste mit falscher Ankündigung repariert den Wert einmal und fordert den vorgesehenen Neustart an. Danach ist identisches Speichern wieder ohne Neustart. Konfigurierter und laufender Ankündigungswert fließen in die Anzeige einer noch ausstehenden Übernahme ein.
+
+Für das aktuell gebootete `e1617b28` mit Ankündigung 0 reicht eine Konfigurationskorrektur. Im vorhandenen Abschnitt `[cell_info]` von `/etc/netcore/config.toml` den folgenden Wert eintragen beziehungsweise ändern:
+
+```toml
+neighbor_cell_broadcast = 2
+```
+
+Nach beendetem Ruf die Syntax prüfen und die Konfiguration einmal übernehmen:
+
+```bash
+sudo python3 -c 'import tomllib; tomllib.load(open("/etc/netcore/config.toml", "rb"))' &&
+sudo systemctl restart tetra.service
+```
+
+Nach dem Start muss der Serving-Cell-Fingerprint `neighbour_broadcast=2` ausgeben. Diese begrenzte Konfigurationskorrektur benötigt keinen Rust-Build und kein neues SD-Image. Die automatische GUI-Korrektur kommt mit dem aktualisierten TBS-Programm.
+
+Offen bleiben SIP/Fallback, VPN-Umschaltung, ein längerer Dauerlauf, MS-Nachbarzelleninterpretation/Zellwechsel und die tatsächlichen Updatebelege der zentralen LXCs.
 
 ## Prüfungen
 
@@ -1061,4 +1090,5 @@ NC_TBS_UNIT
   systemctl show "$NC_UNIT" -p ActiveState -p MainPID -p NRestarts
 )
 ```
+
 
