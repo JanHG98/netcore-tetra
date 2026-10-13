@@ -2,6 +2,8 @@
 
 **Projektstand und nächster Schritt:** [Zentrale Gesamtroadmap](roadmaps/gesamtroadmap.md).
 
+**Visuelle Projektübersicht:** [Xmind-Gesamtmap](roadmaps/xmind-gesamtuebersicht.md) mit Arbeitsfolge, Fachumfang und Dateiinventar; die Map verwendet die kostenlosen Basisfunktionen.
+
 **Quellenabgleich:** 13.10.2026 mit `main@e1617b28`. Aktuelle Anleitungen beschreiben den vorhandenen Code und kennzeichnen offene Laufzeit- und Anlagenprüfungen. Datierte Nachweise behalten ihren ursprünglichen Geltungszeitraum.
 
 **Datierte Gesamtausgabe:** [Komplettguide 13.10.2026](NetCore-Tetra-Komplettguide-2026-10-13.md) · [Systemhandbuch 13.10.2026](NetCore-Tetra-Systemhandbuch-2026-10-13.md) · jeweils zusätzlich als DOCX und PDF im selben Verzeichnis.

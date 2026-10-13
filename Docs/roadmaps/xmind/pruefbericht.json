@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "checked_at": "2026-10-13",
+  "timezone": "Europe/Berlin",
+  "source_commit": "759a4f4ee989a811c509cd08cd1a3480f9a676f0",
+  "source_tree": "c93e08d71e070399606510e13f28207f901aee28",
+  "artifact": "Docs/roadmaps/netcore-tetra-gesamtuebersicht.xmind",
+  "sha256": "78186c083429fd17222332d1f0966c8c913dc3063831f325e01a156cc2b056d4",
+  "counts": {
+    "sheets": 1,
+    "topics": 4196,
+    "relationships": 8,
+    "inventory_files": 2788,
+    "explicit_source_paths": 164,
+    "regular_runtime_services": 26
+  },
+  "passed": [
+    "Deterministische Erzeugung und bytegenauer --check",
+    "ZIP-CRC und gueltige JSON-/XML-Dateien",
+    "Gleiche Themen-IDs und Reihenfolge in JSON und XML",
+    "Eindeutige Themen-IDs und gueltige Beziehungsendpunkte",
+    "Alle 2788 Dateipfade des Ausgangs-Gitbaums genau einmal im Inventar",
+    "Z01-Z11, Z01.1-Z01.4, Z02.1-Z02.5, Z11.1, IAM M0-M8 und Drive D0-D9",
+    "Runtime-Registry und Deployment-Inventar mit 26 Rollen abgeglichen",
+    "Ein Blatt und eingeschraenktes Free-Funktionsprofil ohne Premium-Felder",
+    "Hersteller-JSON-Schema: 34132 angewandte Feld-/Referenzpruefungen",
+    "Separate SVG-Uebersicht gerendert und visuell kontrolliert"
+  ],
+  "schema_validation": {
+    "source": "https://github.com/xmindltd/xmind-model/tree/master/schemas",
+    "method": "Unabhaengiger lokaler Validator fuer die im Hersteller-Schema verwendeten Schluesselwoerter type, required, enum, properties, items, additionalProperties, anyOf und lokale $ref",
+    "full_general_purpose_json_schema_engine": false
+  },
+  "interactive_xmind_application_test": {
+    "executed": false,
+    "reason": "Keine Browser- oder native App-Oberflaeche in der Ausfuehrungsumgebung verfuegbar; die Xmind-Datei wurde nicht interaktiv geoeffnet."
+  },
+  "scope": "Dokumentations-/Artefaktpruefung; keine neue Implementierungs-, Anlagen-, Funk-, Zertifizierungs- oder Endgeraeteabnahme. Der vorhandene KDE-/Pi-Betreiberbeleg aus PR 77 wird als Quelle uebernommen."
+}
