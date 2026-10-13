@@ -9,6 +9,7 @@
 - [Netzwerk und Ports](netzwerk-und-ports.md)
 - [Bedienoberflächen](bedienoberflaechen-und-zustaendigkeiten.md)
 - [Normen und Tests](etsi-normen-und-tests.md)
+- [Vergleich mit externen Projekten](vergleich-mit-externen-projekten.md)
 
 **Aufbau**
 

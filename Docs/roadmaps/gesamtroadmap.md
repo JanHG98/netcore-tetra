@@ -3,12 +3,12 @@
 | Feld | Wert |
 | --- | --- |
 | Roadmap-ID | NETCORE-MASTER-01 |
-| Erstellt / aktualisiert | 2026-10-05 / 2026-10-12, Europe/Berlin |
+| Erstellt / aktualisiert | 2026-10-05 / 2026-10-13, Europe/Berlin |
 | Geltungsbereich | Gesamtes NetCore-Tetra-Repository: TBS / Funkstack, Core, Deployment, Betrieb, IAM, Drive, Plugins und weitere Integrationen |
 | Geprüfter Ausgangsstand | Z01: `main@dae9363062a1442664a083e1fc32e6944b3be9a6`, historische Quelle `bbf039729b9b05f8d623b11195ca24a124f68d16`; Integration `67b2f0d6e2fbcbf7013ee9b0dae9b2a25c2d9315` auf `feature/z01-deployment-consolidation` |
 | Ergänzende Gruppenprüfung | `main@07609fb56f412ebe6e36655323e8fc6359cf90ec`, 2026-10-05; statischer Befund für Z02.5 |
 | Planungsstand | Reihenfolge vom Nutzer zur zentralen Ablage freigegeben; technische Aufgaben bleiben offen, soweit kein eigener Nachweis vorliegt |
-| Aktueller erster Schritt | **Z01.4 – KDE-/UI-/Backend-Nachbesserungen auf main4041cee / alle sechs CI-Workflows bestanden. Jetzt konsolidierten VM-Rezept-Updater übernehmen, zentrale Backends gezielt aktualisieren, privaten SIP-Zugang vorbereiten und neuen KDE-Imagekandidaten physisch abnehmen** |
+| Aktueller erster Schritt | **Z01.4 - KDE-/UI-/Backend-Nachbesserungen auf `main@e1617b28`; PR #71 und der Operatorhelfer aus #72 sind integriert. Jetzt konsolidierten VM-Rezept-Updater übernehmen, zentrale Backends gezielt aktualisieren, privaten SIP-Zugang vorbereiten und neuen KDE-Imagekandidaten physisch abnehmen** |
 | Letzter Betreiber-Buildbefund | Recoveryartefakt 6a0a6765 am 11.10.2026 vollständig gegen Manifest geprüft und auf srv-m-tbs-03 gestartet: Debian12 / aarch64, 29G Root, Firstboot success, SSH und lokaler Agent ready, Profil SRV-M-TBS-03 am Commit1595259. GPIO-Neustartprobe und anschließender manueller TBS-Stream / Gateway-Handshake inzwischen bestanden; automatischer TBS-Boot / Gateway-Wiederkehr inzwischen bestätigt; neue TX-Timingstörung sowie Dauerlauf / On-Air / Controller / VPN offen; frühere Fehler bleiben in der [Chronologie](projektverlauf-bis-2026-10-09.md). |
 | Gesicherter Zwischenstand | 2026-10-08, 17:03 Europe/Berlin; geprüftes `main@001fb84ac566bb0f95e18d22439ee664fe0093e4`; [Fortsetzungsstand](../integration/Z01-2026-10-07/zwischenstand-2026-10-08.md) |
 | Zeitplanung | Arbeitsblöcke und Abnahmebedingungen; keine zugesagten Kalendertermine |
@@ -21,7 +21,7 @@
 
 **Z01.4 – Installation, Upgrade und Recovery auf dem gemeinsamen Stand abnehmen.**
 
-Der geprüfte Dokumentations-Ausgangsstand ist `main@c3ccdb4bb7daa78f38c529c95ce51993ab0d0afc` vom 09.10.2026. PR #62 hat Deployment, Discovery, Imagebuilder, Pi-VPN und Syslog integriert; PR #65 hat die Markdown-Dokumentation zentral geordnet. Die physische Gesamtanlage bleibt gesondert abzunehmen.
+Der aktuelle Dokumentationsstand ist `main@e1617b28e6f2e8f79958f88e84bc1dc1606c59ed` vom 12.10.2026 UTC beziehungsweise 13.10.2026 beim turnusmäßigen Abgleich. PR #62 hat Deployment, Discovery, Imagebuilder, Pi-VPN und Syslog integriert; PR #65/#66 haben die Dokumentation zentral geordnet und aktualisiert. PR #70 bis #72 enthalten die neuesten Image-, Bedien- und Backend-Nachbesserungen. Die physische Gesamtanlage bleibt gesondert abzunehmen.
 
 | Bereich | Zuletzt belegter Stand | Noch offen |
 | --- | --- | --- |
@@ -263,6 +263,7 @@ Regelmäßige NetCore-Projektstatusläufe verwenden diese Gesamtroadmap als Eins
 
 | Datum | Änderung | Nachweisgrenze |
 | --- | --- | --- |
+| 2026-10-13 | Regelmäßiger Quellenabgleich: `main@e1617b28`, Release weiterhin v1.9.0. PR #70 bis #72 und ihre Nachweise sind dokumentiert. Fünf Upstreams unverändert; Bost FlowStation neu bei `ccae4632` mit SS-AL/LIP-/Standorttelemetrie-Änderungen | Keine ungeprüfte Portierung. Ambient Listening nur mit ausdrücklichem Ressourcenrecht, Audit und Endgeräte-/On-Air-Abnahme bewerten; Standorttelemetrie gegen vorhandene Node-Identity/LIP-Pfade vergleichen. Z01.4 bleibt vorrangig |
 | 2026-10-12 | Z01.4: Betreiber bestätigt gemeinsame VM119-Rezeptübernahme mit phase: passed; native14 Updaterfälle ohne Skip, Quellgate38244540657 / OpenLab38244540660 / Radio38244540672 vollständig erfolgreich. Stationsprofil SRV-M-TBS-03 wieder angelegt und Imageformular vorbereitet | Lokales OS-Passwort oder SSH-Public-Key ergänzen; noch kein neuer Build abgesendet. Neues Image / frischer Boot / Funkabnahme offen |
 | 2026-10-12 | Z01.4: VM119-Fingerprints belegen exakt zwei alte Rezeptdateien und fehlenden GPIO-Helfer; Worker aktuell. Drei-Dateien-Updater mit14 Ausfall-/Rückwegfällen und unabhängiger Prüfung vorbereitet | Linux-CI / tatsächliches sudo-Update und neuer Imagebuild offen; keine Cachelöschung oder neue Pi-Handreparatur erforderlich |
 | 2026-10-12 | Z01.4: Betreiber bestätigt nativen Recovery-Release2m57s und atomar installiertes AArch64-Binary22c19ab / SHA6e05ff5c; Bibliotheken aufgelöst, Dienst inactive/disabled. Nutzer priorisiert wieder das fertige Image; live WebUI liefert weiterhin1595259a | VM119-Rezeptstand konsolidieren und neuen Imagekandidaten bauen; Build-/Installationsbeleg ist keine Funk-/Boot-Abnahme, frisches Image ohne Pi-Nachreparatur prüfen |

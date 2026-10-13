@@ -2,7 +2,7 @@
 
 **Aktuelle Gesamtfolge / nächster Schritt:** [Zentrale Roadmap NETCORE-MASTER-01](../roadmaps/gesamtroadmap.md). Sie führt die Prioritäten und Abnahmebedingungen; diese Seite ergänzt die Vorhaben und offenen Entscheidungen. Für neue Status- / Fortsetzungsfragen zuerst die zentrale Roadmap mit dem aktuellen Repositorystand abgleichen.
 
-**Z01-Quellenstand 09.10.2026:** Z01.1–Z01.3 sind auf `main` integriert; Z01.4 bündelt die verbleibenden Anlagenprüfungen. Imagebuilder, Discovery und VPN-Heimnetzregel sind im Code vorhanden. Die [datierte Integration](../integration/Z01-2026-10-07/README.md) enthält Historie und Nachweise; aktuelle Prioritäten und Betreiberbefunde werden ausschließlich in der zentralen Roadmap fortgeführt.
+**Z01-Quellenstand 13.10.2026, `main@e1617b28`:** Z01.1-Z01.3 sind integriert; Z01.4 buendelt die verbleibenden Anlagenpruefungen. Imagebuilder, Discovery und VPN-Heimnetzregel sind im Code vorhanden. PR #70 bis #72 ergaenzen Medienverzeichnisse, KDE/Lite, semantische Carrier-/Telegram-Konfiguration, NetworkManager-WLAN, SIP-Importvorbereitung, Nachbarzellen-CRUD sowie zentrale Status-/HTTP-Korrekturen. Die [datierte Integration](../integration/Z01-2026-10-07/README.md) enthaelt Historie und Nachweise; aktuelle Prioritäten und Betreiberbefunde werden ausschliesslich in der zentralen Roadmap fortgeführt.
 
 Hier stehen Vorhaben, die aus Projektplanung und Gesprächen hervorgehen. **Ein Ziel in dieser Liste ist keine zugesicherte Funktion des aktuellen Builds.** Für vorhandene Dienste und Tests siehe [Projektstand und Nachweisgrenzen](projektstand-und-nachweise.md) und [Dienstkatalog](dienstkatalog.md).
 
@@ -11,6 +11,7 @@ Hier stehen Vorhaben, die aus Projektplanung und Gesprächen hervorgehen. **Ein 
 | Imagebuilder auf Ubuntu-VM: Code vorhanden | personalisiertes Pi-Image mit ARM64-NetCore, SDR-Treiber und optionalem VPN | tatsächlichen Download mit Manifest/SHA-256 sowie physischen Boot, SXceiver und VPN-Wechsel abnehmen; Release-Signatur bleibt ein eigenes Ausbauziel |
 | Discovery mit Suchknopf: Code vorhanden | Multicast im gemeinsamen Layer-2-Netz, Unicast-Seeds über geroutete Netze | Peer-Zuordnung, Konflikte, Lease und Wiederkehr am Standort prüfen; Open-Lab-Discovery ist nicht authentisiert |
 | TBS-Profil und Imageformular: Code vorhanden | Standort-TOML, Netz-/Zellkennungen, Benutzer/SSH, WLAN und optionales OpenVPN im Image | echte Profilwerte, Versionsnachweis und Hardwarestart prüfen; allgemeines Web-IAM und normative TETRA-Schlüsselvergabe sind eigene Vorhaben |
+| KDE-/Lite-Image und lokale Bedienung: Code/CI vorhanden | Desktopwahl, persoenlicher Login, Nachbarzellenpflege, Carrier-/Telegram-/WLAN-Bedienung und private SIP-Vorbereitung | konsolidierten VM-Updater anwenden; neues Image bauen und physisch mit Bildschirm, WLAN, Telegram, SIP, Medien, Neustart und Dauerlauf abnehmen |
 | Durchgängiger Mehrzellenbetrieb | Serving-TBS, Kontextwechsel und laufende Rufe | MM/CMCE-Restore, Timing, Media Switch, Endgeräte-Interoperabilität |
 | GPIO-/Rack-Platine | Sensorik, Lüfter, Statusanzeigen, Watchdog, Stromversorgung | echte HAT-Pinbelegung, EMV, 230-V-Sicherheit, Footprints und PCB-Abnahme |
 | Control-Room-Arbeitsplatz | Audio, skalierbare Oberfläche, Rollen, NFC/AD | Sicherheitsmodell, Operator-Identität, Ruf-Autorität und E2E-Tests |

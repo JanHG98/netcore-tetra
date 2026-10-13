@@ -1,6 +1,6 @@
 # Projektstand und Nachweisgrenzen
 
-**Quellenstand: `main@c3ccdb4`, 09.10.2026.** Z01.1–Z01.3 sind gemäß [Quell- und CI-Nachweis](../integration/Z01-2026-10-07/README.md) auf `main` integriert. Z01.4 führt die tatsächliche Installation, Recovery und Image-/Hardwareabnahme fort. Den neuesten Betreiberbefund und nächsten Schritt führt die [zentrale Roadmap](../roadmaps/gesamtroadmap.md); diese Wiki-Seite ist keine Live-Abfrage der Anlage.
+**Quellenstand: `main@e1617b28`, 13.10.2026.** Z01.1-Z01.3 sind gemäß [Quell- und CI-Nachweis](../integration/Z01-2026-10-07/README.md) auf `main` integriert. Z01.4 führt die tatsächliche Installation, Recovery und Image-/Hardwareabnahme fort. PR #70 bis #72 haben die beschriebenen Image-, UI- und Backend-Nachbesserungen integriert; deren native CI ersetzt die noch offene Anlagenabnahme nicht. Den neuesten Betreiberbefund und nächsten Schritt führt die [zentrale Roadmap](../roadmaps/gesamtroadmap.md); diese Wiki-Seite ist keine Live-Abfrage der Anlage.
 
 | Aussage | Beleg im Repository | Was offen bleibt |
 |---|---|---|
@@ -11,6 +11,7 @@
 | MQTT und Home Assistant | `system-backend/iot-gateway` und [MQTT-Vertrag](../services/iot-gateway/mqtt-nachrichten.md) | SDS-Ende-zu-Ende bis HA an der konkreten Anlage ist nicht allein durch verbundene MQTT-Clients belegt |
 | SIP Switch mit lokalem TBS-Asterisk | [SIP-Architektur](../services/sip-switch/architektur.md) | Rufsignalisierung und bidirektionales RTP je Standort prüfen |
 | ETSI-PDU-Bestand | [statische Konformitätsmatrix](../protocols/etsi-pdu-konformitaetsmatrix.md) | kein umfassender Interoperabilitäts- oder Konformitätsnachweis |
+| KDE-/Lite-Imagepfad und TBS-Bedienkorrekturen | PR #70 bis #72, [Nachweis und Übergabe](../integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md) | neuer vollständiger KDE-Build, physische Anmeldung, WLAN, Telegram, SIP, Aufnahme/Abspielen, zentrale Rollouts und Dauerlauf |
 
 ## Lesart von „funktioniert“
 
@@ -32,6 +33,8 @@ Eine der ersten beiden Stufen darf im Wiki nicht stillschweigend als vierte ausg
 ## Bereitstellung und Imagebuilder
 
 Deployment Core, Discovery-Agent, zentraler Imagebuilder, Syslog-Anbindung und die optionale VPN-Heimnetzregel sind integriert. Ein vollständiger Imagebuild ist durch einen datierten Betreiberbefund bestätigt; Artefaktverfügbarkeit, Download und physischer Pi-/SXceiver-/VPN-Nachweis sind eigenständige Prüfungen. Der [Imagebuilder-Befund](../integration/Z01-2026-10-07/imagebuilder-vm119.md) beschreibt diese Grenzen. Die [Ausbauziele und offene Entscheidungen](ausbauziele-und-prioritaeten.md) ordnet die noch offenen Erweiterungen ein.
+
+Der nachfolgende KDE-/UI-Rezeptstand ist auf `main` getestet, aber noch nicht als vollständiges neues KDE-Image physisch abgenommen. Der zuvor gebootete Kandidat `53a280bd` am Commit `0770e903` bleibt ein anderer, älterer Imageinhalt. Diese Trennung verhindert, dass bestandene Personalisierungsfixtures als Bildschirm-, WLAN-, SIP- oder Medienabnahme ausgegeben werden.
 
 ## Quellen zur Pflege dieser Seite
 
