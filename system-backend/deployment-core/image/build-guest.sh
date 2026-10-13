@@ -9,7 +9,10 @@ NETCORE_COMMIT=${2:?}
 SOAPY_REPOSITORY=${3:?}
 SOAPY_COMMIT=${4:?}
 NETCORE_DESKTOP=${5:-none}
-[[ $NETCORE_DESKTOP == none || $NETCORE_DESKTOP == kde ]] || { echo 'Desktop: none oder kde erforderlich'; exit 1; }
+case "$NETCORE_DESKTOP" in
+  none|kde|xfce|gnome|pios) ;;
+  *) echo 'Desktop: none, kde, xfce, gnome oder pios erforderlich'; exit 1 ;;
+esac
 export DEBIAN_FRONTEND=noninteractive
 export LC_ALL=C
 # Build portable Pi initramfs images instead of detecting the VM's root device.
@@ -103,4 +106,5 @@ rm -f /tmp/netcore-rustup.sh
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 echo 'Softwarebasis vollständig gebaut. Noch kein Funk-/Boot-Test ausgeführt.'
+
 

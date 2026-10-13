@@ -19,11 +19,16 @@ jobs:
       - name: Discovery, API, Git pinning and persistence
         run: python3 -m unittest discover -s system-backend/deployment-core/tests -v
       - name: VM119 targeted update and rollback guards
-        run: python3 -B -m unittest discover -s tests/integration -p 'test_vm119_*.py' -v
-      - name: Image desktop and private SIP provisioning
+        run: |
+          # The immutable updater's payload check must read its historical Git
+          # objects, independently of the current desktop/VPN source checkout.
+          git fetch --depth 1 origin e842197c2ede8337267a913304816da11664f7a8
+          python3 -B -m unittest discover -s tests/integration -p 'test_vm119_*.py' -v
+      - name: Image desktop and private SIP/VPN provisioning
         run: |
           python3 tools/test_image_desktop.py
           python3 tools/test_image_sip_setup.py
+          python3 tools/test_image_vpn.py
           python3 tools/test_tbs_sip_config_permissions.py
       - name: Installer and existing Python UI syntax
         run: |
@@ -68,6 +73,8 @@ jobs:
           /usr/bin/python3 system-backend/deployment-core/tests/vm_install_smoke.py
       - name: Native Ubuntu Python compatibility
         run: /usr/bin/python3 -m unittest discover -s system-backend/deployment-core/tests -v
+      - name: Actual VM update, preservation, busy guard and rollback
+        run: sudo /usr/bin/python3 system-backend/deployment-core/tests/vm_update_smoke.py --disposable-runner
       - name: Native systemd image recording and audio directories
         run: sudo /usr/bin/python3 system-backend/deployment-core/tests/image_runtime_dirs_smoke.py --disposable-runner
       - name: Real Raspberry Pi OS image and ARM64 personalization
@@ -75,6 +82,21 @@ jobs:
       - name: Service logs on failure
         if: failure()
         run: sudo journalctl -u netcore-deployment -u netcore-image-builder -u systemd-binfmt --no-pager -n 150
+  image-desktops:
+    strategy:
+      fail-fast: false
+      matrix:
+        desktop: [kde, xfce, gnome, pios]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Space for the real ARM64 desktop image
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet
+      - name: Install native image-builder prerequisites
+        run: sudo bash system-backend/deployment-core/install/install-vm.sh --node-id ci-desktop --advertise-url http://127.0.0.1:8320
+      - name: Actual Pi OS desktop, sessions, VPN plugins and credentials
+        run: sudo unshare --mount --pid --fork --kill-child --propagation private python3 system-backend/deployment-core/tests/image_smoke.py --desktop '${{ matrix.desktop }}'
   rust-ui:
     runs-on: ubuntu-latest
     steps:
@@ -94,4 +116,5 @@ jobs:
         run: cargo test --locked -p netcore-packet-core -p netcore-ip-gateway -p netcore-observability -p netcore-media-library
       - name: Link the default-feature TBS binary used in images
         run: cargo build --locked -p bluestation-bs
+
 

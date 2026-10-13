@@ -10,6 +10,20 @@ import time
 import uuid
 
 
+IMAGE_JOB_METADATA = ('build_id', 'profile', 'base', 'commit', 'hostname', 'desktop', 'sip_setup')
+TERMINAL_STATUSES = ('succeeded', 'failed', 'interrupted')
+
+
+def completed_image_request(request):
+    """Image history needs metadata, never finished OS/WLAN/SIP/VPN credentials."""
+    if not isinstance(request, dict):
+        return request
+    key = request.get('build_id')
+    if not isinstance(key, str) or len(key) != 32 or any(c not in '0123456789abcdef' for c in key):
+        return request
+    return {name: request[name] for name in IMAGE_JOB_METADATA if name in request}
+
+
 class RemoteJobUncertain(RuntimeError):
     """The agent may still be working; never turn a lost reply into a retry POST."""
     def __init__(self, message, remote_url, remote_job=''):
@@ -30,6 +44,9 @@ class Jobs:
             db.execute('CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, created REAL, updated REAL, '
                        'status TEXT, request TEXT, log TEXT, result TEXT)')
             db.execute("UPDATE jobs SET status='interrupted', updated=? WHERE status IN ('queued','running')", (time.time(),))
+            scrubbed = self._scrub_finished_images(db)
+        if scrubbed:
+            self._checkpoint_image_cleanup(reclaim_legacy=True)
         os.chmod(self.path, 0o600)
         threading.Thread(target=self._work, daemon=True).start()
 
@@ -40,6 +57,7 @@ class Jobs:
         with self.db_lock:
             db = sqlite3.connect(self.path, timeout=10)
             try:
+                db.execute('PRAGMA secure_delete=ON')
                 with db:
                     yield db
             finally:
@@ -104,6 +122,36 @@ class Jobs:
             db.execute('UPDATE jobs SET log=substr(log || ?, -100000), updated=? WHERE id=?',
                        (str(line) + '\n', time.time(), key))
 
+    @staticmethod
+    def _scrub_finished_images(db, key=None):
+        scrubbed = False
+        query = 'SELECT id, request FROM jobs WHERE status IN (?,?,?)'
+        params = TERMINAL_STATUSES
+        if key is not None:
+            query += ' AND id=?'
+            params += (key,)
+        for job_id, blob in db.execute(query, params).fetchall():
+            request = json.loads(blob)
+            metadata = completed_image_request(request)
+            if metadata != request:
+                # Overwrite deleted cells/overflow pages, rather than retaining
+                # credential text in the database's free space.
+                db.execute('PRAGMA secure_delete=ON')
+                db.execute('UPDATE jobs SET request=? WHERE id=?', (json.dumps(metadata), job_id))
+                scrubbed = True
+        return scrubbed
+
+    def _checkpoint_image_cleanup(self, reclaim_legacy=False):
+        # DELETE journals are the default. If a previous installation enabled
+        # WAL, remove its old request frames after the scrub transaction commits.
+        with self.connect() as db:
+            if reclaim_legacy:
+                # Older workers could leave private copies in freed pages while
+                # growing job logs. Rebuild once when upgrading such history.
+                db.execute('VACUUM')
+            if db.execute('PRAGMA journal_mode').fetchone()[0].lower() == 'wal':
+                db.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+
     def _work(self):
         while True:
             key = self.queue.get()
@@ -119,4 +167,8 @@ class Jobs:
             with self.connect() as db:
                 db.execute('UPDATE jobs SET status=?, result=?, updated=? WHERE id=?',
                            (status, json.dumps(result or {}), time.time(), key))
+                scrubbed = self._scrub_finished_images(db, key)
+            if scrubbed:
+                self._checkpoint_image_cleanup()
             self.queue.task_done()
+

@@ -11,7 +11,7 @@ import tomllib
 
 from common import atomic_write, toml_dump
 from deploy import install_dropin
-from image_spec import sip_setup_state, validate_image, wifi_keyfile
+from image_spec import VPN_AUTH_PATH, sip_setup_state, validate_image, wifi_keyfile
 from sip_setup import configure_local_sip
 
 
@@ -30,6 +30,21 @@ def apply_sip(config, req):
         if sip.get('remote_host') in ('localhost', '127.0.0.1', '::1') and sip.get('remote_port', 5060) == 5060:
             sip['enabled'] = False
     return sip_setup_state(config, req['sip_fallback_config'])
+
+
+def configure_vpn(req, *, root=Path('/'), runner=None):
+    """Write only the root-readable authfile, never credentials in metadata/logs."""
+    if not req['vpn_config']:
+        return
+    if runner is None:
+        runner = call
+    authfile = root / VPN_AUTH_PATH.lstrip('/')
+    if req['vpn_username']:
+        atomic_write(authfile, req['vpn_username'] + '\n' + req['vpn_password'] + '\n', 0o600)
+    else:
+        authfile.unlink(missing_ok=True)
+    atomic_write(root / 'etc/openvpn/client/netcore.conf', req['vpn_config'], 0o600)
+    runner('systemctl', 'enable', 'netcore-vpn-policy.timer')
 
 
 def personalize():
@@ -82,9 +97,7 @@ def personalize():
     atomic_write('/etc/netcore/image-network.json', json.dumps({k: req[k] for k in
                  ('wifi_country', 'trusted_ssids', 'trusted_lan')}))
     call('systemctl', 'enable', 'netcore-wifi-country.service')
-    if req['vpn_config']:
-        atomic_write('/etc/openvpn/client/netcore.conf', req['vpn_config'])
-        call('systemctl', 'enable', 'netcore-vpn-policy.timer')
+    configure_vpn(req)
     config = tomllib.loads(req['config'])
     sip_setup = apply_sip(config, req)
     config['service_name'] = 'tetra'
@@ -124,4 +137,5 @@ def personalize():
 
 if __name__ == '__main__':
     personalize()
+
 

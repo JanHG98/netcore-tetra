@@ -4,6 +4,7 @@ import base64
 import binascii
 import ipaddress
 import re
+import shlex
 import subprocess
 import tomllib
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -21,7 +22,9 @@ BASE = {
 }
 NETWORKS = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.0/8']
 BUILD_ID = re.compile(r'[0-9a-f]{32}\Z')
-DESKTOPS = {'none': 'Ohne Desktop (Lite)', 'kde': 'KDE Plasma'}
+DESKTOPS = {'none': 'Ohne Desktop (Lite)', 'kde': 'KDE Plasma', 'xfce': 'XFCE',
+            'gnome': 'GNOME', 'pios': 'Raspberry Pi OS Desktop'}
+VPN_AUTH_PATH = '/etc/openvpn/client/netcore.auth'
 
 
 def sip_setup_state(config, fallback):
@@ -42,10 +45,24 @@ def text(data, key, default='', maximum=4096):
     return value
 
 
-def validate_vpn(value):
-    """Accept a portable OpenVPN client with inline credentials, never hooks/files."""
+def validate_vpn_material(value, username='', password=''):
+    """Normalize a portable client and separate its unattended login credentials.
+
+    Uploaded auth-file paths are never opened. Inline auth is extracted so the
+    generated profile contains only our fixed, root-only credential-file path.
+    """
+    for key, credential in (('vpn_username', username), ('vpn_password', password)):
+        if (not isinstance(credential, str) or len(credential.encode()) > 127
+                or any(ord(c) < 32 or ord(c) == 127 for c in credential)):
+            raise ValueError(f'Ungültiges Feld: {key}; höchstens 127 UTF-8-Bytes ohne Steuerzeichen')
+    if bool(username) != bool(password):
+        raise ValueError('OpenVPN: VPN-Benutzername und VPN-Passwort gemeinsam angeben')
+    if not isinstance(value, str) or '\x00' in value:
+        raise ValueError('OpenVPN: ungültige Profildatei')
     if not value:
-        return ''
+        if username or password:
+            raise ValueError('OpenVPN: eine .ovpn-Profildatei für die VPN-Zugangsdaten auswählen')
+        return '', '', ''
     allowed = {'client', 'dev', 'proto', 'remote', 'resolv-retry', 'nobind', 'persist-key',
                'persist-tun', 'remote-cert-tls', 'verify-x509-name', 'cipher', 'data-ciphers',
                'data-ciphers-fallback', 'auth', 'auth-nocache', 'verb', 'mute', 'float',
@@ -57,30 +74,91 @@ def validate_vpn(value):
                'ping', 'ping-restart', 'keepalive', 'compress', 'comp-lzo', 'allow-compression'}
     tags = {'ca', 'cert', 'key', 'tls-auth', 'tls-crypt', 'tls-crypt-v2', 'auth-user-pass'}
     block = None
+    inline_auth = None
+    auth_lines = []
+    auth_directive = False
+    auth_nocache = False
+    output = []
     remote = client = False
-    for raw in value.splitlines():
+    for raw in value.removeprefix('\ufeff').splitlines():
         line = raw.strip()
-        if not line or line.startswith(('#', ';')):
-            continue
         if block:
             if line == f'</{block}>':
+                if block == 'auth-user-pass':
+                    inline_auth = auth_lines
+                else:
+                    output.append(raw)
                 block = None
+            elif block == 'auth-user-pass':
+                auth_lines.append(raw)
+            else:
+                output.append(raw)
+            continue
+        if not line or line.startswith(('#', ';')):
+            output.append(raw)
             continue
         if line.startswith('<'):
             block = line[1:-1] if line.endswith('>') else None
             if block not in tags:
                 raise ValueError('OpenVPN: nur Inline-Zertifikate/-Schlüssel und Inline-Zugangsdaten')
+            if block == 'auth-user-pass':
+                if inline_auth is not None:
+                    raise ValueError('OpenVPN: auth-user-pass ist mehrfach enthalten')
+                auth_lines = []
+            else:
+                output.append(raw)
             continue
         parts = line.split()
-        if parts[0] not in allowed or '\\' in line:
-            raise ValueError('OpenVPN: nicht unterstützte Direktive ' + parts[0])
-        if parts[0] == 'dev' and parts[1:] != ['tun']:
+        option = parts[0].removeprefix('--')
+        if option == 'auth-user-pass':
+            if auth_directive:
+                raise ValueError('OpenVPN: auth-user-pass ist mehrfach enthalten')
+            try:
+                lexer = shlex.shlex(line, posix=True)
+                lexer.whitespace_split = True
+                lexer.commenters = '#;'
+                arguments = list(lexer)
+            except ValueError as exc:
+                raise ValueError('OpenVPN: ungültige auth-user-pass-Direktive') from exc
+            if not 1 <= len(arguments) <= 2:
+                raise ValueError('OpenVPN: auth-user-pass erwartet höchstens einen Dateiverweis')
+            auth_directive = True
+            continue
+        if option not in allowed or '\\' in line:
+            # Never echo a malformed line/token: it may be a misplaced secret.
+            raise ValueError('OpenVPN: nicht unterstützte Direktive; portable Client-Datei ohne Hooks/Dateiverweise erforderlich')
+        if option == 'dev' and parts[1:] != ['tun']:
             raise ValueError('OpenVPN: dev tun erforderlich')
-        remote |= parts[0] == 'remote'
-        client |= parts[0] == 'client'
+        remote |= option == 'remote'
+        client |= option == 'client'
+        auth_nocache |= option == 'auth-nocache'
+        output.append(raw)
     if block or not remote or not client:
         raise ValueError('Vollständige OpenVPN-Client-Datei mit remote und geschlossenen Inline-Blöcken erforderlich')
-    return value.rstrip() + '\n'
+    if inline_auth is not None:
+        if len(inline_auth) not in (1, 2):
+            raise ValueError('OpenVPN: Inline-Zugangsdaten benötigen Benutzername und optional Passwort auf zwei Zeilen')
+        for credential in inline_auth:
+            if not credential or len(credential.encode()) > 127 or any(ord(c) < 32 or ord(c) == 127 for c in credential):
+                raise ValueError('OpenVPN: ungültige Inline-Zugangsdaten')
+        # Explicit fields intentionally replace stale credentials embedded in
+        # an uploaded profile. Without fields, keep a complete embedded login.
+        if not username:
+            username = inline_auth[0]
+            password = inline_auth[1] if len(inline_auth) == 2 else ''
+    if auth_directive or inline_auth is not None:
+        if not username or not password:
+            raise ValueError('OpenVPN: dieses Profil benötigt VPN-Benutzername und VPN-Passwort für die automatische Verbindung')
+    if username:
+        if not auth_nocache:
+            output.append('auth-nocache')
+        output.append('auth-user-pass ' + VPN_AUTH_PATH)
+    return '\n'.join(output).rstrip() + '\n', username, password
+
+
+def validate_vpn(value, username='', password=''):
+    """Compatibility validator returning only the normalized OpenVPN profile."""
+    return validate_vpn_material(value, username, password)[0]
 
 
 def validate_ssh_key(value):
@@ -151,9 +229,9 @@ def validate_image(data, networks=None, hash_password=True):
     # Old API requests and existing artifacts remain Lite. The new UI selects KDE.
     desktop = text(data, 'desktop', 'none', 16)
     if desktop not in DESKTOPS:
-        raise ValueError('Desktop: none oder kde auswählen')
-    if desktop == 'kde' and not (password or password_hash):
-        raise ValueError('KDE Plasma benötigt ein Betriebssystem-Passwort für die grafische Anmeldung; ein SSH-Key allein genügt nicht')
+        raise ValueError('Desktop: none, kde, xfce, gnome oder pios auswählen')
+    if desktop != 'none' and not (password or password_hash):
+        raise ValueError(DESKTOPS[desktop] + ' benötigt ein Betriebssystem-Passwort für die grafische Anmeldung; ein SSH-Key allein genügt nicht')
     if password and hash_password:
         password_hash = subprocess.run(['openssl', 'passwd', '-6', '-stdin'], input=password + '\n',
                                        text=True, capture_output=True, check=True, timeout=10).stdout.strip()
@@ -171,7 +249,9 @@ def validate_image(data, networks=None, hash_password=True):
     overlay = text(data, 'overlay', 'eeprom', 20)
     if overlay not in ('eeprom', 'sx1255'):
         raise ValueError('HAT-Konfiguration: eeprom oder sx1255')
-    vpn = validate_vpn(text(data, 'vpn_config', maximum=65536))
+    vpn, vpn_username, vpn_password = validate_vpn_material(
+        text(data, 'vpn_config', maximum=65536), text(data, 'vpn_username', maximum=127),
+        text(data, 'vpn_password', maximum=127))
     trusted_ssids = data.get('trusted_ssids', [])
     if not isinstance(trusted_ssids, list) or len(trusted_ssids) > 16 or any(
             not isinstance(s, str) or not 1 <= len(s.encode()) <= 32 or any(c in s for c in '\x00\r\n') for s in trusted_ssids):
@@ -198,7 +278,8 @@ def validate_image(data, networks=None, hash_password=True):
     return dict(profile=profile, base=BASE['id'], commit=commit, config=template, hostname=hostname,
                 username=username, timezone=timezone, ssh_key=public_key, password_hash=password_hash,
                 wifi_ssid=ssid, wifi_password=wifi_password, wifi_country=country, overlay=overlay,
-                vpn_config=vpn, trusted_ssids=trusted_ssids, trusted_lan=trusted_lan,
+                vpn_config=vpn, vpn_username=vpn_username, vpn_password=vpn_password,
+                trusted_ssids=trusted_ssids, trusted_lan=trusted_lan,
                 controller_url=seed, environment=environment, allowed_networks=networks or NETWORKS,
                 desktop=desktop, sip_fallback_config=sip_fallback,
                 sip_setup=sip_setup_state(parsed, sip_fallback))
@@ -221,4 +302,5 @@ def wifi_keyfile(ssid, password):
             '[wifi]\nmode=infrastructure\nssid=' + keyfile_escape(ssid) + '\n\n'
             '[wifi-security]\nkey-mgmt=wpa-psk\npsk=' + keyfile_escape(password) + '\n\n'
             '[ipv4]\nmethod=auto\n\n[ipv6]\nmethod=auto\n')
+
 

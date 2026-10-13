@@ -27,6 +27,7 @@ sys.path.insert(0, str(DEPLOY / 'image'))
 import personalize
 
 PASSWORD_HASH = '$6$fixture$' + 'x' * 86
+GRAPHICAL_DESKTOPS = ('kde', 'xfce', 'gnome', 'pios')
 
 
 def request(**changes):
@@ -57,21 +58,24 @@ class ImageDesktopRequestTests(unittest.TestCase):
         self.assertEqual(req['desktop'], 'none')
         self.assertEqual(validate_image(req), req)
 
-    def test_kde_accepts_os_password_hash_and_revalidates(self):
-        req = validate_image(request(desktop='kde', password_hash=PASSWORD_HASH))
-        self.assertEqual(req['desktop'], 'kde')
-        self.assertEqual(validate_image(req), req)
+    def test_each_desktop_accepts_os_password_hash_and_revalidates(self):
+        for desktop in GRAPHICAL_DESKTOPS:
+            with self.subTest(desktop=desktop):
+                req = validate_image(request(desktop=desktop, password_hash=PASSWORD_HASH))
+                self.assertEqual(req['desktop'], desktop)
+                self.assertEqual(validate_image(req), req)
 
-    def test_kde_rejects_ssh_key_only_with_graphical_login_error(self):
-        with self.assertRaisesRegex(ValueError, 'grafische Anmeldung'):
-            validate_image(request(desktop='kde'))
+    def test_each_desktop_rejects_ssh_key_only_with_graphical_login_error(self):
+        for desktop in GRAPHICAL_DESKTOPS:
+            with self.subTest(desktop=desktop), self.assertRaisesRegex(ValueError, 'grafische Anmeldung'):
+                validate_image(request(desktop=desktop))
 
     def test_unsupported_or_non_text_desktops_fail_before_build(self):
-        for value in ('plasma;id', 'gnome', '', None, []):
+        for value in ('plasma;id', 'cinnamon', 'XFCE', '', None, []):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 validate_image(request(desktop=value, password_hash=PASSWORD_HASH))
 
-    def test_cache_never_aliases_lite_and_kde(self):
+    def test_cache_never_aliases_desktop_variants(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / 'image').mkdir()
@@ -81,7 +85,8 @@ class ImageDesktopRequestTests(unittest.TestCase):
             with patch('image_build.ROOT', root):
                 lite = recipe_key('a' * 40)
                 kde = recipe_key('a' * 40, 'kde')
-                self.assertNotEqual(lite, kde)
+                keys = [recipe_key('a' * 40, desktop) for desktop in ('none', *GRAPHICAL_DESKTOPS)]
+                self.assertEqual(len(set(keys)), 5)
                 self.assertEqual(lite, recipe_key('a' * 40, 'none'))
                 self.assertNotEqual(kde, recipe_key('b' * 40, 'kde'))
                 (root / 'image/desktop-setup.sh').write_text('changed recipe')
@@ -196,16 +201,57 @@ if os.name == 'nt' and Path('C:/Program Files/Git/bin/bash.exe').exists():
 
 @unittest.skipUnless(BASH, 'Bash is required for the isolated installer harness')
 class ImageDesktopInstallerTests(unittest.TestCase):
-    def run_installer(self, desktop, *, session=True, absent='', apt_fails=False):
+    # File paths are from Debian Bookworm arm64 and Raspberry Pi's Bookworm UI
+    # package, not generated from the installer being tested.
+    SESSIONS = {
+        'kde': 'usr/share/xsessions/plasma.desktop',
+        'xfce': 'usr/share/xsessions/xfce.desktop',
+        'gnome': 'usr/share/wayland-sessions/gnome.desktop',
+        'pios': 'usr/share/wayland-sessions/LXDE-pi-labwc.desktop',
+    }
+    PROGRAMS = {
+        'kde': ('usr/bin/sddm', 'usr/bin/startplasma-x11'),
+        'xfce': ('usr/sbin/lightdm', 'usr/bin/startxfce4'),
+        'gnome': ('usr/sbin/gdm3', 'usr/bin/gnome-session', 'usr/bin/gnome-shell'),
+        'pios': ('usr/sbin/lightdm', 'usr/bin/labwc-pi', 'usr/bin/labwc', 'usr/sbin/pi-greeter'),
+    }
+    MANAGERS = {'kde': 'sddm', 'xfce': 'lightdm', 'gnome': 'gdm3', 'pios': 'lightdm'}
+    GREETERS = {'xfce': 'lightdm-gtk-greeter', 'pios': 'pi-greeter-labwc'}
+    VPN_PROGRAMS = ('usr/bin/nm-connection-editor', 'usr/lib/NetworkManager/nm-openvpn-service',
+                    'usr/lib/NetworkManager/nm-openvpn-auth-dialog')
+    VPN_FILES = ('usr/lib/NetworkManager/VPN/nm-openvpn-service.name',
+                 'usr/lib/aarch64-linux-gnu/NetworkManager/libnm-vpn-plugin-openvpn.so',
+                 'usr/lib/aarch64-linux-gnu/NetworkManager/libnm-vpn-plugin-openvpn-editor.so',
+                 'usr/lib/aarch64-linux-gnu/NetworkManager/libnm-gtk4-vpn-plugin-openvpn-editor.so')
+    KDE_EDITOR = 'usr/lib/aarch64-linux-gnu/qt5/plugins/plasma/network/vpn/plasmanetworkmanagement_openvpnui.so'
+
+    def run_installer(self, desktop, *, session=True, greeter=True, absent='', missing='', apt_fails=False):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         root = Path(temp.name) / 'guest'
-        (root / 'etc/X11').mkdir(parents=True)
-        if os.name == 'nt':
-            (root / 'etc/sddm.conf.d').mkdir(parents=True)
-        (root / 'usr/share/xsessions').mkdir(parents=True)
-        if session:
-            (root / 'usr/share/xsessions/plasma.desktop').write_text('[Desktop Entry]\nName=Plasma\n')
+        for directory in ('etc/X11', 'etc/sddm.conf.d', 'etc/lightdm', 'etc/gdm3',
+                          'etc/systemd/system', 'usr/share/applications'):
+            (root / directory).mkdir(parents=True)
+        files = list(self.VPN_FILES)
+        if session and desktop in self.SESSIONS:
+            files.append(self.SESSIONS[desktop])
+        if greeter and desktop in self.GREETERS:
+            files.append('usr/share/xgreeters/' + self.GREETERS[desktop] + '.desktop')
+        if desktop in self.MANAGERS:
+            files.append('lib/systemd/system/' + self.MANAGERS[desktop] + '.service')
+        if desktop == 'kde':
+            files.append(self.KDE_EDITOR)
+        for name in files:
+            if name != missing:
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('fixture installed file\n')
+        for name in (*self.VPN_PROGRAMS, *self.PROGRAMS.get(desktop, ())):
+            if name != missing:
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('#!/bin/sh\nexit 0\n')
+                path.chmod(0o755)
         logfile = Path(temp.name) / 'events'
         script = Path(temp.name) / 'run.sh'
         # Functions record every package and unit action; real file writes only
@@ -224,11 +270,15 @@ dpkg-query() {
   echo 'install ok installed'
 }
 systemctl() { printf 'unit %s\\n' "$*" >> "$LOGFILE"; }
+ln() {
+  printf 'link %s\\n' "$*" >> "$LOGFILE"
+  if [[ $WINDOWS_FIXTURE != 1 ]]; then command ln "$@"; fi
+}
 if [[ $WINDOWS_FIXTURE == 1 ]]; then
   # Native POSIX directory mode changes are denied by this Windows sandbox.
   # Linux CI executes GNU install/chmod against the temporary guest directly.
-  install() { [[ $* == "-d -m 0755 $GUEST/etc/sddm.conf.d" ]]; }
-  chmod() { [[ $* == "0644 $GUEST/etc/sddm.conf.d/90-netcore.conf" ]]; }
+  install() { [[ $1 == -d && $2 == -m && $3 == 0755 && $4 == "$GUEST/"* && -d $4 ]]; }
+  chmod() { [[ $1 == 0644 && $2 == "$GUEST/"* && -f $2 ]]; }
 fi
 NC_APT=(fixture_apt -o Dpkg::Options::=--force-confold)
 source "$HELPER"
@@ -242,7 +292,12 @@ netcore_install_desktop "$DESKTOP" "$GUEST"
                    APT_FAIL='1' if apt_fails else '0', WINDOWS_FIXTURE='1' if os.name == 'nt' else '0')
         if os.name == 'nt':
             env['PATH'] = '/usr/bin:/bin:' + env.get('PATH', '')
-        result = subprocess.run([BASH, script.as_posix()], env=env, capture_output=True, text=True)
+        try:
+            result = subprocess.run([BASH, script.as_posix()], env=env, capture_output=True, text=True)
+        except PermissionError:
+            if os.name != 'nt':
+                raise
+            self.skipTest('Windows sandbox denies Bash execution; Linux CI runs the native harness')
         events = logfile.read_text() if logfile.exists() else ''
         return root, result, events
 
@@ -250,7 +305,8 @@ netcore_install_desktop "$DESKTOP" "$GUEST"
         root, result, events = self.run_installer('kde')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('--no-install-recommends plasma-desktop plasma-workspace kwin-x11 sddm', events)
-        for package in ('konsole', 'dolphin', 'plasma-nm', 'systemsettings', 'dbus-x11'):
+        for package in ('konsole', 'dolphin', 'plasma-nm', 'systemsettings', 'dbus-x11',
+                        'network-manager-openvpn', 'network-manager-openvpn-gnome'):
             self.assertIn('verify ' + package, events)
         self.assertNotIn('kde-full', events)
         self.assertIn('unit enable sddm.service', events)
@@ -259,6 +315,46 @@ netcore_install_desktop "$DESKTOP" "$GUEST"
         login = (root / 'etc/sddm.conf.d/90-netcore.conf').read_text()
         self.assertIn('[Autologin]\nUser=\nSession=\nRelogin=false', login)
 
+    def test_each_desktop_has_its_session_display_manager_and_vpn_editor(self):
+        for desktop in GRAPHICAL_DESKTOPS:
+            with self.subTest(desktop=desktop):
+                root, result, events = self.run_installer(desktop)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                manager = self.MANAGERS[desktop]
+                daemon = 'usr/bin/sddm' if desktop == 'kde' else 'usr/sbin/' + manager
+                self.assertEqual((root / 'etc/X11/default-display-manager').read_text(), '/' + daemon + '\n')
+                if desktop == 'gnome':
+                    self.assertNotIn('unit enable gdm3.service', events)
+                    self.assertIn('AutomaticLoginEnable=false', (root / 'etc/gdm3/daemon.conf').read_text())
+                else:
+                    self.assertIn('unit enable ' + manager + '.service', events)
+                self.assertIn('link -sfn /lib/systemd/system/' + manager + '.service ', events)
+                if os.name != 'nt':
+                    link = root / 'etc/systemd/system/display-manager.service'
+                    self.assertTrue(link.is_symlink())
+                    self.assertEqual(os.readlink(link), '/lib/systemd/system/' + manager + '.service')
+                self.assertIn('unit set-default graphical.target', events)
+                launcher = (root / 'usr/share/applications/netcore-vpn.desktop').read_text()
+                self.assertIn('Exec=nm-connection-editor\n', launcher)
+                self.assertIn('Name[de]=VPN-Verbindungen\n', launcher)
+                for package in ('network-manager', 'network-manager-gnome', 'network-manager-openvpn',
+                                'network-manager-openvpn-gnome', 'polkitd', 'libgl1-mesa-dri'):
+                    self.assertIn('verify ' + package + '\n', events)
+                self.assertNotIn('unit start ', events)
+                self.assertNotIn('--now', events)
+
+    def test_lightdm_uses_selected_xfce_or_pi_labwc_session_without_autologin(self):
+        for desktop, session in (('xfce', 'xfce'), ('pios', 'LXDE-pi-labwc')):
+            with self.subTest(desktop=desktop):
+                root, result, events = self.run_installer(desktop)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                login = (root / 'etc/lightdm/lightdm.conf').read_text()
+                self.assertIn('user-session=' + session + '\n', login)
+                self.assertIn('greeter-session=' + self.GREETERS[desktop] + '\n', login)
+                self.assertIn('allow-guest=false\n', login)
+                self.assertIn('autologin-user=\nautologin-session=\n', login)
+                self.assertNotIn('user-session=plasma', login)
+
     def test_lite_and_invalid_desktop_do_not_install_or_enable_gui(self):
         for desktop, returncode in (('none', 0), ('kde;id', 1)):
             with self.subTest(desktop=desktop):
@@ -266,22 +362,52 @@ netcore_install_desktop "$DESKTOP" "$GUEST"
                 self.assertEqual(result.returncode, returncode)
                 self.assertEqual(events, '')
                 self.assertFalse((root / 'etc/sddm.conf.d/90-netcore.conf').exists())
+                self.assertFalse((root / 'usr/share/applications/netcore-vpn.desktop').exists())
 
     def test_missing_session_or_package_prevents_enable(self):
-        for options in (dict(session=False), dict(absent='kwin-x11')):
-            with self.subTest(options=options):
-                root, result, events = self.run_installer('kde', **options)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertNotIn('unit ', events)
-                self.assertFalse((root / 'etc/sddm.conf.d/90-netcore.conf').exists())
+        for desktop in GRAPHICAL_DESKTOPS:
+            for options in (dict(session=False), dict(absent='network-manager-openvpn')):
+                with self.subTest(desktop=desktop, options=options):
+                    root, result, events = self.run_installer(desktop, **options)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertNotIn('unit ', events)
+                    self.assertNotIn('link ', events)
+                    self.assertFalse((root / 'usr/share/applications/netcore-vpn.desktop').exists())
+
+    def test_missing_vpn_program_or_plugin_prevents_boot_success(self):
+        for desktop in GRAPHICAL_DESKTOPS:
+            files = (*self.VPN_PROGRAMS, *self.VPN_FILES,
+                     *((self.KDE_EDITOR,) if desktop == 'kde' else ()))
+            for missing in files:
+                with self.subTest(desktop=desktop, missing=missing):
+                    root, result, events = self.run_installer(desktop, missing=missing)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertNotIn('unit ', events)
+                    self.assertFalse((root / 'usr/share/applications/netcore-vpn.desktop').exists())
+
+    def test_missing_greeter_desktop_program_or_unit_prevents_enable(self):
+        for desktop in GRAPHICAL_DESKTOPS:
+            options = [dict(missing=self.PROGRAMS[desktop][0]),
+                       dict(missing='lib/systemd/system/' + self.MANAGERS[desktop] + '.service')]
+            if desktop in self.GREETERS:
+                options.append(dict(greeter=False))
+            for option in options:
+                with self.subTest(desktop=desktop, option=option):
+                    root, result, events = self.run_installer(desktop, **option)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertNotIn('unit ', events)
+                    self.assertFalse((root / 'usr/share/applications/netcore-vpn.desktop').exists())
 
     def test_failed_package_install_prevents_login_configuration(self):
-        root, result, events = self.run_installer('kde', apt_fails=True)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertNotIn('verify ', events)
-        self.assertNotIn('unit ', events)
-        self.assertFalse((root / 'etc/sddm.conf.d/90-netcore.conf').exists())
+        for desktop in GRAPHICAL_DESKTOPS:
+            with self.subTest(desktop=desktop):
+                root, result, events = self.run_installer(desktop, apt_fails=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn('verify ', events)
+                self.assertNotIn('unit ', events)
+                self.assertFalse((root / 'usr/share/applications/netcore-vpn.desktop').exists())
 
 
 if __name__ == '__main__':
     unittest.main()
+

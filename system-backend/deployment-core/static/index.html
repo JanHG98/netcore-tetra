@@ -23,7 +23,7 @@
       <label>Zeitzone<input name="timezone" value="Europe/Berlin" required></label>
       <label>SSH-Public-Key<textarea name="ssh_key" rows="2" placeholder="ssh-ed25519 …"></textarea></label>
       <label>Betriebssystem-Passwort<input id="image-password" name="password" type="password" autocomplete="new-password" required><small id="image-password-note">Für die KDE-Anmeldung, SSH und Konsole des Pi. Die WebUI bleibt ohne Anmeldung.</small></label>
-      <label>Desktop<select id="image-desktop" name="desktop"><option value="kde" selected>KDE Plasma</option><option value="none">Ohne Desktop (Lite)</option></select><small>Mit KDE erfolgt die grafische Anmeldung über deinen Pi-Benutzer und dessen Passwort.</small></label>
+      <label>Desktop<select id="image-desktop" name="desktop"><option value="kde" selected>KDE Plasma</option><option value="xfce">XFCE</option><option value="gnome">GNOME</option><option value="pios">Raspberry Pi OS Desktop</option><option value="none">Ohne Desktop (Lite)</option></select><small>Die grafische Anmeldung verwendet deinen Pi-Benutzer und dessen Betriebssystem-Passwort.</small></label>
       <label>SXceiver-HAT<select name="overlay"><option value="eeprom">Overlay aus programmiertem HAT-EEPROM</option><option value="sx1255">SX1255-Overlay aus dem Image (ohne EEPROM)</option></select></label>
     </div>
     <p class="image-version-note">Der aktuelle Stand von main wird beim Start automatisch verwendet. Den gebauten Commit siehst du im Buildprotokoll und beim Download.</p>
@@ -33,6 +33,11 @@
         <label>WLAN-Schlüssel<input name="wifi_password" type="password" autocomplete="new-password" maxlength="64"></label>
         <label>WLAN-Land<input name="wifi_country" value="DE" maxlength="2"></label>
         <label>OpenVPN-Profil<input id="image-vpn" type="file" accept=".ovpn,.conf"><small>Mit eingebetteten Zertifikaten und Schlüsseln.</small></label>
+        <div id="image-vpn-credentials" hidden>
+          <label>VPN-Benutzer<input id="image-vpn-username" name="vpn_username" autocomplete="off" maxlength="127" disabled></label>
+          <label>VPN-Passwort<input id="image-vpn-password" name="vpn_password" type="password" autocomplete="new-password" maxlength="127" disabled></label>
+          <small id="image-vpn-auth-note">Zugangsdaten für das VPN, zusätzlich zum Betriebssystem-Passwort des Pi.</small>
+        </div>
         <label>Lokale WLANs · VPN aus<textarea id="image-trusted-ssids" rows="2" placeholder="Eine SSID pro Zeile"></textarea></label>
         <label>Lokales LAN · VPN aus<input name="trusted_lan" value="10.0.1.0/24"></label>
       </div><p class="option-note">Mit VPN-Profil: Im lokalen LAN oder einem der lokalen WLANs bleibt der Tunnel aus. In anderen Netzen wird er automatisch gestartet. Funkdienste laufen unabhängig davon weiter.</p>
@@ -50,4 +55,5 @@
 <section id="jobs"><div class="section-title"><div><h2>Auftragsverlauf</h2><p>Installationen, Updates und Versionsprüfungen mit dauerhaftem Protokoll.</p></div></div><div class="jobs-grid"><div id="job-list" class="panel job-list"></div><div class="panel log-panel"><h3 id="log-title">Auftragsprotokoll</h3><pre id="log">Wähle einen Auftrag aus.</pre></div></div></section>
 <section id="settings"><div class="section-title"><div><h2>Discovery-Einstellungen</h2><p>Für VPN-Gegenstellen und Netze, in denen Multicast nicht weitergeleitet wird.</p></div></div><div class="panel"><form id="settings-form"><div class="form-grid"><label>Git-Referenz<input id="settings-ref" name="ref" required></label><label>Feste Gegenstellen · eine URL pro Zeile<textarea id="seeds" rows="3" placeholder="http://10.0.1.50:8320"></textarea></label><label>Feste Dienstzuordnung · Rolle=Node-ID<textarea id="bindings" rows="3" placeholder="node-gateway=netcore-gateway-01"></textarea></label></div><div class="form-bottom"><p>Bei mehreren Instanzen derselben Rolle erfolgt keine zufällige Auswahl. Zuordnung hier festlegen.</p><button type="submit">Einstellungen speichern</button></div></form></div></section>
 <footer>NETCORE-TETRA <span>Discovery v1 · lokale Verwaltung · laufende Dienste bleiben autonom</span></footer></main></body></html>
+
 
