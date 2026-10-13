@@ -110,7 +110,9 @@ fn main() {
 
 def elf_fixture(update, work):
     """Actual compiled Rust std fixture; this is not a NetCore backend build."""
-    rustc = shutil.which('rustc')
+    # sudo's secure PATH excludes the runner's rustup shims. CI supplies the
+    # actual compiler from `rustup which rustc`, so no root toolchain is guessed.
+    rustc = os.environ.get('NETCORE_NATIVE_RUSTC') or shutil.which('rustc')
     if not rustc:
         raise RuntimeError('Native Rust/ELF fixture requires rustc on the disposable CI runner.')
     source, installed = work / 'elf-source', work / 'elf-runtime'

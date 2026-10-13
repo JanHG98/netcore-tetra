@@ -38,7 +38,7 @@ jobs:
       - name: Host and guest failure boundary regressions
         run: python3 -B -m unittest discover -s tests/integration -p 'test_netcore_*_update.py' -v
       - name: Real Python and compiled Rust ELF systemd processes, HTTP and failed-start rollback
-        run: sudo "$(command -v python3)" -B tools/test_netcore_runtime_update_native.py
+        run: sudo env NETCORE_NATIVE_RUSTC="$(rustup which rustc)" "$(command -v python3)" -B tools/test_netcore_runtime_update_native.py
       - name: Upload native runtime evidence
         if: always()
         uses: actions/upload-artifact@v4
