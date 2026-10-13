@@ -4,7 +4,9 @@
 
 [Startseite](Home.md)
 
-Die Wiki-Seiten beschreiben den Quellstand `main@c3ccdb4` vom 09.10.2026 und verlinken die passenden Komponenten, Vorlagen und Abnahmen. Sie sind kurze Themenanleitungen; langfristige Prioritäten stehen in der [zentralen Roadmap](../roadmaps/gesamtroadmap.md).
+Die Wiki-Seiten beschreiben den Quellstand `main@e1617b28` vom 13.10.2026 und verlinken die passenden Komponenten, Vorlagen und Abnahmen. Sie sind kurze Themenanleitungen; langfristige Prioritäten stehen in der [zentralen Roadmap](../roadmaps/gesamtroadmap.md).
+
+Aktuelle datierte Gesamtausgabe: [Komplettguide 13.10.2026](../NetCore-Tetra-Komplettguide-2026-10-13.md) · [Systemhandbuch 13.10.2026](../NetCore-Tetra-Systemhandbuch-2026-10-13.md)
 
 - [Inbetriebnahme und Abnahme](inbetriebnahme-und-abnahme.md)
 - [Architektur und Datenwege](architektur-und-datenwege.md)
@@ -42,6 +44,7 @@ Die Wiki-Seiten beschreiben den Quellstand `main@c3ccdb4` vom 09.10.2026 und ver
 - [Dienste und Pi-Images im Open Lab bereitstellen](dienste-und-pi-images-bereitstellen.md)
 - [Paketdaten, IP Gateway und WAP](paketdaten-und-wap.md)
 - [Projektstand und Nachweisgrenzen](projektstand-und-nachweise.md)
+- [Vergleich mit externen Projekten](vergleich-mit-externen-projekten.md)
 - [Provisioning und Datenhoheit](teilnehmer-und-gruppen-anlegen.md)
 - [Registrierung und Gruppenbindung](registrierung-und-gruppenbindung.md)
 - [Ausbauziele und offene Entscheidungen](ausbauziele-und-prioritaeten.md)

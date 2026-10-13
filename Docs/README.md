@@ -2,7 +2,9 @@
 
 **Projektstand und nächster Schritt:** [Zentrale Gesamtroadmap](roadmaps/gesamtroadmap.md).
 
-**Quellenabgleich:** 09.10.2026 mit `main@c3ccdb4`. Aktuelle Anleitungen beschreiben den vorhandenen Code und kennzeichnen offene Laufzeit- und Anlagenprüfungen. Datierte Nachweise behalten ihren ursprünglichen Geltungszeitraum.
+**Quellenabgleich:** 13.10.2026 mit `main@e1617b28`. Aktuelle Anleitungen beschreiben den vorhandenen Code und kennzeichnen offene Laufzeit- und Anlagenprüfungen. Datierte Nachweise behalten ihren ursprünglichen Geltungszeitraum.
+
+**Datierte Gesamtausgabe:** [Komplettguide 13.10.2026](NetCore-Tetra-Komplettguide-2026-10-13.md) · [Systemhandbuch 13.10.2026](NetCore-Tetra-Systemhandbuch-2026-10-13.md) · jeweils zusätzlich als DOCX und PDF im selben Verzeichnis.
 
 Detaildokumentation liegt zentral unter `Docs/`. Im Quellbaum führen kurze READMEs zur jeweiligen Komponente und zur passenden Anleitung.
 

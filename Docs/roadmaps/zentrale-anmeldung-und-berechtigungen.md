@@ -1,13 +1,13 @@
 # Roadmap: Zentrale Anmeldung und RBAC für NetCore-Tetra
 
-**Standprüfung am 09.10.2026:** Die Roadmap beschreibt weiterhin Planung. Im geprüften `main@c3ccdb4` ist kein eigenständiger zentraler IAM- beziehungsweise Drive-Dienst im Workspace oder Betriebsinventar implementiert. Lokale Benutzer, Tokens und vorhandene Dateispeicher ersetzen diese geplanten Dienste nicht. Die unten angegebenen frühen Code-/Entwurfsstände bleiben historische Ausgangspunkte; Priorität und Folge stehen in der [Gesamtroadmap](gesamtroadmap.md).
+**Standprüfung am 13.10.2026:** Die Roadmap beschreibt weiterhin Planung. Im geprüften `main@e1617b28` ist kein eigenständiger zentraler IAM- beziehungsweise Drive-Dienst im Workspace oder Betriebsinventar implementiert. Lokale Benutzer, Tokens und vorhandene Dateispeicher ersetzen diese geplanten Dienste nicht. Die unten angegebenen frühen Code-/Entwurfsstände bleiben historische Ausgangspunkte; Priorität und Folge stehen in der [Gesamtroadmap](gesamtroadmap.md).
 
 **Gesamtpriorität / nächster Schritt:** [NETCORE-MASTER-01](gesamtroadmap.md). Diese Fachroadmap führt IAM-Umfang und Abnahme; für die aktuelle Reihenfolge im gesamten Projekt zuerst die zentrale Gesamtroadmap prüfen.
 
 | Feld | Wert |
 | --- | --- |
 | Roadmap-ID | NETCORE-IAM-01 |
-| Erstellt / aktualisiert | Erstellt 2026-10-03; aktualisiert 2026-10-05, Europe/Berlin |
+| Erstellt / aktualisiert | Erstellt 2026-10-03; Status erneut geprüft 2026-10-13, Europe/Berlin |
 | Gesamtstatus | **Geplant; bisher nur dokumentiert, keine zentrale IAM-Implementierung durch diesen Auftrag** |
 | Nutzerauftrag | Zentrale Anmeldung und Rechteverwaltung statt regulärer Basisstations-Zugangsdaten in config.toml; Roadmap im Docs-Ordner für die Projektstatusläufe |
 | Geltungsbereich | Basisstations-Dashboard, Control Room, Verwaltungsoberflächen / Management-APIs der Zentraldienste und NetCore Drive einschließlich begrenzter Gastzugänge |
