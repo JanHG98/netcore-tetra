@@ -1,26 +1,26 @@
 # NetCore-Dienste aktualisieren
 
-Stand: 13.10.2026 · Aufgabe **Z01.4** · geprüfter Ausgangsstand `e1617b28e6f2e8f79958f88e84bc1dc1606c59ed`.
+Stand: 13.10.2026 · Aufgabe **Z01.4** · geprüfter Ausgangsstand `main@5c83bfbdd48bd3de257125ae68a57e584c77ee86`.
 
 Der folgende Block läuft **als root in der Proxmox-Host-Shell**. Er aktualisiert die installierten, verwalteten NetCore-Programme in den **laufenden LXCs dieses Hosts**. CT-IDs und IP-Adressen werden nicht geraten. Bei einem Cluster den Block auf jedem Host mit NetCore-LXCs ausführen. Der Pi und die Deployment-VM sind keine LXCs und haben eigene Schritte unten.
 
-## Ein gemeinsamer Proxmox-Block
+## Ein gemeinsamer Proxmox-Block: neuester main-Stand
 
 ```bash
 (
 set -euo pipefail
-NC_UPDATE_COMMIT=35dc385ca97fd02c8554db3c5b9afd81ec251d40
 NC_UPDATE_SRC=$(mktemp -d /var/tmp/netcore-lxc-source.XXXXXX)
 git -C "$NC_UPDATE_SRC" init -q
 git -C "$NC_UPDATE_SRC" fetch --depth 1 \
-  https://github.com/JanHG98/netcore-tetra.git "$NC_UPDATE_COMMIT"
+  https://github.com/JanHG98/netcore-tetra.git main
 git -C "$NC_UPDATE_SRC" checkout --detach FETCH_HEAD
-test "$(git -C "$NC_UPDATE_SRC" rev-parse HEAD)" = "$NC_UPDATE_COMMIT"
+NC_UPDATE_COMMIT=$(git -C "$NC_UPDATE_SRC" rev-parse HEAD)
+printf 'Ausgerollter main-Commit: %s\n' "$NC_UPDATE_COMMIT"
 python3 -B "$NC_UPDATE_SRC/tools/operator/update-netcore-lxcs.py" --apply
 )
 ```
 
-Voraussetzungen: `git` und Python3.11+ auf Proxmox; Python3.11+ und funktionierende bestehende Installation im Ziel-LXC. Rust-Rollen benötigen ihre bereits vorhandene Root-Cargo-Toolchain und Build-Abhängigkeiten. Der Helfer setzt `/root/.cargo/bin` in seinen Prozess-PATH und baut mit einem persistenten Cache unter `/var/cache/netcore-service-update/target`; fehlende Voraussetzungen führen zum Abbruch. Neue Pakete und Toolchains werden durch diesen Block nicht installiert.
+Voraussetzungen: `git` und Python3.11+ auf Proxmox; Python3.11+ und eine bestehende NetCore-Installation im Ziel-LXC. Der Lauf löst `main` beim Start genau einmal auf und verwendet diesen vollständigen Commit für alle Gäste. Für Rust-Rollen richtet die Vorbereitung fehlende Build-Pakete und eine explizite Root-stable-Toolchain ein; sie führt kein Betriebssystem-Upgrade aus. Der persistente Build-Cache liegt unter `/var/cache/netcore-service-update/target`. `--no-prepare-build-deps` lässt diese Einrichtung bei bewusst vorbereiteten Gästen aus.
 
 Ohne `--apply` zeigt der Helfer nur das erkannte Inventar. Mit wiederholtem `--ctid 136 --ctid 150` lässt sich der Lauf auf nachweislich passende lokale Container beschränken; dies sind Beispiele für die Syntax, keine vollständige Zuordnung der Anlage.
 
@@ -29,14 +29,16 @@ Ohne `--apply` zeigt der Helfer nur das erkannte Inventar. Mit wiederholtem `--c
 1. `pct list` erfasst die lokalen Container. Gestoppte LXCs werden protokolliert und nicht gestartet.
 2. Installierte Dienste werden anhand von `LoadState=loaded` und `FragmentPath` erkannt. Eine vorhandene `managed_services`-Liste in `/etc/netcore/discovery.toml` begrenzt die zentralen Rollen. Fremde oder historisch zusätzlich kopierte Units außerhalb dieser Liste werden nicht ausgerollt.
 3. Ein einziges Git-Quellpaket wird erstellt, mit `pct push` verteilt und im Gast gegen SHA-256 geprüft. Alle geplanten Runtime-/Konfigurationspfade werden vor dem ersten Programmaustausch geprüft.
-4. Aktualisierung in der Abhängigkeitsreihenfolge des vorhandenen Dienstkatalogs. Rust-Build mit `--locked --release` und Python-Syntaxprüfung passieren vor dem Dienststopp.
-5. Geänderte Programmdateien werden gesichert und auf ihrem jeweiligen Dateisystem atomar ersetzt. Ein zuvor aktiver Dienst wird anschließend wieder gestartet und auf HTTP-Liveness geprüft. Bereits inaktive Dienste bleiben inaktiv. Ein mit `failed` abgestürzter Dienst bekommt dagegen einen Recovery-Start mit zurückgesetztem Fehlerlimit. Enabled-/Disabled-Zustand und Units werden nicht geändert.
-6. Bei Austausch-/Start-/Livenessfehlern werden die gesicherten Programmdateien zurückgesetzt und die zuvor aktiven Dienste erneut gestartet. Der Flottenlauf stoppt an diesem Dienst. Rückwegfehler werden ausdrücklich gemeldet; ein unterbrochener Host/Prozess ist keine Garantie für eine vollständige Rücksetzung.
-7. Readiness wird gesondert bewertet. `updated_degraded` bedeutet: neue Runtime läuft, Fachbereitschaft ist eingeschränkt. Die übrigen Updates laufen weiter, damit noch alte Abhängigkeiten ebenfalls aktualisiert werden können. Der Gesamtlauf endet mit Code2 statt einem uneingeschränkten Erfolg.
+4. **Vollständige Vorbereitung aller geplanten Dienste vor dem ersten Austausch:** alle Runtime- und neuen Paketdateien prüfen, Rust mit `--locked --release` bauen, Python-Syntax prüfen und unveränderliche Dateikopien mit SHA-256 bereitstellen. Scheitert eine Vorbereitung, wurde noch keine geplante NetCore-Runtime ausgetauscht.
+5. **Anwenden in Abhängigkeitsreihenfolge:** vorhandene Programmdateien sichern, neue eigene Module/Static-Dateien ebenfalls installieren, passende eigene Python-Bytecode-Caches invalidieren und zuvor aktive Dienste neu starten. Das erfolgt auch bei identischen Dateien, damit kein alter Prozess als neuer Stand ausgegeben wird. Inaktive Dienste bleiben inaktiv; abgestürzte Dienste bekommen einen Recovery-Start.
+6. **Tatsächlichen Stand prüfen:** installierte Dateien müssen den vorbereiteten SHA-256 entsprechen. Aktive Dienste benötigen eine neue systemd-Invocation und einen passenden MainPID; bei Rust wird das laufende `/proc/<PID>/exe` gegen das gebaute Binary geprüft, bei Python der neue Prozess und sein kanonischer Skriptpfad. HTTP-Liveness und Readiness bleiben separate Fachprüfungen. Bei Austausch-/Start-/Prozessfehlern werden alte Dateien zurückgesetzt und neu angelegte Dateien entfernt; weitere Ziele werden als nicht ausgeführt protokolliert.
+7. **Versionsnachweis veröffentlichen:** erst nach erfolgreicher Datei-/Prozessprüfung werden die Runtime-Quittung und Discoverys `deployed-<service>.json` mit dem tatsächlichen Commit geschrieben. Der Discovery-Agent meldet seinen eigenen Stand als `source_commit`. Ein eigener Zustand `installing`/`failed` darf keinen alten Commit als erfolgreich neu installiert ausgeben. UI-Jobs und CLI-Austausch verwenden eine gemeinsame Sperre; laufende/ungeklärte Alt-Agentenjobs verhindern einen Austausch.
 
-Der abschließende Pfad **Bericht: .../report.json** enthält Commit, erkannte Container, Ausnahmen, geplante Rollen und Ergebnisse. Daneben liegt pro CT/Dienst ein Build-/Updateprotokoll. Bei Code1 steht dort der Abbruchpunkt. Nicht inspizierbare Container blockieren `--apply`; erst Ursache prüfen oder die passenden CT-IDs gezielt wählen. Ein `completed` gilt ausschließlich für die tatsächlich erkannten und geplanten Rollen, nicht als Abnahme aller Systeme oder Funkfunktionen.
+Readiness wird gesondert bewertet. `updated_degraded` bedeutet: neue Runtime läuft, Fachbereitschaft ist eingeschränkt. Die übrigen Updates laufen weiter, damit noch alte Abhängigkeiten ebenfalls aktualisiert werden können. Der Gesamtlauf endet mit Code2 statt einem uneingeschränkten Erfolg.
 
-Konfigurationen, Zugangsdaten, Datenbanken, Aufnahmen, Archivpfade, Sprachmodelle und vorhandene systemd-Units/Drop-ins werden von diesem Runtime-Update nicht geschrieben. Es gibt keine Seed-Importe, Archivmigrationen, Piper-Neuinstallation, Betriebssystem-Upgrades oder Reboots. Observabilitys bereits installierter Python-Loghelfer gehört zum Update; bei geänderten Dateien werden die zuvor aktiven betroffenen Preview-/Archivunits koordiniert gestoppt und wieder gestartet. Das ist ein Runtime-Update bestehender Installationen, keine Neuinstallation oder allgemeine Schema-/Unitmigration.
+Der abschließende Pfad **Bericht: .../report.json** enthält Commit, erkannte Container und den tatsächlichen Zustand jedes Ziels: vorbereitet, installiert/verifiziert, eingeschränkt, fehlgeschlagen oder nicht ausgeführt. Die Quittungen enthalten den installierten Commit, Dateihashes und Prozessnachweise; der Host übernimmt die wirklichen Gast-Ergebnisse statt pauschal jeden Exit0 als „updated“ auszugeben. Daneben liegt pro CT/Dienst ein Build-/Updateprotokoll. Bei Code1 steht dort der Abbruchpunkt. Nicht inspizierbare Container blockieren `--apply`; erst Ursache prüfen oder die passenden CT-IDs gezielt wählen. Ein `completed` gilt ausschließlich für die tatsächlich erkannten und geplanten Rollen, nicht als Abnahme aller Systeme oder Funkfunktionen.
+
+Konfigurationen, Zugangsdaten, Datenbanken, Aufnahmen, Archivpfade und Sprachmodelle bleiben erhalten. Bestehende effektive Units und Discovery-/Bediener-Drop-ins behalten ihre Startpfade; eigene neue Runtime-Dateien kommen vollständig hinzu. Es gibt keine Seed-Importe, Archivmigrationen, Piper-Neuinstallation, Betriebssystem-Upgrades oder Reboots. Observabilitys bereits installierter Python-Loghelfer gehört zum Update; bei geänderten Dateien werden die zuvor aktiven betroffenen Preview-/Archivunits koordiniert gestoppt und wieder gestartet. Das ist ein Runtime-Update bestehender Installationen, keine Neuinstallation oder allgemeine Schema-/Unitmigration.
 
 ## Vollständige Rollenliste
 
@@ -81,15 +83,15 @@ Dieser Block ist unabhängig vom Proxmox-Lauf. Auf dem jeweiligen Dienstserver a
 (
 set -euo pipefail
 NC_SERVICE=packet-core
-NC_UPDATE_COMMIT=35dc385ca97fd02c8554db3c5b9afd81ec251d40
 NC_UPDATE_SRC=$(mktemp -d /var/tmp/netcore-service-source.XXXXXX)
 git -C "$NC_UPDATE_SRC" init -q
 git -C "$NC_UPDATE_SRC" fetch --depth 1 \
-  https://github.com/JanHG98/netcore-tetra.git "$NC_UPDATE_COMMIT"
+  https://github.com/JanHG98/netcore-tetra.git main
 git -C "$NC_UPDATE_SRC" checkout --detach FETCH_HEAD
-test "$(git -C "$NC_UPDATE_SRC" rev-parse HEAD)" = "$NC_UPDATE_COMMIT"
+NC_UPDATE_COMMIT=$(git -C "$NC_UPDATE_SRC" rev-parse HEAD)
+printf 'Ausgerollter main-Commit: %s\n' "$NC_UPDATE_COMMIT"
 sudo python3 -B "$NC_UPDATE_SRC/tools/operator/update-netcore-service.py" \
-  --service "$NC_SERVICE" --apply
+  --service "$NC_SERVICE" --commit "$NC_UPDATE_COMMIT" --prepare-build-deps --apply
 )
 ```
 
@@ -119,7 +121,7 @@ Das ist der bereits geprüfte, konsolidierte Rezept-/Formular-Updater. Aktive/un
 ## Pi und externe Anwendungen
 
 - **Physischer Pi `10.0.1.20`:** Die aktuellen Carrier-/Telegram-/Nachbar-/WLAN-/Medienrechte-/Desktop-/SIP-Fallback-Korrekturen kommen über das neu gebaute Image. Der Proxmox-Lauf startet keinen Funkdienst und überschreibt den Pi nicht.
-- **Piper/TTS:** externer Provider innerhalb der Media-Library-Installation, keine eigene neue NetCore-Programmquelle. Provider, virtuelle Umgebung, Modelle und Cache bleiben erhalten; das Media-Library-Backend wird aktualisiert.
+- **Piper/TTS:** externer Provider innerhalb der Media-Library-Installation, keine eigene neue NetCore-Programmquelle. Provider, virtuelle Umgebung, Modelle und Cache bleiben erhalten; das Media-Library-Backend und seine eigenen Codehelfer werden aktualisiert, ohne Archivmigrationen auszuführen.
 - **FreePBX/Asterisk und Home Assistant:** externe Anwendungen. Asterisk-AGI des NetCore-SIP-Switches ist enthalten; PBX-, SIP-Zugangsdaten und Routen werden nicht automatisch eingerichtet.
 - **Brew:** Der vorhandene Discovery-Agent kann aktualisiert werden. Die Brew-Anwendung selbst hat mehrere inkompatible historische Python-/Rustvarianten; ein ungeprüftes Überschreiben könnte den Backhaul-Port8080 entfernen. Ihre tatsächliche Installation ist noch nicht belegt. Dieser lesende Block auf dem Brew-Server liefert die nötige Grundlage für seinen konkreten Updateweg:
 
@@ -136,7 +138,7 @@ done
 
 Ausgangsvergleich: Die zuletzt gemeldeten zentralen Fehler liegen in den Rust-Runtimes von Packet Core, IP-Gateway, Media Library und Observability. Zwischen `0770e903` und `e1617b28` wurden ihre zentralen systemd-Units nicht geändert; das Erhalten der installierten Units berücksichtigt bestehende Discovery-Startwrapper. Der geänderte Medien-Datenpfad-Dienst gehört zum Pi-Image und wird dort durch das Rezept geliefert.
 
-Die gezielten Regressionen umfassen 60 Fälle: 29 für Proxmox-Inventar/Planung und 31 für Runtime-Austausch, Buildfehler, Architektur, Rückweg, Konfigurationserhalt und Dienstzustände. Unter Windows bestanden 59 Fälle; nur der tatsächliche POSIX-Eigentümer-/Modustest ist dort nicht ausführbar. Der ergänzte Linux-CI-Schritt führt denselben Satz einschließlich der nativen Metadatenprüfung aus. Die Tests verwenden echte Dateiaustausche und gemockte systemd-/pct-Aufrufe; sie sind kein ausgeführter Anlagenrollout.
+Der korrigierte Helfer besitzt 85 gezielte Regressionen für vollständige Vorbereitung, Quellidentität, neue Paketdateien, Prozess-/Dateinachweise, Versionsmarker, Busy-Jobs und Rückwege. Unter Windows bestanden 82 Fälle; drei echte POSIX-Checks laufen zusätzlich unter Linux. Der Build-Helfer hat zwölf Prüfungen einschließlich zehn tatsächlicher Bash-Fixtures. Der eigene Workflow `NetCore runtime update native proof` führt auf Ubuntu24.04 und26.04 zusätzlich echte systemd-/HTTP-Fälle aus: neues Python-Modul und Static-Datei, unveränderlicher vorbereiteter Stand, Neustart/Commitanzeige, fehlgeschlagener Start mit Rückweg sowie ein real kompilierter Rust-HTTP-Prozess mit `/proc/<PID>/exe`-Hash. Das sind isolierte Fixtures, kein tatsächlicher Packet-Core- oder Flottenrollout auf Jans Anlage.
 
 Eine tatsächliche Aktualisierung auf Jans Proxmox/LXCs und deren Fach-/Funkabnahme ist noch nicht ausgeführt. Betriebsprotokolle des Operators sind der nächste Nachweis für Z01.4.
 

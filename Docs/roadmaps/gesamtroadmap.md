@@ -19,6 +19,8 @@
 
 ## 1. Aktueller nächster Schritt
 
+**Korrektur 13.10.2026, Z01.4:** Der erste Runtime-Updater zeigte das Inventar und konnte Dateien austauschen, aktualisierte aber nicht Discoverys installierten Commitnachweis. Neue Agentenassets wurden teilweise ausgelassen; vollständige Builds fanden erst nach der ersten Agentenänderung statt. Der [korrigierte Flotten-Updateweg](../deployment/netcore-dienste-aktualisieren.md) bereitet jetzt alle Ziele vor, übernimmt neue eigene Paketdateien und prüft Dateihashes sowie den tatsächlich neu gestarteten Prozess. Erst danach werden Runtime-Quittung und Deploymentmarker geschrieben; `main` wird für jeden Lauf einmal frisch aufgelöst. Native Tests und tatsächliche Betreiberübernahme bleiben getrennte Nachweise; ohne Betreiberbericht wird kein ausgeführter Anlagenrollout behauptet.
+
 **Nachtrag 13.10.2026, Z01.4:** Auf Nutzerwunsch ist der konkrete [Proxmox-/Einzelupdateweg für alle zentralen NetCore-Rollen](../deployment/netcore-dienste-aktualisieren.md) vorbereitet. Der Quellaudit an `e1617b28` belegt Build-/Datenmigrationrisiken in mehreren bisherigen Installerskripten; der neue Runtime-Updater baut zuerst und erhält installierte Units, Konfigurationen und Nutzdaten. VM119 bleibt beim eigenen geprüften Rezept-Updater; Pi-Image und externe Anwendungen bleiben eigene Übernahmeschritte. Quell-/Regressionsergebnisse stehen in der Anleitung. Noch kein tatsächlicher Proxmox-/Flottenrollout; nächster Betreiberbeleg ist dessen vollständiger Bericht und anschließende zentrale Readiness-/Fachprüfung.
 
 **Z01.4 – Installation, Upgrade und Recovery auf dem gemeinsamen Stand abnehmen.**
@@ -314,4 +316,5 @@ Regelmäßige NetCore-Projektstatusläufe verwenden diese Gesamtroadmap als Eins
 
 
 | 2026-10-12 | Z01.4: PR #71 auf main4041cee übernommen; alle sechs Workflows am d3ea8283 erfolgreich. Native120 VM-Guardfälle,14 KDE-,10 SIP-Setup-,9 SIP-Rechte-,72 Dashboard-Rust-,64 zentrale Backendfälle und149 Dashboard-Browserprüfungen bestanden; beide realen ARM64-Personalisierungen / systemd-Verzeichnistests PASS. KDE-Auswahl, Nachbar-CRUD, kompakte Dienste und quote-aware Carrier/Telegram fertig | [Gepinnter VM-Update-/Rolloutweg](../integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md); VM-Übernahme / neues volles KDE-Image / echte Desktop-, WLAN-, Telegram-, Medien-, SIP-, zentrale Readiness-, Dauerlauf- und On-Air-Abnahmen offen. Vorbereitung ist keine Anlagenänderung |
+
 

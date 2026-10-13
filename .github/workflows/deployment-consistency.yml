@@ -47,6 +47,8 @@ jobs:
         run: python3 tools/check_z01_integration.py
       - name: Proxmox runtime update, build-before-stop and rollback
         run: python3 -B -m unittest discover -s tests/integration -p 'test_netcore_*_update.py' -v
+      - name: Backend build prerequisites without OS or service upgrades
+        run: python3 -B tools/test_netcore_build_prerequisites.py
       - name: Public alert monitoring keeps the management API protected
         run: python3 -m unittest discover -s system-backend/alert-service/tests -p test_http.py -v
       - name: Generated audit is current
