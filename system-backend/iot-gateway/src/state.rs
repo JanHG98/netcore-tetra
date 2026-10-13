@@ -41,6 +41,7 @@ struct GatewayState {
     command_ledger: HashMap<Uuid, CommandRecord>,
     command_order: VecDeque<Uuid>,
     virtual_devices: BTreeMap<String, VirtualDeviceState>,
+    startup_virtual_states_pending: VecDeque<String>,
     external_entities: BTreeMap<String, ExternalEntityState>,
     homematic_states: BTreeMap<String, HomematicDatapointState>,
     home_assistant_discovery_runs: u64,
@@ -99,6 +100,7 @@ impl SharedGateway {
                 )
             })
             .collect();
+        let startup_virtual_states_pending = virtual_devices.keys().cloned().collect();
         let state = GatewayState {
             config,
             started_at: now_iso(),
@@ -114,6 +116,7 @@ impl SharedGateway {
             command_ledger,
             command_order,
             virtual_devices,
+            startup_virtual_states_pending,
             external_entities,
             homematic_states,
             home_assistant_discovery_runs: 0,
@@ -152,16 +155,34 @@ impl SharedGateway {
                 "homematic_mode":gateway.config().homematic.mode
             }),
         );
+        if !gateway
+            .enqueue_startup_virtual_states()
+            .map_err(std::io::Error::other)?
         {
-            let state = gateway.0.lock().expect("IoT Gateway state poisoned");
-            ensure_outbox_capacity(&state, state.virtual_devices.len())
-                .map_err(std::io::Error::other)?;
-            for device in state.virtual_devices.values() {
-                enqueue_virtual_state_locked(&state, device)
-                    .map_err(std::io::Error::other)?;
-            }
+            tracing::warn!(
+                "Initial virtual-device states deferred because the MQTT outbox is full; startup and backlog replay continue"
+            );
+            gateway.record_bridge_event(
+                "virtual_devices.startup_state_deferred",
+                json!({"outbox_limit":gateway.config().storage.outbox_limit}),
+            );
         }
         Ok(gateway)
+    }
+
+    fn enqueue_startup_virtual_states(&self) -> Result<bool, String> {
+        let mut state = self.0.lock().expect("IoT Gateway state poisoned");
+        while let Some(device_id) = state.startup_virtual_states_pending.front().cloned() {
+            // Capacity pressure must not prevent MQTT from connecting and draining the backlog.
+            if ensure_outbox_capacity(&state, 1).is_err() {
+                return Ok(false);
+            }
+            if let Some(device) = state.virtual_devices.get(&device_id) {
+                enqueue_virtual_state_locked(&state, device)?;
+            }
+            state.startup_virtual_states_pending.pop_front();
+        }
+        Ok(true)
     }
 
     pub fn config(&self) -> IotGatewayConfig {
@@ -1403,7 +1424,16 @@ impl SharedGateway {
 
     pub fn complete_outbox_message(&self, path: &Path, message: &OutboundMessage) {
         match fs::remove_file(path) {
-            Ok(()) => self.record_publish_ack(message),
+            Ok(()) => {
+                self.record_publish_ack(message);
+                if let Err(error) = self.enqueue_startup_virtual_states() {
+                    tracing::warn!("Failed to enqueue deferred startup state: {}", error);
+                    self.record_bridge_event(
+                        "virtual_devices.startup_state_failed",
+                        json!({"error":error}),
+                    );
+                }
+            }
             Err(error) => self.record_bridge_event(
                 "outbox.remove_failed",
                 json!({"path":path,"error":error.to_string()}),
@@ -1978,6 +2008,113 @@ fn append_json_line<T: serde::Serialize>(path: &Path, value: &T) -> Result<(), S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct TestDirectory(PathBuf);
+
+    impl TestDirectory {
+        fn new() -> Self {
+            let path = std::env::temp_dir().join(format!("netcore-iot-outbox-{}", Uuid::new_v4()));
+            fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+
+        fn config(&self, limit: usize) -> IotGatewayConfig {
+            let mut config = IotGatewayConfig::default();
+            config.storage.state_dir = self.0.to_string_lossy().into_owned();
+            config.storage.outbox_limit = limit;
+            config
+        }
+
+        fn seed_outbox(&self, config: &IotGatewayConfig, count: usize) -> Vec<(PathBuf, Vec<u8>)> {
+            (0..count)
+                .map(|index| {
+                    let message = OutboundMessage {
+                        id: Uuid::new_v4(),
+                        created_at: now_iso(),
+                        kind: "event".to_string(),
+                        topic: format!("netcore/v1/test/backlog/{index}"),
+                        qos: 1,
+                        retain: false,
+                        payload: json!({"index":index}).to_string(),
+                        source_event_id: None,
+                    };
+                    let path = write_outbox_message(&config.outbox_dir(), &message).unwrap();
+                    let raw = fs::read(&path).unwrap();
+                    (path, raw)
+                })
+                .collect()
+        }
+    }
+
+    impl Drop for TestDirectory {
+        fn drop(&mut self) {
+            fs::remove_dir_all(&self.0).unwrap();
+        }
+    }
+
+    #[test]
+    fn saturated_outbox_survives_repeated_startup_without_changing_backlog() {
+        for (pending, limit, expected) in [(3, 3, 3), (5, 3, 5), (3, 5, 5)] {
+            let directory = TestDirectory::new();
+            let config = directory.config(limit);
+            let original = directory.seed_outbox(&config, pending);
+            for _ in 0..2 {
+                let gateway = SharedGateway::new(config.clone())
+                    .expect("a saturated outbox must not prevent startup");
+                assert_eq!(gateway.status().outbox_pending, expected);
+                assert!(!gateway.status().mqtt_connected);
+                for (path, raw) in &original {
+                    assert_eq!(fs::read(path).unwrap(), *raw);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn publish_acks_release_space_for_deferred_startup_states_once() {
+        let directory = TestDirectory::new();
+        let config = directory.config(3);
+        directory.seed_outbox(&config, 3);
+        let gateway = SharedGateway::new(config).unwrap();
+        for expected in [3, 3, 3] {
+            let (path, message) = gateway.next_outbox_message().unwrap();
+            assert_eq!(message.kind, "event");
+            gateway.complete_outbox_message(&path, &message);
+            assert_eq!(gateway.status().outbox_pending, expected);
+        }
+        for expected in [2, 1, 0] {
+            let (path, message) = gateway.next_outbox_message().unwrap();
+            assert_eq!(message.kind, "virtual_device_state");
+            gateway.complete_outbox_message(&path, &message);
+            assert_eq!(gateway.status().outbox_pending, expected);
+        }
+        assert_eq!(gateway.status().broker_publish_acks, 6);
+        assert!(gateway.next_outbox_message().is_none());
+        gateway.enqueue_manual_message(
+            "netcore/v1/test/recovered".to_string(), "{}".to_string(), 1, false,
+        ).unwrap();
+    }
+
+    #[test]
+    fn startup_keeps_real_storage_errors_fatal() {
+        let directory = TestDirectory::new();
+        let config = directory.config(3);
+        fs::write(config.outbox_dir(), b"not a directory").unwrap();
+        assert!(SharedGateway::new(config).is_err());
+    }
+
+    #[test]
+    fn startup_states_can_drain_with_a_single_outbox_slot() {
+        let directory = TestDirectory::new();
+        let gateway = SharedGateway::new(directory.config(1)).unwrap();
+        assert_eq!(gateway.status().outbox_pending, 1);
+        for expected in [1, 1, 0] {
+            let (path, message) = gateway.next_outbox_message().unwrap();
+            assert_eq!(message.kind, "virtual_device_state");
+            gateway.complete_outbox_message(&path, &message);
+            assert_eq!(gateway.status().outbox_pending, expected);
+        }
+    }
 
     #[test]
     fn mqtt_topic_segments_are_safe() {
