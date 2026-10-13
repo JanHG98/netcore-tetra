@@ -52,7 +52,7 @@ def ordered(roles):
         names = [n for n, s in remaining.items()
                  if not any(d in remaining for d in s.get('depends_on', []))]
         if not names:
-            raise RuntimeError('Zyklische Dienstabh�ngigkeit im Katalog.')
+            raise RuntimeError('Zyklische Dienstabhängigkeit im Katalog.')
         names.sort(key=lambda n: (n != 'discovery', n != 'directory', n))
         for name in names:
             result.append(name)
@@ -70,7 +70,7 @@ if path.is_file():
     managed = tomllib.loads(path.read_text()).get('managed_services')
     if managed is not None and (not isinstance(managed, list) or
                               any(not isinstance(n, str) for n in managed)):
-        raise RuntimeError('managed_services ist keine g�ltige Dienstliste')
+        raise RuntimeError('managed_services ist keine gültige Dienstliste')
 result = {'installed': [], 'unmanaged': [], 'external': []}
 for name, unit in roles.items():
     proc = subprocess.run(['systemctl', 'show', unit, '-p', 'LoadState',
@@ -114,7 +114,7 @@ def inspect(ctid, roles):
     return scan(ctid, roles)
 
 
-def stage(ctid, archive, sha):
+def stage(ctid, archive, sha, commit):
     proc = run(['pct', 'exec', str(ctid), '--', 'mktemp', '-d',
                 '/var/tmp/netcore-source-update.XXXXXX'], capture_output=True, text=True)
     root = proc.stdout.strip()
@@ -129,11 +129,112 @@ if actual != sys.argv[2]: raise RuntimeError('Quellpaket-SHA stimmt nicht')
     run(['pct', 'exec', str(ctid), '--', 'python3', '-c', code, root + '/source.tar', sha])
     run(['pct', 'exec', str(ctid), '--', 'tar', '--extract', '--file', root + '/source.tar',
          '--directory', root, '--no-same-owner'])
+    identity = """import json,pathlib,sys
+pathlib.Path(sys.argv[1]).write_text(json.dumps({'commit':sys.argv[2],
+    'archive_sha256':sys.argv[3]}) + '\\n')
+"""
+    run(['pct', 'exec', str(ctid), '--', 'python3', '-c', identity,
+         root + '/.netcore-source.json', commit, sha])
     return root
 
 
 def save_report(path, report):
-    path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
+    path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+
+def guest_step(command, log):
+    """Stream real prepare/apply progress and read the final JSON receipt."""
+    receipt = None
+    with log.open('w', encoding='utf-8') as stream:
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                text=True, bufsize=1)
+        for line in proc.stdout:
+            print(line, end='', flush=True)
+            stream.write(line)
+            stream.flush()
+            try:
+                value = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(value, dict) and 'phase' in value:
+                receipt = value
+        rc = proc.wait()
+    return rc, receipt
+
+
+def file_hashes(receipt):
+    files = receipt.get('files')
+    if not isinstance(files, list) or not files:
+        raise RuntimeError('Updatebeleg hat keine Runtime-Dateipruefsummen.')
+    result = {}
+    for item in files:
+        if not isinstance(item, dict):
+            raise RuntimeError('Ungueltiger Dateibeleg.')
+        target, sha = item.get('target'), item.get('sha256')
+        if (not isinstance(target, str) or not target.startswith('/') or target in result
+                or not isinstance(sha, str) or not re.fullmatch(r'[0-9a-f]{64}', sha)):
+            raise RuntimeError('Ungueltiger oder doppelter Runtime-Dateibeleg.')
+        result[target] = sha
+    return result
+
+
+def validate_receipt(receipt, role, commit, prepare=False, expected_files=None, rc=0):
+    if not isinstance(receipt, dict):
+        raise RuntimeError('Kein JSON-Updatebeleg; Exitcode allein belegt keine Aktualisierung.')
+    if receipt.get('service') != role or receipt.get('source_commit') != commit:
+        raise RuntimeError('Dienst oder Quellcommit im Updatebeleg stimmt nicht.')
+    if receipt.get('assets_complete') is not True:
+        raise RuntimeError('Runtime-Dateien wurden nicht vollstaendig geprueft.')
+    files = file_hashes(receipt)
+    phase = receipt.get('phase')
+    if prepare:
+        if rc != 0 or phase != 'prepared':
+            raise RuntimeError('Vollstaendige Build-Vorbereitung fehlt.')
+        return files
+    if files != expected_files:
+        raise RuntimeError('Installierte Pruefsummen weichen von den vorbereiteten Runtime-Dateien ab.')
+    if receipt.get('verified') is not True:
+        raise RuntimeError('Installierter Runtime-Zustand ist nicht als verifiziert markiert.')
+    allowed = {'updated', 'updated_degraded', 'inactive_updated', 'already_current',
+               'already_current_degraded', 'recovered', 'recovered_degraded'}
+    if phase not in allowed or rc not in (0, 2):
+        raise RuntimeError('Kein erfolgreicher Runtime-Austausch im Updatebeleg.')
+    process = receipt.get('process')
+    if not isinstance(process, dict):
+        raise RuntimeError('Prozessnachweis fehlt im Updatebeleg.')
+    if phase == 'inactive_updated':
+        if (process.get('active') is not False or process.get('MainPID') != 0
+                or receipt.get('liveness') is not None or rc != 0):
+            raise RuntimeError('Inaktiver Dienst hat einen widerspruechlichen Updatebeleg.')
+    else:
+        pid, invocation = process.get('MainPID'), process.get('InvocationID')
+        if (process.get('active') is not True or type(pid) is not int or pid <= 0
+                or not isinstance(invocation, str) or not re.fullmatch(r'[0-9a-f]{32}', invocation)
+                or receipt.get('liveness') is not True):
+            raise RuntimeError('Aktualisierte Runtime ist nicht als laufender Prozess belegt.')
+        if receipt.get('readiness') is not (rc == 0):
+            raise RuntimeError('Readiness und Exitcode im Updatebeleg widersprechen sich.')
+    return files
+
+
+def complete_report(report):
+    results = report.get('results', [])
+    report['summary'] = dict(
+        planned=len(report.get('plan', [])),
+        prepared=sum('prepare_receipt' in item for item in results),
+        updated=sum(item.get('phase') in ('updated', 'recovered') for item in results),
+        already_current=sum(item.get('phase') == 'already_current' for item in results),
+        inactive_updated=sum(item.get('phase') == 'inactive_updated' for item in results),
+        degraded=sum(item.get('phase', '').endswith('_degraded') for item in results),
+        failed=sum(item.get('phase', '').startswith('failed') for item in results),
+        not_attempted=sum(item.get('phase') == 'not_attempted' for item in results))
+
+
+def stop_remaining(report, reason):
+    for item in report.get('results', []):
+        if item.get('phase') in ('not_attempted', 'prepared'):
+            item.update(phase='not_attempted', reason=reason)
+    complete_report(report)
 
 
 def rollout(args, roles, report, report_path):
@@ -150,7 +251,7 @@ def rollout(args, roles, report, report_path):
         report['containers'].append(entry)
         if ct['status'] != 'running':
             entry['phase'] = 'stopped_not_inspected'
-            print(f"CT {ct['ctid']}: gestoppt; nicht gestartet und nicht gepr�ft.", flush=True)
+            print(f"CT {ct['ctid']}: gestoppt; nicht gestartet und nicht geprüft.", flush=True)
             continue
         try:
             found = inspect(ct['ctid'], roles)
@@ -166,45 +267,87 @@ def rollout(args, roles, report, report_path):
     priority = {role: index for index, role in enumerate(ordered(roles))}
     tasks.sort(key=lambda t: (priority[t[0]], t[1]))
     report['plan'] = [dict(service=r, ctid=c) for r, c in tasks]
+    if args.apply:
+        report['results'] = [dict(service=r, ctid=c, phase='not_attempted') for r, c in tasks]
+    complete_report(report)
     save_report(report_path, report)
     incomplete = any(c['phase'] == 'scan_failed' for c in report['containers'])
     if not args.apply:
         return 1 if incomplete else 0
     if incomplete:
-        raise RuntimeError('Inventarisierung unvollst�ndig. Betroffene CTs pr�fen oder --ctid gezielt w�hlen.')
+        stop_remaining(report, 'Inventarisierung unvollstaendig; kein Runtime-Austausch begonnen.')
+        save_report(report_path, report)
+        raise RuntimeError('Inventarisierung unvollständig. Betroffene CTs prüfen oder --ctid gezielt wählen.')
     if not tasks:
         raise RuntimeError('Keine installierten und verwalteten NetCore-Dienste erkannt.')
     archive = report_path.parent / 'source.tar'
     run(['git', '-C', str(ROOT), 'archive', '--format=tar', '--output', str(archive), 'HEAD'])
     archive_sha = hashlib.sha256(archive.read_bytes()).hexdigest()
-    stages = {}
-    # Validate every planned existing layout before the first runtime exchange.
-    for ctid in sorted({c for _, c in tasks}):
-        stages[ctid] = stage(ctid, archive, archive_sha)
-    for role, ctid in tasks:
-        run(['pct', 'exec', str(ctid), '--', 'python3', '-B',
-             stages[ctid] + '/' + GUEST_HELPER, '--service', role])
-    degraded = False
-    for role, ctid in tasks:
-        print(f'\nCT {ctid}: {role} aktualisieren', flush=True)
-        command = ['pct', 'exec', str(ctid), '--', 'python3', '-B',
-                   stages[ctid] + '/' + GUEST_HELPER, '--service', role, '--apply']
-        # tee-style output without suppressing long Cargo progress.
-        log = report_path.parent / f'{ctid}-{role}.log'
-        with log.open('w') as stream:
-            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                    text=True, bufsize=1)
-            for line in proc.stdout:
-                print(line, end='', flush=True)
-                stream.write(line)
-                stream.flush()
-            rc = proc.wait()
-        result = dict(service=role, ctid=ctid, returncode=rc, log=str(log),
-                      phase='updated' if rc == 0 else 'updated_degraded' if rc == 2 else 'failed')
-        report['results'].append(result)
+    stages, expected = {}, {}
+    commit = report['commit']
+    try:
+        for ctid in sorted({c for _, c in tasks}):
+            print(f'CT {ctid}: Quellpaket uebertragen und SHA-256 pruefen', flush=True)
+            try:
+                stages[ctid] = stage(ctid, archive, archive_sha, commit)
+            except BaseException as exc:
+                for item in report['results']:
+                    if item['ctid'] == ctid:
+                        item.update(phase='failed_stage', error=str(exc))
+                raise
+        # Build and freeze ALL assets before the first stop or runtime exchange.
+        for index, ((role, ctid), item) in enumerate(zip(tasks, report['results']), 1):
+            print(f'[{index}/{len(tasks)}] CT {ctid}: {role} vollstaendig bauen und vorbereiten', flush=True)
+            item['phase'] = 'preparing'
+            log = report_path.parent / f'{ctid}-{role}-prepare.log'
+            item['prepare_log'] = str(log)
+            save_report(report_path, report)
+            command = ['pct', 'exec', str(ctid), '--', 'python3', '-B',
+                       stages[ctid] + '/' + GUEST_HELPER, '--service', role,
+                       '--commit', commit, '--prepare']
+            if not getattr(args, 'no_prepare_build_deps', False):
+                command.append('--prepare-build-deps')
+            try:
+                rc, receipt = guest_step(command, log)
+                item['prepare_returncode'] = rc
+                if rc != 0:
+                    raise RuntimeError(f'Vorbereitung CT {ctid}/{role} fehlgeschlagen (Exit {rc}); siehe {log}.')
+                expected[(role, ctid)] = validate_receipt(receipt, role, commit, prepare=True, rc=rc)
+                item.update(phase='prepared', prepare_receipt=receipt)
+            except BaseException as exc:
+                item.update(phase='failed_prepare', error=str(exc))
+                raise
+            complete_report(report)
+            save_report(report_path, report)
+    except BaseException:
+        stop_remaining(report, 'Vorbereitung abgebrochen; kein Runtime-Austausch begonnen.')
         save_report(report_path, report)
-        if rc not in (0, 2):
-            raise RuntimeError(f'CT {ctid} / {role} fehlgeschlagen. Weitere Updates gestoppt; siehe {log}.')
+        raise
+    print(f'Alle {len(tasks)} Ziele vollstaendig vorbereitet; Runtime-Austausch beginnt.', flush=True)
+    degraded = False
+    for index, ((role, ctid), item) in enumerate(zip(tasks, report['results']), 1):
+        print(f'\n[{index}/{len(tasks)}] CT {ctid}: {role} vorbereitete Runtime installieren', flush=True)
+        item['phase'] = 'applying'
+        command = ['pct', 'exec', str(ctid), '--', 'python3', '-B',
+                   stages[ctid] + '/' + GUEST_HELPER, '--service', role,
+                   '--commit', commit, '--apply']
+        log = report_path.parent / f'{ctid}-{role}.log'
+        item['log'] = str(log)
+        save_report(report_path, report)
+        try:
+            rc, receipt = guest_step(command, log)
+            item['returncode'] = rc
+            validate_receipt(receipt, role, commit, expected_files=expected[(role, ctid)], rc=rc)
+            item.update(phase=receipt['phase'], receipt=receipt)
+        except BaseException as exc:
+            item.update(phase='failed_apply', error=str(exc))
+            stop_remaining(report, f'Nach fehlgeschlagenem Update CT {ctid}/{role} nicht begonnen.')
+            save_report(report_path, report)
+            raise RuntimeError(f'CT {ctid} / {role} fehlgeschlagen. Weitere Updates gestoppt; siehe {log}.') from exc
+        complete_report(report)
+        save_report(report_path, report)
+        print(f"CT {ctid} {role}: {receipt['phase']}; Commit {commit[:12]}; "
+              f"{len(receipt['files'])} Dateipruefsummen bestaetigt", flush=True)
         degraded |= rc == 2
     return 2 if degraded else 0
 
@@ -213,20 +356,24 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apply', action='store_true')
     parser.add_argument('--ctid', type=int, action='append', help='Nur diese lokale CT-ID; wiederholbar')
+    parser.add_argument('--no-prepare-build-deps', action='store_true',
+                        help='Keine fehlenden minimalen Build-Voraussetzungen im Gast installieren')
     args = parser.parse_args(argv)
     if os.geteuid() != 0:
-        raise RuntimeError('Auf dem Proxmox-Host als root ausf�hren.')
+        raise RuntimeError('Auf dem Proxmox-Host als root ausführen.')
     import fcntl
     with open('/run/lock/netcore-lxc-update.lock', 'a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         dirty = run(['git', '-C', str(ROOT), 'status', '--porcelain', '--untracked-files=no'],
                     capture_output=True, text=True).stdout.strip()
         if dirty:
-            raise RuntimeError('Quellcheckout hat lokale �nderungen; keine nicht gepinnten Updates.')
+            raise RuntimeError('Quellcheckout hat lokale Änderungen; keine nicht gepinnten Updates.')
         commit = run(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'],
                      capture_output=True, text=True).stdout.strip()
         if not re.fullmatch(r'[0-9a-f]{40}', commit):
-            raise RuntimeError('Kein vollst�ndiger Quellcommit.')
+            raise RuntimeError('Kein vollständiger Quellcommit.')
+        print(f"Modus: {'APPLY - echte Runtime-Aktualisierung' if args.apply else 'INVENTAR - nur lesen'}", flush=True)
+        print('Quellcommit fuer alle Ziele: ' + commit, flush=True)
         work = Path(tempfile.mkdtemp(prefix='netcore-lxc-update-' + time.strftime('%Y%m%d-'), dir='/var/tmp'))
         report_path = work / 'report.json'
         report = dict(commit=commit, apply=args.apply, containers=[], plan=[], results=[], phase='running')
@@ -239,7 +386,12 @@ def main(argv=None):
             report.update(phase='failed', error=str(exc))
             raise
         finally:
+            complete_report(report)
             save_report(report_path, report)
+            print('\nZielbilanz: ' + ', '.join(f'{key}={value}' for key, value in report['summary'].items()), flush=True)
+            for item in report.get('results', []):
+                print(f"CT {item['ctid']} {item['service']}: {item['phase']}" +
+                      ('; ' + item['reason'] if item.get('reason') else ''), flush=True)
             print('\nBericht: ' + str(report_path), flush=True)
         print('Ergebnis: ' + report['phase'], flush=True)
         return code

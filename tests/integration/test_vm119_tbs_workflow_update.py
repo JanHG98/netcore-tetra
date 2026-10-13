@@ -13,8 +13,14 @@ from unittest import mock
 
 REPO = Path(__file__).resolve().parents[2]
 DRIVER = REPO / 'Docs/integration/Z01-2026-10-07/vm119-tbs-workflow-update.py'
-# Freeze only the two UI blobs changed after this historical, immutable updater.
-HISTORICAL_UI = REPO / 'tests/integration/fixtures/vm119-tbs-workflow-0770'
+# The immutable updater's entire reviewed seven-file source contract is frozen.
+# Six exact source blobs fetched at 62745765 complement the reviewed main below;
+# current deployment runtime files may evolve without changing historical pins.
+HISTORICAL_SOURCES = REPO / 'tests/integration/fixtures/vm119-tbs-workflow-0770'
+# Exact deployment-core/main.py bytes from reviewed commit 5c83bfb; its SHA-256
+# remains a73265fae52e97e0083f5cc6f0b34ae71313a7dfa8537026f1340007ca4a97ea.
+# Runtime provenance added later must not change this historical update contract.
+HISTORICAL_MAIN = REPO / 'tests/integration/fixtures/vm119-main-reviewed-20261009.txt'
 
 
 def load_driver():
@@ -33,7 +39,10 @@ class WorkflowUpdateTests(unittest.TestCase):
             '30ce8b0f936383f9c20ddb5ffda244c4065b1de1a567ddf3fbda360058d17e64',
             '905e5fc4d257e5d1ad56542cbaef38d2f42a00af357240c0e5c92ea7facc2c21'})
         for name, pins in driver.PINS.items():
-            source = HISTORICAL_UI / name if name in ('static/index.html', 'static/app.js') else driver.SOURCE / name
+            if name == 'main.py':
+                source = HISTORICAL_MAIN
+            else:
+                source = HISTORICAL_SOURCES / name
             self.assertEqual(driver.digest(source.read_bytes()), pins['new'])
 
     def exercise(self, kind):

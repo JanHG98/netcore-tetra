@@ -58,6 +58,8 @@ Erwartetes Ergebnis: `phase: passed` oder bei identischen Dateien `already_curre
 
 ## Zentrale Backends gezielt übernehmen
 
+**Update-Nachweis korrigiert, 13.10.2026:** Der gemeinsame Proxmox-Lauf verwendet den beim Start aufgelösten neuesten `main`-Commit, bereitet alle ausgewählten Rollen vollständig vor und prüft anschließend installierte Dateihashes und neue Prozesse. Erst dann werden auch Discoverys Versionsmarker aktualisiert. Inventar-/Planzeilen sind keine Abschlussmeldung. Die [vollständige Updateanleitung](../../deployment/netcore-dienste-aktualisieren.md) beschreibt diesen Ablauf und die Ergebnisse je CT/Dienst.
+
 **Gemeinsamer Proxmox-Host-Block:** [NetCore-Dienste aktualisieren](../../deployment/netcore-dienste-aktualisieren.md). Die Runtime-Blöcke unten verwenden denselben geprüften Helfer jeweils mit bereits eingetragenem Dienstnamen; jeder Dienst hat einen eigenen vollständigen Block.
 
 Die [einzelnen Bash-Updateblöcke](#updatebefehle-für-jeden-dienst) stehen jetzt für **alle Dienste direkt in dieser Anleitung**, einschließlich Packet Core, IP-Gateway, Observability und Media Library. Jeden Block auf dem dort genannten Diensthost ausführen. Die Blöcke enthalten Commit-Checkout, Update-Einstieg und abschließende Prüfung; ein Pi-Image aktualisiert diese zentralen Dienste nicht.
@@ -135,17 +137,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=node-gateway
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/node-gateway-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -159,17 +162,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=mobility-core
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/mobility-core-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -183,17 +187,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=subscriber-core
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/subscriber-core-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -207,17 +212,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=group-core
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/group-core-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -231,17 +237,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=call-control
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/call-control-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -255,17 +262,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=media-switch
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/media-switch-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -279,17 +287,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=recorder
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/recorder-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -303,17 +312,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=sds-router
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/sds-router-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -327,17 +337,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=packet-core
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/packet-core-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -351,17 +362,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=ip-gateway
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/ip-gateway-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -375,17 +387,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=security-core
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/security-core-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -399,17 +412,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=kmf
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/kmf-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -423,17 +437,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=transit
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/transit-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -447,17 +462,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=application-gateway
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/application-gateway-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -471,17 +487,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=media-library
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/media-library-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -495,17 +512,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=control-room
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/control-room-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -519,17 +537,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=observability
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/observability-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -543,17 +562,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=iot-gateway
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/iot-gateway-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -567,17 +587,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=hardware-gateway
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/hardware-gateway-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -591,17 +612,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=rf-monitor
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/rf-monitor-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -615,17 +637,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=alarm-workflow
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/alarm-workflow-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -639,17 +662,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=task-workflow
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/task-workflow-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -663,17 +687,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=asset-management
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/asset-management-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -687,17 +712,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=sip-switch
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/sip-switch-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -711,17 +737,18 @@ Die 26 regulären Rollen entsprechen [`services.toml`](../../../system-backend/s
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=alert-service
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/alert-service-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -767,17 +794,18 @@ Auf dem jeweiligen bereits mit Discovery ausgestatteten Diensthost als root ausf
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=discovery
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/discovery-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -824,17 +852,18 @@ Die beiden vorhandenen JSON-Konfigurationen werden gegen ihre vorherigen SHA-256
   [[ $EUID -eq 0 ]] || { echo 'Auf dem Diensthost als root ausführen.' >&2; exit 1; }
   python3 -c 'import tomllib'
   NC_SERVICE=provisioning-core
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/provisioning-core-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 
@@ -873,17 +902,18 @@ if args.host not in ("0.0.0.0", "127.0.0.1") or args.port != 8095 or args.seed i
     raise SystemExit("Abweichender Listener oder Seed-Startargument; diesen Bestand separat prüfen.")
 print("Directory-Startargumente geprüft; vorhandener DB-Pfad bleibt erhalten.")
 NC_DIRECTORY_PREFLIGHT
-  NC_REF=35dc385ca97fd02c8554db3c5b9afd81ec251d40
+  NC_REF=main
   install -d -m 0755 /opt/netcore-update-sources
   NC_SRC=$(mktemp -d /opt/netcore-update-sources/directory-update.XXXXXX)
   git -C "$NC_SRC" init -q
   git -C "$NC_SRC" fetch --depth 1 \
     https://github.com/JanHG98/netcore-tetra.git "$NC_REF"
   git -C "$NC_SRC" checkout --detach FETCH_HEAD
-  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  NC_REF=$(git -C "$NC_SRC" rev-parse HEAD)
+  printf 'Ausgerollter main-Commit: %s\n' "$NC_REF"
   chmod 0755 "$NC_SRC"
   python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
-    --service "$NC_SERVICE" --apply
+    --service "$NC_SERVICE" --commit "$NC_REF" --prepare-build-deps --apply
 )
 ```
 

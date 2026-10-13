@@ -133,10 +133,13 @@ class App:
                 self.local = found
 
     def manifest(self):
+        own = json_file(self.state / 'deployed-discovery.json', {}) if self.cfg['role'] == 'agent' else {}
+        own_commit = own.get('commit', '') if own.get('state') == 'installed' else ''
         with self.lock:
             return {'protocol': PROTOCOL, 'environment': self.cfg['environment'],
                     'security_mode': 'open_lab', 'node_id': self.cfg['node_id'],
-                    'role': self.cfg['role'], 'version': VERSION, 'services': list(self.local)}
+                    'role': self.cfg['role'], 'version': VERSION,
+                    'source_commit': own_commit, 'services': list(self.local)}
 
     def status(self):
         return dict(self.discovery.snapshot(), **self.manifest(), desired=self.desired,
@@ -541,3 +544,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

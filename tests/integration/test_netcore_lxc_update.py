@@ -193,13 +193,15 @@ class RolloutTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.report_path = Path(self.temp.name) / "report.json"
-        self.report = {"containers": [], "plan": [], "results": []}
+        self.report = {"commit": "a" * 40, "containers": [], "plan": [], "results": []}
         self.roles = {"gateway": role("gateway", ["core"]), "core": role("core")}
         self.pct_output = "VMID Status Lock Name\n136 running Core\n137 running Gateway\n"
         self.commands = []
         self.timeline = []
         self.preflight_fail_role = None
         self.exit_codes = []
+        self.receipt_mutation = None
+        self.apply_phases = {}
 
         def run(args, **kwargs):
             self.commands.append(args)
@@ -211,12 +213,6 @@ class RolloutTests(unittest.TestCase):
             if "archive" in args:
                 Path(args[args.index("--output") + 1]).write_bytes(b"trusted source archive")
                 return SimpleNamespace(stdout="")
-            if "--service" in args:
-                name = args[args.index("--service") + 1]
-                self.timeline.append(("preflight", name))
-                if name == self.preflight_fail_role:
-                    raise RuntimeError("unsupported installed runtime path")
-                return SimpleNamespace(stdout="valid")
             raise AssertionError("Unexpected mutation or transport: " + repr(args))
 
         def scan(ctid, roles):
@@ -224,15 +220,37 @@ class RolloutTests(unittest.TestCase):
                     "unmanaged": [], "external": []}
 
         def popen(args, **kwargs):
-            self.assertIn("--apply", args)
             name = args[args.index("--service") + 1]
-            self.timeline.append(("apply", name))
-            rc = self.exit_codes.pop(0) if self.exit_codes else 0
-            return SimpleNamespace(stdout=io.StringIO("mock runtime update\n"), wait=lambda: rc)
+            self.assertEqual(args[args.index("--commit") + 1], self.report["commit"])
+            preparing = "--prepare" in args
+            mode = "prepare" if preparing else "apply"
+            self.assertIn("--prepare" if preparing else "--apply", args)
+            self.timeline.append((mode, name))
+            if preparing:
+                self.assertIn("--prepare-build-deps", args)
+                rc = 1 if name == self.preflight_fail_role else 0
+            else:
+                rc = self.exit_codes.pop(0) if self.exit_codes else 0
+            receipt = {"service": name, "source_commit": self.report["commit"],
+                       "assets_complete": True,
+                       "phase": "prepared" if preparing else "updated_degraded" if rc == 2 else "updated",
+                       "files": [{"target": f"/usr/local/bin/netcore-{name}", "sha256": "b" * 64}]}
+            if not preparing:
+                receipt.update(verified=True, process={"active": True, "MainPID": 1234, "InvocationID": "c" * 32},
+                               liveness=True, readiness=(rc == 0))
+                phase = self.apply_phases.get(name)
+                if phase:
+                    receipt["phase"] = phase
+                if phase == "inactive_updated":
+                    receipt.update(process={"active": False, "MainPID": 0}, liveness=None, readiness=None)
+            if self.receipt_mutation:
+                receipt = self.receipt_mutation(mode, name, receipt)
+            output = "mock runtime update\n" + (json.dumps(receipt) + "\n" if receipt else "")
+            return SimpleNamespace(stdout=io.StringIO(output), wait=lambda: rc)
 
         self.run_mock = Mock(side_effect=run)
         self.scan_mock = Mock(side_effect=scan)
-        self.stage_mock = Mock(side_effect=lambda ctid, archive, sha: f"/var/tmp/source-{ctid}")
+        self.stage_mock = Mock(side_effect=lambda ctid, archive, sha, commit: f"/var/tmp/source-{ctid}")
         self.popen_mock = Mock(side_effect=popen)
         for name, replacement in (("run", self.run_mock), ("scan", self.scan_mock),
                                   ("stage", self.stage_mock)):
@@ -327,28 +345,31 @@ class RolloutTests(unittest.TestCase):
         self.assertEqual([call.args[0] for call in self.scan_mock.call_args_list], [136, 137])
         self.assertEqual([call.args[0] for call in self.stage_mock.call_args_list], [136, 137])
         self.assertEqual(self.report["containers"][-1]["phase"], "no_managed_runtime")
-        self.assertEqual(self.popen_mock.call_count, 2)
+        self.assertEqual(self.popen_mock.call_count, 4)
 
     def test_all_layout_preflights_complete_before_first_runtime_exchange(self):
         self.assertEqual(self.rollout(apply=True), 0)
-        self.assertEqual(self.timeline, [("preflight", "core"), ("preflight", "gateway"),
+        self.assertEqual(self.timeline, [("prepare", "core"), ("prepare", "gateway"),
                                          ("apply", "core"), ("apply", "gateway")])
         self.assertEqual(self.stage_mock.call_count, 2)
 
     def test_invalid_second_installation_stops_before_any_apply(self):
         self.preflight_fail_role = "gateway"
-        with self.assertRaisesRegex(RuntimeError, "unsupported"):
+        with self.assertRaisesRegex(RuntimeError, "Vorbereitung"):
             self.rollout(apply=True)
-        self.popen_mock.assert_not_called()
-        self.assertEqual(self.timeline, [("preflight", "core"), ("preflight", "gateway")])
-        self.assertEqual(self.report["results"], [])
+        self.assertEqual(self.popen_mock.call_count, 2)
+        self.assertEqual(self.timeline, [("prepare", "core"), ("prepare", "gateway")])
+        self.assertEqual([item["phase"] for item in self.report["results"]],
+                         ["not_attempted", "failed_prepare"])
+        self.assertIn("Vorbereitung abgebrochen", self.report["results"][0]["reason"])
 
     def test_first_failed_apply_stops_dependents_and_preserves_failure_report(self):
         self.exit_codes = [1, 0]
         with self.assertRaisesRegex(RuntimeError, "core"):
             self.rollout(apply=True)
-        self.assertEqual(self.popen_mock.call_count, 1)
-        self.assertEqual(self.report["results"][0]["phase"], "failed")
+        self.assertEqual(self.popen_mock.call_count, 3)
+        self.assertEqual(self.report["results"][0]["phase"], "failed_apply")
+        self.assertEqual(self.report["results"][1]["phase"], "not_attempted")
         disk_report = json.loads(self.report_path.read_text())
         self.assertEqual(disk_report["results"][0]["returncode"], 1)
         self.assertIn("mock runtime update", Path(disk_report["results"][0]["log"]).read_text())
@@ -356,9 +377,92 @@ class RolloutTests(unittest.TestCase):
     def test_readiness_degraded_continues_and_returns_nonzero(self):
         self.exit_codes = [2, 0]
         self.assertEqual(self.rollout(apply=True), 2)
-        self.assertEqual(self.popen_mock.call_count, 2)
+        self.assertEqual(self.popen_mock.call_count, 4)
         self.assertEqual([item["phase"] for item in self.report["results"]],
                          ["updated_degraded", "updated"])
+
+    def test_prepare_success_without_json_receipt_cannot_start_any_runtime_exchange(self):
+        self.receipt_mutation = lambda mode, name, receipt: None if mode == "prepare" else receipt
+        with self.assertRaisesRegex(RuntimeError, "JSON"):
+            self.rollout(apply=True)
+        self.assertEqual(self.timeline, [("prepare", "core")])
+        self.assertEqual([item["phase"] for item in self.report["results"]],
+                         ["failed_prepare", "not_attempted"])
+
+    def test_applied_sha_must_match_prepared_files_even_with_exit_zero(self):
+        def wrong_artifact(mode, name, receipt):
+            if mode == "apply" and name == "core":
+                receipt["files"][0]["sha256"] = "d" * 64
+            return receipt
+        self.receipt_mutation = wrong_artifact
+        with self.assertRaisesRegex(RuntimeError, "core"):
+            self.rollout(apply=True)
+        self.assertEqual(self.timeline[-1], ("apply", "core"))
+        self.assertIn("Pruefsummen", self.report["results"][0]["error"])
+        self.assertEqual(self.report["results"][1]["phase"], "not_attempted")
+
+    def test_wrong_source_commit_cannot_be_counted_as_prepared(self):
+        def wrong_commit(mode, name, receipt):
+            receipt["source_commit"] = "e" * 40
+            return receipt
+        self.receipt_mutation = wrong_commit
+        with self.assertRaisesRegex(RuntimeError, "Quellcommit"):
+            self.rollout(apply=True)
+        self.assertEqual(self.timeline, [("prepare", "core")])
+
+    def test_runtime_receipt_requires_running_process_and_liveness(self):
+        def missing_process(mode, name, receipt):
+            if mode == "apply":
+                receipt["process"]["MainPID"] = 0
+            return receipt
+        self.receipt_mutation = missing_process
+        with self.assertRaisesRegex(RuntimeError, "core"):
+            self.rollout(apply=True)
+        self.assertIn("Prozess", self.report["results"][0]["error"])
+
+    def test_exit_zero_without_verified_install_marker_is_a_failure(self):
+        def unverified(mode, name, receipt):
+            if mode == "apply":
+                receipt["verified"] = False
+            return receipt
+        self.receipt_mutation = unverified
+        with self.assertRaisesRegex(RuntimeError, "core"):
+            self.rollout(apply=True)
+        self.assertIn("verifiziert", self.report["results"][0]["error"])
+
+    def test_guest_actual_phases_are_preserved_and_inactive_is_explicit(self):
+        self.apply_phases = {"core": "already_current", "gateway": "inactive_updated"}
+        self.assertEqual(self.rollout(apply=True), 0)
+        self.assertEqual([item["phase"] for item in self.report["results"]],
+                         ["already_current", "inactive_updated"])
+        self.assertEqual(self.report["summary"]["updated"], 0)
+        self.assertEqual(self.report["summary"]["already_current"], 1)
+        self.assertEqual(self.report["summary"]["inactive_updated"], 1)
+
+    def test_stage_failure_marks_failed_container_and_all_remaining_targets(self):
+        self.stage_mock.side_effect = RuntimeError("guest disk full")
+        with self.assertRaisesRegex(RuntimeError, "disk full"):
+            self.rollout(apply=True)
+        self.popen_mock.assert_not_called()
+        self.assertEqual([item["phase"] for item in self.report["results"]],
+                         ["failed_stage", "not_attempted"])
+
+    def test_preparation_receipt_requires_complete_nonempty_unique_assets(self):
+        for corrupt in (
+            lambda r: r.update(assets_complete=False),
+            lambda r: r.update(files=[]),
+            lambda r: r["files"].append(r["files"][0].copy()),
+        ):
+            with self.subTest(corrupt=corrupt):
+                self.timeline.clear()
+                def bad_prepare(mode, name, receipt):
+                    if mode == "prepare":
+                        corrupt(receipt)
+                    return receipt
+                self.receipt_mutation = bad_prepare
+                with self.assertRaises(RuntimeError):
+                    self.rollout(apply=True)
+                self.assertEqual(self.timeline, [("prepare", "core")])
 
     def test_no_installed_runtime_refuses_apply_without_archive_or_stage(self):
         self.scan_mock.side_effect = None

@@ -1,0 +1,48 @@
+name: NetCore runtime update native proof
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tools/operator/**'
+      - 'tools/test_netcore_runtime_update_native.py'
+      - 'tests/integration/test_netcore_*_update.py'
+      - '.github/workflows/netcore-runtime-update-tests.yml'
+  push:
+    branches: ['main']
+    paths:
+      - 'tools/operator/**'
+      - 'tools/test_netcore_runtime_update_native.py'
+      - 'tests/integration/test_netcore_*_update.py'
+      - '.github/workflows/netcore-runtime-update-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-update:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Host and guest failure boundary regressions
+        run: python3 -B -m unittest discover -s tests/integration -p 'test_netcore_*_update.py' -v
+      - name: Real Python and compiled Rust ELF systemd processes, HTTP and failed-start rollback
+        run: sudo env NETCORE_NATIVE_RUSTC="$(rustup which rustc)" "$(command -v python3)" -B tools/test_netcore_runtime_update_native.py
+      - name: Upload native runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: netcore-runtime-native-evidence-${{ matrix.os }}
+          path: output/netcore-runtime-native.json
+          if-no-files-found: warn

@@ -295,6 +295,20 @@ class Deployer:
         self.state = Path(cfg['state_dir'])
 
     def execute(self, request, log):
+        # CLI runtime updates and UI jobs must not replace the same files at once.
+        # Keep the mutex in the shared agent state, outside replaceable sources.
+        self.state.mkdir(parents=True, exist_ok=True)
+        with (self.state / 'runtime-update.mutex').open('a') as mutex:
+            try:
+                fcntl.flock(mutex, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise RuntimeError('Ein lokales Runtime-Update läuft; Deployment später erneut ausführen.') from exc
+            try:
+                return self._execute(request, log)
+            finally:
+                fcntl.flock(mutex, fcntl.LOCK_UN)
+
+    def _execute(self, request, log):
         name, action = request['service'], request['action']
         spec = service_spec(self.cfg, name)
         target = Path(spec['config_target'])
@@ -441,3 +455,4 @@ def validate_job(data):
     if data.get('profile'):
         data['profile'] = validate_profile(data['profile'])
     return {k: data[k] for k in ('service', 'action', 'commit', 'profile', 'confirm_restart') if k in data}
+
