@@ -1,5 +1,7 @@
 # NetCore-Tetra – zentrale Gesamtroadmap
 
+**13.10.2026 – Z01.4 Pi-Abnahme:** KDE-Boot, Rufe, SDS, lokale Aufzeichnung/RF-Wiedergabe und WLAN-Bedienung durch Jan bestätigt. Nachbarzellen-Eingabe und softwareseitiger Broadcast belegt; die dabei gefundene falsche Broadcast-Ankündigung wird in der Bedienung korrigiert und kann im aktuellen Image über `neighbor_cell_broadcast=2` übernommen werden. [Abnahme und begrenzte Korrektur](../integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md#pi-funktionstest-vom-13102026). SIP, VPN, MS-Zellwechsel, Dauerlauf und zentrale LXC-Updatebelege bleiben offen.
+
 | Feld | Wert |
 | --- | --- |
 | Roadmap-ID | NETCORE-MASTER-01 |
@@ -319,5 +321,6 @@ Regelmäßige NetCore-Projektstatusläufe verwenden diese Gesamtroadmap als Eins
 
 
 | 2026-10-12 | Z01.4: PR #71 auf main4041cee übernommen; alle sechs Workflows am d3ea8283 erfolgreich. Native120 VM-Guardfälle,14 KDE-,10 SIP-Setup-,9 SIP-Rechte-,72 Dashboard-Rust-,64 zentrale Backendfälle und149 Dashboard-Browserprüfungen bestanden; beide realen ARM64-Personalisierungen / systemd-Verzeichnistests PASS. KDE-Auswahl, Nachbar-CRUD, kompakte Dienste und quote-aware Carrier/Telegram fertig | [Gepinnter VM-Update-/Rolloutweg](../integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md); VM-Übernahme / neues volles KDE-Image / echte Desktop-, WLAN-, Telegram-, Medien-, SIP-, zentrale Readiness-, Dauerlauf- und On-Air-Abnahmen offen. Vorbereitung ist keine Anlagenänderung |
+
 
 

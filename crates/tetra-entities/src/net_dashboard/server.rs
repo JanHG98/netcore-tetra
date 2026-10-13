@@ -4635,7 +4635,11 @@ fn serve_neighbours_get(stream: TcpStream, shared_config: &Option<tetra_config::
         .as_ref()
         .map(|cfg| cfg.cell.neighbor_cells_ca.as_slice())
         .unwrap_or(&[]);
-    match crate::net_dashboard::neighbours::snapshot(&original, running) {
+    let running_neighbor_cell_broadcast = running_config
+        .as_ref()
+        .map(|cfg| cfg.cell.neighbor_cell_broadcast)
+        .unwrap_or(0);
+    match crate::net_dashboard::neighbours::snapshot(&original, running, running_neighbor_cell_broadcast) {
         Ok(snapshot) => http_json_no_cache_response(stream, 200, &snapshot.to_string()),
         Err(e) => http_json_no_cache_response(stream, 503, &serde_json::json!({"error":e}).to_string()),
     }
