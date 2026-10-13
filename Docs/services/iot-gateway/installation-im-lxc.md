@@ -4,7 +4,14 @@ Für eine bestehende Installation aus einer sauberen, aktualisierten Arbeitskopi
 
 ```bash
 cd /opt/netcore-tetra
-sudo python3 -B tools/operator/update-netcore-service.py --service iot-gateway --apply
+NC_REF=$(git rev-parse HEAD)
+sudo python3 -B tools/operator/update-netcore-service.py \
+  --service iot-gateway --commit "$NC_REF" --prepare --prepare-build-deps
+sudo systemctl stop netcore-iot-gateway.service
+sudo python3 -B tools/operator/update-netcore-service.py \
+  --service iot-gateway --commit "$NC_REF" --apply
+sudo systemctl reset-failed netcore-iot-gateway.service
+sudo systemctl start netcore-iot-gateway.service
 ```
 
 Für eine Neuinstallation aus derselben Arbeitskopie `sudo bash system-backend/iot-gateway/install/install.sh` verwenden. Das direkte Installerskript benötigt eine Rust-Toolchain für seinen Installationsbenutzer.
@@ -36,5 +43,45 @@ ss -lntp | grep ':1883'
 `/health/live` muss antworten. Ein `updated_degraded` im Updatebericht bedeutet, dass die installierte Laufzeit geprüft wurde, ihre fachliche Readiness aber noch fehlt. `mqtt_connected=false` oder ein nicht fallender `outbox_pending` erfordern anschließend die Broker-/Verbindungsdiagnose. Der gemeldete Prozessabbruch belegt die volle Outbox, nicht die ursprüngliche Ursache des MQTT-Rückstaus. Bei genau dieser Bind-Adresse ist ein Test gegen `127.0.0.1:8240` kein Liveness-Nachweis.
 
 Die Rust-Regressionen prüfen wiederholten Start mit voller, überfüllter und teilweise belegter Outbox, Erhalt der gespeicherten Nachrichten, Nachlieferung nach Quittierung sowie echte Speicherfehler. `python3 tools/test_iot_gateway_outbox.py` prüft das gebaute Programm mit HTTP und einem lokalen MQTT-Testbroker; die Linux-CI baut das Binary dafür selbst. Eine erfolgreiche lokale Prüfung ersetzt die tatsächliche Übernahme und Brokerabnahme auf dem Diensthost nicht.
+
+## Git-Übertragung klein halten
+
+Ein am 14. Oktober 2026 gemeldeter `RPC failed; curl 56 ... Connection reset by peer` beendet den vollständigen Fetch vor der Dienständerung. Der Quellbaum am geprüften Fixcommit enthält rund 326 MB unter `Docs/`; für diesen Runtime-Build sind diese Dateien nicht erforderlich. Ein Partial Clone mit Sparse Checkout lädt die Git-Metadaten sowie rund 20 MB Quellcode einschließlich aller benötigten Rust-Workspace-Pakete. HTTP/1.1 gilt nur für diese neue Arbeitskopie, auch bei nachgeladener Git-Dateiübertragung.
+
+Der folgende vollständige Wiederanlaufblock verwendet den in PR #83 übernommenen und in allen drei Workflows geprüften Commit. Er übergibt den obligatorischen `--commit`, bereitet den Build und unveränderliche Snapshots vor dem Stoppen des Dienstes vor und übernimmt danach genau diesen Plan. Die Konfiguration, MQTT-Nachrichten und vorhandene Brokerinstallation bleiben erhalten.
+
+```bash
+(
+  set -Eeuo pipefail
+  NC_REF=b223ecc0f626e5dd8222d3edc0e969c774b8da21
+  install -d -m 0755 /opt/netcore-update-sources
+  NC_SRC=$(mktemp -d /opt/netcore-update-sources/iot-fix-small.XXXXXX)
+
+  git -C "$NC_SRC" init -q
+  git -C "$NC_SRC" remote add origin https://github.com/JanHG98/netcore-tetra.git
+  git -C "$NC_SRC" config http.version HTTP/1.1
+  git -C "$NC_SRC" config remote.origin.promisor true
+  git -C "$NC_SRC" config remote.origin.partialclonefilter blob:none
+  git -C "$NC_SRC" fetch --depth 1 --filter=blob:none origin "$NC_REF"
+  git -C "$NC_SRC" sparse-checkout init --cone
+  git -C "$NC_SRC" sparse-checkout set system-backend crates bins tools/operator
+  git -C "$NC_SRC" checkout --detach FETCH_HEAD
+  [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
+  chmod 0755 "$NC_SRC"
+
+  python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
+    --service iot-gateway --commit "$NC_REF" --prepare --prepare-build-deps
+  systemctl stop netcore-iot-gateway.service
+  python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
+    --service iot-gateway --commit "$NC_REF" --apply
+  systemctl reset-failed netcore-iot-gateway.service
+  systemctl start netcore-iot-gateway.service
+
+  curl --noproxy '*' --retry-connrefused --retry 30 --retry-delay 1 --max-time 5 -fsS http://10.0.1.119:8240/health/live
+  curl --noproxy '*' --max-time 5 -fsS http://10.0.1.119:8240/api/v1/status
+)
+```
+
+Der Sparse-Checkout-Ablauf wurde lokal gegen einen gefilterten Git-Transport geprüft; Cargo löst im entsprechenden reduzierten Quellbaum alle 30 Workspace-Pakete auf, einschließlich `netcore-iot-gateway`. Bash-Syntax und Updater-CLI wurden geprüft. Das bestätigt die Vorbereitung des Rückwegs, nicht dessen tatsächliche Ausführung auf dem Diensthost.
 
 **Quellabgleich: 14. Oktober 2026.** [Quellcode](../../../system-backend/iot-gateway) · [Konfigurationsvorlagen](../../../system-backend/iot-gateway/config).
