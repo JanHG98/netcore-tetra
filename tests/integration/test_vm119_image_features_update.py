@@ -354,5 +354,72 @@ class VM119PackageTests(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o640)
 
 
+@unittest.skipIf(os.name == 'nt', 'Actual flock and owner/mode checks require POSIX')
+class SharedUpdateMutexTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.state = Path(self.temp.name)
+        patcher = patch.object(UPDATE, 'STATE', self.state)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_first_root_update_creates_controller_owned_private_mutex(self):
+        import fcntl
+        path = self.state / 'runtime-update.mutex'
+        previous_umask = os.umask(0o777)
+        try:
+            with UPDATE.shared_update_mutex():
+                info, owner = path.stat(), self.state.stat()
+                self.assertEqual((info.st_uid, info.st_gid), (owner.st_uid, owner.st_gid))
+                self.assertEqual(stat.S_IMODE(info.st_mode), 0o600)
+        finally:
+            os.umask(previous_umask)
+        # The controller's append/open protocol remains usable after release.
+        with path.open('a') as controller:
+            fcntl.flock(controller, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    def test_existing_mutex_repairs_mode_without_replacing_inode_or_bytes(self):
+        path = self.state / 'runtime-update.mutex'
+        path.write_bytes(b'existing lock bytes\n')
+        path.chmod(0o644)
+        before = path.stat()
+        with UPDATE.shared_update_mutex():
+            after = path.stat()
+            self.assertEqual((after.st_dev, after.st_ino), (before.st_dev, before.st_ino))
+            self.assertEqual(path.read_bytes(), b'existing lock bytes\n')
+            self.assertEqual(stat.S_IMODE(after.st_mode), 0o600)
+
+    def test_busy_mutex_is_not_repaired_before_lock_acquisition(self):
+        import fcntl
+        path = self.state / 'runtime-update.mutex'
+        path.write_bytes(b'busy')
+        path.chmod(0o644)
+        before = path.stat()
+        with path.open('a') as controller:
+            fcntl.flock(controller, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with self.assertRaises(BlockingIOError):
+                with UPDATE.shared_update_mutex():
+                    self.fail('Concurrent updater entered the mutex.')
+        after = path.stat()
+        self.assertEqual((after.st_dev, after.st_ino), (before.st_dev, before.st_ino))
+        self.assertEqual(stat.S_IMODE(after.st_mode), 0o644)
+
+    def test_shared_mutex_rejects_symlink_and_hardlink(self):
+        destination = self.state / 'other-file'
+        destination.write_bytes(b'untouched')
+        path = self.state / 'runtime-update.mutex'
+        path.symlink_to(destination)
+        with self.assertRaisesRegex(RuntimeError, 'Symlink'):
+            with UPDATE.shared_update_mutex():
+                self.fail('Symlink entered the mutex.')
+        path.unlink()
+        os.link(destination, path)
+        with self.assertRaisesRegex(RuntimeError, 'einzelne regulaere Datei'):
+            with UPDATE.shared_update_mutex():
+                self.fail('Hardlink entered the mutex.')
+        self.assertEqual(destination.read_bytes(), b'untouched')
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -25,14 +25,34 @@ def main():
     commit = subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip()
     asset = updater.LIBRARY / 'static/index.html'
     original = asset.read_bytes()
+    mutex = updater.STATE / 'runtime-update.mutex'
+    mutex.touch(exist_ok=True)
+    inode = mutex.stat().st_ino
+    # Reproduce a root-owned lock left by a previous CLI invocation.
+    os.chown(mutex, 0, 0)
+    mutex.chmod(0o600)
+    with updater.shared_update_mutex():
+        owner, metadata = updater.STATE.stat(), mutex.stat()
+        assert metadata.st_ino == inode
+        assert (metadata.st_uid, metadata.st_gid) == (owner.st_uid, owner.st_gid)
+        assert metadata.st_mode & 0o777 == 0o600
+    probe = ('import fcntl, pathlib; '
+             'f=pathlib.Path("/var/lib/netcore-deployment/runtime-update.mutex").open("a"); '
+             'fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB); f.close()')
+    subprocess.run(['runuser', '-u', 'netcore-deploy', '--', '/usr/bin/python3', '-c', probe], check=True)
+
+    def apply():
+        with updater.shared_update_mutex():
+            return updater.update(commit, apply=True)
+
     try:
         # Actual existing package difference, real systemd restarts and live HTTP.
         asset.write_bytes(original + b'\n<!-- disposable previous package -->\n')
-        result = updater.update(commit, apply=True)
+        result = apply()
         assert result['phase'] == 'passed', result
         assert asset.read_bytes() == original
         before = {u:updater.properties(u)['InvocationID'] for u in (updater.BUILDER, updater.CONTROLLER)}
-        assert updater.update(commit, apply=True)['phase'] == 'already_current'
+        assert apply()['phase'] == 'already_current'
         assert before == {u:updater.properties(u)['InvocationID'] for u in before}
         # A queued image must reject before either service is stopped.
         with sqlite3.connect(updater.BUILD_STATE / 'jobs.sqlite3') as db:
@@ -40,7 +60,7 @@ def main():
                        ('ci-busy-fixture', 0, 0, 'queued', json.dumps({'build_id':'f'*32}), '', '{}'))
         try:
             try:
-                updater.update(commit, apply=True)
+                apply()
             except RuntimeError as exc:
                 assert 'Aktiver Auftrag' in str(exc), str(exc)
             else:
@@ -55,16 +75,17 @@ def main():
         asset.write_bytes(previous)
         with patch.object(updater, 'wait_ready', side_effect=RuntimeError('ci-readiness-failure')):
             try:
-                updater.update(commit, apply=True)
+                apply()
             except RuntimeError as exc:
                 assert str(exc) == 'ci-readiness-failure'
             else:
                 raise AssertionError('The readiness failure did not reject the update.')
         assert asset.read_bytes() == previous
         updater.wait_ready()
-        assert updater.update(commit, apply=True)['phase'] == 'passed'
+        assert apply()['phase'] == 'passed'
         assert asset.read_bytes() == original
-        print('PASS: real VM files, service invocations, HTTP/socket readiness, config preservation, idle rejection, idempotence and rollback.')
+        subprocess.run(['runuser', '-u', 'netcore-deploy', '--', '/usr/bin/python3', '-c', probe], check=True)
+        print('PASS: real VM files, service invocations, HTTP/socket readiness, shared root/service mutex, config preservation, idle rejection, idempotence and rollback.')
     finally:
         asset.write_bytes(original)
         subprocess.run(['systemctl', 'start', updater.BUILDER, updater.CONTROLLER], check=True)

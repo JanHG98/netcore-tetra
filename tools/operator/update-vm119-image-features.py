@@ -172,6 +172,38 @@ def exclusive(path):
         yield
 
 
+@contextmanager
+def shared_update_mutex():
+    """Keep the shared inode writable by the unprivileged controller."""
+    import fcntl
+    path = safe_path(STATE / 'runtime-update.mutex')
+    owner = path.parent.stat()
+    if not stat.S_ISDIR(owner.st_mode):
+        raise RuntimeError('Controller-State ist kein Verzeichnis.')
+    flags = os.O_RDWR | os.O_CREAT | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    descriptor = os.open(path, flags, 0o600)
+    try:
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1:
+            raise RuntimeError('Shared-Update-Mutex ist keine einzelne regulaere Datei.')
+        # Repair an older root-created mutex only after acquiring its existing
+        # inode. Replacing/unlinking a lock would allow concurrent owners.
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        current = path.lstat()
+        if (current.st_dev, current.st_ino) != (opened.st_dev, opened.st_ino):
+            raise RuntimeError('Shared-Update-Mutex wurde beim Sperren ersetzt.')
+        expected = (owner.st_uid, owner.st_gid, 0o600)
+        if (opened.st_uid, opened.st_gid) != expected[:2]:
+            os.fchown(descriptor, *expected[:2])
+        if stat.S_IMODE(os.fstat(descriptor).st_mode) != 0o600:
+            os.fchmod(descriptor, 0o600)
+        if attributes(os.fstat(descriptor)) != expected:
+            raise RuntimeError('Controller kann Shared-Update-Mutex nicht weiterverwenden.')
+        yield
+    finally:
+        os.close(descriptor)
+
+
 def payload(commit):
     """Read inventory and bytes from immutable Git objects, never a live glob."""
     if not SHA.fullmatch(commit):
@@ -442,7 +474,7 @@ def main(argv=None):
         raise RuntimeError('Quellcheckout stimmt nicht mit dem einmal aufgeloesten Git-SHA ueberein.')
     print('VM119 Controller/Builder/Rezept/UI: ' + args.commit, flush=True)
     with exclusive(Path('/run/lock/netcore-vm-image-update.lock')):
-        with exclusive(STATE / 'runtime-update.mutex'):
+        with shared_update_mutex():
             result = update(args.commit, args.apply)
     print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
     return 0
