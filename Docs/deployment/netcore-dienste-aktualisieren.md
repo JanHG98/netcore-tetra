@@ -171,6 +171,8 @@ Die Diagnose liefert `phase=verified`, wenn der genaue Remote-Auftrag eindeutig 
 
 Betreiberbefund vom 14.10.2026: lokaler Auftrag `193b08c7b05b4b54951baab1eea95df3` für Node-Gateway/`node-gateway`, Update auf `c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf`, verweist auf Agent `10.0.1.179:8321` und Remote-Auftrag `721b00fef0b143b28253123f7a168c7c`. Dessen tatsächlicher Endzustand und die anschließende VM-Übernahme sind noch vom Betreiber zu belegen.
 
+Linux-Nachweis am produktiven Commit `ea16576d`: [Ubuntu24.04](https://github.com/JanHG98/netcore-tetra/actions/runs/38483416232/job/115591179644) und [Ubuntu26.04](https://github.com/JanHG98/netcore-tetra/actions/runs/38483416232/job/115591179843) bestanden. Je 17 HTTP-/SQLite-/POSIX-Regressionen ohne Skip sowie die tatsächliche systemd-/Serviceuser-/WAL-Fixture bestätigen Abgleich, Verweigerungsfälle, unveränderte 0600-Eigentümerschaft und anschließende Schreibfähigkeit des Dienstbenutzers. Bash-Syntax des Operatorblocks und [Quellgate](https://github.com/JanHG98/netcore-tetra/actions/runs/38483416385/job/115591180161) bestanden. Das ist ein isolierter Linux-Nachweis und keine Anwendung auf Jans VM.
+
 ## Pi und externe Anwendungen
 
 - **Physischer Pi `10.0.1.20`:** Die aktuellen Carrier-/Telegram-/Nachbar-/WLAN-/Medienrechte-/Desktop-/SIP-Fallback-Korrekturen kommen über das neu gebaute Image. Der Proxmox-Lauf startet keinen Funkdienst und überschreibt den Pi nicht.
