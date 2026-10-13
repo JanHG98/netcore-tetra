@@ -22,8 +22,29 @@ const path = require('node:path');
     const profileRemove=name=>page.locator(`[data-remove-profile="${name}"]`);
     await page.goto(url);
     await page.locator('#nodes').getByText('test-gateway',{exact:true}).waitFor();
-    assert.equal(await page.locator('#host-count').textContent(),'1');
-    assert.equal(await page.locator('#drift-count').textContent(),'1');
+    assert.equal(await page.locator('#host-count').textContent(),'4');
+    assert.equal(await page.locator('#drift-count').textContent(),'5');
+    const visibleNodes=()=>page.locator('#nodes tr').evaluateAll(rows=>rows.map(row=>
+      row.cells[0].querySelector('strong').textContent + row.querySelector('[data-remove-node]').dataset.removeNode));
+    await page.locator('#filter-kind').selectOption('tbs');
+    assert.deepEqual(await visibleNodes(),['tbstest-tbs']);
+    await page.locator('#filter-kind').selectOption('services');
+    assert.equal((await visibleNodes()).some(text=>text.includes('test-tbs')),false);
+    await page.locator('#filter-service').selectOption('packet-core');
+    assert.deepEqual(await visibleNodes(),['packet-coretest-backend-fails']);
+    await page.locator('#filter-service').selectOption('');
+    await page.locator('#filter-kind').selectOption('all');
+    await page.locator('#filter-online').selectOption('offline');
+    assert.deepEqual(await visibleNodes(),['media-switchtest-offline']);
+    await page.locator('#filter-online').selectOption('online');
+    assert.equal((await visibleNodes()).length,4);
+    await page.locator('#filter').fill('zz-test');
+    assert.deepEqual(await visibleNodes(),['call-controlzz-test-backend']);
+    await page.evaluate(()=>refresh());
+    assert.equal(await page.locator('#filter').inputValue(),'zz-test');
+    assert.deepEqual(await visibleNodes(),['call-controlzz-test-backend']);
+    await page.locator('#filter').fill('');
+    await page.locator('#filter-online').selectOption('all');
     await page.locator('#scan').click();
     await page.getByText('Suchlauf gestartet. Die Übersicht aktualisiert sich automatisch.').waitFor();
     await page.locator('#template').setInputFiles({name:'site.toml',mimeType:'text/plain',buffer:Buffer.from('[net_info]\nmcc=901\nmnc=1510\n[cell_info]\nlocation_area=1\ncolour_code=1\n[phy_io]\nbackend="SoapySdr"\n')});
@@ -44,6 +65,117 @@ const path = require('node:path');
     await page.locator('#execute').click();
     await page.locator('#job-list').getByText('Erfolgreich',{exact:true}).waitFor({timeout:15000});
     assert.match(await page.locator('#log').textContent(),/simulated installer/);
+    // One reviewed main revision, one user submission, real child HTTP jobs.
+    // A failed host must not block an independent backend or the TBS target.
+    const bulkRuns=()=>mutations.filter(request=>request.path==='/api/v1/updates/run');
+    await page.locator('#bulk-plan').click();
+    await page.locator('#bulk-preview').waitFor({state:'visible'});
+    const planned=mutations.find(request=>request.path==='/api/v1/updates/plan');
+    assert.deepEqual(planned.body,{});
+    assert.equal(await page.locator('#bulk-commit').textContent(),'b'.repeat(40));
+    assert.match(await page.locator('#bulk-plan-summary').textContent(),/Dienste.*Hosts/);
+    assert.match(await page.locator('#bulk-targets').textContent(),/test-backend-fails/);
+    assert.match(await page.locator('#bulk-targets').textContent(),/zz-test-backend/);
+    await page.locator('#bulk-cancel').click();
+    await page.locator('#bulk-preview').waitFor({state:'hidden'});
+    assert.equal(bulkRuns().length,0,'Cancelling the preview must not deploy');
+    await page.locator('#filter-kind').selectOption('tbs');
+    await page.locator('#bulk-plan').click();
+    await page.locator('#bulk-preview').waitFor({state:'visible'});
+    assert.match(await page.locator('#bulk-targets').textContent(),/packet-core/,'View filters must not silently narrow the deployment');
+    await page.locator('#bulk-execute').click();
+    await page.waitForFunction(()=>document.querySelector('#bulk-status-body')?.textContent.includes('Läuft'),null,{timeout:15000});
+    assert.equal(bulkRuns().length,1);
+    assert.equal(bulkRuns()[0].body.confirm_restart,true);
+    assert.ok(bulkRuns()[0].body.plan_id);
+    const beforeBulkRefresh=mutations.length;
+    await page.evaluate(()=>refresh());
+    assert.equal(mutations.length,beforeBulkRefresh,'Polling must not queue further deployments');
+    await page.waitForFunction(()=>document.querySelector('#bulk-status')?.textContent.includes('Teilerfolg'),null,{timeout:30000});
+    const batches=await (await page.request.get(url+'/api/v1/updates')).json();
+    assert.equal(batches.length,1);
+    const batch=batches[0];
+    assert.equal(batch.status,'partial');
+    assert.equal(batch.commit,'b'.repeat(40));
+    assert.equal(batch.jobs.find(job=>job.request.node_id==='test-backend-fails').status,'failed');
+    for(const node of ['test-gateway','zz-test-backend','test-tbs']){
+      const job=batch.jobs.find(job=>job.request.node_id===node);
+      assert.ok(job,`Missing child job for ${node}`);
+      assert.equal(job.status,'succeeded',`${node} must proceed despite the independent failure`);
+      assert.equal(job.request.commit,batch.commit,'Every target must use the single reviewed main revision');
+    }
+    assert.ok(batch.skipped.some(target=>target.node_id==='test-offline'));
+    const compact=await page.locator('#bulk-status-body').textContent();
+    assert.match(compact,/test-backend-fails/);
+    assert.match(compact,/Fehlgeschlagen/);
+    assert.match(compact,/zz-test-backend/);
+    assert.match(compact,/Erfolgreich/);
+    assert.equal(bulkRuns().length,1,'Partial failure must not retry the whole batch');
+    assert.equal(batch.jobs.some(job=>Object.hasOwn(job,'log')),false,'Compact batch polling must omit full logs');
+    const failedChild=batch.jobs.find(job=>job.request.node_id==='test-backend-fails');
+    const logRequest=page.waitForRequest(request=>request.method()==='GET' && new URL(request.url()).pathname==='/api/v1/jobs/'+failedChild.id);
+    await page.locator(`[data-bulk-job="${failedChild.id}"]`).click();
+    await logRequest;
+    await page.waitForFunction(()=>document.querySelector('#log').textContent.includes('simulated backend failure'));
+    assert.match(await page.locator('#log-title').textContent(),/test-backend-fails/);
+    // Render a lost remote reply distinctly from a confirmed installer failure.
+    // This route changes only public status metadata, never deployment requests.
+    const uncertainBatch=structuredClone(batch);
+    uncertainBatch.jobs.find(job=>job.request.node_id==='test-backend-fails').result={
+      remote_uncertain:true,error:'Remote-Auftrag nach verlorener Antwort unklar'};
+    uncertainBatch.counts.uncertain=1;
+    const updatesStatusRoute=/\/api\/v1\/updates(?:\/[^/]+)?$/;
+    await page.route(updatesStatusRoute,route=>{
+      if(route.request().method()!=='GET')return route.continue();
+      const detail=new URL(route.request().url()).pathname!== '/api/v1/updates';
+      return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(detail?uncertainBatch:[uncertainBatch])});
+    });
+    await page.evaluate(()=>refresh());
+    assert.match(await page.locator('#bulk-status-body').textContent(),/Ungeklärt/);
+    assert.equal(bulkRuns().length,1,'Uncertain remote status must never trigger an automatic retry POST');
+    await page.unroute(updatesStatusRoute);
+    await page.evaluate(()=>refresh());
+    await page.locator('#filter-kind').selectOption('all');
+    // Removing an entry changes the Discovery inventory, not installed roles.
+    // A cancelled confirmation cannot submit; tombstones survive page reload.
+    const peerRemovals=()=>mutations.filter(request=>request.path==='/api/v1/peers/remove');
+    page.once('dialog',dialog=>dialog.dismiss());
+    await page.locator('[data-remove-node="test-offline"]').click();
+    assert.equal(peerRemovals().length,0);
+    assert.ok((await visibleNodes()).some(text=>text.includes('test-offline')));
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator('[data-remove-node="test-offline"]').click();
+    await page.waitForFunction(()=>!document.querySelector('[data-remove-node="test-offline"]'));
+    assert.equal(peerRemovals().length,1);
+    await page.evaluate(()=>refresh());
+    await page.reload();
+    await page.locator('#nodes').getByText('test-gateway',{exact:true}).waitFor();
+    assert.equal((await visibleNodes()).some(text=>text.includes('test-offline')),false);
+    const forgotten=await (await page.request.get(url+'/api/v1/status')).json();
+    assert.ok(forgotten.forgotten.some(node=>node.node_id==='test-offline'));
+    await page.locator('#removed-nodes summary').click();
+    assert.equal(await page.locator('[data-restore-node="test-offline"]').count(),1);
+    page.once('dialog',dialog=>dialog.dismiss());
+    await page.locator('[data-restore-node="test-offline"]').click();
+    assert.equal(mutations.filter(request=>request.path==='/api/v1/peers/restore').length,0);
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator('[data-restore-node="test-offline"]').click();
+    await page.waitForFunction(()=>!document.querySelector('[data-restore-node="test-offline"]'));
+    assert.equal((await visibleNodes()).some(text=>text.includes('test-offline')),false,'An offline restore must await a fresh manifest');
+    // A reachable peer reappears only through its actual agent manifest.
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator('[data-remove-node="zz-test-backend"]').click();
+    await page.waitForFunction(()=>!document.querySelector('[data-remove-node="zz-test-backend"]'));
+    await page.reload();
+    await page.locator('#removed-nodes summary').click();
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator('[data-restore-node="zz-test-backend"]').click();
+    await page.locator('#nodes').getByText('zz-test-backend',{exact:true}).waitFor({timeout:15000});
+    assert.equal(mutations.filter(request=>request.path==='/api/v1/peers/restore').length,2);
+    // Reload intentionally clears form selection. Restore it explicitly before
+    // continuing the existing image-login/private-credential tests below.
+    await page.locator('#target-profile').selectOption('TBS-02');
+    await page.locator('#image-profile').selectOption('TBS-02');
     assert.equal(await page.locator('#image-controller').inputValue(),'http://10.0.1.50:8320');
     const imageBuildCount=()=>mutations.filter(request=>request.path==='/api/v1/images/build').length;
     const sshKey='ssh-ed25519 '+Buffer.concat([Buffer.from([0,0,0,11]),Buffer.from('ssh-ed25519'),Buffer.from([0,0,0,32]),Buffer.alloc(32,1)]).toString('base64')+' browser-fixture';
@@ -257,7 +389,7 @@ const path = require('node:path');
     await page.getByText('Image gelöscht. Das Buildprotokoll bleibt erhalten.').waitFor();
     assert.equal(await page.locator('#image-artifacts .image-card').count(),0);
     assert.deepEqual(errors,[]);
-    console.log('PASS: real WebUI, discovery, TBS wizard, remote job, all desktop choices/login gating, automatic-main KDE/Lite submission, private SIP/VPN credentials roundtrip/download/cleanup, profile cancel/error/pending/deletion/503 reconciliation/empty state, preserved images, desktop and mobile');
+    console.log('PASS: real WebUI, Discovery type/role/online/text filters, bulk preview/cancel/live/partial continuation, one commit and no retry, persistent inventory removal/restore, TBS wizard, remote job, all desktop choices/login gating, automatic-main KDE/Lite submission, private SIP/VPN credentials roundtrip/download/cleanup, profile cancel/error/pending/deletion/503 reconciliation/empty state, preserved images, desktop and mobile');
   } finally {if(browser)await browser.close();fixture.kill('SIGTERM');}
 })().catch(e=>{console.error(e);process.exitCode=1;});
 

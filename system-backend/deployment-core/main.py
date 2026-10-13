@@ -20,12 +20,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlsplit
 
-from common import (CATALOG, PROTOCOL, ROOT, VERSION, atomic_write, identifier,
+from common import (CATALOG, PROTOCOL, ROOT, SHA, VERSION, atomic_write, identifier,
                     json_file, load_config, peer_url, request_json)
 from deploy import (Deployer, Repository, installed_service, probe, service_spec, tbs_config,
                     validate_job, validate_profile)
-from discovery import Discovery
-from jobs import Jobs, RemoteJobUncertain
+from discovery import Discovery, DiscoveryPersistenceUncertain
+from jobs import Jobs, JobConflict, RemoteJobFailed, RemoteJobUncertain
+from bulk_updates import BulkUpdates, verified_manifest
 from image_client import ImageClient
 from image_spec import BUILD_ID, validate_image
 
@@ -87,7 +88,9 @@ class App:
         self.discovery = Discovery(cfg, self.manifest)
         self.repo = Repository(cfg)
         self.deployer = Deployer(cfg, self.discovery, self.repo)
-        self.jobs = Jobs(self.state, self.execute)
+        self.jobs = Jobs(self.state, self.execute, workers=8 if cfg['role'] == 'controller' else 1,
+                         queue_size=4096 if cfg['role'] == 'controller' else 64)
+        self.updates = BulkUpdates(self, lambda *args, **kwargs: request_json(*args, **kwargs))
         self.images = ImageClient(cfg.get('image_builder_socket', '/run/netcore-image-builder/api.sock'))
         self.stop = threading.Event()
 
@@ -101,7 +104,7 @@ class App:
         while not self.stop.is_set():
             self.refresh_local()
             if self.cfg['role'] == 'controller' and time.time() >= next_poll:
-                if not any(j['status'] in ('queued', 'running') for j in self.jobs.list()):
+                if not self.jobs.has_active_jobs():
                     self.jobs.submit({'kind': 'check', 'ref': self.cfg['ref']})
                 next_poll = time.time() + max(60, self.cfg.get('poll_seconds', 3600))
             self.stop.wait(10)
@@ -214,6 +217,8 @@ class App:
         self.profiles = updated
 
     def execute(self, data, log):
+        if self.cfg['role'] == 'controller' and self.stop.is_set():
+            raise JobConflict('Controller wird beendet; kein neuer Remote-Auftrag angelegt.')
         if data.get('kind') == 'check':
             sha = self.repo.resolve(data['ref'], log)
             tags = subprocess.check_output(['git', 'tag', '--sort=-version:refname'], cwd=self.repo.path,
@@ -225,16 +230,38 @@ class App:
             result = self.deployer.execute(data, log)
             self.refresh_local()
             return result
+        self.jobs.assert_available(data, getattr(log, 'job_id', ''))
         target = self.node(data['node_id'])
+        if data.get('kind') == 'bulk_service':
+            if target['agent_url'] != data['agent_url']:
+                raise JobConflict('Die Zieladresse hat sich geändert; kein Update angelegt.')
+            try:
+                manifest = verified_manifest(self, target, lambda *args, **kwargs: request_json(*args, **kwargs))
+            except (OSError, ValueError, HTTPException, KeyError, TypeError) as exc:
+                raise JobConflict('Zielidentität oder Erreichbarkeit ist nicht mehr bestätigt; kein Update angelegt.') from exc
+            if data['service'] not in {row['name'] for row in manifest['services'] if isinstance(row, dict) and isinstance(row.get('name'), str)}:
+                raise JobConflict('Der geplante Dienst ist nicht mehr installiert; kein Update angelegt.')
         # Resolve ONCE, then dispatch a full immutable commit, even when branch moves.
         remote = {k: data[k] for k in ('service', 'action', 'profile', 'confirm_restart') if k in data}
         if remote['action'] != 'restart':
-            remote['commit'] = self.repo.resolve(data['ref'], log)
+            if data.get('kind') == 'bulk_service':
+                if not SHA.fullmatch(data.get('commit', '')):
+                    raise ValueError('Geprüfter Sammel-Update-Commit fehlt')
+                remote['commit'] = data['commit']
+            else:
+                remote['commit'] = self.repo.resolve(data['ref'], log)
         if data.get('profile'):
             with self.lock:
                 remote['profile'] = deepcopy(data.get('profile_snapshot') or self.profiles[data['profile']])
         remote = validate_job(remote)
         jobs_url = target['agent_url'] + '/api/v1/jobs'
+        if self.stop.is_set():
+            raise JobConflict('Controller wird beendet; kein neuer Remote-Auftrag angelegt.')
+        progress = getattr(log, 'remote', None)
+        if progress:
+            # Durable intent before POST: even a crash/lost response must never
+            # lead to another installer submission after controller restart.
+            progress(jobs_url, state='posting')
         try:
             # A lost POST response is ambiguous. Never submit the installer twice.
             response = request_json(jobs_url, remote, timeout=REMOTE_REQUEST_TIMEOUT)
@@ -243,6 +270,8 @@ class App:
                 raise ValueError('Ungültige Remote-Auftrags-ID')
         except HTTPError as exc:
             if 400 <= exc.code < 500:
+                if progress:
+                    progress(jobs_url, uncertain=False, state='rejected')
                 raise
             raise RemoteJobUncertain(f'Antwort beim Anlegen verloren: {exc}; Agent-Aufträge prüfen. '
                                      'Keine automatische Wiederholung.', jobs_url) from exc
@@ -250,6 +279,8 @@ class App:
             raise RemoteJobUncertain(f'Antwort beim Anlegen verloren: {exc}; Agent-Aufträge prüfen. '
                                      'Keine automatische Wiederholung.', jobs_url) from exc
         job_url = jobs_url + '/' + key
+        if progress:
+            progress(job_url, key)
         log(f'Remote-Auftrag {job_url}')
         deadline, last = time.monotonic() + REMOTE_JOB_SECONDS, ''
         unavailable_since = None
@@ -283,11 +314,15 @@ class App:
                 last = result['log']
             if result['status'] == 'succeeded':
                 if result['result'].get('ready') is False:
-                    raise RuntimeError(f'Remote-Auftrag {key}: Dienst läuft, ist aber nicht bereit; Deployment fehlgeschlagen.')
+                    raise RemoteJobFailed(f'Remote-Auftrag {key}: Dienst läuft, ist aber nicht bereit; Deployment fehlgeschlagen.', job_url, key)
+                if data.get('kind') == 'bulk_service' and result['result'].get('service') != data['service']:
+                    raise RemoteJobFailed('Remote-Auftrag bestätigt nicht den ausgewählten Dienst; Update nicht bestätigt.', job_url, key)
+                if data.get('kind') == 'bulk_service' and result['result'].get('commit') != data['commit']:
+                    raise RemoteJobFailed('Remote-Auftrag meldet nicht den festgelegten Sammel-Update-Commit; Update nicht bestätigt.', job_url, key)
                 self.discovery.schedule(target['agent_url'])
-                return {'remote_job': key, **result['result']}
+                return {**result['result'], 'remote_job': key, 'remote_url': job_url, 'remote_uncertain': False}
             if result['status'] in ('failed', 'interrupted'):
-                raise RuntimeError(f"Remote-Auftrag {key}: {result['status']}; {result['result'].get('error', '')}")
+                raise RemoteJobFailed(f"Remote-Auftrag {key}: {result['status']}; {result['result'].get('error', '')}", job_url, key)
             self.stop.wait(REMOTE_POLL_INTERVAL)
         raise RemoteJobUncertain(f'Remote-Auftrag {key} läuft möglicherweise weiter; Zeitlimit erreicht', job_url, key)
 
@@ -400,6 +435,10 @@ def handler(app):
                     return self.send(list(CATALOG.values()))
                 if path == '/api/v1/jobs':
                     return self.send(app.jobs.list())
+                if path == '/api/v1/updates' and app.cfg['role'] == 'controller':
+                    return self.send(app.jobs.batches())
+                if path.startswith('/api/v1/updates/') and app.cfg['role'] == 'controller':
+                    return self.send(app.jobs.batch(path.rsplit('/', 1)[-1]))
                 if path.startswith('/api/v1/jobs/'):
                     return self.send(app.jobs.get(path.rsplit('/', 1)[-1]))
                 if path == '/api/v1/profiles':
@@ -430,6 +469,10 @@ def handler(app):
                 self.send({'error': 'Eintrag nicht gefunden'}, 404)
             except ProfileInUse as exc:
                 self.send({'error': str(exc)}, 409)
+            except JobConflict as exc:
+                self.send({'error': str(exc)}, 409)
+            except DiscoveryPersistenceUncertain as exc:
+                self.send(exc.result, 503)
             except ProfilePersistenceUncertain as exc:
                 self.send(exc.result, 503)
             except (ValueError, TypeError, OSError) as exc:
@@ -467,6 +510,33 @@ def handler(app):
                 return self.send({'error': 'Controller endpoint'}, 404)
             if path == '/api/v1/check':
                 return self.send(app.jobs.submit({'kind': 'check', 'ref': app.cfg['ref']}), 202)
+            if path == '/api/v1/updates/plan':
+                return self.send(app.updates.plan(data))
+            if path == '/api/v1/updates/run':
+                return self.send(app.updates.run(data), 202)
+            if path == '/api/v1/peers/remove':
+                node = identifier(data.get('node_id'))
+                with app.lock:
+                    if app.jobs.node_busy(node):
+                        raise JobConflict('Der Knoten hat laufende oder ungeklärte Aufträge; Inventareintrag bleibt erhalten.')
+                    try:
+                        result = app.discovery.forget(node)
+                    except DiscoveryPersistenceUncertain:
+                        raise
+                    except OSError:
+                        return self.send({'error': 'Inventaränderung konnte nicht gespeichert werden; Eintrag bleibt erhalten.',
+                                          'inventory_change_applied': False, 'durability_uncertain': False}, 503)
+                return self.send(result)
+            if path == '/api/v1/peers/restore':
+                with app.lock:
+                    try:
+                        result = app.discovery.restore(identifier(data.get('node_id')))
+                    except DiscoveryPersistenceUncertain:
+                        raise
+                    except OSError:
+                        return self.send({'error': 'Inventaränderung konnte nicht gespeichert werden; Eintrag bleibt entfernt.',
+                                          'inventory_change_applied': False, 'durability_uncertain': False}, 503)
+                return self.send(result)
             if path == '/api/v1/images/build':
                 with app.lock:
                     profile = deepcopy(app.profiles[data.get('profile')])

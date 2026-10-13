@@ -6,6 +6,7 @@ import signal
 import sys
 import tempfile
 import threading
+import time
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from common import ROOT,load_config
@@ -17,15 +18,20 @@ from test_images import simulated_build
 
 with tempfile.TemporaryDirectory() as state:
     apps=[];servers=[]
-    for name,role in [('test-controller','controller'),('test-gateway','agent')]:
+    fixture_nodes = [('test-controller', 'controller', ''), ('test-gateway', 'agent', 'node-gateway'),
+                     ('test-backend-fails', 'agent', 'packet-core'),
+                     ('zz-test-backend', 'agent', 'call-control'), ('test-tbs', 'agent', 'tbs')]
+    for name,role,service in fixture_nodes:
         cfg=load_config(ROOT/'config/agent.example.toml')
         cfg.update(node_id=name,role=role,state_dir=state+'/'+name,ref='fixture-deployment-ref')
+        if service:
+            cfg['managed_services'] = [service]
         app=App(cfg)
         server=Server(('127.0.0.1',0),handler(app))
         cfg['port']=server.server_address[1]
         threading.Thread(target=server.serve_forever,daemon=True).start()
         apps.append(app);servers.append(server)
-    controller,agent=apps
+    controller,agent=apps[:2]
     controller.cfg['advertise_url']='http://10.0.1.50:8320'
     worker=Worker(Path(state)/'image-builder')
     worker.jobs.execute=lambda req,log:simulated_build(worker,req,log)
@@ -40,14 +46,37 @@ with tempfile.TemporaryDirectory() as state:
         image_server=ImageServer(state+'/images.sock',image_handler(worker))
     threading.Thread(target=image_server.serve_forever,daemon=True).start()
     controller.images=ImageClient(state+'/images.sock')
-    agent.local=[{'name':'node-gateway','port':8080,'ready':True,'commit':'a'*40}]
-    agent.jobs.execute=lambda data,log:(log('Browser integration: simulated installer'),{'commit':data.get('commit','')})[1]
+    def installer(target):
+        def execute(data, log):
+            log('Browser integration: simulated installer')
+            # Keep a real running remote job long enough for the compact UI to
+            # poll it. No subprocess, package installation or service restart.
+            time.sleep(5)
+            if target.cfg['node_id'] == 'test-backend-fails':
+                raise RuntimeError('Browser integration: simulated backend failure')
+            with target.lock:
+                for service in target.local:
+                    if service['name'] == data.get('service'):
+                        service['commit'] = data.get('commit', '')
+            return {'service': data['service'], 'commit': data.get('commit', '')}
+        return execute
+    from common import CATALOG
+    for app, (_, _, service) in zip(apps[1:], fixture_nodes[1:]):
+        app.local=[{'name':service,'port':CATALOG[service]['port'],'ready':True,'commit':'a'*40}]
+        app.jobs.execute=installer(app)
     controller.repo.resolve=lambda ref,log:'b'*40
     def resolve_image_main(log):
         log('Browser integration: fresh origin/main selected')
         return 'b'*40
     controller.repo.resolve_latest_main=resolve_image_main
     controller.desired={'ref':'main','commit':'b'*40}
-    controller.discovery.accept(f'http://127.0.0.1:{servers[1].server_address[1]}',agent.manifest())
+    for app, server in zip(apps[1:], servers[1:]):
+        controller.discovery.accept(f'http://127.0.0.1:{server.server_address[1]}',app.manifest())
+    offline=dict(agent.manifest(), node_id='test-offline', services=[
+        {'name':'media-switch','port':8100,'ready':True,'commit':'a'*40}])
+    controller.discovery.accept('http://127.0.0.1:9',offline)
+    with controller.discovery.lock:
+        controller.discovery.peers['test-offline']['last_seen'] = time.time() - 2 * controller.cfg['lease_seconds']
+        controller.discovery._resolve()
     print(f'http://127.0.0.1:{servers[0].server_address[1]}',flush=True)
     signal.pause()

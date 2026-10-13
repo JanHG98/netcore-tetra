@@ -1,8 +1,22 @@
 # NetCore-Dienste aktualisieren
 
-Stand: 13.10.2026 · Aufgabe **Z01.4** · geprüfter Ausgangsstand `main@5c83bfbdd48bd3de257125ae68a57e584c77ee86`.
+Stand: 14.10.2026 · Aufgabe **Z01.4** · geprüfter Ausgangsstand `main@5c83bfbdd48bd3de257125ae68a57e584c77ee86`.
 
-Der folgende Block läuft **als root in der Proxmox-Host-Shell**. Er aktualisiert die installierten, verwalteten NetCore-Programme in den **laufenden LXCs dieses Hosts**. CT-IDs und IP-Adressen werden nicht geraten. Bei einem Cluster den Block auf jedem Host mit NetCore-LXCs ausführen. Der Pi und die Deployment-VM sind keine LXCs und haben eigene Schritte unten.
+Der Proxmox-Block weiter unten läuft **als root in der Proxmox-Host-Shell**. Er aktualisiert die installierten, verwalteten NetCore-Programme in den **laufenden LXCs dieses Hosts**. CT-IDs und IP-Adressen werden nicht geraten. Bei einem Cluster den Block auf jedem Host mit NetCore-LXCs ausführen. Der Pi und die Deployment-VM sind keine LXCs und haben eigene Schritte unten.
+
+## Alle verwalteten Dienste in der WebUI aktualisieren
+
+Nach dem [VM119-Update](#deployment-vm119-separat-aktualisieren) die Deployment-WebUI mit **Strg+F5** neu laden. Unter **Gezielt ausrollen → Alle Updates anzeigen** zunächst die gemeinsame Vorschau laden. Der Controller holt dafür den aktuellen `main` genau einmal und zeigt den vollständigen Zielcommit, jeden installierten verwalteten Dienst und die ausgelassenen Ziele mit Grund. Auch erreichbare Dienste mit eingeschränkter Readiness werden aufgenommen, damit alte Abhängigkeiten aktualisiert werden können. Die Filter in der Netzübersicht beschränken diesen Sammellauf nicht.
+
+Die Vorschau mit **… Dienste jetzt aktualisieren** ausführen. Mehrere Zielhosts werden parallel angestoßen; der Agent arbeitet die Dienste eines Hosts nacheinander ab. Jeder Dienst erhält einen eigenen dauerhaften Auftrag. Die kompakte Tabelle zeigt Host, Dienst, wartend/laufend/erfolgreich/fehlgeschlagen oder ungeklärt; das jeweilige Protokoll bleibt über den Auftragsverlauf erreichbar. Ein Fehler hält unabhängige Ziele nicht an. Ein verlorener Remote-Auftrag wird nicht automatisch erneut abgesendet. Wiederholtes Absenden derselben Vorschau erzeugt keinen zweiten Lauf.
+
+Der Umfang sind die installierten Katalogrollen einschließlich TBS auf erreichbaren Discovery-Agenten. Offlinehosts, Controller und nicht verwaltete Fremdanwendungen werden mit Grund ausgelassen. Discovery-Agenten und die Deployment-VM selbst behalten ihre gesonderten Updatewege. Laufende Verbindungen und Funkbetrieb können durch die Dienstneustarts unterbrochen werden.
+
+### Veraltete Einträge löschen und die Netzübersicht filtern
+
+Die Netzübersicht bietet neben der Textsuche Filter für **Dienste/TBS**, die konkrete **Dienstrolle** und **online/offline**. Filter wirken auf die einzelnen Dienstzeilen, auch wenn mehrere Rollen auf demselben Host liegen.
+
+Über **Löschen** einen veralteten Host aus dem Discovery-Inventar nehmen. Das entfernt seine gecachten Zuordnungen und blendet seine erneuten Meldungen dauerhaft aus; es deinstalliert oder stoppt nichts auf dem Zielhost. Die eigene Instanz und Ziele laufender oder ungeklärter Updateaufträge bleiben erhalten. Unter den entfernten Einträgen kann ein Host ausdrücklich **wiederhergestellt** werden. Manuell festgelegte Dienstbindungen bleiben gespeichert und werden bei einem entfernten Ziel als ungelöst behandelt; für einen neuen Zielhost die Zuordnung in den Einstellungen bewusst ändern.
 
 ## Ein gemeinsamer Proxmox-Block: neuester main-Stand
 
@@ -99,24 +113,23 @@ Die Runtime-Dateien und Installationspfade sind in [service-update-assets.json](
 
 ## Deployment-VM119 separat aktualisieren
 
-In der SSH-Sitzung **jhoffmeister auf VM-H-DEPLOY-01 (`10.0.1.131`)**:
+In der SSH-Sitzung **jhoffmeister auf VM-H-DEPLOY-01 (`10.0.1.131`)**, bevor ein neuer Imagebuild oder Sammellauf gestartet wird:
 
 ```bash
 (
 set -euo pipefail
-NC_FIX_COMMIT=d3ea8283f3f837296742a2445070364ad7fa4813
-NC_FIX_SRC=$(mktemp -d /tmp/netcore-image-features.XXXXXX)
-git -C "$NC_FIX_SRC" init -q
-git -C "$NC_FIX_SRC" fetch --depth 1 \
-  https://github.com/JanHG98/netcore-tetra.git "$NC_FIX_COMMIT"
-git -C "$NC_FIX_SRC" checkout --detach FETCH_HEAD
-test "$(git -C "$NC_FIX_SRC" rev-parse HEAD)" = "$NC_FIX_COMMIT"
-sudo python3 -B \
-  "$NC_FIX_SRC/Docs/integration/Z01-2026-10-07/vm119-image-features-update.py"
+NC_VM_SRC=$(mktemp -d /tmp/netcore-vm-current.XXXXXX)
+git -C "$NC_VM_SRC" init -q
+git -C "$NC_VM_SRC" fetch --depth 1 \
+  https://github.com/JanHG98/netcore-tetra.git refs/heads/main
+NC_VM_COMMIT=$(git -C "$NC_VM_SRC" rev-parse FETCH_HEAD)
+git -C "$NC_VM_SRC" checkout --detach "$NC_VM_COMMIT"
+sudo python3 -B "$NC_VM_SRC/tools/operator/update-vm119-image-features.py" \
+  --commit "$NC_VM_COMMIT" --apply
 )
 ```
 
-Das ist der bereits geprüfte, konsolidierte Rezept-/Formular-Updater. Aktive/ungeklärte Imagejobs werden abgelehnt. Erwartet: `passed` oder `already_current`. Danach ein **neues KDE-Image** bauen; ein vorhandener Download wird dadurch nicht verändert. [Image-, Desktop- und SIP-Anleitung](../integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md).
+Dieser Updater übernimmt Controller, Builder, vollständiges Image-Rezept und Formular gemeinsam aus genau diesem Commit. Aktive oder ungeklärte Deployment-/Imagejobs werden abgelehnt. Erwartet: `passed` oder `already_current`. Danach die WebUI mit **Strg+F5** neu laden. Die UI-Funktionen sind sofort auf der VM verfügbar; ein neues Pi-Image wird gesondert gebaut. [Image-, Desktop- und SIP-Anleitung](../integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md).
 
 ## Pi und externe Anwendungen
 
@@ -141,5 +154,6 @@ Ausgangsvergleich: Die zuletzt gemeldeten zentralen Fehler liegen in den Rust-Ru
 Der korrigierte Helfer besitzt 86 gezielte Regressionen für vollständige Vorbereitung, Quellidentität, neue Paketdateien, Prozess-/Dateinachweise, Versionsmarker, Busy-Jobs und Rückwege. Unter Windows bestanden 83 Fälle; drei echte POSIX-Checks laufen zusätzlich unter Linux. Der Build-Helfer hat zwölf Prüfungen einschließlich zehn tatsächlicher Bash-Fixtures. Der eigene Workflow `NetCore runtime update native proof` führt auf Ubuntu24.04 und26.04 zusätzlich echte systemd-/HTTP-Fälle aus: neues Python-Modul und Static-Datei, unveränderlicher vorbereiteter Stand, Neustart/Commitanzeige, fehlgeschlagener Start mit Rückweg sowie ein real kompilierter Rust-HTTP-Prozess mit `/proc/<PID>/exe`-Hash. Das sind isolierte Fixtures, kein tatsächlicher Packet-Core- oder Flottenrollout auf Jans Anlage.
 
 Eine tatsächliche Aktualisierung auf Jans Proxmox/LXCs und deren Fach-/Funkabnahme ist noch nicht ausgeführt. Betriebsprotokolle des Operators sind der nächste Nachweis für Z01.4.
+
 
 
