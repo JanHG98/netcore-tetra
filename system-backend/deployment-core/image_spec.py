@@ -63,7 +63,7 @@ def validate_vpn_material(value, username='', password=''):
         if username or password:
             raise ValueError('OpenVPN: eine .ovpn-Profildatei für die VPN-Zugangsdaten auswählen')
         return '', '', ''
-    allowed = {'client', 'dev', 'proto', 'remote', 'resolv-retry', 'nobind', 'persist-key',
+    allowed = {'client', 'dev', 'proto', 'remote', 'resolv-retry', 'nobind', 'lport', 'persist-key',
                'persist-tun', 'remote-cert-tls', 'verify-x509-name', 'cipher', 'data-ciphers',
                'data-ciphers-fallback', 'auth', 'auth-nocache', 'verb', 'mute', 'float',
                'explicit-exit-notify', 'key-direction', 'tls-version-min', 'tls-cipher',
@@ -80,7 +80,8 @@ def validate_vpn_material(value, username='', password=''):
     auth_nocache = False
     output = []
     remote = client = False
-    for raw in value.removeprefix('\ufeff').splitlines():
+    local_port = no_bind = False
+    for line_number, raw in enumerate(value.removeprefix('\ufeff').splitlines(), 1):
         line = raw.strip()
         if block:
             if line == f'</{block}>':
@@ -124,17 +125,38 @@ def validate_vpn_material(value, username='', password=''):
                 raise ValueError('OpenVPN: auth-user-pass erwartet höchstens einen Dateiverweis')
             auth_directive = True
             continue
-        if option not in allowed or '\\' in line:
+        if option not in allowed:
             # Never echo a malformed line/token: it may be a misplaced secret.
-            raise ValueError('OpenVPN: nicht unterstützte Direktive; portable Client-Datei ohne Hooks/Dateiverweise erforderlich')
+            raise ValueError(f'OpenVPN: Zeile {line_number}: nicht unterstützte Direktive; portable Client-Datei ohne Hooks/Dateiverweise erforderlich')
+        if '\\' in line:
+            raise ValueError(f'OpenVPN: Zeile {line_number}: Escape-Syntax mit Backslash wird vom Import noch nicht unterstützt')
+        if option == 'lport':
+            try:
+                lexer = shlex.shlex(line, posix=True)
+                lexer.whitespace_split = True
+                lexer.commenters = '#;'
+                arguments = list(lexer)
+            except ValueError as exc:
+                raise ValueError(f'OpenVPN: Zeile {line_number}: ungültige lport-Direktive') from exc
+            if (len(arguments) != 2 or not re.fullmatch(r'[0-9]{1,5}', arguments[1])
+                    or int(arguments[1]) > 65535):
+                raise ValueError(f'OpenVPN: Zeile {line_number}: lport erwartet eine Portnummer von 0 bis 65535')
+            local_port = True
+            # Emit only the checked numeric value: shlex and OpenVPN differ
+            # on comments attached directly to an unquoted argument.
+            output.append('lport ' + str(int(arguments[1])))
+            continue
         if option == 'dev' and parts[1:] != ['tun']:
             raise ValueError('OpenVPN: dev tun erforderlich')
         remote |= option == 'remote'
         client |= option == 'client'
         auth_nocache |= option == 'auth-nocache'
+        no_bind |= option == 'nobind'
         output.append(raw)
     if block or not remote or not client:
         raise ValueError('Vollständige OpenVPN-Client-Datei mit remote und geschlossenen Inline-Blöcken erforderlich')
+    if local_port and no_bind:
+        raise ValueError('OpenVPN: lport und nobind dürfen nicht gemeinsam verwendet werden')
     if inline_auth is not None:
         if len(inline_auth) not in (1, 2):
             raise ValueError('OpenVPN: Inline-Zugangsdaten benötigen Benutzername und optional Passwort auf zwei Zeilen')

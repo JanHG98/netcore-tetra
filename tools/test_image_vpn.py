@@ -24,6 +24,42 @@ import personalize
 PROFILE = 'client\ndev tun\nremote vpn.example 1194\n<ca>\nFIXTURE CA\n</ca>\n'
 USERNAME = 'fixture-vpn-user'
 PASSWORD = 'fixture-vpn-password#$; with spaces'
+EXPORTED_PROFILE = '''dev tun
+persist-tun
+persist-key
+client
+resolv-retry infinite
+reneg-sec 0
+remote vpn.example 1194 udp4
+lport 0
+verify-x509-name "C=DE, ST=Lower Saxony, L=Hannover, O=Example, emailAddress=admin@example.invalid, CN=server" subject
+remote-cert-tls server
+auth-user-pass
+<ca>
+-----BEGIN CERTIFICATE-----
+XYZ
+-----END CERTIFICATE-----
+</ca>
+<cert>
+-----BEGIN CERTIFICATE-----
+XYZ
+-----END CERTIFICATE-----
+</cert>
+<key>
+-----BEGIN PRIVATE KEY-----
+XYZ
+-----END PRIVATE KEY-----
+</key>
+<tls-auth>
+#
+# 2048 bit OpenVPN static key
+#
+-----BEGIN OpenVPN Static key V1-----
+XYZ
+-----END OpenVPN Static key V1-----
+</tls-auth>
+key-direction 1
+'''
 
 
 def request(**changes):
@@ -81,6 +117,48 @@ class ImageVpnTests(unittest.TestCase):
             self.assertNotIn('stale', profile)
             self.assertEqual(profile.count('auth-user-pass'), 1)
             self.assertIn('auth-user-pass ' + VPN_AUTH_PATH, profile)
+
+    def test_standard_export_with_lport_zero_preserves_subject_and_tls_material(self):
+        req = self.authenticated(EXPORTED_PROFILE)
+        expected = (EXPORTED_PROFILE.replace('auth-user-pass\n', '')
+                    + 'auth-nocache\nauth-user-pass ' + VPN_AUTH_PATH + '\n')
+        self.assertEqual(req['vpn_config'], expected)
+        self.assertEqual((req['vpn_username'], req['vpn_password']), (USERNAME, PASSWORD))
+        self.assertEqual(validate_image(req), req)
+        with self.assertRaisesRegex(ValueError, 'VPN-Benutzername.*VPN-Passwort'):
+            validate_image(request(vpn_config=EXPORTED_PROFILE))
+
+    def test_lport_accepts_numeric_ports_and_quoted_or_commented_zero(self):
+        for directive, port in (('lport 0', 0), ('lport 1', 1), ('lport 1194', 1194),
+                                ('lport 65535', 65535), ('lport 00000', 0),
+                                ('lport "0"', 0), ('--lport 0', 0),
+                                ('lport 0 # exported local port', 0),
+                                ('lport 0 ; exported local port', 0)):
+            with self.subTest(directive=directive):
+                expected = PROFILE + 'lport ' + str(port) + '\n'
+                self.assertEqual(validate_vpn(PROFILE + directive + '\n'), expected)
+                self.assertEqual(validate_vpn(expected), expected)
+
+    def test_lport_attached_comments_normalize_to_unambiguous_numeric_option(self):
+        for directive, port in (('lport 0#exported comment', 0), ('lport 65535;comment', 65535)):
+            with self.subTest(directive=directive):
+                expected = PROFILE + 'lport ' + str(port) + '\n'
+                self.assertEqual(validate_vpn(PROFILE + directive + '\n'), expected)
+                self.assertEqual(validate_vpn(expected), expected)
+
+    def test_lport_rejects_invalid_ports_or_extra_arguments_without_echoing_values(self):
+        for value in ('', '-1', '65536', '999999', '1.5', '1e3', '+1', '１２',
+                      'secret-service-name', '0 misplaced-sensitive-password', '"unterminated-secret'):
+            with self.subTest(value=value), self.assertRaises(ValueError) as error:
+                validate_vpn(PROFILE + 'lport ' + value + '\n')
+            self.assertIn('Zeile 7:', str(error.exception))
+            for secret in ('secret-service-name', 'misplaced-sensitive-password', 'unterminated-secret'):
+                self.assertNotIn(secret, str(error.exception))
+
+    def test_lport_and_nobind_conflict_in_either_order(self):
+        for tail in ('lport 0\nnobind\n', 'nobind\nlport 0\n'):
+            with self.subTest(tail=tail), self.assertRaisesRegex(ValueError, 'lport und nobind'):
+                validate_vpn(PROFILE + tail)
 
     def test_inline_login_is_extracted_including_comment_prefixes_in_password(self):
         embedded_password = '#;fixture-inline-password with spaces'
@@ -146,7 +224,29 @@ class ImageVpnTests(unittest.TestCase):
         for tail in ('misplaced-sensitive-password\n', 'up /tmp/secret-hook\n', 'config /etc/passwd\n'):
             with self.subTest(kind=tail.split()[0]), self.assertRaises(ValueError) as error:
                 self.authenticated(PROFILE + tail)
+            self.assertIn('Zeile 7: nicht unterstützte Direktive', str(error.exception))
             self.assertNotIn(tail.split()[0], str(error.exception))
+
+    def test_diagnostics_count_original_lines_including_inline_auth_bom_and_crlf(self):
+        profile = ('\ufeff# comment\n\n' + PROFILE
+                   + '<auth-user-pass>\n' + USERNAME + '\n' + PASSWORD
+                   + '\n</auth-user-pass>\nmisplaced-sensitive-password\n')
+        for newline in ('\n', '\r\n'):
+            with self.subTest(newline=repr(newline)), self.assertRaises(ValueError) as error:
+                validate_vpn_material(profile.replace('\n', newline))
+            self.assertIn('Zeile 13: nicht unterstützte Direktive', str(error.exception))
+            for secret in (USERNAME, PASSWORD, 'misplaced-sensitive-password'):
+                self.assertNotIn(secret, str(error.exception))
+
+    def test_unsupported_escape_syntax_has_distinct_private_line_diagnostic(self):
+        tail = 'verify-x509-name "fixture\\\\private-name" name\n'
+        with self.assertRaises(ValueError) as error:
+            self.authenticated(PROFILE + tail)
+        message = str(error.exception)
+        self.assertIn('Zeile 7: Escape-Syntax mit Backslash', message)
+        self.assertNotIn('nicht unterstützte Direktive', message)
+        self.assertNotIn('fixture', message)
+        self.assertNotIn('private-name', message)
 
     def test_public_job_does_not_publish_login_or_private_profile(self):
         req = self.authenticated()
