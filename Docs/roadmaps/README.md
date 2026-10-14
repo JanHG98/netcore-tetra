@@ -6,7 +6,7 @@ Die Gesamtroadmap ist der Einstieg für heutige Prioritäten und Abnahmen. Fachr
 
 [Gesamte Dokumentation](../README.md)
 
-- [Roadmap: Zentrale Anmeldung und RBAC für NetCore-Tetra](zentrale-anmeldung-und-berechtigungen.md)
+- [Roadmap: Zentrale Anmeldung und RBAC für NetCore-Tetra](zentrale-anmeldung-und-berechtigungen.md) – einschließlich [SSO-/AD-Konzept für Dienst-WebUIs und Basisstationen](../design/sso-ad-und-ressourcenrechte.md), Gruppenmapping und Ressourcenrechten; geplant.
 - [Zentraler Netzbetrieb auf dem MAIN-COMPAT-Funkstack](zentraler-netzbetrieb.md)
 - [Roadmap: NetCore Drive – Dateicloud und externe Ordnerfreigaben](dateicloud-und-ordnerfreigaben.md)
 - [NetCore-Tetra – zentrale Gesamtroadmap](gesamtroadmap.md)
