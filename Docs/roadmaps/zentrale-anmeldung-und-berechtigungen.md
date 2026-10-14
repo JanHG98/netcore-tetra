@@ -2,18 +2,20 @@
 
 **Standprüfung am 13.10.2026:** Die Roadmap beschreibt weiterhin Planung. Im geprüften `main@e1617b28` ist kein eigenständiger zentraler IAM- beziehungsweise Drive-Dienst im Workspace oder Betriebsinventar implementiert. Lokale Benutzer, Tokens und vorhandene Dateispeicher ersetzen diese geplanten Dienste nicht. Die unten angegebenen frühen Code-/Entwurfsstände bleiben historische Ausgangspunkte; Priorität und Folge stehen in der [Gesamtroadmap](gesamtroadmap.md).
 
+**Ideen-Ergänzung vom 14.10.2026:** [SSO mit dem vorhandenen AD für Dienst-WebUIs und Basisstationen](../design/sso-ad-und-ressourcenrechte.md) konkretisiert die Zielarchitektur. Die grundlegende lesende AD-Anbindung und das Gruppenmapping sind jetzt im Pilotumfang M0–M2 vorgesehen; Arbeitsplatzkomfort und weiterer AD-Ausbau bleiben M8. Dokumentationsabgleich an `main@8d70a7d7`, keine neue Code- oder Betriebsabnahme.
+
 **Gesamtpriorität / nächster Schritt:** [NETCORE-MASTER-01](gesamtroadmap.md). Diese Fachroadmap führt IAM-Umfang und Abnahme; für die aktuelle Reihenfolge im gesamten Projekt zuerst die zentrale Gesamtroadmap prüfen.
 
 | Feld | Wert |
 | --- | --- |
 | Roadmap-ID | NETCORE-IAM-01 |
-| Erstellt / aktualisiert | Erstellt 2026-10-03; Status erneut geprüft 2026-10-13, Europe/Berlin |
+| Erstellt / aktualisiert | Erstellt 2026-10-03; Statusprüfung 2026-10-13; SSO-/AD-Planung ergänzt 2026-10-14, Europe/Berlin |
 | Gesamtstatus | **Geplant; bisher nur dokumentiert, keine zentrale IAM-Implementierung durch diesen Auftrag** |
-| Nutzerauftrag | Zentrale Anmeldung und Rechteverwaltung statt regulärer Basisstations-Zugangsdaten in config.toml; Roadmap im Docs-Ordner für die Projektstatusläufe |
+| Nutzerauftrag | Zentrale Anmeldung und Rechteverwaltung statt regulärer Basisstations-Zugangsdaten in config.toml; ergänzt um SSO mit bestehendem AD für Dienst-WebUIs und Basisstationen; Roadmap im Docs-Ordner für die Projektstatusläufe |
 | Geltungsbereich | Basisstations-Dashboard, Control Room, Verwaltungsoberflächen / Management-APIs der Zentraldienste und NetCore Drive einschließlich begrenzter Gastzugänge |
-| Architekturstand | **Empfehlung:** eigener Identity-LXC, Keycloak als Identity Provider, gemeinsame Rust-Integration; technische Festlegung noch offen |
+| Architekturstand | **Empfehlung:** eigener Identity-LXC, Keycloak, lesende AD-/LDAPS-Federation, OIDC und gemeinsame Rust-Integration; technische Festlegung in M1 offen |
 | Geprüfter Code-Ausgangsstand | main, Commit f4fd490f577c1315279ecc89f0c6b1808ee7733d |
-| Nächster Schritt | Zugänge vollständig inventarisieren und Architekturentscheidung dokumentieren |
+| Nächster Schritt | M0-Endpunkt-/Rechtematrix einschließlich AD-Gruppen und Integrationsweg je Oberfläche erstellen; in M1 Architektur-, Sperr- und Ausfallvertrag dokumentieren |
 | Zeitplanung | Meilensteinfolge ohne verbindliche Termine oder erfundene Fertigstellungsprozente |
 
 ## 1. Ziel und Umfang
@@ -22,7 +24,7 @@ Benutzer sollen zentral angelegt, gesperrt und mit Rollen sowie Ressourcenbereic
 
 Die Berechtigungsprüfung bleibt im jeweiligen Backend: Identität zentral verwalten, jede Aktion lokal durchsetzen. Ein Benutzer mit Zugriff auf eine Station erhält dadurch keinen automatischen Zugriff auf andere Stationen. Die laufende Funkvermittlung darf nicht von einer erreichbaren Web-Anmeldung oder einem geöffneten Browser abhängen.
 
-Diese Roadmap ist ein Planungsartefakt. Der Auftrag bestätigt das Ziel und die Dokumentation, aber weder eine bereits erfolgte Installation noch die endgültige Wahl von Keycloak, LXC oder AD-Anbindung. Die technische Umsetzung erfolgt später in eigenen Entwicklungsbranches und überprüfbaren PRs.
+Diese Roadmap ist ein Planungsartefakt. Der Auftrag bestätigt das Ziel einschließlich SSO-/AD-Anbindung und dessen Dokumentation; Produktwahl, Betriebsort und technische AD-Konfiguration werden in M1 festgelegt. Eine bereits erfolgte Installation ist damit nicht belegt. Die technische Umsetzung erfolgt später in eigenen Entwicklungsbranches und überprüfbaren PRs.
 
 ## 2. Belegter Ausgangsstand
 
@@ -45,7 +47,7 @@ Quellen: [Dashboard-Konfiguration](../../crates/tetra-config/src/bluestation/sec
 | Baustein | Vorgeschlagene Verantwortung | Status |
 | --- | --- | --- |
 | Eigener Identity-LXC | Keycloak, zunächst eigene PostgreSQL-Datenbank im gleichen LXC, Administration, Backups und Monitoring | Empfehlung, nicht installiert |
-| Identity Provider | Lokale Benutzer, optional AD über abgesicherte LDAP-Anbindung, SSO, MFA, zentrale Gruppen und Rollenzuweisung | Produktwahl offen; Keycloak bevorzugter Kandidat |
+| Identity Provider | Bestehendes AD als Quelle interner Benutzer / Gruppen über lesendes LDAPS, SSO, MFA und explizites Rollenmapping; begrenzte Gäste / Notidentitäten getrennt | Produktwahl offen; Keycloak bevorzugter Kandidat; AD-Grundanbindung im Pilot geplant |
 | Gemeinsamer Rust-Baustein netcore-auth | OIDC, Sessions, Tokenprüfung, Berechtigungen, Ressourcenprüfung und Audit-Kontext | Neu zu entwickeln; genauer Paketpfad in M0/M1 festlegen |
 | Fachbackends | Verbindliche Prüfung jeder geschützten Aktion einschließlich API, Exporten und WebSocket-Befehlen | Schrittweise Migration |
 | NetCore-Verwaltungsoberfläche | Rollen, Ressourcenzuordnung und Benutzerverwaltung im gemeinsamen NetCore-Design | Ausbauziel; für den ersten Pilot genügt die Identity-Administration |
@@ -56,12 +58,23 @@ Eine Unterbringung in der bestehenden Deployment-VM bleibt als Pilotoption mögl
 
 Authentik bleibt eine Alternative. Ein eigener vollständiger Passwort-, MFA- und Tokenserver wird für das erste Ziel nicht empfohlen. NetCore-spezifische Rechte und Oberflächen entwickeln wir innerhalb unseres Projekts; die eigentliche Anmeldung verwendet ein etabliertes Protokoll.
 
+### 3.1 SSO-/AD-Ergänzung vom 14.10.2026
+
+Das [ausführliche Ideenkonzept](../design/sso-ad-und-ressourcenrechte.md) führt Architekturdiagramm, Gruppenbeispiele, Anbindungswege und Pilotfälle. Für diese Roadmap gelten folgende Planungsziele:
+
+- AD führt interne Benutzer und Grundgruppen; lesender LDAPS-Zugriff ohne AD-Schreibrechte oder Übernahme lokaler Ersatzpasswörter. Stabile Identitäten über `issuer` / `subject` zuordnen und vorhandene Konten kontrolliert migrieren.
+- Eigene Dienst- und Stationsoberflächen erhalten native OIDC-Integration über `netcore-auth`; Fremdanwendungen verwenden vorhandenes OIDC / SAML oder einen begrenzten Anmeldeproxy. Proxyzugang allein belegt keine feinen Anwendungsrechte; direkte Umgehungswege und Identitätsheader absichern.
+- Rollen und Ressourcenbereiche gemeinsam auswerten. AD-Gruppen liefern ausdrücklich zugeordnete Grundrollen; Zielstation, Dienst, Gruppe und Datei werden im jeweiligen Fachbackend berechtigt. Ein Techniker darf beispielsweise TBS-01 konfigurieren und TBS-02 nur ansehen.
+- Maschinenzugänge getrennt provisionieren; individuelle Zertifikate / mTLS sind ein Vorschlag für den späteren Transportvertrag. Eine Maschinenidentität erbt keine Browserrechte, der Benutzerbezug ausgelöster Aufträge bleibt im Audit erhalten.
+- Kurze Access Tokens, beispielsweise fünf Minuten als Startvorschlag, mit einer ausdrücklich definierten Gesamtsperrfrist verbinden. AD-Abgleich, lokale Sessions und WebSockets müssen Rechteentzug wirksam übernehmen; kritische Schreibaktionen benötigen einen aktuellen Berechtigungsstand.
+- Funkbetrieb bleibt unabhängig von Web-IAM; isolierte Verwaltung ist zeitlich und fachlich begrenzt. Notzugang, MFA für privilegierte Rollen sowie später Kerberos und NFC/RFID erhalten eigene Prüffälle.
+
 ### Noch zu entscheiden
 
 - [ ] Identity-Produkt und unterstützte Version auswählen.
 - [ ] Betriebsort, Datenbank, Backupziel und späteren Verfügbarkeitsbedarf festlegen.
 - [ ] Vertrauenswürdigen DNS-Namen, HTTPS-Zertifikate und festen Issuer festlegen.
-- [ ] Lokale Konten und optionale AD-Anbindung einschließlich Gruppenzuordnung beschließen.
+- [ ] Lesenden AD-Vertrag mit Suchbereich, stabilem Identitätsmerkmal, explizitem Gruppenmapping und Sperrabgleich festlegen; Gäste / Notkonten getrennt regeln.
 - [ ] Rollen, Einzelrechte, Ressourcenbereiche und Trennung von Account-Administration / Fachadministration beschließen.
 - [ ] Token- und Sitzungsdauer sowie gewünschte maximale Verzögerung einer Sperre festlegen.
 - [ ] Regeln für isolierte Stationen, Neustart ohne Zentrale und lokale Notzugänge beschließen.
@@ -117,9 +130,9 @@ Prioritäten P0/P1/P2 sind Empfehlungen für die Reihenfolge. Alle technischen M
 
 | ID | Priorität | Meilenstein | Abhängigkeit | Status |
 | --- | --- | --- | --- | --- |
-| M0 | P0 | Zugänge und geschützte Aktionen inventarisieren | Keine | Geplant; erste Teilbefunde in Abschnitt 2 |
+| M0 | P0 | Zugänge, Aktionen, Ressourcen und AD-/Integrationsbedarf je Oberfläche inventarisieren | Keine | Geplant; erste Teilbefunde in Abschnitt 2 |
 | M1 | P0 | Architektur, Rollen und Ausfallregeln entscheiden | M0 | Geplant |
-| M2 | P0 | Identity-Pilot bereitstellen | M1 | Geplant |
+| M2 | P0 | Identity-Pilot mit lesender AD-Anbindung und explizitem Gruppenmapping bereitstellen | M1 | Geplant |
 | M3 | P0 | Gemeinsamen Rust-Auth-Baustein entwickeln | M1, M2 für Integration | Geplant |
 | M4 | P0 | Eine Basisstation als Pilot migrieren | M2, M3 | Geplant |
 | M5 | P1 | Control Room und Zentraldienste schrittweise migrieren | M4 | Geplant |
@@ -129,21 +142,21 @@ Prioritäten P0/P1/P2 sind Empfehlungen für die Reihenfolge. Alle technischen M
 
 ### M0 — Bestandsaufnahme
 
-Aufgaben: Alle Weboberflächen, schreibenden/lesenden APIs, WebSocket-/SSE-Verbindungen, Downloads und Maschinenzugänge erfassen. Aktuelle Login-Konfigurationen, Sitzungsregeln und Open-Lab-Ausnahmen ermitteln. Rollen aus dem Control Room und Anforderungen der Dienstmatrix zusammenführen. TBS-Webserver und Backend-HTTP-Stacks auf Integrationsmöglichkeiten prüfen.
+Aufgaben: Alle Weboberflächen, schreibenden/lesenden APIs, WebSocket-/SSE-Verbindungen, Downloads und Maschinenzugänge erfassen. Aktuelle Login-Konfigurationen, Sitzungsregeln und Open-Lab-Ausnahmen ermitteln. Rollen aus dem Control Room und Anforderungen der Dienstmatrix zusammenführen. TBS-Webserver und Backend-HTTP-Stacks auf Integrationsmöglichkeiten prüfen. Pro Oberfläche native OIDC-/SAML-Anbindung oder begrenzten Proxy-Weg kennzeichnen; vorhandene AD-Gruppen, stabile Identitätsmerkmale und zulässigen Lesebereich ohne öffentliche Zugangsdaten erfassen.
 
-**Abnahme:** Eine vollständige Komponenten-/Endpunktmatrix mit aktuellem Schutz, benötigtem Einzelrecht und Ressourcenbereich liegt vor. Ungeprüfte Komponenten sind ausdrücklich als ungeprüft markiert.
+**Abnahme:** Eine vollständige Komponenten-/Endpunktmatrix mit aktuellem Schutz, benötigtem Einzelrecht, Ressourcenbereich und geplantem Integrationsweg liegt vor. AD-Grundrollen und getrennte Maschinenzugänge sind zugeordnet. Ungeprüfte Komponenten sind ausdrücklich als ungeprüft markiert.
 
 ### M1 — Architekturentscheidung
 
-Aufgaben: Offene Entscheidungen aus Abschnitt 3 als ADR dokumentieren; Anmeldung und Autorisierung getrennt beschreiben. Für das erste Release möglichst Rollen und Ressourcenbereiche über klar definierte Claims/Zuweisungen abbilden. Eine zusätzliche zentrale Policy-API nur einführen, wenn ihre Notwendigkeit und ihr Ausfallverhalten belegt sind.
+Aufgaben: Offene Entscheidungen aus Abschnitt 3 als ADR dokumentieren; Anmeldung und Autorisierung getrennt beschreiben. Für das erste Release möglichst Rollen und Ressourcenbereiche über klar definierte Claims/Zuweisungen abbilden. Lesenden AD-Vertrag, explizites Gruppenmapping, stabile Kontenzuordnung, Vertrauensgrenzen für Proxyheader und die Gesamtsperrfrist einschließlich AD-Abgleich / Sessions festlegen. Eine zusätzliche zentrale Policy-API nur einführen, wenn ihre Notwendigkeit und ihr Ausfallverhalten belegt sind.
 
 **Abnahme:** Produkt, Betriebsort, Benutzerquelle, Vertrauensmodell, Client-/Audience-Modell, Rollen, Ausfallregeln, Sperrfrist, Notzugang und Migrationsverfahren sind entschieden. Es gibt ein Modell für delegierte Rechteverwaltung ohne ungewollte Selbsterhöhung.
 
 ### M2 — Identity-Pilot
 
-Aufgaben: Identity-System mit HTTPS und stabilem DNS-Namen bereitstellen. Benutzergruppen, OIDC-Clients und Testkonten anlegen. Privilegierte Konten absichern. Wiederherstellbares Backup für Konfiguration, Datenbank und benötigtes Schlüsselmaterial planen und überprüfen.
+Aufgaben: Identity-System mit HTTPS und stabilem DNS-Namen bereitstellen. Bestehendes AD über geprüftes LDAPS und ein eingeschränktes Lesekonto anbinden; keine AD-Schreibrechte vergeben. Explizites Gruppenmapping mit zwei unterschiedlich berechtigten AD-Testbenutzern und geeigneten OIDC-Clients einrichten. Privilegierte Konten absichern. Wiederherstellbares Backup für Konfiguration, Datenbank und benötigtes Schlüsselmaterial planen und überprüfen.
 
-**Abnahme:** Zwei Benutzer mit unterschiedlichen Rechten können sich anmelden; Datenbank-/Identity-Neustart und ein Restore im Test funktionieren. Zugangsdaten und Schlüssel sind nicht im Repository enthalten. Noch keine automatische Änderung produktiver Basisstationen.
+**Abnahme:** Zwei AD-Benutzer mit unterschiedlichen Gruppen erhalten ausschließlich ihre zugewiesenen Rollen; eine nicht zugelassene Gruppe erhält keinen Dienstzugang. Lesender Verzeichnisbetrieb, Gruppenänderung und Kontosperre sind geprüft; Datenbank-/Identity-Neustart und ein Restore im Test funktionieren. Zugangsdaten und Schlüssel sind nicht im Repository enthalten. Noch keine automatische Änderung produktiver Basisstationen.
 
 ### M3 — Gemeinsame Integration
 
@@ -161,7 +174,7 @@ Aufgaben: Zentrale Anmeldung im vorhandenen Dashboard anbinden; erlaubte Aktione
 
 Aufgaben: Control-Room-Benutzer und Rollen auf stabile zentrale Identitäten abbilden; Dubletten und Namensänderungen berücksichtigen. Keine schwachen/inkompatiblen Passwortspeicher ungeprüft importieren; erforderliche Neuanmeldung/Passwortsetzung dokumentieren. Zentraldienste einzeln entsprechend Risiko und Nutzung migrieren. Maschinenidentitäten mit begrenzten Rechten einrichten; vorhandene Transportverfahren erst nach eigener Prüfung umstellen.
 
-**Abnahme:** Jeder migrierte Dienst hat nachvollziehbare Rechte und Audit; SSO funktioniert zwischen den angebundenen Oberflächen. Control-Room-Ausfall verhindert nicht die eigenständige Verwaltung anderer Dienste. Offene Open-Lab-Komponenten bleiben in einer Restliste sichtbar; eine Teilmigration wird nicht als vollständiger Schutz ausgegeben.
+**Abnahme:** Jeder migrierte Dienst hat nachvollziehbare Rechte und Audit; SSO funktioniert zwischen Pilotstation und Control Room sowie den weiteren angebundenen Oberflächen ohne erneute Passworteingabe bei gültiger IdP-Sitzung. Unzulässige Ressourcen bleiben gesperrt; AD-Rechteentzug wirkt innerhalb der beschlossenen Frist. Control-Room-Ausfall verhindert nicht die eigenständige Verwaltung anderer Dienste. Fremdanwendungsgrenzen und offene Open-Lab-Komponenten bleiben in einer Restliste sichtbar; eine Teilmigration wird nicht als vollständiger Schutz ausgegeben.
 
 ### M6 — Provisionierung und Ablösung
 
@@ -177,7 +190,7 @@ Aufgaben: Prüffälle aus Abschnitt 6 vollständig durchführen; Monitoring, Sec
 
 ### M8 — Optionale Erweiterungen
 
-NetCore-WebUI für Benutzer, Rollen und Ressourcenzuordnung; AD-Gruppenmapping; Arbeitsplätze und später NFC/RFID; delegierte Administration; bei Bedarf mehrere Identity-Instanzen und Datenbank-Hochverfügbarkeit.
+NetCore-WebUI für Benutzer, Rollen und Ressourcenzuordnung; Ausbau der bereits im M2-Pilot vorgesehenen AD-Anbindung / Gruppenregeln; automatische Arbeitsplatzanmeldung über Kerberos und später NFC/RFID; delegierte Administration; bei Bedarf mehrere Identity-Instanzen und Datenbank-Hochverfügbarkeit.
 
 **Abnahme je Erweiterung:** Eigene Anforderungen und Prüffälle. Eine einfache Karten-UID gilt nicht automatisch als sicherer alleiniger Authentifizierungsnachweis. Ausbaustufen blockieren den ersten zentralen Login-Pilot nicht.
 
@@ -189,7 +202,7 @@ NetCore-WebUI für Benutzer, Rollen und Ressourcenzuordnung; AD-Gruppenmapping; 
 | Neuer Login / Token-Erneuerung bei Ausfall | Ohne erreichbaren Identity-Dienst nicht möglich; nur ausdrücklich eingerichteter lokaler Notzugang nach beschlossener Regel |
 | AD ausgefallen | AD-Passwortlogin abhängig vom AD; keine Behauptung eines Offline-AD-Logins durch Benutzer-/JWKS-Cache |
 | Station startet isoliert neu | Persistenz/Verfügbarkeit benötigter Vertrauensdaten und tatsächliches Sitzungs-/Notzugangsverhalten prüfen |
-| Benutzer gesperrt / Rechte entzogen | Lokal geprüfte Tokens können alte Rechte bis zum Ablauf enthalten; maximal akzeptierte Sperrfrist festlegen; kritische Aktionen ggf. Onlineprüfung / aktuelle Policy |
+| Benutzer gesperrt / AD-Gruppe geändert / Rechte entzogen | Lokal geprüfte Tokens können alte Rechte bis zum Ablauf enthalten; Gesamtsperrfrist einschließlich AD-Abgleich, lokaler Sessions und WebSockets festlegen; kritische Aktionen benötigen aktuelle Berechtigung |
 | Token läuft während WebSocket-Verbindung ab | Reauthentifizierung, kontrolliertes Verbindungsende oder Verweigerung weiterer geschützter Aktionen; kein Dauerzugang durch offenen Socket |
 | Signing-Key-Rotation | Übergang alter/neuer Schlüssel und JWKS-Cache kontrolliert; unbekannter Schlüssel ohne prüfbare Vertrauenskette wird abgelehnt |
 | Zeitabweichung | Zeitsynchronisation und begrenzte Toleranz; abgelaufene Tokens nicht unbegrenzt weiter akzeptieren |
@@ -226,12 +239,13 @@ Diese Datei ist die kanonische Planung für NETCORE-IAM-01. Beim nächsten und b
 7. Handbücher bei tatsächlichem Aktualisierungsbedarf nach den bestehenden Ausgaberegeln ergänzen. Geplante Funktionen ausdrücklich als geplant beschreiben.
 8. Produktivsoftware nicht allein aufgrund dieser Roadmap verändern; bestehende Freigabe- und Branchregeln des jeweiligen Arbeitsauftrags beachten.
 
-**Startstatus für den nächsten Lauf:** Idee und Roadmap dokumentiert; Architekturentscheidung offen; erste Teilbefunde vorhanden; noch kein Identity-LXC, kein gemeinsames Auth-Modul und keine durch diesen Auftrag migrierte Station nachgewiesen.
+**Startstatus für den nächsten Lauf:** SSO-/AD-Idee vom 14.10.2026 und Roadmap dokumentiert; Architekturentscheidung offen; M0-Endpunkt-/Rechtematrix als nächste IAM-Aufgabe, lesende AD-Grundanbindung und Gruppenmapping im M2-Pilot vorgesehen. Noch kein Identity-LXC, kein gemeinsames Auth-Modul und keine durch diesen Auftrag migrierte Station nachgewiesen.
 
 ## 9. Änderungsverlauf
 
 | Datum | Änderung | Implementierungsnachweis |
 | --- | --- | --- |
+| 2026-10-14 | SSO-/AD-Idee für Dienst-WebUIs und Basisstationen konkretisiert; lesende LDAPS-Federation, Gruppen-/Ressourcenmapping, native OIDC-/begrenzte Proxy-Wege, Maschinenidentitäten und Sperr-/Ausfallvertrag in M0–M8 eingeordnet | Dokumentation an main8d70a7d7; keine technische Umsetzung oder neue Betriebsabnahme |
 | 2026-10-03 | Nutzeridee in Roadmap überführt; Zielarchitektur als Empfehlung, Meilensteine, Rechte-, Ausfall- und Prüfkriterien dokumentiert | Dokumentation; keine technische Umsetzung |
 | 2026-10-05 | Ökosystemweite Anbindung um NetCore Drive ergänzt; zentrale Dienstrollen, fachliche Datei- / Ordnerrechte, Gäste, Linkfreigaben und begrenzte Dienstidentitäten konkretisiert | Dokumentation; keine technische Umsetzung |
 | 2026-10-05 | Lokalen Drive-Anfangsbetrieb ohne zentralen IAM-Dienst eingeplant; spätere geprüfte Migration in D6 von automatischer Ausfallumschaltung getrennt | Dokumentation; keine technische Umsetzung |
@@ -243,4 +257,6 @@ Die folgenden Primärquellen begründen die empfohlenen Integrationsmöglichkeit
 - [Keycloak Server Administration](https://www.keycloak.org/docs/latest/server_admin/index.html): lokale Benutzer, LDAP/AD, Rollen, Gruppen, Sessions und Dienstkonten.
 - [Keycloak OpenID Connect](https://www.keycloak.org/securing-apps/oidc-layers): Authorization Code, Client Credentials, JWKS und lokale Tokenprüfung.
 - [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html): vertrauenswürdiger Issuer und Metadaten.
+- [OAuth2 Proxy: Keycloak OIDC](https://oauth2-proxy.github.io/oauth2-proxy/configuration/providers/keycloak_oidc/): begrenzter Proxy-Weg mit Gruppen-/Rollenfilter; ersetzt keine Fachautorisierung.
+- [SSO-/AD-Ideenkonzept vom 14.10.2026](../design/sso-ad-und-ressourcenrechte.md): projektbezogene Ergänzung, Gruppenbeispiele und Pilotumfang.
 - [NetCore Backend-WebUI-Standard](../design/dienstoberflaechen-gestaltungsstandard.md) und [Dienstmatrix](../design/dienstoberflaechen-funktionsmatrix.md): vorhandene Projektvorgaben.
