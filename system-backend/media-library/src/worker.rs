@@ -37,7 +37,7 @@ pub fn spawn_worker(
         let mut last_probe = Instant::now()
             .checked_sub(Duration::from_secs(config.runtime.probe_interval_secs))
             .unwrap_or_else(Instant::now);
-        let mut last_maintenance = Instant::now();
+        let mut last_maintenance = Instant::now().checked_sub(Duration::from_secs(60)).unwrap_or_else(Instant::now);
         // Was: Startet eine bewusst dauerhaft laufende Verarbeitungsschleife.
         // Warum: Dienste und Empfänger müssen fortlaufend auf neue Ereignisse reagieren, bis sie ausdrücklich beendet werden.
         loop {
@@ -103,13 +103,8 @@ pub fn run_cycle(
         match result.and_then(|result| library.complete_processing(&asset_id, result)) {
             Ok(asset) => {
                 tracing::info!(asset_id = %asset_id, "Media processing completed");
-                let auto_archive = (asset.kind == "recording"
-                    && config.runtime.auto_archive_recordings
-                    && config.storage.recording_archive_root.is_some())
-                    || (asset.kind == "tts"
-                        && config.runtime.auto_archive_tts
-                        && config.storage.tts_archive_root.is_some());
-                if auto_archive && !asset.archived {
+                let auto_archive = crate::archive::automatic(config, &asset);
+                if auto_archive {
                     if let Err(error) = library.archive_asset(
                         &asset_id,
                         ActionInput {
@@ -140,12 +135,7 @@ pub fn run_cycle(
         let pending_archive = library
             .assets(None, None, Some("ready"), None, config.runtime.max_assets)
             .into_iter()
-            .find(|asset| {
-                !asset.archived
-                    && ((asset.kind == "recording"
-                        && config.runtime.auto_archive_recordings)
-                        || (asset.kind == "tts" && config.runtime.auto_archive_tts))
-            });
+            .find(|asset| crate::archive::automatic(config, asset));
         if let Some(asset) = pending_archive {
             if let Err(error) = library.archive_asset(
                 &asset.asset_id,

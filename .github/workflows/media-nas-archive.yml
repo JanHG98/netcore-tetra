@@ -1,0 +1,28 @@
+name: Media NAS archive and recall
+on:
+  pull_request:
+    paths:
+      - 'system-backend/media-library/**'
+      - '.github/workflows/media-nas-archive.yml'
+      - 'Docs/services/media-library/dateien-und-archivstruktur.md'
+  push:
+    branches: [main]
+    paths:
+      - 'system-backend/media-library/**'
+      - '.github/workflows/media-nas-archive.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify archive, eviction, recall, restart and open file ownership
+        run: cargo test --locked -p netcore-media-library

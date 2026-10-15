@@ -70,6 +70,13 @@ pub struct AssetRecord {
     pub preview_path: Option<PathBuf>,
     pub tetra_path: Option<PathBuf>,
     pub archive_path: Option<PathBuf>,
+    /// Trusted NAS payload receipt, committed locally before any eviction.
+    #[serde(default)]
+    pub archive_files: Vec<ArchiveFile>,
+    #[serde(default)]
+    pub local_offloaded: bool,
+    #[serde(default)]
+    pub local_last_accessed_at: Option<DateTime<Utc>>,
     pub sha256: Option<String>,
     #[serde(default)]
     pub preview_sha256: Option<String>,
@@ -90,6 +97,14 @@ pub struct AssetRecord {
     pub updated_at: DateTime<Utc>,
     pub approved_at: Option<DateTime<Utc>>,
     pub approved_by: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ArchiveFile {
+    pub role: String,
+    pub filename: String,
+    pub size_bytes: u64,
+    pub sha256: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -169,6 +184,9 @@ pub struct StatusView {
     pub ready: bool,
     pub storage_available: bool,
     pub archive_available: bool,
+    pub archive_last_error: Option<String>,
+    pub assets_offloaded: usize,
+    pub storage_free_bytes: Option<u64>,
     pub media_switch_connected: bool,
     pub recorder_connected: bool,
     pub application_gateway_connected: bool,

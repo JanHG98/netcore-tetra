@@ -2,7 +2,12 @@
 // NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+
+#[cfg(test)]
+mod cache_tests;
 use std::fs;
+use std::fs::File;
+use std::io::Read;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::os::unix::fs::PermissionsExt;
@@ -52,6 +57,8 @@ struct LibraryInner {
     storage_available: bool,
     storage_last_error: Option<String>,
     archive_available: bool,
+    archive_last_error: Option<String>,
+    storage_free_bytes: Option<u64>,
     media_switch_connected: bool,
     recorder_connected: bool,
     application_gateway_connected: bool,
@@ -159,6 +166,9 @@ fn prepare_archive_day(root: &Path, timestamp: DateTime<FixedOffset>) -> Result<
     let month = year.join(timestamp.format("%m").to_string());
     let day = month.join(timestamp.format("%d").to_string());
     for directory in [root, year.as_path(), month.as_path(), day.as_path()] {
+        if directory.symlink_metadata().is_ok_and(|metadata| metadata.file_type().is_symlink()) {
+            return Err("symlink in archive day directory".to_string());
+        }
         fs::create_dir_all(directory)
             .map_err(|error| format!("cannot create archive directory {}: {error}", directory.display()))?;
         set_shared_mode(directory, 0o777)?;
@@ -250,6 +260,8 @@ impl SharedLibrary {
                 storage_available: true,
                 storage_last_error: None,
                 archive_available,
+                archive_last_error: None,
+                storage_free_bytes: None,
                 media_switch_connected: false,
                 recorder_connected: false,
                 application_gateway_connected: false,
@@ -431,6 +443,9 @@ impl SharedLibrary {
             preview_path: None,
             tetra_path: None,
             archive_path: None,
+            archive_files: Vec::new(),
+            local_offloaded: false,
+            local_last_accessed_at: Some(now),
             sha256: Some(sha256),
             preview_sha256: None,
             tetra_sha256: None,
@@ -588,6 +603,9 @@ impl SharedLibrary {
             preview_path: None,
             tetra_path: None,
             archive_path: None,
+            archive_files: Vec::new(),
+            local_offloaded: false,
+            local_last_accessed_at: Some(now),
             sha256: input.sha256.map(|value| value.to_ascii_lowercase()),
             preview_sha256: None,
             tetra_sha256: None,
@@ -666,6 +684,12 @@ impl SharedLibrary {
     pub fn update_asset(&self, asset_id: &str, input: AssetUpdateInput) -> Result<AssetRecord, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
+        let kind_changed = input.kind.as_ref().is_some_and(|kind| {
+            inner.state.assets.get(asset_id).is_some_and(|asset| normalize_kind(kind) != asset.kind)
+        });
+        if kind_changed {
+            ensure_local_locked(&mut inner, asset_id)?;
+        }
         let asset = inner
             .state
             .assets
@@ -678,6 +702,11 @@ impl SharedLibrary {
             asset.description = clean_optional(input.description);
         }
         if let Some(kind) = input.kind {
+            if asset.kind != normalize_kind(&kind) {
+                asset.archived = false;
+                asset.archive_path = None;
+                asset.archive_files.clear();
+            }
             asset.kind = normalize_kind(&kind);
         }
         if let Some(tags) = input.tags {
@@ -740,6 +769,7 @@ impl SharedLibrary {
         {
             return Err("asset has a queued or active playout job".to_string());
         }
+        ensure_local_locked(&mut inner, asset_id)?;
         let asset = inner
             .state
             .assets
@@ -749,6 +779,9 @@ impl SharedLibrary {
             return Err("asset has no local original file".to_string());
         }
         asset.state = "processing".to_string();
+        asset.archived = false;
+        asset.archive_path = None;
+        asset.archive_files.clear();
         asset.preview_path = None;
         asset.tetra_path = None;
         asset.preview_sha256 = None;
@@ -815,53 +848,20 @@ impl SharedLibrary {
             .get(asset_id)
             .cloned()
             .ok_or_else(|| "asset not found".to_string())?;
-        // Kind-specific assets must never silently fall back into another archive.
-        // Recordings belong below Recordings, generated speech below TTS-Dateien,
-        // and only generic uploads use the Media-Library archive root.
-        let archive_root = match asset.kind.as_str() {
-            "recording" => inner.config.storage.recording_archive_root.clone(),
-            "tts" => inner.config.storage.tts_archive_root.clone(),
-            _ => inner.config.storage.archive_root.clone(),
+        if asset.local_offloaded {
+            return Ok(asset);
         }
-        .ok_or_else(|| format!("dedicated archive root is not configured for kind {}", asset.kind))?;
-        if !archive_root.is_dir() {
-            inner.archive_available = false;
-            return Err(format!("archive root {} is not mounted", archive_root.display()));
-        }
+        let archive_root = crate::archive::root_for(&inner.config, &asset.kind)?.to_path_buf();
+        crate::archive::require_root(&inner.config, &archive_root)?;
         if asset.state != "ready" {
             return Err("only ready assets can be archived".to_string());
         }
         let timestamp = archive_timestamp(&asset);
         let destination = prepare_archive_day(&archive_root, timestamp)?;
         let stem = archive_stem(&asset, timestamp);
-        let mut archived_files = Vec::new();
-        // Was: Kopiert Original, Vorschau und TETRA-Cache mit verständlichen, gemeinsamen Dateinamen in den Tagesordner.
-        // Warum: Windows-Benutzer sehen sofort Zeit, Rufart, Ziel, Quelle und Dauer statt UUID-Unterordnern.
-        for (role, source) in [
-            ("original", asset.original_path.as_ref()),
-            ("preview", asset.preview_path.as_ref()),
-            ("tetra", asset.tetra_path.as_ref()),
-        ]
-        .into_iter()
-        .filter_map(|(role, source)| source.map(|source| (role, source)))
-        {
-            if source.is_file() {
-                let extension = source.extension().and_then(|value| value.to_str()).unwrap_or("bin");
-                let filename = format!("{stem}_{role}.{extension}");
-                let copied = destination.join(&filename);
-                let size_bytes = media::copy_atomic(
-                    source,
-                    &copied,
-                    inner.config.storage.fsync_imports,
-                )?;
-                set_shared_mode(&copied, 0o666)?;
-                archived_files.push(json!({
-                    "filename":filename,
-                    "role":role,
-                    "size_bytes":size_bytes,
-                    "sha256":media::sha256_file(&copied)?,
-                }));
-            }
+        let archived_files = crate::archive::copy_payloads(&inner.config, &asset, &destination, &stem)?;
+        for file in &archived_files {
+            set_shared_mode(&destination.join(&file.filename), 0o666)?;
         }
         let manifest_path = destination.join(format!("{stem}_metadata.json"));
         let manifest = json!({
@@ -869,17 +869,19 @@ impl SharedLibrary {
             "layout":"year/month/day",
             "archived_at":Utc::now(),
             "asset":&asset,
-            "files":archived_files,
+            "files":&archived_files,
         });
         media::write_atomic(
             &manifest_path,
             &serde_json::to_vec_pretty(&manifest).map_err(|error| error.to_string())?,
-            inner.config.storage.fsync_imports,
+            true,
         )?;
         set_shared_mode(&manifest_path, 0o666)?;
+        inner.archive_last_error = None;
         let stored = inner.state.assets.get_mut(asset_id).expect("asset still exists");
         stored.archived = true;
         stored.archive_path = Some(manifest_path.clone());
+        stored.archive_files = archived_files;
         stored.updated_at = Utc::now();
         let result = stored.clone();
         push_event_locked(&mut inner, "asset_archived", Some(asset_id), None, json!({"path":manifest_path}));
@@ -913,6 +915,9 @@ impl SharedLibrary {
         }
 
         let shadow_dispatch = inner.config.runtime.operating_mode == SHADOW_MODE;
+        if !shadow_dispatch {
+            ensure_local_locked(&mut inner, &input.asset_id)?;
+        }
         let playout_mode = inner.config.playout.mode.clone();
         let hint = asset.broadcast_hint.clone().unwrap_or_default();
         let destination_kind = input.destination_kind.or(hint.destination_kind);
@@ -1289,6 +1294,9 @@ impl SharedLibrary {
             ready: inner.storage_available,
             storage_available: inner.storage_available,
             archive_available: inner.archive_available,
+            archive_last_error: inner.archive_last_error.clone(),
+            assets_offloaded: inner.state.assets.values().filter(|asset| asset.local_offloaded).count(),
+            storage_free_bytes: inner.storage_free_bytes,
             media_switch_connected: inner.media_switch_connected,
             recorder_connected: inner.recorder_connected,
             application_gateway_connected: inner.application_gateway_connected,
@@ -1308,14 +1316,15 @@ impl SharedLibrary {
             storage_usage_checked_at: inner.storage_usage_checked_at,
             started_at: inner.started_at,
             last_dependency_probe_at: inner.last_dependency_probe_at,
-            last_error: inner.storage_last_error.clone(),
+            last_error: inner.storage_last_error.clone().or_else(|| inner.archive_last_error.clone()),
         }
     }
 
     // Was: Führt den Arbeitsschritt `file_for` für file for aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-    pub fn file_for(&self, asset_id: &str, kind: &str) -> Result<(PathBuf, &'static str, String), String> {
-        let inner = lock(&self.inner);
+    pub fn file_for(&self, asset_id: &str, kind: &str) -> Result<(File, &'static str, String), String> {
+        let mut inner = lock(&self.inner);
+        ensure_local_locked(&mut inner, asset_id)?;
         let asset = inner.state.assets.get(asset_id).ok_or_else(|| "asset not found".to_string())?;
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
@@ -1349,22 +1358,19 @@ impl SharedLibrary {
             "application/x-tetra-acelp" => "application/x-tetra-acelp",
             _ => "application/octet-stream",
         };
-        Ok((path, content_type, filename))
+        let file = File::open(&path).map_err(|error| format!("cannot open asset payload: {error}"))?;
+        inner.state.assets.get_mut(asset_id).expect("asset exists").local_last_accessed_at = Some(Utc::now());
+        // The open descriptor survives eviction/unlink until HTTP finishes reading.
+        Ok((file, content_type, filename))
     }
 
     // Was: Führt den Arbeitsschritt `waveform` für waveform aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     pub fn waveform(&self, asset_id: &str, points: usize) -> Result<Vec<f32>, String> {
-        let path = {
-            let inner = lock(&self.inner);
-            inner
-                .state
-                .assets
-                .get(asset_id)
-                .and_then(|asset| asset.preview_path.clone())
-                .ok_or_else(|| "asset has no preview".to_string())?
-        };
-        media::waveform(&path, points)
+        let (mut file, _, _) = self.file_for(asset_id, "preview")?;
+        let mut bytes = Vec::new();
+        file.read_to_end(&mut bytes).map_err(|error| error.to_string())?;
+        media::waveform_bytes(&bytes, points)
     }
 
     // Was: Führt den Arbeitsschritt `claim_import` für claim import aus.
@@ -1733,13 +1739,26 @@ impl SharedLibrary {
             require_management(&inner)?;
             inner.config.clone()
         };
+        let cache = {
+            let mut inner = lock(&self.inner);
+            match relieve_storage_locked(&mut inner) {
+                Ok(value) => value,
+                Err(error) => {
+                    inner.archive_last_error = Some(error.clone());
+                    publish_status(&inner);
+                    return Err(error);
+                }
+            }
+        };
         let archive_available = archive_roots_available(&config);
+        let storage_free_bytes = crate::archive::free_bytes(&config.storage.root).ok();
         let storage_used_bytes = media::total_directory_bytes(&config.storage.root);
         let storage_usage_checked_at = Utc::now();
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
         inner.archive_available = archive_available;
         inner.storage_used_bytes = storage_used_bytes;
+        inner.storage_free_bytes = storage_free_bytes;
         inner.storage_usage_checked_at = Some(storage_usage_checked_at);
         trim_locked(&mut inner);
         audit_locked(
@@ -1752,9 +1771,116 @@ impl SharedLibrary {
             json!({"archive_available":archive_available}),
         );
         persist_locked(&mut inner)?;
-        Ok(json!({"archive_available":archive_available,"assets":inner.state.assets.len(),"jobs":inner.state.jobs.len()}))
+        Ok(json!({"archive_available":archive_available,"assets":inner.state.assets.len(),"jobs":inner.state.jobs.len(),"cache":cache,"storage_free_bytes":storage_free_bytes}))
     }
 }
+
+fn ensure_local_locked(inner: &mut LibraryInner, asset_id: &str) -> Result<(), String> {
+    let asset = inner.state.assets.get(asset_id).cloned()
+        .ok_or_else(|| "asset not found".to_string())?;
+    if !asset.local_offloaded {
+        return Ok(());
+    }
+    if let Err(error) = crate::archive::restore(&inner.config, &asset) {
+        inner.archive_last_error = Some(error.clone());
+        publish_status(inner);
+        return Err(error);
+    }
+    let stored = inner.state.assets.get_mut(asset_id).expect("asset exists");
+    stored.local_offloaded = false;
+    stored.local_last_accessed_at = Some(Utc::now());
+    inner.archive_last_error = None;
+    push_event_locked(inner, "asset_restored_from_archive", Some(asset_id), None, json!({}));
+    persist_locked(inner)
+}
+
+fn relieve_storage_locked(inner: &mut LibraryInner) -> Result<Value, String> {
+    let config = inner.config.clone();
+    let mut used = media::total_directory_bytes(&config.storage.root);
+    let mut available = crate::archive::free_bytes(&config.storage.root)?;
+    let mut released = 0u64;
+    let mut offloaded = 0usize;
+    let mut errors = Vec::new();
+    if !config.storage.auto_offload {
+        return Ok(json!({"offloaded":0,"released_bytes":0,"enabled":false}));
+    }
+    let now = Utc::now();
+    let mut candidates = inner.state.assets.values()
+        .filter(|asset| asset.state == "ready" && asset.archived && !asset.archive_files.is_empty())
+        .cloned().collect::<Vec<_>>();
+    candidates.sort_by_key(|asset| asset.local_last_accessed_at.unwrap_or(asset.created_at));
+    for asset in candidates {
+        if offloaded >= 32 {
+            break;
+        }
+        if inner.state.jobs.iter().any(|job| job.asset_id == asset.asset_id
+            && matches!(job.state.as_str(), "queued" | "playing"))
+        {
+            continue;
+        }
+        let aged = config.storage.local_cache_max_age_secs > 0
+            && now.signed_duration_since(asset.local_last_accessed_at.unwrap_or(asset.created_at))
+                .num_seconds() >= config.storage.local_cache_max_age_secs.min(i64::MAX as u64) as i64;
+        if !asset.local_offloaded && !aged && used <= config.storage.local_cache_max_bytes
+            && available >= config.storage.min_free_bytes
+        {
+            continue;
+        }
+        // Offloaded markers may still have payloads after a crash between commit
+        // and unlink. Do not keep re-reading NAS for markers with no local bytes.
+        let has_local = [&asset.original_path, &asset.preview_path, &asset.tetra_path]
+            .into_iter().flatten().any(|path| path.exists());
+        if !has_local && asset.local_offloaded {
+            continue;
+        }
+        let paths = match crate::archive::verified_payloads(&config, &asset, true) {
+            Ok(paths) => paths,
+            Err(error) => {
+                if errors.len() < 20 {
+                    errors.push(json!({"asset_id":asset.asset_id,"error":error}));
+                }
+                continue;
+            }
+        };
+        // Commit the recall-capable marker before deleting any local bytes.
+        inner.state.assets.get_mut(&asset.asset_id).expect("asset exists").local_offloaded = true;
+        if let Err(error) = persist_locked(inner) {
+            inner.state.assets.get_mut(&asset.asset_id).expect("asset exists").local_offloaded = asset.local_offloaded;
+            publish_status(inner);
+            return Err(error);
+        }
+        let mut removed = 0u64;
+        let mut removal_error = None;
+        for (local, _, bytes, _) in paths {
+            if local.exists() {
+                if let Err(error) = fs::remove_file(&local) {
+                    removal_error = Some(format!("cannot release local cache {}: {error}", local.display()));
+                    break;
+                }
+                removed = removed.saturating_add(bytes);
+            }
+        }
+        if let Some(error) = removal_error {
+            if errors.len() < 20 {
+                errors.push(json!({"asset_id":asset.asset_id,"error":error}));
+            }
+        }
+        released = released.saturating_add(removed);
+        used = used.saturating_sub(removed);
+        available = crate::archive::free_bytes(&config.storage.root)?;
+        offloaded += 1;
+        push_event_locked(inner, "asset_offloaded", Some(&asset.asset_id), None,
+                          json!({"released_bytes":removed,"archive_path":asset.archive_path}));
+        audit_locked(inner, "worker:local-cache".to_string(), "offload", "asset",
+                     &asset.asset_id, "ok", json!({"released_bytes":removed}));
+    }
+    inner.archive_last_error = errors.first().map(|error| {
+        format!("asset {}: {}", error["asset_id"].as_str().unwrap_or("unknown"),
+                error["error"].as_str().unwrap_or("archive cache failure"))
+    });
+    Ok(json!({"enabled":true,"offloaded":offloaded,"released_bytes":released,"errors":errors}))
+}
+
 
 fn dispatch_requires_tetra_cache(operating_mode: &str, playout_mode: &str) -> bool {
     operating_mode != SHADOW_MODE && playout_mode == MEDIA_SWITCH_PLAYOUT_MODE
@@ -1767,7 +1893,7 @@ fn archive_roots_available(config: &MediaLibraryConfig) -> bool {
         config.storage.tts_archive_root.as_ref(),
     ];
     let configured = roots.iter().flatten().count();
-    configured > 0 && roots.into_iter().flatten().all(|path| path.is_dir())
+    configured > 0 && roots.into_iter().flatten().all(|path| crate::archive::require_root(config, path).is_ok())
 }
 
 // Was: Diese Funktion prüft new asset locked.
@@ -1787,6 +1913,10 @@ fn validate_incoming_bytes_locked(inner: &LibraryInner, incoming_bytes: u64) -> 
             "asset exceeds configured {} byte limit",
             inner.config.storage.max_asset_bytes
         ));
+    }
+    let available = crate::archive::free_bytes(&inner.config.storage.root)?;
+    if available < inner.config.storage.min_free_bytes.saturating_add(incoming_bytes) {
+        return Err("local media filesystem has insufficient free space; pending NAS originals retained".to_string());
     }
     let used = media::total_directory_bytes(&inner.config.storage.root);
     if used.saturating_add(incoming_bytes) > inner.config.storage.max_total_bytes {
@@ -2113,6 +2243,8 @@ mod readiness_tests {
             storage_available,
             storage_last_error: error.map(str::to_string),
             archive_available: false,
+            archive_last_error: None,
+            storage_free_bytes: None,
             media_switch_connected: false,
             recorder_connected: false,
             application_gateway_connected: false,

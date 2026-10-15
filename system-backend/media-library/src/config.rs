@@ -107,6 +107,7 @@ impl MediaLibraryConfig {
         self.server.max_body_bytes = self.server.max_body_bytes.max(1_048_576);
         self.storage.max_asset_bytes = self.storage.max_asset_bytes.max(65_536);
         self.storage.max_total_bytes = self.storage.max_total_bytes.max(self.storage.max_asset_bytes);
+        self.storage.local_cache_max_bytes = self.storage.local_cache_max_bytes.min(self.storage.max_total_bytes);
         self.runtime.worker_interval_ms = self.runtime.worker_interval_ms.max(100);
         self.runtime.probe_interval_secs = self.runtime.probe_interval_secs.max(5);
         self.runtime.import_timeout_secs = self.runtime.import_timeout_secs.max(2);
@@ -321,6 +322,12 @@ pub struct StorageConfig {
     pub max_asset_bytes: u64,
     pub max_total_bytes: u64,
     pub fsync_imports: bool,
+    /// Keep recent payloads locally; older verified copies can live on the NAS.
+    pub auto_offload: bool,
+    pub local_cache_max_bytes: u64,
+    pub local_cache_max_age_secs: u64,
+    pub min_free_bytes: u64,
+    pub archive_require_network_mount: bool,
 }
 
 // Was: Implementiert das zugehörige Verhalten für `Default for StorageConfig`.
@@ -340,6 +347,11 @@ impl Default for StorageConfig {
             max_asset_bytes: 64 * 1024 * 1024,
             max_total_bytes: 20 * 1024 * 1024 * 1024,
             fsync_imports: true,
+            auto_offload: true,
+            local_cache_max_bytes: 2 * 1024 * 1024 * 1024,
+            local_cache_max_age_secs: 24 * 60 * 60,
+            min_free_bytes: 2 * 1024 * 1024 * 1024,
+            archive_require_network_mount: true,
         }
     }
 }
@@ -364,6 +376,7 @@ pub struct RuntimeConfig {
     pub auto_archive_recordings: bool,
     /// Automatically copy ready TTS assets into archive_root.
     pub auto_archive_tts: bool,
+    pub auto_archive_uploads: bool,
 }
 
 // Was: Implementiert das zugehörige Verhalten für `Default for RuntimeConfig`.
@@ -386,6 +399,7 @@ impl Default for RuntimeConfig {
             auto_approve_tts: false,
             auto_archive_recordings: true,
             auto_archive_tts: true,
+            auto_archive_uploads: true,
         }
     }
 }
