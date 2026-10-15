@@ -111,12 +111,14 @@ class RecoveryTests(unittest.TestCase):
 
     def test_unrelated_local_edits_are_still_rejected(self):
         self.repo.checkout(self.sha, self.log.append)
+        selector = (self.state / 'source-location.json').read_bytes()
         (self.repo.path / 'source.txt').write_text('local edit\n')
         with self.assertRaisesRegex(RuntimeError, 'local changes'):
             self.repo.checkout(self.sha, self.log.append)
         self.assertEqual((self.repo.path / 'source.txt').read_text(), 'local edit\n')
-        self.assertFalse((self.state / 'source-location.json').exists())
+        self.assertEqual((self.state / 'source-location.json').read_bytes(), selector)
 
 
 if __name__ == '__main__':
     unittest.main()
+

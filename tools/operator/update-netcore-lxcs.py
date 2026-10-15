@@ -238,6 +238,13 @@ def stop_remaining(report, reason):
 
 
 def rollout(args, roles, report, report_path):
+    requested = getattr(args, 'service', None)
+    if requested:
+        unknown = set(requested) - set(roles)
+        if unknown:
+            raise ValueError('Unbekannte Dienstrolle: ' + ', '.join(sorted(unknown)))
+        roles = {name: spec for name, spec in roles.items() if name in requested}
+        report['requested_services'] = sorted(roles)
     targets = containers(run(['pct', 'list'], capture_output=True, text=True).stdout)
     if args.ctid:
         known = {t['ctid'] for t in targets}
@@ -281,7 +288,10 @@ def rollout(args, roles, report, report_path):
     if not tasks:
         raise RuntimeError('Keine installierten und verwalteten NetCore-Dienste erkannt.')
     archive = report_path.parent / 'source.tar'
-    run(['git', '-C', str(ROOT), 'archive', '--format=tar', '--output', str(archive), 'HEAD'])
+    command = ['git', '-C', str(ROOT), 'archive', '--format=tar', '--output', str(archive), 'HEAD']
+    if all(role == 'discovery' for role, _ in tasks):
+        command += ['--', 'tools/operator', 'system-backend/deployment-core']
+    run(command)
     archive_sha = hashlib.sha256(archive.read_bytes()).hexdigest()
     stages, expected = {}, {}
     commit = report['commit']
@@ -356,6 +366,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apply', action='store_true')
     parser.add_argument('--ctid', type=int, action='append', help='Nur diese lokale CT-ID; wiederholbar')
+    parser.add_argument('--service', action='append', help='Nur diese Dienstrolle; wiederholbar, z.B. discovery')
     parser.add_argument('--no-prepare-build-deps', action='store_true',
                         help='Keine fehlenden minimalen Build-Voraussetzungen im Gast installieren')
     args = parser.parse_args(argv)
@@ -403,3 +414,4 @@ if __name__ == '__main__':
     except Exception as exc:
         print('Rollout abgebrochen: ' + str(exc), file=__import__('sys').stderr)
         raise SystemExit(1)
+

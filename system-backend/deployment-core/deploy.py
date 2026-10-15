@@ -23,6 +23,32 @@ from common import CATALOG, ROOT, SHA, atomic_write, identifier, json_file, requ
 HEALTH_TIMEOUT_SECONDS = 60
 
 
+class CommandFailed(RuntimeError):
+    """Keep bounded command output for transport classification, never argv secrets."""
+    def __init__(self, command, code, output):
+        self.command = tuple(map(str, command))
+        self.returncode = code
+        self.output = output[-8192:]
+        super().__init__(f'Command exited with {code}: {command[0]}')
+
+
+def transient_git_failure(exc):
+    if isinstance(exc, TimeoutError):
+        return True
+    if not isinstance(exc, CommandFailed) or Path(exc.command[0]).name not in ('git', 'git.exe'):
+        return False
+    output = exc.output.lower()
+    if any(text in output for text in ('no space left', 'permission denied', 'authentication failed',
+            'repository not found', 'could not read username', 'dubious ownership', 'index.lock',
+            'cannot lock ref', 'not our ref', "couldn\x27t find remote ref", 'certificate verification failed',
+            'ssl certificate problem', 'would be overwritten')):
+        return False
+    return any(text in output for text in ('rpc failed; curl 56', 'rpc failed; curl 18',
+        'rpc failed; curl 92', 'connection reset by peer', 'early eof', 'unexpected disconnect',
+        'remote end hung up unexpectedly', 'could not resolve host', 'failed to connect',
+        'tls connection was non-properly terminated'))
+
+
 def run(command, log, cwd=None, timeout=3600, env=None):
     log('$ ' + shlex.join(map(str, command)))
     with tempfile.TemporaryFile() as output:
@@ -32,12 +58,15 @@ def run(command, log, cwd=None, timeout=3600, env=None):
         position = 0
         decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
         pending = ''
+        tail = ''
         try:
             while True:
                 chunk = os.pread(output.fileno(), 65536, position)
                 position += len(chunk)
                 if chunk:
-                    pending += decoder.decode(chunk)
+                    decoded = decoder.decode(chunk)
+                    pending += decoded
+                    tail = (tail + decoded)[-8192:]
                     if '\n' in pending:
                         complete, pending = pending.rsplit('\n', 1)
                         log(complete)
@@ -47,7 +76,7 @@ def run(command, log, cwd=None, timeout=3600, env=None):
                     if pending:
                         log(pending)
                     if code:
-                        raise RuntimeError(f'Command exited with {code}: {command[0]}')
+                        raise CommandFailed(command, code, tail)
                     return
                 if time.monotonic() >= deadline:
                     raise TimeoutError('Deployment command timed out')
@@ -157,18 +186,54 @@ class Repository:
         if not SHA.fullmatch(sha):
             raise ValueError('Deployment requires a full commit SHA')
         with self.guard():
-            self._prepare(log)
-            # This is a dedicated managed clone, never the operator's working tree.
-            dirty = subprocess.check_output(['git', '--no-optional-locks', 'status', '--porcelain', '--untracked-files=no'],
-                                            cwd=self.path, text=True, timeout=30)
-            # A first --no-checkout clone reports staged deletions. Its index does
-            # not exist yet and is safe to populate. Later edits must not be lost.
-            if (self.path / '.git/index').exists() and dirty:
-                raise RuntimeError('Managed checkout contains local changes; refusing to overwrite them')
-            run(['git', 'checkout', '--detach', sha], log, self.path, timeout=300)
-            actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=self.path, text=True, timeout=10).strip()
-            if actual != sha:
-                raise RuntimeError('Commit verification failed')
+            previous = self.path
+            locked = (previous / '.git/index.lock').exists() or (previous / '.git/index.lock').is_symlink()
+            if (previous / '.git/index').is_file() and not locked:
+                dirty = subprocess.check_output(['git', '--no-optional-locks', 'status', '--porcelain',
+                                                 '--untracked-files=no'], cwd=previous, text=True, timeout=30)
+                if dirty:
+                    raise RuntimeError('Managed checkout contains local changes; refusing to overwrite them')
+                policy = subprocess.run(['git', 'config', '--get', 'netcore.runtimeSubset'], cwd=previous,
+                                        capture_output=True, text=True, timeout=10)
+                actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=previous,
+                                                 text=True, timeout=10).strip()
+                if policy.returncode == 0 and policy.stdout.strip() == '1' and actual == sha:
+                    log('Geprüfter Runtime-Quellcommit bereits im Cache: ' + sha)
+                    return previous
+            # Build a complete replacement privately. A failed fetch or lazy
+            # blob download during checkout never modifies the selected cache.
+            for attempt in range(1, 4):
+                log(f'Runtime-Quellabruf {attempt}/3: Commit {sha}; HTTP/1.1, flach, ohne Docs/wiki')
+                try:
+                    with tempfile.TemporaryDirectory(prefix='source-new-', dir=self.state) as temporary:
+                        source = Path(temporary) / 'source'
+                        run(['git', 'init', str(source)], log, timeout=30)
+                        run(['git', 'remote', 'add', 'origin', self.url], log, source, timeout=30)
+                        for name, value in (('http.version', 'HTTP/1.1'), ('pack.threads', '1'),
+                                ('remote.origin.promisor', 'true'), ('remote.origin.partialclonefilter', 'blob:none')):
+                            run(['git', 'config', name, value], log, source, timeout=30)
+                        run(['git', 'sparse-checkout', 'set', '--no-cone', '/*', '!/Docs/', '!/wiki/'],
+                            log, source, timeout=30)
+                        run(['git', 'fetch', '--depth=1', '--filter=blob:none', '--no-tags',
+                             'origin', sha], log, source, timeout=300)
+                        run(['git', 'checkout', '--detach', sha], log, source, timeout=300)
+                        actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=source,
+                                                         text=True, timeout=10).strip()
+                        if actual != sha:
+                            raise RuntimeError('Commit verification failed')
+                        run(['git', 'config', 'netcore.runtimeSubset', '1'], log, source, timeout=30)
+                        selected = self.state / ('source-' + uuid.uuid4().hex)
+                        source.rename(selected)
+                    break
+                except (CommandFailed, TimeoutError) as exc:
+                    if attempt == 3 or not transient_git_failure(exc):
+                        raise
+                    log(f'Git-Transport unterbrochen; erneuter Quellabruf in {attempt * 2}s. '
+                        'Der Dienstinstaller wurde noch nicht gestartet.')
+                    time.sleep(attempt * 2)
+            atomic_write(self.state / 'source-location.json', json.dumps({'directory': selected.name}), 0o600)
+            self.path = selected
+            log('Runtime-Quelle vollständig geprüft: ' + sha)
         return self.path
 
 
@@ -455,4 +520,5 @@ def validate_job(data):
     if data.get('profile'):
         data['profile'] = validate_profile(data['profile'])
     return {k: data[k] for k in ('service', 'action', 'commit', 'profile', 'confirm_restart') if k in data}
+
 

@@ -12,6 +12,45 @@ Die Vorschau mit **… Dienste jetzt aktualisieren** ausführen. Mehrere Zielhos
 
 Der Umfang sind die installierten Katalogrollen einschließlich TBS auf erreichbaren Discovery-Agenten. Offlinehosts, Controller und nicht verwaltete Fremdanwendungen werden mit Grund ausgelassen. Discovery-Agenten und die Deployment-VM selbst behalten ihre gesonderten Updatewege. Laufende Verbindungen und Funkbetrieb können durch die Dienstneustarts unterbrochen werden.
 
+
+### Git-Abbrüche beim Sammelupdate beheben
+
+Betreiberbefund vom 14.10.2026: Der IP-Gateway-Agent `10.0.1.142:8321` beendete Auftrag `01c4013ce71a49198d2d8dab8a89996c` beim bisherigen Abruf sämtlicher Branches und Tags mit `RPC failed; curl 56`, `Connection reset by peer`, `early EOF` und `invalid index-pack output`. Der Controller beobachtete den Endzustand `failed`; der festgelegte Quellstand war `20c3dfa7`. Die zuvor wiederhergestellten Status-GETs sind kein Updatebeleg.
+
+Der korrigierte Agent bereitet genau den vom Controller festgelegten vollständigen Commit in einem privaten, flachen Partial Clone vor. HTTP/1.1 und ein Pack-Thread gelten lokal für diesen Cache; TLS-Prüfung bleibt aktiv. Alle Laufzeitquellen werden ausgecheckt, die großen Verzeichnisse `Docs/` und `wiki/` bleiben ausgenommen. Ein erfolgreich geprüfter identischer Commit wird wiederverwendet. Ein neuer Cache wird erst nach vollständigem Checkout und Commitprüfung ausgewählt; vorherige Quellen, vorhandene Sperrdateien und Betriebsdaten bleiben erhalten. Lokale Änderungen an einem bereits ausgecheckten Quellbaum blockieren weiterhin.
+
+Bei erkannten Verbindungsabbrüchen oder Zeitüberschreitungen sind höchstens drei Git-Vorbereitungen mit kurzen Pausen zulässig, auch wenn der Abbruch beim verzögerten Nachladen einer Datei während des Checkouts auftritt. Rechte-, Authentifizierungs-, Zertifikats-, Platz- und Sperrfehler werden nicht als Transportproblem wiederholt. Der Dienstinstaller startet erst nach erfolgreicher Quellprüfung. Ein verlorener Remote-POST wird dadurch nicht wiederholt.
+
+Den laufenden Sammellauf abschließen lassen. Danach **als root auf dem Proxmox-Host** die Discovery-Agenten in seinen laufenden LXCs aktualisieren; in einem Cluster den Block auf jedem betreffenden Host ausführen:
+
+```bash
+(
+  set -Eeuo pipefail
+  NC_AGENT_SRC=$(mktemp -d /var/tmp/netcore-agent-update.XXXXXX)
+  git -C "$NC_AGENT_SRC" init -q
+  git -C "$NC_AGENT_SRC" remote add origin https://github.com/JanHG98/netcore-tetra.git
+  git -C "$NC_AGENT_SRC" config http.version HTTP/1.1
+  git -C "$NC_AGENT_SRC" config remote.origin.promisor true
+  git -C "$NC_AGENT_SRC" config remote.origin.partialclonefilter blob:none
+  for NC_TRY in 1 2 3; do
+    if git -C "$NC_AGENT_SRC" fetch --depth 1 --filter=blob:none origin refs/heads/main; then
+      break
+    fi
+    if [ "$NC_TRY" -eq 3 ]; then exit 1; fi
+    sleep "$((NC_TRY * 2))"
+  done
+  git -C "$NC_AGENT_SRC" sparse-checkout init --cone
+  git -C "$NC_AGENT_SRC" sparse-checkout set tools/operator system-backend/deployment-core
+  git -C "$NC_AGENT_SRC" checkout --detach FETCH_HEAD
+  python3 -B "$NC_AGENT_SRC/tools/operator/update-netcore-lxcs.py" \
+    --service discovery --apply
+)
+```
+
+`--service discovery` begrenzt Inventar, Quellarchiv, Vorbereitung und Austausch auf die Agenten. Das Archiv enthält dafür nur `tools/operator` und `system-backend/deployment-core`; die Gäste laden die Korrektur nicht selbst über ihren bisherigen Git-Cache. Der vorhandene Updater prüft sämtliche Agentenpakete vor dem ersten Neustart und bestätigt anschließend Dateihashes, Prozess und installierten Commit. Aktive Agentenaufträge blockieren den Austausch. Konfigurationen und Anwendungsdaten bleiben erhalten. Ohne `--apply` zeigt derselbe Helfer das Inventar.
+
+Nach erfolgreicher Agentenübernahme in der Deployment-WebUI **Alle Updates anzeigen** erneut laden und den neuen Sammellauf starten. Der tatsächliche erfolgreiche Abruf und die Dienstabnahme auf Jans LXCs bleiben Betreiberbelege.
+
 ### Veraltete Einträge löschen und die Netzübersicht filtern
 
 Die Netzübersicht bietet neben der Textsuche Filter für **Dienste/TBS**, die konkrete **Dienstrolle** und **online/offline**. Filter wirken auf die einzelnen Dienstzeilen, auch wenn mehrere Rollen auf demselben Host liegen.

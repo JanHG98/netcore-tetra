@@ -261,10 +261,34 @@ class RolloutTests(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def rollout(self, apply=False, ctid=None):
+    def rollout(self, apply=False, ctid=None, service=None):
         with redirect_stdout(io.StringIO()):
-            return UPDATE.rollout(SimpleNamespace(apply=apply, ctid=ctid), self.roles,
+            return UPDATE.rollout(SimpleNamespace(apply=apply, ctid=ctid, service=service), self.roles,
                                   self.report, self.report_path)
+
+    def test_service_filter_limits_scan_and_all_preparation_and_apply_to_agents(self):
+        self.roles['discovery'] = role('discovery')
+        original_run = self.run_mock.side_effect
+        def agent_units(args, **kwargs):
+            if 'list-unit-files' in args:
+                self.commands.append(args)
+                return SimpleNamespace(stdout='netcore-discovery.service enabled enabled\n')
+            return original_run(args, **kwargs)
+        self.run_mock.side_effect = agent_units
+        self.scan_mock.side_effect = lambda ctid, roles: dict(installed=['discovery'], unmanaged=[], external=[])
+        self.assertEqual(self.rollout(apply=True, service=['discovery']), 0)
+        self.assertTrue(all(set(call.args[1]) == {'discovery'} for call in self.scan_mock.call_args_list))
+        self.assertTrue(all(name == 'discovery' for _, name in self.timeline))
+        # The replaced mock retains its call records for the exact source package.
+        archive = next(call.args[0] for call in self.run_mock.call_args_list if 'archive' in call.args[0])
+        self.assertEqual(archive[archive.index('--') + 1:], ['tools/operator', 'system-backend/deployment-core'])
+        self.assertEqual(self.report['requested_services'], ['discovery'])
+
+    def test_unknown_service_filter_refuses_before_pct_or_any_guest_change(self):
+        with self.assertRaisesRegex(ValueError, 'Unbekannte Dienstrolle'):
+            self.rollout(apply=True, service=['not-a-role'])
+        self.run_mock.assert_not_called()
+        self.stage_mock.assert_not_called()
 
     def test_default_inventory_never_stages_builds_or_restarts_guests(self):
         self.assertEqual(self.rollout(), 0)
@@ -505,3 +529,4 @@ class MainReportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
