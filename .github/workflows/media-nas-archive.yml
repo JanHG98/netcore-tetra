@@ -6,6 +6,7 @@ on:
       - 'tools/test_media_nas_archive.py'
       - '.github/workflows/media-nas-archive.yml'
       - 'Docs/services/media-library/dateien-und-archivstruktur.md'
+      - 'Docs/services/media-library/installation-im-lxc.md'
   push:
     branches: [main]
     paths:
@@ -38,12 +39,17 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Render deployment profile from canonical templates
+      - name: Verify canonical deployment profiles and operator Bash blocks
         run: |
-          python3 deploy/open-lab/netcore-deploy.py render
+          python3 deploy/open-lab/netcore-deploy.py check-generated
           python3 - <<'PY'
-          import json
+          import re
+          import subprocess
           from pathlib import Path
-          path = Path('deploy/open-lab/generated/configs/media-library/media-library.toml')
-          print('NETCORE_MEDIA_GENERATED_JSON=' + json.dumps(path.read_text(), ensure_ascii=True))
+          path = Path('Docs/services/media-library/installation-im-lxc.md')
+          blocks = re.findall(r'```bash\n(.*?)```', path.read_text(), re.S)
+          assert blocks, 'No operator blocks found'
+          for block in blocks:
+              subprocess.run(['bash', '-n'], input=block, text=True, check=True)
+          print(f'Media operator Bash blocks: {len(blocks)} passed')
           PY
