@@ -14,7 +14,7 @@ sie belegen noch nicht die historische Quelle des riesigen Backlogs.
 Der Operator `tools/operator/archive-netcore-logs.py` installiert zwei unabhängige
 systemd-Timer. Jede Minute prüft logrotate die vorhandene rsyslog-Regel mit
 `maxsize 64M`. Feste Namen wie `syslog-20261015-223000` bleiben während langer
-NAS-Übertragungen unverändert. Das Distributionsskript zum Wiederöffnen der
+NAS-Übertragungen unverändert. Die globalen Ubuntu-Vorgaben für `su` und `create` werden vor dem Distributions-`include` übernommen und explizit in die eigenständige Regel geschrieben. Bereits in der rsyslog-Regel gesetzte Vorgaben bleiben erhalten; ohne globale Vorgaben gelten `su root root` und `create` mit den Originalattributen. Damit funktionieren auch gruppenbeschreibbare `/var/log`-Verzeichnisse. Das Distributionsskript zum Wiederöffnen der
 aktiven Logs bleibt erhalten; `copytruncate` wird abgelehnt. `rotate -1` ohne
 `maxage` bewahrt noch nicht übertragene Rotationen.
 
@@ -61,7 +61,7 @@ nötig.
 ```bash
 (
   set -Eeuo pipefail
-  NC_REF=43058a59c333bd5c75d82ca5e34eaebbfb557444
+  NC_REF=a3323cd40e3d8b2276cd80ba7139545a3a470e73
   NC_LOG_SRC=$(mktemp /tmp/netcore-log-archive.XXXXXX.py)
   curl --http1.1 --fail --show-error --retry 3 \
     "https://raw.githubusercontent.com/JanHG98/netcore-tetra/$NC_REF/tools/operator/archive-netcore-logs.py" \
