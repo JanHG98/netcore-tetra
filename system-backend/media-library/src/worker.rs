@@ -114,6 +114,7 @@ pub fn run_cycle(
                         // The live asset is already ready. A missing NAS therefore
                         // never breaks playout; maintenance or a later manual action
                         // can archive it after storage returns.
+                        library.record_archive_failure(error.clone());
                         tracing::warn!(asset_id = %asset_id, "Automatic Media Library archive failed: {error}");
                     }
                 }
@@ -132,10 +133,7 @@ pub fn run_cycle(
         || config.storage.recording_archive_root.is_some()
         || config.storage.tts_archive_root.is_some()
     {
-        let pending_archive = library
-            .assets(None, None, Some("ready"), None, config.runtime.max_assets)
-            .into_iter()
-            .find(|asset| crate::archive::automatic(config, asset));
+        let pending_archive = library.next_auto_archive();
         if let Some(asset) = pending_archive {
             if let Err(error) = library.archive_asset(
                 &asset.asset_id,
@@ -143,6 +141,7 @@ pub fn run_cycle(
                     actor: Some("worker:auto-archive-retry".to_string()),
                 },
             ) {
+                library.record_archive_failure(error.clone());
                 tracing::debug!(
                     asset_id = %asset.asset_id,
                     "Automatic Media Library archive still pending: {error}"

@@ -58,6 +58,7 @@ struct LibraryInner {
     storage_last_error: Option<String>,
     archive_available: bool,
     archive_last_error: Option<String>,
+    archive_attempts: BTreeMap<String, DateTime<Utc>>,
     storage_free_bytes: Option<u64>,
     media_switch_connected: bool,
     recorder_connected: bool,
@@ -261,6 +262,7 @@ impl SharedLibrary {
                 storage_last_error: None,
                 archive_available,
                 archive_last_error: None,
+                archive_attempts: BTreeMap::new(),
                 storage_free_bytes: None,
                 media_switch_connected: false,
                 recorder_connected: false,
@@ -827,6 +829,7 @@ impl SharedLibrary {
             .assets
             .remove(asset_id)
             .expect("asset existence checked above");
+        inner.archive_attempts.remove(asset_id);
         let directory = inner.config.storage.root.join(asset_id);
         if directory.exists() {
             fs::remove_dir_all(&directory)
@@ -848,6 +851,7 @@ impl SharedLibrary {
             .get(asset_id)
             .cloned()
             .ok_or_else(|| "asset not found".to_string())?;
+        inner.archive_attempts.insert(asset_id.to_string(), Utc::now());
         if asset.local_offloaded {
             return Ok(asset);
         }
@@ -892,6 +896,26 @@ impl SharedLibrary {
 
     // Was: Diese Funktion erstellt dispatch.
     // Warum: Neue Objekte erhalten so immer einen vollständigen und gültigen Ausgangszustand.
+    /// A broken source must not starve other assets or retry every 500 ms.
+    pub fn next_auto_archive(&self) -> Option<AssetRecord> {
+        let mut inner = lock(&self.inner);
+        let now = Utc::now();
+        let selected = inner.state.assets.values()
+            .filter(|asset| crate::archive::automatic(&inner.config, asset))
+            .filter(|asset| inner.archive_attempts.get(&asset.asset_id)
+                .is_none_or(|last| now.signed_duration_since(*last).num_seconds() >= 60))
+            .min_by_key(|asset| asset.created_at)
+            .cloned()?;
+        inner.archive_attempts.insert(selected.asset_id.clone(), now);
+        Some(selected)
+    }
+
+    pub fn record_archive_failure(&self, error: String) {
+        let mut inner = lock(&self.inner);
+        inner.archive_last_error = Some(error);
+        publish_status(&inner);
+    }
+
     pub fn create_dispatch(&self, input: DispatchInput) -> Result<DispatchJob, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
@@ -1875,10 +1899,13 @@ fn relieve_storage_locked(inner: &mut LibraryInner) -> Result<Value, String> {
         audit_locked(inner, "worker:local-cache".to_string(), "offload", "asset",
                      &asset.asset_id, "ok", json!({"released_bytes":removed}));
     }
-    inner.archive_last_error = errors.first().map(|error| {
-        format!("asset {}: {}", error["asset_id"].as_str().unwrap_or("unknown"),
-                error["error"].as_str().unwrap_or("archive cache failure"))
-    });
+    if let Some(error) = errors.first() {
+        inner.archive_last_error = Some(format!(
+            "asset {}: {}", error["asset_id"].as_str().unwrap_or("unknown"),
+            error["error"].as_str().unwrap_or("archive cache failure")));
+    } else if !inner.state.assets.values().any(|asset| crate::archive::automatic(&inner.config, asset)) {
+        inner.archive_last_error = None;
+    }
     Ok(json!({"enabled":true,"offloaded":offloaded,"released_bytes":released,"errors":errors}))
 }
 
@@ -2245,6 +2272,7 @@ mod readiness_tests {
             storage_last_error: error.map(str::to_string),
             archive_available: false,
             archive_last_error: None,
+                archive_attempts: BTreeMap::new(),
             storage_free_bytes: None,
             media_switch_connected: false,
             recorder_connected: false,

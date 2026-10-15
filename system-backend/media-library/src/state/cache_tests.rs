@@ -338,3 +338,21 @@ fn retry_recalls_both_station_and_direct_tetra_playout_before_queueing() {
         }
     }
 }
+
+#[test]
+fn a_bad_archive_does_not_starve_other_assets_and_retries_are_bounded() {
+    let f = Fixture::new();
+    let bad = f.ready("recording");
+    let good = f.ready("recording");
+    fs::write(bad.original_path.as_ref().unwrap(), b"changed original").unwrap();
+    assert_eq!(f.library.next_auto_archive().unwrap().asset_id, bad.asset_id);
+    let error = f.library.archive_asset(&bad.asset_id, ActionInput { actor: None }).unwrap_err();
+    f.library.record_archive_failure(error);
+    assert_eq!(f.library.next_auto_archive().unwrap().asset_id, good.asset_id);
+    f.library.archive_asset(&good.asset_id, ActionInput { actor: None }).unwrap();
+    assert!(f.library.next_auto_archive().is_none());
+    lock(&f.library.inner).archive_attempts.insert(bad.asset_id.clone(),
+        Utc::now() - chrono::Duration::seconds(61));
+    assert_eq!(f.library.next_auto_archive().unwrap().asset_id, bad.asset_id);
+    assert!(bad.original_path.as_ref().unwrap().is_file());
+}
