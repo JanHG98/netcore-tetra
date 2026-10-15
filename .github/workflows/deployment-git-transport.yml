@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'system-backend/deployment-core/deploy.py'
+      - 'system-backend/deployment-core/catalog.json'
+      - 'Docs/basisstation.config.sanitized.example.toml'
+      - 'Cargo.toml'
       - 'system-backend/deployment-core/tests/test_repository_*.py'
       - 'tools/operator/update-netcore-lxcs.py'
       - 'tests/integration/test_netcore_lxc_update.py'
@@ -12,6 +15,9 @@ on:
     branches: ['main']
     paths:
       - 'system-backend/deployment-core/deploy.py'
+      - 'system-backend/deployment-core/catalog.json'
+      - 'Docs/basisstation.config.sanitized.example.toml'
+      - 'Cargo.toml'
       - 'system-backend/deployment-core/tests/test_repository_*.py'
       - 'tools/operator/update-netcore-lxcs.py'
       - 'tests/integration/test_netcore_lxc_update.py'

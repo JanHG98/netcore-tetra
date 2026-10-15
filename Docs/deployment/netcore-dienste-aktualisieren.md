@@ -51,6 +51,8 @@ Den laufenden Sammellauf abschließen lassen. Danach **als root auf dem Proxmox-
 
 Nach erfolgreicher Agentenübernahme in der Deployment-WebUI **Alle Updates anzeigen** erneut laden und den neuen Sammellauf starten. Der tatsächliche erfolgreiche Abruf und die Dienstabnahme auf Jans LXCs bleiben Betreiberbelege.
 
+Prüfstand am produktiven Commit `6d9db1cd`: [Ubuntu24.04](https://github.com/JanHG98/netcore-tetra/actions/runs/38749162535/job/116470671876) und [Ubuntu26.04](https://github.com/JanHG98/netcore-tetra/actions/runs/38749162535/job/116470671355) bestanden jeweils19 echte HTTP-Git-/Cache-/Sperrfälle, zwei bestehende Pinning-/Streamfälle und39 Proxmox-Fälle. Absichtlich abgeschnittene Commit- und Blobantworten, höchstens drei Versuche, einmaliger Installer innerhalb eines dauerhaften Auftrags,30 Cargo-Pakete,27 Dienstvorlagen einschließlich TBS und das tatsächlich erzeugte Agentenarchiv mit727040Byte sind geprüft. [Backend-/VM-/Browser-Job](https://github.com/JanHG98/netcore-tetra/actions/runs/38749162649/job/116470672099), [Quellgate](https://github.com/JanHG98/netcore-tetra/actions/runs/38749162618/job/116470671470) und beide [nativen Runtime-Updater-Prüfungen](https://github.com/JanHG98/netcore-tetra/actions/runs/38749162935) bestanden. Die separate ARM64-Image-Matrix ist vor der Personalisierung an der fehlenden `qemu-aarch64`-Registrierung auf den CI-Runnern blockiert; sie liefert hier keinen neuen Image-Nachweis.
+
 ### Veraltete Einträge löschen und die Netzübersicht filtern
 
 Die Netzübersicht bietet neben der Textsuche Filter für **Dienste/TBS**, die konkrete **Dienstrolle** und **online/offline**. Filter wirken auf die einzelnen Dienstzeilen, auch wenn mehrere Rollen auf demselben Host liegen.
