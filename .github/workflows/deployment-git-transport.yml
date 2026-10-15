@@ -1,0 +1,44 @@
+name: Deployment Git transport
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'system-backend/deployment-core/deploy.py'
+      - 'system-backend/deployment-core/catalog.json'
+      - 'Docs/basisstation.config.sanitized.example.toml'
+      - 'Cargo.toml'
+      - 'system-backend/deployment-core/tests/test_repository_*.py'
+      - 'tools/operator/update-netcore-lxcs.py'
+      - 'tests/integration/test_netcore_lxc_update.py'
+      - '.github/workflows/deployment-git-transport.yml'
+  push:
+    branches: ['main']
+    paths:
+      - 'system-backend/deployment-core/deploy.py'
+      - 'system-backend/deployment-core/catalog.json'
+      - 'Docs/basisstation.config.sanitized.example.toml'
+      - 'Cargo.toml'
+      - 'system-backend/deployment-core/tests/test_repository_*.py'
+      - 'tools/operator/update-netcore-lxcs.py'
+      - 'tests/integration/test_netcore_lxc_update.py'
+      - '.github/workflows/deployment-git-transport.yml'
+permissions:
+  contents: read
+jobs:
+  git-transport:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Real HTTP Git transport, truncated packs, cache and mutex guards
+        env:
+          NETCORE_TRANSPORT_WORKSPACE: ${{ github.workspace }}
+        run: python3 -B -m unittest discover -s system-backend/deployment-core/tests -p 'test_repository_*.py' -v
+      - name: Existing pinning and process stream contract
+        run: PYTHONPATH=system-backend/deployment-core/tests python3 -B -m unittest test_core.CoreTests.test_git_branch_resolves_to_pinned_commit test_core.CoreTests.test_command_stream_no_lost_output_or_shell -v
+      - name: Proxmox inventory, agent-only scope and update receipts
+        run: python3 -B -m unittest discover -s tests/integration -p 'test_netcore_lxc_update.py' -v
