@@ -27,6 +27,8 @@ CONFIG = CONFIG_DIR / 'deployment.toml'
 USER = 'netcore-deploy'
 LOCAL_ID = '193b08c7b05b4b54951baab1eea95df3'
 REMOTE_ID = '721b00fef0b143b28253123f7a168c7c'
+UNBOUND_LOCAL_ID = '5' * 32
+UNBOUND_REMOTE_ID = '6' * 32
 COMMIT = 'c45a2ec1f5b7cdcfb766a2d81e8901b65f3dbacf'
 
 
@@ -58,6 +60,8 @@ def main():
         result=dict(service='node-gateway', commit=COMMIT, ready=True))
     manifest = dict(node_id='Node-Gateway', environment='netcore-openlab',
                     protocol='netcore.discovery.v1', role='agent', security_mode='open_lab')
+    selected = dict(remote, id=UNBOUND_REMOTE_ID, created=150,
+                    result=dict(service='node-gateway', commit=COMMIT, ready=False, live=True))
     calls = []
 
     class Handler(BaseHTTPRequestHandler):
@@ -67,6 +71,8 @@ def main():
                 value = manifest
             elif self.path == '/api/v1/jobs/' + REMOTE_ID:
                 value = remote
+            elif self.path == '/api/v1/jobs/' + UNBOUND_REMOTE_ID:
+                value = selected
             else:
                 self.send_error(404)
                 return
@@ -133,8 +139,8 @@ def main():
         assert stat.S_IMODE(database.stat().st_mode) == 0o600
         before = database.read_bytes()
 
-        def cli(*options, as_user=False):
-            args = ['/usr/bin/python3', '-B', str(helper_copy), LOCAL_ID, '--config', str(CONFIG), *options]
+        def cli(*options, as_user=False, job_id=LOCAL_ID):
+            args = ['/usr/bin/python3', '-B', str(helper_copy), job_id, '--config', str(CONFIG), *options]
             if as_user:
                 args = ['runuser', '-u', USER, '--', *args]
             response = subprocess.run(args, check=False, text=True, capture_output=True, timeout=30)
@@ -211,6 +217,44 @@ def main():
         assert all(method == 'GET' for method, _ in calls), calls
         print('PASS: root CLI reconciles terminal proof once, preserves ownership and issues only GETs')
         print('PASS: the service user can write the WAL database after root apply without blocked sidecars')
+
+        unbound = dict(remote_uncertain=True, remote_job='', dispatch_state='posting',
+                       remote_url=f'http://127.0.0.1:{server.server_port}/api/v1/jobs')
+        insert_unbound = ('import sqlite3\nfrom contextlib import closing\n'
+                          f'with closing(sqlite3.connect({str(database)!r})) as db:\n'
+                          ' db.execute("INSERT INTO jobs VALUES (?,?,?,?,?,?,?)", '
+                          f'({UNBOUND_LOCAL_ID!r},100,200,"failed",{json.dumps(request)!r},'
+                          f'"lost POST reply",{json.dumps(unbound)!r}))\n'
+                          ' db.commit()\n')
+        command('runuser', '-u', USER, '--', '/usr/bin/python3', '-B', '-', input=insert_unbound)
+        explicit_before = database.read_bytes()
+        missing = cli(job_id=UNBOUND_LOCAL_ID, as_user=True)
+        assert missing['reason'] == 'remote_job_receipt_missing_no_automatic_search', missing
+        diagnosis = cli('--remote-job', UNBOUND_REMOTE_ID, job_id=UNBOUND_LOCAL_ID, as_user=True)
+        assert diagnosis['phase'] == 'verified' and diagnosis['receipt_source'] == 'operator_selected', diagnosis
+        assert database.read_bytes() == explicit_before
+        selected['created'] = 205.01
+        outside = cli('--remote-job', UNBOUND_REMOTE_ID, '--apply', job_id=UNBOUND_LOCAL_ID)
+        assert outside['reason'] == 'explicit_remote_job_outside_local_attempt_window', outside
+        assert database.read_bytes() == explicit_before
+        selected['created'] = 150
+        adopted = cli('--remote-job', UNBOUND_REMOTE_ID, '--apply', job_id=UNBOUND_LOCAL_ID)
+        assert adopted['phase'] == 'reconciled' and adopted['status'] == 'failed', adopted
+        with closing(sqlite3.connect(database)) as db:
+            result = json.loads(db.execute('SELECT result FROM jobs WHERE id=?', (UNBOUND_LOCAL_ID,)).fetchone()[0])
+            assert result['remote_uncertain'] is False
+            assert result['reconciliation']['receipt_source'] == 'operator_selected'
+            audit = json.loads(db.execute('SELECT proof FROM remote_job_reconciliations WHERE job_id=?',
+                                         (UNBOUND_LOCAL_ID,)).fetchone()[0])
+            assert audit['attempt_window']['remote_created'] == 150
+            assert audit['receipt_source'] == 'operator_selected'
+        assert database.stat().st_uid == account.pw_uid
+        assert stat.S_IMODE(database.stat().st_mode) == 0o600
+        assert not Path(str(database) + '-wal').exists()
+        assert not Path(str(database) + '-shm').exists()
+        command('runuser', '-u', USER, '--', '/usr/bin/python3', '-B', '-', input=write_as_service)
+        assert all(method == 'GET' and path != '/api/v1/jobs' for method, path in calls), calls
+        print('PASS: explicit lost-POST association verifies time, preserves degraded failure and service-owned WAL writes')
         print('Native reconciliation fixture passed; no installed controller or remote deployment was used.')
     finally:
         server.shutdown()
@@ -233,3 +277,4 @@ def main():
 
 if __name__ == '__main__':
     raise SystemExit(main())
+

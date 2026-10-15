@@ -4,6 +4,8 @@
 Diagnosis is read-only. --apply requires a stopped controller and an idle job
 database. No installer, POST, ref resolution, inferred job search or flag-only
 override is provided. Works independently of the installed controller version.
+An explicit --remote-job can adopt an independently inspected terminal update
+after a lost POST reply; the audit distinguishes this operator association.
 """
 from __future__ import annotations
 
@@ -12,6 +14,7 @@ from contextlib import closing
 import hashlib
 import ipaddress
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -32,6 +35,7 @@ TERMINAL = ('succeeded', 'failed', 'interrupted')
 PROTOCOL = 'netcore.discovery.v1'
 COLUMNS = 'id,created,updated,status,request,log,result'
 PROFILE_KEYS = ('name', 'mcc', 'mnc', 'issi', 'la', 'cc')
+MAX_CLOCK_SKEW = 5
 
 
 class Pending(RuntimeError):
@@ -123,7 +127,7 @@ def origin_and_id(value, networks):
     return origin, match[1]
 
 
-def receipt(row, result, networks):
+def receipt(row, result, networks, selected_id=None):
     stored = result.get('remote_url')
     remote_id = result.get('remote_job', '')
     if remote_id and (not isinstance(remote_id, str) or not JOB_ID.fullmatch(remote_id)):
@@ -132,6 +136,7 @@ def receipt(row, result, networks):
     if remote_id and url_id and remote_id != url_id:
         raise Pending('conflicting_remote_receipt_ids')
     remote_id = remote_id or url_id
+    source = 'stored_receipt'
     # Old controllers logged the actual POST receipt before polling. Only exact
     # receipt lines are evidence; never choose a matching service from /jobs.
     logged = set()
@@ -147,10 +152,49 @@ def receipt(row, result, networks):
         logged_origin, logged_id = next(iter(logged))
         if (origin and origin != logged_origin) or (remote_id and remote_id != logged_id):
             raise Pending('conflicting_logged_remote_receipts')
+        if not remote_id:
+            source = 'logged_receipt'
         origin, remote_id = origin or logged_origin, remote_id or logged_id
+    if selected_id is not None:
+        if remote_id and remote_id != selected_id:
+            raise Pending('explicit_remote_job_conflicts_with_receipt')
+        if not remote_id:
+            # Keep the durable POST origin. An option never supplies a new URL.
+            if not origin:
+                raise Pending('explicit_remote_job_requires_recorded_origin')
+            remote_id, source = selected_id, 'operator_selected'
     if not origin or not remote_id:
         raise Pending('remote_job_receipt_missing_no_automatic_search')
-    return origin, remote_id, f'{origin}/api/v1/jobs/{remote_id}'
+    return origin, remote_id, f'{origin}/api/v1/jobs/{remote_id}', source
+
+
+def selected_time_window(row, remote):
+    values = (row[1], row[2], remote.get('created'))
+    if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0 for value in values):
+        raise Pending('explicit_remote_job_requires_valid_timestamps')
+    created, updated, accepted = values
+    if updated < created or not created - MAX_CLOCK_SKEW <= accepted <= updated + MAX_CLOCK_SKEW:
+        raise Pending('explicit_remote_job_outside_local_attempt_window')
+    return dict(local_created=created, local_updated=updated, remote_created=accepted,
+                maximum_clock_skew_seconds=MAX_CLOCK_SKEW)
+
+
+def unclaimed_remote(db, key, url):
+    """One explicit association cannot reuse another controller job's receipt."""
+    origin, remote_id = url.rsplit('/api/v1/jobs/', 1)
+    for other, blob, log in db.execute(
+            'SELECT id,result,log FROM jobs WHERE id<>? AND (result LIKE ? OR log LIKE ?)',
+            (key, '%' + remote_id + '%', '%' + url + '%')):
+        value = json.loads(blob)
+        if (value.get('remote_url') == url
+                or value.get('remote_url') == origin + '/api/v1/jobs' and value.get('remote_job') == remote_id
+                or 'Remote-Auftrag ' + url in log.splitlines()):
+            raise Pending('explicit_remote_job_already_claimed')
+    if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='remote_job_reconciliations'").fetchone():
+        for blob, in db.execute('SELECT proof FROM remote_job_reconciliations WHERE job_id<>? AND proof LIKE ?',
+                                (key, '%' + remote_id + '%')):
+            if json.loads(blob).get('remote_url') == url:
+                raise Pending('explicit_remote_job_already_claimed')
 
 
 def accepted_profile(value):
@@ -167,12 +211,20 @@ def accepted_profile(value):
     return profile
 
 
-def proof(cfg, row, local_request, result, fetch):
+def proof(cfg, row, local_request, result, fetch, selected_id=None):
     node, service, action = (local_request.get(name) for name in ('node_id', 'service', 'action'))
     if (not isinstance(node, str) or not NAME.fullmatch(node) or not isinstance(service, str)
             or not NAME.fullmatch(service) or action not in ('install', 'update', 'restart')):
         raise Pending('local_target_or_action_missing')
-    origin, remote_id, url = receipt(row, result, cfg['allowed_networks'])
+    origin, remote_id, url, receipt_source = receipt(row, result, cfg['allowed_networks'], selected_id)
+    explicit = receipt_source == 'operator_selected'
+    if explicit:
+        pinned = local_request.get('commit')
+        if pinned is None:
+            pinned = local_request.get('ref')
+        if (action != 'update' or local_request.get('confirm_restart') is not True
+                or not isinstance(pinned, str) or not SHA.fullmatch(pinned)):
+            raise Pending('explicit_remote_job_requires_pinned_update')
     try:
         manifest = fetch(origin + '/api/v1/manifest')
         if (not isinstance(manifest, dict) or manifest.get('node_id') != node
@@ -189,6 +241,7 @@ def proof(cfg, row, local_request, result, fetch):
         raise Pending('remote_job_identity_or_schema_mismatch')
     if remote.get('status') not in TERMINAL:
         raise Pending('remote_job_not_terminal')
+    window = selected_time_window(row, remote) if explicit else None
     accepted, observed = remote['request'], remote['result']
     if 'remote_uncertain' in observed and observed['remote_uncertain'] is not False:
         raise Pending('remote_job_itself_uncertain')
@@ -230,6 +283,7 @@ def proof(cfg, row, local_request, result, fetch):
         if any(name in observed and type(observed[name]) is not bool for name in ('ready', 'live', 'restarted')):
             raise Pending('invalid_remote_success_flags')
     return dict(remote_job=remote_id, remote_url=url, remote_status=remote['status'],
+                receipt_source=receipt_source, **({'attempt_window': window} if explicit else {}),
                 commit=commit, commit_source=source, accepted_request=immutable,
                 request_sha256=fingerprint(immutable), result_sha256=fingerprint(observed),
                 ready=observed.get('ready') if remote['status'] == 'succeeded' else None,
@@ -269,11 +323,14 @@ def controller_stopped():
             and value.get('SubState') in ('dead', 'failed') and value.get('MainPID') == '0')
 
 
-def reconcile(path, key, cfg, *, apply=False, fetch=get_json, stopped=controller_stopped, trusted_uid=None):
+def reconcile(path, key, cfg, *, apply=False, fetch=get_json, stopped=controller_stopped, trusted_uid=None,
+              remote_job=None):
     summary = dict(job_id=key, phase='pending', changed=False, can_apply=False)
     try:
         if not isinstance(key, str) or not JOB_ID.fullmatch(key):
             raise Pending('invalid_local_job_id')
+        if remote_job is not None and (not isinstance(remote_job, str) or not JOB_ID.fullmatch(remote_job)):
+            raise Pending('invalid_explicit_remote_job_id')
         if cfg.get('role') != 'controller' or not isinstance(cfg.get('environment'), str):
             raise Pending('controller_config_required')
         if apply and trusted_uid is None:
@@ -285,15 +342,21 @@ def reconcile(path, key, cfg, *, apply=False, fetch=get_json, stopped=controller
         if result.get('remote_uncertain') is not True:
             summary.update(phase='already_resolved', reason='local_job_not_uncertain')
             return summary
-        checked = proof(cfg, row, request, result, fetch)
+        checked = proof(cfg, row, request, result, fetch, remote_job)
+        if checked['receipt_source'] == 'operator_selected':
+            with closing(sqlite3.connect(path.as_uri() + '?mode=ro', uri=True, timeout=10)) as db:
+                unclaimed_remote(db, key, checked['remote_url'])
         summary.update(node_id=request['node_id'], service=request['service'], action=request['action'],
-                       **{name: checked[name] for name in ('remote_job', 'remote_url', 'remote_status', 'commit', 'commit_source')})
+                       **{name: checked[name] for name in ('remote_job', 'remote_url', 'remote_status', 'commit',
+                                                         'commit_source', 'receipt_source')})
+        if 'attempt_window' in checked:
+            summary['attempt_window'] = checked['attempt_window']
         summary.update(phase='verified', can_apply=True)
         if not apply:
             return summary
         if not stopped():
             raise Pending('controller_must_be_stopped')
-        fresh = proof(cfg, row, request, result, fetch)
+        fresh = proof(cfg, row, request, result, fetch, remote_job)
         if fresh != checked:
             raise Pending('remote_proof_changed_retry_diagnosis')
         safe_file(path, private=True, trusted_uid=trusted_uid)
@@ -313,7 +376,8 @@ def reconcile(path, key, cfg, *, apply=False, fetch=get_json, stopped=controller
         evidence = dict(fresh, observed_at=now, node_id=request['node_id'],
                         local_request_sha256=fingerprint(request))
         after['reconciliation'] = dict(id=audit_id, observed_at=now,
-                                       remote_status=fresh['remote_status'], request_sha256=fresh['request_sha256'])
+                                       remote_status=fresh['remote_status'], request_sha256=fresh['request_sha256'],
+                                       receipt_source=fresh['receipt_source'])
         with closing(sqlite3.connect(path.as_uri() + '?mode=rw', uri=True, timeout=10)) as db:
             db.execute('PRAGMA synchronous=FULL')
             db.execute('BEGIN IMMEDIATE')
@@ -323,6 +387,8 @@ def reconcile(path, key, cfg, *, apply=False, fetch=get_json, stopped=controller
                     raise Pending('local_job_changed_retry_diagnosis')
                 if db.execute("SELECT 1 FROM jobs WHERE status IN ('queued','running') LIMIT 1").fetchone():
                     raise Pending('controller_jobs_not_idle')
+                if fresh['receipt_source'] == 'operator_selected':
+                    unclaimed_remote(db, key, fresh['remote_url'])
                 if not stopped():
                     raise Pending('controller_must_be_stopped')
                 safe_file(path, private=True, trusted_uid=trusted_uid)
@@ -353,6 +419,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('job_id')
     parser.add_argument('--config', type=Path, default=Path('/etc/netcore/deployment.toml'))
+    parser.add_argument('--remote-job', help='Explicitly inspected agent job ID after a lost POST reply; pinned update only')
     parser.add_argument('--apply', action='store_true', help='Persist verified terminal proof while controller is stopped')
     args = parser.parse_args()
     try:
@@ -368,7 +435,8 @@ def main():
         def stable_stopped():
             return (config.read_bytes() == original and controller_stopped()
                     and controller_owner(path.parent) == trusted_uid)
-        result = reconcile(path, args.job_id, cfg, apply=args.apply, stopped=stable_stopped, trusted_uid=trusted_uid)
+        result = reconcile(path, args.job_id, cfg, apply=args.apply, stopped=stable_stopped,
+                           trusted_uid=trusted_uid, remote_job=args.remote_job)
     except Exception:
         result = dict(job_id=args.job_id, phase='pending', changed=False, can_apply=False,
                       reason='controller_config_or_permissions_invalid')
@@ -378,3 +446,4 @@ def main():
 
 if __name__ == '__main__':
     raise SystemExit(main())
+
