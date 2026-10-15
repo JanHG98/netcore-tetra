@@ -290,5 +290,59 @@ class RotationTests(unittest.TestCase):
             self.assertEqual(checked.returncode, 0, checked.stderr)
 
 
+class InstallTests(unittest.TestCase):
+    def test_install_does_not_wait_for_huge_transfer_and_starts_both_timers(self):
+        from argparse import Namespace
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            units = root / "systemd"
+            units.mkdir()
+            rule = root / "rsyslog"
+            rule.write_text(RULE)
+            nas = root / "nas"
+            nas.mkdir()
+            config = root / "config/log-archive.json"
+            program = root / "opt/archive-netcore-logs.py"
+            commands = []
+            args = Namespace(archive_root=nas, apply=True)
+            with patch.object(archive, "STATE", root / "state"), \
+                 patch.object(archive, "PROGRAM", program), \
+                 patch.object(archive, "DEFAULT_CONFIG", config), \
+                 patch.object(archive, "SYSTEMD_UNITS", units), \
+                 patch.object(archive, "RSYSLOG_RULE", rule), \
+                 patch.object(archive.socket, "gethostname", return_value="Media-Library"), \
+                 patch.object(archive, "network_mount", return_value={"fstype": "nfs4"}), \
+                 patch.object(archive, "archive_pass", side_effect=AssertionError("blocking huge copy")), \
+                 patch.object(archive, "run_command", side_effect=lambda cmd: commands.append(cmd) or ""):
+                result = archive.install(args)
+            self.assertEqual(result["phase"], "installed")
+            self.assertEqual(result["archive_status"], "scheduled")
+            self.assertEqual(json.loads(config.read_text())["host"], "Media-Library")
+            self.assertEqual(program.read_bytes(), Path(archive.__file__).read_bytes())
+            self.assertIn(["logrotate", "--force", str(rule)], commands)
+            self.assertIn(["systemctl", "start", "--no-block",
+                           "netcore-log-archive.service"], commands)
+            self.assertIn(["systemctl", "enable", "--now", "netcore-log-rotate.timer",
+                           "netcore-log-archive.timer"], commands)
+            self.assertEqual(len(list(units.iterdir())), 4)
+            self.assertTrue(list((root / "state").glob("rsyslog-logrotate-*.before")))
+
+    def test_reopen_script_validation_failure_restores_old_rule(self):
+        from argparse import Namespace
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            rule = root / "rsyslog"
+            rule.write_text(RULE)
+            def command(cmd):
+                raise RuntimeError("bad logrotate syntax")
+            with patch.object(archive, "STATE", root / "state"), \
+                 patch.object(archive, "RSYSLOG_RULE", rule), \
+                 patch.object(archive.socket, "gethostname", return_value="Media-Library"), \
+                 patch.object(archive, "network_mount", return_value={"fstype": "nfs4"}), \
+                 patch.object(archive, "run_command", side_effect=command):
+                with self.assertRaisesRegex(RuntimeError, "bad logrotate"):
+                    archive.install(Namespace(archive_root=root, apply=True))
+            self.assertEqual(rule.read_text(), RULE)
+
 if __name__ == "__main__":
     unittest.main()

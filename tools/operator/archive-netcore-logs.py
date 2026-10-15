@@ -25,6 +25,8 @@ from zoneinfo import ZoneInfo
 DEFAULT_CONFIG = Path("/etc/netcore/log-archive.json")
 STATE = Path("/var/lib/netcore-log-archive")
 PROGRAM = Path("/opt/netcore-log-archive/archive-netcore-logs.py")
+RSYSLOG_RULE = Path("/etc/logrotate.d/rsyslog")
+SYSTEMD_UNITS = Path("/etc/systemd/system")
 NETWORK_FILESYSTEMS = {"nfs", "nfs4", "cifs", "smb3"}
 ROTATED = re.compile(
     r".+(?:\.\d+(?:\.(?:gz|xz|bz2|zst))?"
@@ -198,7 +200,17 @@ def archive_one(source, relative, archive, host, timezone, *, is_journal=False):
     safe_mkdir(destination)
     compressed = not is_journal and source.suffix not in {".gz", ".xz", ".bz2", ".zst"}
     suffix = ".gz" if compressed else (".journal" if is_journal else source.suffix)
-    temporary = destination / (".netcore-log-" + uuid.uuid4().hex + ".part")
+    temporary = destination / (
+        f".netcore-log-{original.st_dev}-{original.st_ino}-"
+        f"{original.st_mtime_ns}-{original.st_size}.part")
+    if temporary.exists() or temporary.is_symlink():
+        require(not temporary.is_symlink() and temporary.is_file(),
+                "Ungültige frühere Teildatei im Archiv")
+        require(not file_is_open(temporary), "Frühere NAS-Teildatei ist noch geöffnet")
+        # A killed process may have left this exact source's incomplete copy.
+        # It is never an archive receipt and may be restarted without accumulating
+        # another giant partial copy on every retry.
+        temporary.unlink()
     digest = hashlib.sha256()
     copied = 0
     progress = Progress(source, "copying_to_nas", original.st_size)
@@ -313,7 +325,7 @@ def run_command(arguments):
 
 
 def rotate_logs(force=False):
-    rule = Path("/etc/logrotate.d/rsyslog")
+    rule = RSYSLOG_RULE
     if rule.is_file():
         arguments = ["logrotate"]
         if force:
@@ -424,7 +436,7 @@ def install(args):
     mount = network_mount(Path(config["archive_root"]))
     # Parse before changing any file, including an existing installation.
     require(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}", host), "Ungültiger Hostname")
-    rule_path = Path("/etc/logrotate.d/rsyslog")
+    rule_path = RSYSLOG_RULE
     old_rule = rule_path.read_text() if rule_path.is_file() else None
     new_rule = adapt_rsyslog_rule(old_rule) if old_rule is not None else None
     if not args.apply:
@@ -448,7 +460,7 @@ def install(args):
         temporary.chmod(0o755)
         temporary.replace(PROGRAM)
         atomic_json(DEFAULT_CONFIG, config)
-        unit_root = Path("/etc/systemd/system")
+        unit_root = SYSTEMD_UNITS
         (unit_root / "netcore-log-archive.service").write_text(SERVICE)
         (unit_root / "netcore-log-archive.timer").write_text(TIMER)
         (unit_root / "netcore-log-rotate.service").write_text(ROTATION_SERVICE)
