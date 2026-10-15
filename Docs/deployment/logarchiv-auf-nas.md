@@ -61,7 +61,7 @@ nötig.
 ```bash
 (
   set -Eeuo pipefail
-  NC_REF=GEPRUEFTER_VOLLSTAENDIGER_COMMIT
+  NC_REF=43058a59c333bd5c75d82ca5e34eaebbfb557444
   NC_LOG_SRC=$(mktemp /tmp/netcore-log-archive.XXXXXX.py)
   curl --http1.1 --fail --show-error --retry 3 \
     "https://raw.githubusercontent.com/JanHG98/netcore-tetra/$NC_REF/tools/operator/archive-netcore-logs.py" \

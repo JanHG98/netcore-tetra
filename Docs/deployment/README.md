@@ -4,6 +4,7 @@ Für eine neue Anlage mit der [aktuellen Inbetriebnahme](../handbooks/inbetriebn
 
 [Gesamte Dokumentation](../README.md)
 
+- [Logs automatisch auf dem Archiv-NAS ablegen](logarchiv-auf-nas.md)
 - [Installation: Media Library → echte Funk-Aussendung über die TBS](media-library-basisstation-audiowiedergabe.md)
 - [Installation – MQTT Phase 2 / Gemeinsames Ereignismodell](mqtt-ereignismodell-installation.md)
 - [Installation – MQTT Phase 4](historisch-mqtt-kommandos-und-policy.md)
