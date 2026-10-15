@@ -227,9 +227,9 @@ Der eigenständige Helfer unterstützt dafür `--remote-job ID`. Die ausdrückli
 | warn-control / provisioning-core | `95d6511bbb294cbfb6cb58fc58845338` | `63c39375030b428d9fc9153ed98fec7c` | `failed`, Git128 |
 | warn-control / node-gateway | `82d9a2017d5545aaa1d176ed39c4f9d2` | `c2793f4d18494ae9b9992ce76c92456b` | `failed`, Git128 |
 | Security-Core / security-core | `bb4f24ffb2834bcba3d7cf14bb70e005` | `cf43d218e831450391112bbbc78dd4d6` | `failed`, Timeout |
-| Media-Library / media-library | `467b366bb0aa446b929dbbd9766ba8f1` | Noch nicht belegt | Identität an10.0.1.154:8321 passend, HTTP-Auftragsliste mit Timeout |
+| Media-Library / media-library | `467b366bb0aa446b929dbbd9766ba8f1` | `af2780557bcb48dc88eb78312073fa8f` | `failed`, Timeout; am15.10. direkt aus der Agentendatenbank bestätigt |
 
-Die drei angegebenen Agentenaufträge akzeptierten den festen Commit `20c3dfa7`. Ihr Endbeleg wird mit dem folgenden Block **auf VM-H-DEPLOY-01** erneut geprüft und erst danach übernommen. Alle drei Dienstfehler bleiben Fehler; nur ihre ungeklärte Ausführung wird beendet. Ein voller VM-/Builder-Austausch ist dafür nicht erforderlich.
+Die vier angegebenen Agentenaufträge akzeptierten den festen Commit `20c3dfa7`. Ihr Endbeleg wird mit dem folgenden Block **auf VM-H-DEPLOY-01** erneut geprüft und erst danach übernommen. Alle vier Dienstfehler bleiben Fehler; nur ihre ungeklärte Ausführung wird beendet. Ein voller VM-/Builder-Austausch ist dafür nicht erforderlich.
 
 ```bash
 (
@@ -248,6 +248,7 @@ Die drei angegebenen Agentenaufträge akzeptierten den festen Commit `20c3dfa7`.
 95d6511bbb294cbfb6cb58fc58845338 63c39375030b428d9fc9153ed98fec7c
 82d9a2017d5545aaa1d176ed39c4f9d2 c2793f4d18494ae9b9992ce76c92456b
 bb4f24ffb2834bcba3d7cf14bb70e005 cf43d218e831450391112bbbc78dd4d6
+467b366bb0aa446b929dbbd9766ba8f1 af2780557bcb48dc88eb78312073fa8f
 NC_ZUORDNUNGEN
   }
 
@@ -271,10 +272,38 @@ PY
   nc_abgleichen --apply
   sudo systemctl start netcore-deployment.service
   trap - EXIT
+
+  sudo python3 - <<'PY'
+import json
+import sqlite3
+from contextlib import closing
+
+pending = []
+with closing(sqlite3.connect(
+    "file:/var/lib/netcore-deployment/jobs.sqlite3?mode=ro",
+    uri=True, timeout=5
+)) as db:
+    for key, status, request, result in db.execute(
+        "SELECT id,status,request,result FROM jobs"
+    ):
+        q, r = json.loads(request), json.loads(result)
+        flag = r.get("remote_uncertain", False)
+        if type(flag) is not bool:
+            raise SystemExit("Ungültiger Remote-Status bei Auftrag " + key)
+        if flag:
+            pending.append({
+                "id": key, "status": status,
+                "host": q.get("node_id"), "dienst": q.get("service")
+            })
+if pending:
+    print(json.dumps(pending, ensure_ascii=False, indent=2))
+    raise SystemExit("Noch ungeklärte Remote-Aufträge vorhanden.")
+print("Keine ungeklärten Remote-Aufträge mehr vorhanden.")
+PY
 )
 ```
 
-Bei `phase=pending` vor dem Stop bleibt der Controller aktiv; nach dem Stop stellt der EXIT-Trap seinen Start sicher. Der Grund bleibt sichtbar und es wird kein neuer Remote-Auftrag angelegt. Für Media-Library diesen lesenden Block **auf dem LXC Media-Library als root** ausführen; er liest die Agentendatenbank direkt und umgeht die große HTTP-Liste:
+Bei `phase=pending` vor dem Stop bleibt der Controller aktiv; nach dem Stop stellt der EXIT-Trap seinen Start sicher. Der Grund bleibt sichtbar und es wird kein neuer Remote-Auftrag angelegt. Media-Librarys fehlende ID wurde am15.10. um22:17 mit dem folgenden lesenden Block **auf dem LXC Media-Library als root** bestätigt: Annahmezeit `1791935213.1217003`, Ende `1791937605.7577841`, Status `failed`, Fehler `Deployment command timed out`. Der Abruf liest die Agentendatenbank direkt und umgeht die große HTTP-Liste:
 
 ```bash
 python3 - <<'PY'
@@ -310,7 +339,7 @@ if not found:
 PY
 ```
 
-Native Prüfung am produktiven Commit `f3a0dbbf`: [Ubuntu24.04](https://github.com/JanHG98/netcore-tetra/actions/runs/38799124926/job/116643227675) und [Ubuntu26.04](https://github.com/JanHG98/netcore-tetra/actions/runs/38799124926/job/116643227193) bestanden je26 echte HTTP-/SQLite-/POSIX-Fälle ohne Skip sowie die systemd-/Dienstbenutzer-/WAL-Fixture mit ausdrücklicher Zuordnung und weiterhin möglichem Schreiben als Dienstbenutzer. Die drei neuen Betreiberzuordnungen und der Media-Library-Endbeleg bleiben bis zur tatsächlichen Anwendung offen. Anschließend alle noch ungeklärten Controllerzeilen prüfen und erst dann einen frischen Backend-Sammellauf starten.
+Native Prüfung am produktiven Commit `f3a0dbbf`: [Ubuntu24.04](https://github.com/JanHG98/netcore-tetra/actions/runs/38799124926/job/116643227675) und [Ubuntu26.04](https://github.com/JanHG98/netcore-tetra/actions/runs/38799124926/job/116643227193) bestanden je26 echte HTTP-/SQLite-/POSIX-Fälle ohne Skip sowie die systemd-/Dienstbenutzer-/WAL-Fixture mit ausdrücklicher Zuordnung und weiterhin möglichem Schreiben als Dienstbenutzer. Alle vier Agenten-IDs und ihre terminalen Fehler sind jetzt Betreiberbelege. Die vier zusätzlichen Controllerübernahmen bleiben bis zur tatsächlichen Anwendung offen; dabei verlangt der Helfer weiterhin frische GET-Endbelege. Der VM-Block prüft abschließend sämtliche Controllerzeilen auf weitere ungeklärte Ausführungen. Erst bei `Keine ungeklärten Remote-Aufträge mehr vorhanden.` in der WebUI unter **Gezielt ausrollen → Alle Updates anzeigen** eine frische Vorschau erstellen und **… Dienste jetzt aktualisieren** starten.
 
 ## Pi und externe Anwendungen
 
