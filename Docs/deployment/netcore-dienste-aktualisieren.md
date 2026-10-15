@@ -214,6 +214,104 @@ Betreiberbefund vom 14.10.2026: lokaler Auftrag `193b08c7b05b4b54951baab1eea95df
 
 Linux-Nachweis am produktiven Commit `ea16576d`: [Ubuntu24.04](https://github.com/JanHG98/netcore-tetra/actions/runs/38483416232/job/115591179644) und [Ubuntu26.04](https://github.com/JanHG98/netcore-tetra/actions/runs/38483416232/job/115591179843) bestanden. Je 17 HTTP-/SQLite-/POSIX-Regressionen ohne Skip sowie die tatsächliche systemd-/Serviceuser-/WAL-Fixture bestätigen Abgleich, Verweigerungsfälle, unveränderte 0600-Eigentümerschaft und anschließende Schreibfähigkeit des Dienstbenutzers. Bash-Syntax des Operatorblocks und [Quellgate](https://github.com/JanHG98/netcore-tetra/actions/runs/38483416385/job/115591180161) bestanden. Das ist ein isolierter Linux-Nachweis und keine Anwendung auf Jans VM.
 
+#### Verlorene POST-Antwort mit ausdrücklich gewähltem Agentenauftrag
+
+Wenn die Antwort schon beim Anlegen verloren ging, enthält die Controllerzeile nur `/api/v1/jobs` und keine Remote-ID. Zuerst die Agentenidentität und den bereits angenommenen Auftrag lesend prüfen. Eine begrenzte HTTP-Auftragsliste ohne Treffer beweist keine Nichtannahme. Bei Listen-Timeouts den passenden Diensthost direkt prüfen; keine neue Installation zum Ermitteln der alten ID starten.
+
+Der eigenständige Helfer unterstützt dafür `--remote-job ID`. Die ausdrücklich gewählte Zuordnung muss den gespeicherten Agentenursprung, die konfigurierte Umgebung/Identität, Dienst/Aktion und den bereits lokal festgelegten vollständigen Update-Commit bestätigen. Die Annahmezeit muss zwischen lokaler Auftragserstellung und letzter gespeicherter Änderung liegen; höchstens fünf Sekunden Uhrabweichung sind zulässig. Gespeicherte oder im Log belegte andere IDs, laufende Aufträge, geänderte Zweitbelege und bereits anderweitig zugeordnete Remote-Belege bleiben gesperrt. Ein fehlender oder zeitlich unpassender Beleg wird nicht durch Suchheuristiken ersetzt. Die ausdrückliche Operatorzuordnung wird als `receipt_source=operator_selected` samt Zeitfenster und ursprünglicher Ergebniszeile im Audit festgehalten; sie behauptet keinen nachträglich vorhandenen ursprünglichen POST-Identifikator.
+
+**Betreiberstand 15.10.2026:** Application-Gateway / `c456a7cf` ist nach exaktem Abgleich lokal `succeeded` (Audit `ccdb3bfc309b4362b83d30b088c49a5a`). Control-Room / `b322047d` ist abgeglichen, bleibt wegen `ready=false` lokal `failed` (Audit `daca8bdfd7e74e4fa36d496ad886d051`). Bei den vier verlorenen Anlegeantworten liegen folgende weitere Betreiberbelege vor:
+
+| Host / Dienst | Controller-Auftrag | Gewählter Agentenauftrag | Beobachteter Abschluss |
+| --- | --- | --- | --- |
+| warn-control / provisioning-core | `95d6511bbb294cbfb6cb58fc58845338` | `63c39375030b428d9fc9153ed98fec7c` | `failed`, Git128 |
+| warn-control / node-gateway | `82d9a2017d5545aaa1d176ed39c4f9d2` | `c2793f4d18494ae9b9992ce76c92456b` | `failed`, Git128 |
+| Security-Core / security-core | `bb4f24ffb2834bcba3d7cf14bb70e005` | `cf43d218e831450391112bbbc78dd4d6` | `failed`, Timeout |
+| Media-Library / media-library | `467b366bb0aa446b929dbbd9766ba8f1` | Noch nicht belegt | Identität an10.0.1.154:8321 passend, HTTP-Auftragsliste mit Timeout |
+
+Die drei angegebenen Agentenaufträge akzeptierten den festen Commit `20c3dfa7`. Ihr Endbeleg wird mit dem folgenden Block **auf VM-H-DEPLOY-01** erneut geprüft und erst danach übernommen. Alle drei Dienstfehler bleiben Fehler; nur ihre ungeklärte Ausführung wird beendet. Ein voller VM-/Builder-Austausch ist dafür nicht erforderlich.
+
+```bash
+(
+  set -Eeuo pipefail
+  NC_REF=f3a0dbbf5397140e33202bae9c59914ff455b24e
+  NC_RECON_DIR=$(mktemp -d /tmp/netcore-post-abgleich.XXXXXX)
+  NC_RECON="$NC_RECON_DIR/reconcile-remote-job.py"
+  curl --http1.1 --fail --show-error --retry 3 \
+    "https://raw.githubusercontent.com/JanHG98/netcore-tetra/$NC_REF/tools/operator/reconcile-remote-job.py" \
+    -o "$NC_RECON"
+
+  nc_abgleichen() {
+    while read -r NC_LOCAL NC_REMOTE; do
+      sudo python3 -B "$NC_RECON" "$NC_LOCAL" --remote-job "$NC_REMOTE" "$@"
+    done <<'NC_ZUORDNUNGEN'
+95d6511bbb294cbfb6cb58fc58845338 63c39375030b428d9fc9153ed98fec7c
+82d9a2017d5545aaa1d176ed39c4f9d2 c2793f4d18494ae9b9992ce76c92456b
+bb4f24ffb2834bcba3d7cf14bb70e005 cf43d218e831450391112bbbc78dd4d6
+NC_ZUORDNUNGEN
+  }
+
+  nc_abgleichen
+  sudo python3 - <<'PY'
+import sqlite3
+from contextlib import closing
+with closing(sqlite3.connect(
+    "file:/var/lib/netcore-deployment/jobs.sqlite3?mode=ro",
+    uri=True, timeout=5
+)) as db:
+    active = db.execute(
+        "SELECT id,status FROM jobs WHERE status IN ('queued','running')"
+    ).fetchall()
+if active:
+    raise SystemExit("Noch aktive Controller-Aufträge: " + str(active))
+PY
+
+  trap 'sudo systemctl start netcore-deployment.service' EXIT
+  sudo systemctl stop netcore-deployment.service
+  nc_abgleichen --apply
+  sudo systemctl start netcore-deployment.service
+  trap - EXIT
+)
+```
+
+Bei `phase=pending` vor dem Stop bleibt der Controller aktiv; nach dem Stop stellt der EXIT-Trap seinen Start sicher. Der Grund bleibt sichtbar und es wird kein neuer Remote-Auftrag angelegt. Für Media-Library diesen lesenden Block **auf dem LXC Media-Library als root** ausführen; er liest die Agentendatenbank direkt und umgeht die große HTTP-Liste:
+
+```bash
+python3 - <<'PY'
+import json
+import sqlite3
+from contextlib import closing
+commit = "20c3dfa7ec1a55b7c79ef2168c3c90b6745d3640"
+with closing(sqlite3.connect(
+    "file:/var/lib/netcore-discovery/jobs.sqlite3?mode=ro",
+    uri=True, timeout=5
+)) as db:
+    rows = db.execute(
+        "SELECT id,status,created,updated,request,result FROM jobs "
+        "WHERE request LIKE ? AND request LIKE ? ORDER BY created DESC",
+        ("%media-library%", "%" + commit + "%")
+    ).fetchall()
+    active = db.execute(
+        "SELECT id,status FROM jobs WHERE status IN ('queued','running')"
+    ).fetchall()
+print("Aktive Agentenaufträge:", active)
+found = False
+for key, status, created, updated, request, result in rows:
+    q = json.loads(request)
+    if q.get("service") == "media-library" and q.get("action") == "update" and q.get("commit") == commit:
+        found = True
+        print(json.dumps({
+            "id": key, "status": status, "created": created, "updated": updated,
+            "dienst": q["service"], "commit": q["commit"],
+            "ergebnis": json.loads(result)
+        }, ensure_ascii=False))
+if not found:
+    print("Kein passender Media-Library-Auftrag in der Agenten-Datenbank.")
+PY
+```
+
+Native Prüfung am produktiven Commit `f3a0dbbf`: [Ubuntu24.04](https://github.com/JanHG98/netcore-tetra/actions/runs/38799124926/job/116643227675) und [Ubuntu26.04](https://github.com/JanHG98/netcore-tetra/actions/runs/38799124926/job/116643227193) bestanden je26 echte HTTP-/SQLite-/POSIX-Fälle ohne Skip sowie die systemd-/Dienstbenutzer-/WAL-Fixture mit ausdrücklicher Zuordnung und weiterhin möglichem Schreiben als Dienstbenutzer. Die drei neuen Betreiberzuordnungen und der Media-Library-Endbeleg bleiben bis zur tatsächlichen Anwendung offen. Anschließend alle noch ungeklärten Controllerzeilen prüfen und erst dann einen frischen Backend-Sammellauf starten.
+
 ## Pi und externe Anwendungen
 
 - **Physischer Pi `10.0.1.20`:** Die aktuellen Carrier-/Telegram-/Nachbar-/WLAN-/Medienrechte-/Desktop-/SIP-Fallback-Korrekturen kommen über das neu gebaute Image. Der Proxmox-Lauf startet keinen Funkdienst und überschreibt den Pi nicht.

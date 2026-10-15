@@ -101,14 +101,14 @@ class RemoteReconciliationTests(unittest.TestCase):
                         log if log is not None else row[5], status or row[3], LOCAL_ID))
             db.commit()
 
-    def run_helper(self, *, apply=False, stopped=lambda: True):
+    def run_helper(self, *, apply=False, stopped=lambda: True, remote_job=None):
         # Trust only this fixture's actual UID; production resolves systemd User.
         return HELPER.reconcile(self.path, LOCAL_ID, self.cfg, apply=apply, stopped=stopped,
-                                trusted_uid=os.geteuid() if os.name == 'posix' else 0)
+                                trusted_uid=os.geteuid() if os.name == 'posix' else 0, remote_job=remote_job)
 
-    def assert_pending_unchanged(self, reason):
+    def assert_pending_unchanged(self, reason, *, remote_job=None):
         before = self.path.read_bytes()
-        value = self.run_helper(apply=True)
+        value = self.run_helper(apply=True, remote_job=remote_job)
         self.assertEqual(value['phase'], 'pending', value)
         self.assertEqual(value['reason'], reason, value)
         self.assertEqual(self.path.read_bytes(), before)
@@ -252,6 +252,157 @@ class RemoteReconciliationTests(unittest.TestCase):
         self.write_local(result=self.result, log='Remote-Auftrag http://127.0.0.1:1/api/v1/jobs/' + REMOTE_ID)
         self.assert_pending_unchanged('conflicting_logged_remote_receipts')
 
+    def prepare_unbound(self):
+        self.write_local(request=dict(self.request, commit=COMMIT),
+                         result=dict(self.result, remote_job='', remote_url=self.origin + '/api/v1/jobs',
+                                     dispatch_state='posting'))
+        self.remote['created'] = 150
+
+    def test_explicit_selected_job_is_readonly_then_audited_and_idempotent(self):
+        self.prepare_unbound()
+        before, original = self.path.read_bytes(), self.row()
+        value = self.run_helper(remote_job=REMOTE_ID)
+        self.assertEqual(value['phase'], 'verified', value)
+        self.assertEqual(value['receipt_source'], 'operator_selected')
+        self.assertEqual(value['attempt_window']['remote_created'], 150)
+        self.assertEqual(before, self.path.read_bytes())
+        value = self.run_helper(apply=True, remote_job=REMOTE_ID)
+        self.assertEqual(value['phase'], 'reconciled', value)
+        row = self.row()
+        self.assertEqual(row[3], 'succeeded')
+        self.assertEqual(row[4:6], original[4:6])
+        self.assertEqual(json.loads(row[6])['reconciliation']['receipt_source'], 'operator_selected')
+        with closing(sqlite3.connect(self.path)) as db:
+            audit = db.execute('SELECT before_result,proof FROM remote_job_reconciliations').fetchone()
+        self.assertEqual(audit[0], original[6])
+        proof = json.loads(audit[1])
+        self.assertEqual(proof['receipt_source'], 'operator_selected')
+        self.assertEqual(proof['attempt_window']['local_created'], 100)
+        self.assertNotIn('SECRET', audit[1])
+        repeated = self.run_helper(apply=True, remote_job=REMOTE_ID)
+        self.assertEqual(repeated['phase'], 'already_resolved', repeated)
+        self.assertEqual(self.row(), row)
+        self.assertTrue(all(method == 'GET' and path != '/api/v1/jobs' for method, path in self.calls))
+
+    def test_explicit_selection_requires_valid_id_recorded_origin_and_pinned_update(self):
+        self.prepare_unbound()
+        for bad in ('', 'main', '3' * 31, '../' + REMOTE_ID, True):
+            self.assert_pending_unchanged('invalid_explicit_remote_job_id', remote_job=bad)
+        self.assertEqual(self.calls, [])
+        self.write_local(result=dict(self.result, remote_job='', remote_url=''))
+        self.assert_pending_unchanged('explicit_remote_job_requires_recorded_origin', remote_job=REMOTE_ID)
+        for update in ({'commit': None}, {'commit': 'main'}, {'action': 'restart'},
+                       {'action': 'install'}, {'confirm_restart': False}):
+            self.prepare_unbound()
+            self.write_local(request=dict(self.request, commit=COMMIT) | update)
+            self.assert_pending_unchanged('explicit_remote_job_requires_pinned_update', remote_job=REMOTE_ID)
+        self.prepare_unbound()
+        self.write_local(request=dict(self.request, ref=COMMIT, commit=None))
+        value = self.run_helper(remote_job=REMOTE_ID)
+        self.assertEqual(value['phase'], 'verified', value)
+
+    def test_explicit_selection_never_overrides_stored_or_logged_receipt(self):
+        self.assert_pending_unchanged('explicit_remote_job_conflicts_with_receipt', remote_job='3' * 32)
+        self.prepare_unbound()
+        self.write_local(log='Remote-Auftrag ' + self.origin + '/api/v1/jobs/' + '3' * 32)
+        self.assert_pending_unchanged('explicit_remote_job_conflicts_with_receipt', remote_job=REMOTE_ID)
+        self.assertEqual(self.calls, [])
+
+    def test_explicit_selection_checks_finite_acceptance_time_with_five_second_skew(self):
+        self.prepare_unbound()
+        for timestamp in (None, True, '150', -1, float('nan'), float('inf')):
+            self.remote['created'] = timestamp
+            self.assert_pending_unchanged('explicit_remote_job_requires_valid_timestamps', remote_job=REMOTE_ID)
+        for timestamp in (94.999, 205.001):
+            self.remote['created'] = timestamp
+            self.assert_pending_unchanged('explicit_remote_job_outside_local_attempt_window', remote_job=REMOTE_ID)
+        for timestamp in (95, 100, 200, 205):
+            self.remote['created'] = timestamp
+            value = self.run_helper(remote_job=REMOTE_ID)
+            self.assertEqual(value['phase'], 'verified', value)
+        with closing(sqlite3.connect(self.path)) as db:
+            db.execute('UPDATE jobs SET updated=99 WHERE id=?', (LOCAL_ID,))
+            db.commit()
+        self.assert_pending_unchanged('explicit_remote_job_outside_local_attempt_window', remote_job=REMOTE_ID)
+
+    def test_explicit_selection_still_checks_agent_request_commit_and_terminal_state(self):
+        self.prepare_unbound()
+        original = copy.deepcopy(self.remote)
+        for field, wrong in (('service', 'other-service'), ('action', 'install'), ('confirm_restart', False)):
+            self.remote = copy.deepcopy(original)
+            self.remote['request'][field] = wrong
+            self.assert_pending_unchanged('remote_job_request_mismatch', remote_job=REMOTE_ID)
+        self.remote = copy.deepcopy(original)
+        self.remote['request']['commit'] = 'b' * 40
+        self.assert_pending_unchanged('remote_accepted_commit_mismatch', remote_job=REMOTE_ID)
+        for status in ('queued', 'running'):
+            self.remote = dict(original, status=status)
+            self.assert_pending_unchanged('remote_job_not_terminal', remote_job=REMOTE_ID)
+        self.remote = original
+        self.manifest['node_id'] = 'wrong-host'
+        self.assert_pending_unchanged('remote_agent_identity_mismatch', remote_job=REMOTE_ID)
+
+    def test_explicit_selection_preserves_failure_interruption_and_degraded_success(self):
+        for status, ready, expected in (('failed', True, 'failed'), ('interrupted', True, 'interrupted'),
+                                         ('succeeded', False, 'failed')):
+            self.prepare_unbound()
+            self.remote['status'] = status
+            self.remote['result']['ready'] = ready
+            value = self.run_helper(apply=True, remote_job=REMOTE_ID)
+            self.assertEqual(value['phase'], 'reconciled', value)
+            self.assertEqual(self.row()[3], expected)
+            self.assertIs(json.loads(self.row()[6])['remote_uncertain'], False)
+
+    def test_explicit_selection_cannot_reuse_another_jobs_receipt_or_log(self):
+        self.prepare_unbound()
+        for result, log in ((dict(self.result), ''),
+                            (dict(self.result, remote_url=self.origin + '/api/v1/jobs'), ''),
+                            ({}, 'Remote-Auftrag ' + self.url)):
+            with closing(sqlite3.connect(self.path)) as db:
+                db.execute('INSERT OR REPLACE INTO jobs VALUES (?,?,?,?,?,?,?)',
+                           ('4' * 32, 100, 200, 'failed', '{}', log, json.dumps(result)))
+                db.commit()
+            self.assert_pending_unchanged('explicit_remote_job_already_claimed', remote_job=REMOTE_ID)
+
+    def test_explicit_selection_rechecks_claims_under_transaction_and_changed_proof(self):
+        self.prepare_unbound()
+        count = 0
+        def claim(path):
+            nonlocal count
+            if path.startswith('/api/v1/jobs/'):
+                count += 1
+                if count == 2:
+                    with closing(sqlite3.connect(self.path)) as db:
+                        db.execute('INSERT INTO jobs VALUES (?,?,?,?,?,?,?)',
+                                   ('4' * 32, 100, 200, 'failed', '{}', '', json.dumps(self.result)))
+                        db.commit()
+        self.before_response = claim
+        value = self.run_helper(apply=True, remote_job=REMOTE_ID)
+        self.assertEqual(value['reason'], 'explicit_remote_job_already_claimed', value)
+        self.assertIs(json.loads(self.row()[6])['remote_uncertain'], True)
+        with closing(sqlite3.connect(self.path)) as db:
+            db.execute('DELETE FROM jobs WHERE id<>?', (LOCAL_ID,))
+            db.commit()
+        count = 0
+        def change_time(path):
+            nonlocal count
+            if path.startswith('/api/v1/jobs/'):
+                count += 1
+                if count == 2:
+                    self.remote['created'] = 151
+        self.before_response = change_time
+        self.assert_pending_unchanged('remote_proof_changed_retry_diagnosis', remote_job=REMOTE_ID)
+
+    def test_explicit_selection_cannot_reuse_an_audited_receipt_after_other_job_archived(self):
+        self.prepare_unbound()
+        applied = self.run_helper(apply=True, remote_job=REMOTE_ID)
+        self.assertEqual(applied['phase'], 'reconciled', applied)
+        with closing(sqlite3.connect(self.path)) as db:
+            db.execute('UPDATE remote_job_reconciliations SET job_id=?', ('4' * 32,))
+            db.commit()
+        self.prepare_unbound()
+        self.assert_pending_unchanged('explicit_remote_job_already_claimed', remote_job=REMOTE_ID)
+
     def test_controller_must_be_stopped_and_every_job_idle_including_checks(self):
         before = self.path.read_bytes()
         value = self.run_helper(apply=True, stopped=lambda: False)
@@ -350,3 +501,4 @@ class RemoteReconciliationTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
