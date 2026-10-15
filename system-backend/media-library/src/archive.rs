@@ -204,8 +204,37 @@ pub fn verified_payloads(
     Ok(result)
 }
 
+pub fn local_payloads_valid(config: &MediaLibraryConfig, asset: &AssetRecord) -> bool {
+    let paths = role_paths(asset);
+    if paths.is_empty() || asset.original_path.is_none() || paths.len() != asset.archive_files.len() {
+        return false;
+    }
+    let mut seen = BTreeSet::new();
+    asset.archive_files.iter().all(|receipt| {
+        if !seen.insert(receipt.role.as_str()) {
+            return false;
+        }
+        let Some((_, local, expected)) = paths.iter().find(|(role, _, _)| *role == receipt.role) else {
+            return false;
+        };
+        local_path(config, asset, local).is_ok()
+            && expected.is_none_or(|hash| hash.eq_ignore_ascii_case(&receipt.sha256))
+            && fs::metadata(local).is_ok_and(|metadata| metadata.is_file() && metadata.len() == receipt.size_bytes)
+            && media::sha256_file(local).is_ok_and(|hash| hash == receipt.sha256)
+    })
+}
+
 pub fn restore(config: &MediaLibraryConfig, asset: &AssetRecord) -> Result<(), String> {
-    let paths = verified_payloads(config, asset, false)?;
+    // A crash marker may still have every valid local file. Reuse them even
+    // while the NAS is down or the reserve forbids allocating another copy.
+    if local_payloads_valid(config, asset) {
+        return Ok(());
+    }
+    let paths = verified_payloads(config, asset, false)?.into_iter()
+        .filter(|(local, _, size, expected)| {
+            !fs::metadata(local).is_ok_and(|metadata| metadata.len() == *size)
+                || !media::sha256_file(local).is_ok_and(|hash| hash == *expected)
+        }).collect::<Vec<_>>();
     let bytes = paths.iter().fold(0u64, |total, (_, _, size, _)| total.saturating_add(*size));
     if free_bytes(&config.storage.root)? < config.storage.min_free_bytes.saturating_add(bytes) {
         return Err("insufficient local free space to restore this asset; NAS originals retained".to_string());

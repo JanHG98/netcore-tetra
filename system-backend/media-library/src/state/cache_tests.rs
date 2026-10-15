@@ -356,3 +356,39 @@ fn a_bad_archive_does_not_starve_other_assets_and_retries_are_bounded() {
     assert_eq!(f.library.next_auto_archive().unwrap().asset_id, bad.asset_id);
     assert!(bad.original_path.as_ref().unwrap().is_file());
 }
+
+#[test]
+fn recall_evicts_another_idle_asset_to_make_room_for_requested_payloads() {
+    let f = Fixture::new();
+    let wanted = f.archived();
+    f.library.maintenance(None).unwrap();
+    let idle = f.archived();
+    assert!(f.stored(&wanted.asset_id).local_offloaded);
+    assert!(!f.stored(&idle.asset_id).local_offloaded);
+    f.library.file_for(&wanted.asset_id, "preview").unwrap();
+    assert!(!f.stored(&wanted.asset_id).local_offloaded);
+    assert!(f.stored(&idle.asset_id).local_offloaded);
+    assert!(wanted.preview_path.as_ref().unwrap().is_file());
+    assert!(!idle.preview_path.as_ref().unwrap().exists());
+}
+
+#[test]
+fn complete_valid_local_crash_copy_needs_neither_nas_nor_duplicate_disk_space() {
+    let f = Fixture::new();
+    let asset = f.archived();
+    let original = asset.original_path.as_ref().unwrap();
+    use std::os::unix::fs::MetadataExt;
+    let inode = fs::metadata(original).unwrap().ino();
+    {
+        let mut inner = lock(&f.library.inner);
+        inner.state.assets.get_mut(&asset.asset_id).unwrap().local_offloaded = true;
+        inner.config.storage.min_free_bytes = u64::MAX;
+        persist_locked(&mut inner).unwrap();
+    }
+    let root = f.config.storage.recording_archive_root.as_ref().unwrap();
+    fs::rename(root, root.with_extension("offline")).unwrap();
+    f.library.file_for(&asset.asset_id, "preview").unwrap();
+    assert!(!f.stored(&asset.asset_id).local_offloaded);
+    assert_eq!(fs::metadata(original).unwrap().ino(), inode);
+}
+

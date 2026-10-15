@@ -1766,7 +1766,7 @@ impl SharedLibrary {
         };
         let cache = {
             let mut inner = lock(&self.inner);
-            match relieve_storage_locked(&mut inner) {
+            match relieve_storage_locked(&mut inner, 0, None) {
                 Ok(value) => value,
                 Err(error) => {
                     inner.archive_last_error = Some(error.clone());
@@ -1806,7 +1806,13 @@ fn ensure_local_locked(inner: &mut LibraryInner, asset_id: &str) -> Result<(), S
     if !asset.local_offloaded {
         return Ok(());
     }
-    if let Err(error) = crate::archive::restore(&inner.config, &asset) {
+    let recall = if crate::archive::local_payloads_valid(&inner.config, &asset) {
+        Ok(())
+    } else {
+        let bytes = asset.archive_files.iter().fold(0u64, |sum, file| sum.saturating_add(file.size_bytes));
+        relieve_storage_locked(inner, bytes, Some(asset_id)).map(|_| ())
+    }.and_then(|_| crate::archive::restore(&inner.config, &asset));
+    if let Err(error) = recall {
         inner.archive_last_error = Some(error.clone());
         publish_status(inner);
         return Err(error);
@@ -1819,8 +1825,10 @@ fn ensure_local_locked(inner: &mut LibraryInner, asset_id: &str) -> Result<(), S
     persist_locked(inner)
 }
 
-fn relieve_storage_locked(inner: &mut LibraryInner) -> Result<Value, String> {
+fn relieve_storage_locked(inner: &mut LibraryInner, recall_bytes: u64, exclude: Option<&str>) -> Result<Value, String> {
     let config = inner.config.clone();
+    let target = config.storage.local_cache_max_bytes.saturating_sub(recall_bytes);
+    let reserve = config.storage.min_free_bytes.saturating_add(recall_bytes);
     let mut used = media::total_directory_bytes(&config.storage.root);
     let mut available = crate::archive::free_bytes(&config.storage.root)?;
     let mut released = 0u64;
@@ -1838,6 +1846,9 @@ fn relieve_storage_locked(inner: &mut LibraryInner) -> Result<Value, String> {
         if offloaded >= 32 {
             break;
         }
+        if exclude == Some(asset.asset_id.as_str()) {
+            continue;
+        }
         if inner.state.jobs.iter().any(|job| job.asset_id == asset.asset_id
             && matches!(job.state.as_str(), "queued" | "playing"))
         {
@@ -1846,8 +1857,8 @@ fn relieve_storage_locked(inner: &mut LibraryInner) -> Result<Value, String> {
         let aged = config.storage.local_cache_max_age_secs > 0
             && now.signed_duration_since(asset.local_last_accessed_at.unwrap_or(asset.created_at))
                 .num_seconds() >= config.storage.local_cache_max_age_secs.min(i64::MAX as u64) as i64;
-        if !asset.local_offloaded && !aged && used <= config.storage.local_cache_max_bytes
-            && available >= config.storage.min_free_bytes
+        if !asset.local_offloaded && !aged && used <= target
+            && available >= reserve
         {
             continue;
         }
