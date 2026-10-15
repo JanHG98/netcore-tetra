@@ -32,3 +32,18 @@ jobs:
         run: |
           cargo build --locked -p netcore-media-library
           python3 -B tools/test_media_nas_archive.py -v
+
+  generated:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render deployment profile from canonical templates
+        run: |
+          python3 deploy/open-lab/netcore-deploy.py render
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('deploy/open-lab/generated/configs/media-library/media-library.toml')
+          print('NETCORE_MEDIA_GENERATED_JSON=' + json.dumps(path.read_text(), ensure_ascii=True))
+          PY
