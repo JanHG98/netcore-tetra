@@ -161,5 +161,48 @@ class NativeHttpArchive(unittest.TestCase):
                     thread.join(timeout=5)
 
 
+
+class RuntimeUpdateSource(unittest.TestCase):
+    def test_operator_sparse_source_builds_media_and_loads_updater(self):
+        import sys
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                                         text=True).strip()
+        old = subprocess.run(["git", "config", "--get", "uploadpack.allowFilter"], cwd=ROOT,
+                             capture_output=True, text=True)
+        try:
+            subprocess.run(["git", "config", "uploadpack.allowFilter", "true"], cwd=ROOT, check=True)
+            with tempfile.TemporaryDirectory(prefix="netcore-media-source-") as temporary:
+                source = Path(temporary)
+                def run(*arguments, **kwargs):
+                    completed = subprocess.run(arguments, cwd=source, text=True,
+                                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                               timeout=180, **kwargs)
+                    if completed.returncode:
+                        raise AssertionError(completed.stderr[-5000:])
+                    return completed.stdout
+                run("git", "init", "-q")
+                run("git", "remote", "add", "origin", ROOT.as_uri())
+                run("git", "config", "http.version", "HTTP/1.1")
+                run("git", "config", "remote.origin.promisor", "true")
+                run("git", "config", "remote.origin.partialclonefilter", "blob:none")
+                run("git", "fetch", "--depth", "1", "--filter=blob:none", "origin", commit)
+                run("git", "sparse-checkout", "init", "--no-cone")
+                run("git", "sparse-checkout", "set", "--no-cone", "--stdin",
+                    input="/*\n!/Docs/\n!/wiki/\n")
+                run("git", "checkout", "--detach", commit)
+                self.assertEqual(run("git", "rev-parse", "HEAD").strip(), commit)
+                self.assertFalse((source / "Docs").exists())
+                self.assertTrue((source / "system-backend/media-library/src/archive.rs").is_file())
+                self.assertTrue((source / "system-backend/media-library/src/state/cache_tests.rs").is_file())
+                run(sys.executable, "-B", str(source / "tools/operator/update-netcore-service.py"),
+                    "--help")
+                run("cargo", "build", "--locked", "-p", "netcore-media-library",
+                    "--target-dir", str(ROOT / "target"))
+                print("Operator source: exact commit, Docs excluded, updater and media build passed")
+        finally:
+            if old.returncode == 0:
+                subprocess.run(["git", "config", "uploadpack.allowFilter", old.stdout.strip()], cwd=ROOT, check=True)
+            else:
+                subprocess.run(["git", "config", "--unset", "uploadpack.allowFilter"], cwd=ROOT, check=True)
 if __name__ == "__main__":
     unittest.main()

@@ -1130,18 +1130,19 @@ impl SharedLibrary {
     pub fn retry_job(&self, job_id: &str, input: ActionInput) -> Result<DispatchJob, String> {
         let mut inner = lock(&self.inner);
         require_management(&inner)?;
-        let job = inner
-            .state
-            .jobs
-            .iter_mut()
-            .find(|job| job.job_id == job_id)
-            .ok_or_else(|| "job not found".to_string())?;
-        if !matches!(job.state.as_str(), "failed" | "cancelled" | "shadowed") {
+        let previous = inner.state.jobs.iter().find(|job| job.job_id == job_id)
+            .cloned().ok_or_else(|| "job not found".to_string())?;
+        if !matches!(previous.state.as_str(), "failed" | "cancelled" | "shadowed") {
             return Err("only failed, cancelled or shadowed jobs can be retried".to_string());
         }
-        if job.attempts >= job.max_attempts {
+        if previous.attempts >= previous.max_attempts {
             return Err("job retry limit reached".to_string());
         }
+        if inner.config.runtime.operating_mode != SHADOW_MODE {
+            ensure_local_locked(&mut inner, &previous.asset_id)?;
+        }
+        let job = inner.state.jobs.iter_mut().find(|job| job.job_id == job_id)
+            .expect("job exists while library is locked");
         job.state = "queued".to_string();
         job.frame_index = 0;
         job.queued_targets = 0;

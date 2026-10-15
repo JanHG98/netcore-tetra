@@ -292,3 +292,49 @@ fn changing_kind_recalls_old_root_before_switching_archive() {
     let archived = f.library.archive_asset(&asset.asset_id, ActionInput { actor: None }).unwrap();
     assert!(archived.archive_path.unwrap().starts_with(f.config.storage.tts_archive_root.as_ref().unwrap()));
 }
+
+#[test]
+fn retry_recalls_both_station_and_direct_tetra_playout_before_queueing() {
+    for direct in [false, true] {
+        let f = Fixture::new();
+        let mut asset = f.ready("recording");
+        if direct {
+            let tetra = f.config.storage.root.join(&asset.asset_id).join("audio.tacelp");
+            fs::write(&tetra, [0x5a; 35 * 3]).unwrap();
+            {
+                let mut inner = lock(&f.library.inner);
+                inner.config.playout.mode = MEDIA_SWITCH_PLAYOUT_MODE.to_string();
+                let stored = inner.state.assets.get_mut(&asset.asset_id).unwrap();
+                stored.tetra_path = Some(tetra.clone());
+                stored.tetra_sha256 = Some(media::sha256_file(&tetra).unwrap());
+                stored.metadata.tetra_frame_count = Some(3);
+                stored.broadcast_ready = true;
+            }
+        }
+        asset = f.library.archive_asset(&asset.asset_id, ActionInput { actor: None }).unwrap();
+        let input = serde_json::from_value(json!({
+            "asset_id":asset.asset_id,"destination_kind":"group","destination_id":1234,
+            "station_id":"fixture","session_id":"fixture-session","target_logical_ts":1,
+        })).unwrap();
+        let job = f.library.create_dispatch(input).unwrap();
+        f.library.claim_dispatch().unwrap();
+        f.library.fail_dispatch(&job.job_id, "fixture failure".to_string());
+        f.library.maintenance(None).unwrap();
+        assert!(f.stored(&asset.asset_id).local_offloaded);
+        let archive_root = f.config.storage.recording_archive_root.as_ref().unwrap();
+        let offline = archive_root.with_extension("offline");
+        fs::rename(archive_root, &offline).unwrap();
+        assert!(f.library.retry_job(&job.job_id, ActionInput { actor: None }).is_err());
+        assert_eq!(f.library.job(&job.job_id).unwrap().state, "failed");
+        fs::rename(&offline, archive_root).unwrap();
+        let retry = f.library.retry_job(&job.job_id, ActionInput { actor: None }).unwrap();
+        assert_eq!(retry.state, "queued");
+        assert!(!f.stored(&asset.asset_id).local_offloaded);
+        let claim = f.library.claim_dispatch().unwrap();
+        if direct {
+            assert!(claim.tetra_path.unwrap().is_file());
+        } else {
+            assert!(asset.preview_path.as_ref().unwrap().is_file());
+        }
+    }
+}
