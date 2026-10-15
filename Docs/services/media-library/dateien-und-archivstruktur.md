@@ -67,7 +67,11 @@ ein editierbares NAS-Manifest allein genügt nicht.
 
 Vorschau, Originaldownload, Wellenform, neue Aussendung, Auftragswiederholung
 und erneute Verarbeitung holen ausgelagerte Dateien vorher lokal zurück.
-Dies gilt auch für den TACELP-Cache direkter Media-Switch-Aussendungen.
+Dies gilt auch für den TACELP-Cache direkter Media-Switch-Aussendungen. Für eine
+Rückholung schaffen andere entbehrliche, geprüfte Cachekopien bei Bedarf Platz;
+die lokale Reserve bleibt berücksichtigt. Vollständig vorhandene, gegen den
+privaten Beleg geprüfte Arbeitskopien werden nach einem Neustart ohne erneute
+Dateiallokation verwendet, auch bei ausgefallenem NAS.
 Wartende und aktive Aussendungen verhindern die Freigabe ihres Assets.
 Bereits geöffnete HTTP-Dateideskriptoren bleiben nach einem späteren Unlink
 lesbar. Ein Neustart zwischen Zustandscommit und Teilfreigabe lässt sich

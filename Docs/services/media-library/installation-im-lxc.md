@@ -83,7 +83,9 @@ installierten Stand; Datei- und Funk-Fachprüfung werden separat bestätigt.
 Die Logarchivierung hat ihren eigenen
 [Einrichtungsblock](../../deployment/logarchiv-auf-nas.md#auf-media-library-installieren).
 
-Nativ geprüft auf Ubuntu24.04/26.04:39 Rust-Fälle sowie ein echter HTTP-Durchlauf
+Nativ geprüft auf Ubuntu24.04/26.04:41 Rust-Fälle sowie ein echter HTTP-Durchlauf
 mit NAS-Ausfall, Rückholung, Wellenform und WAV-Übergabe an eine simulierte
 Basisstation. Ein weiterer nativer Fall baut die tatsächlich isoliert abgerufenen
 Laufzeitquellen und lädt den Updater. Das ist kein neuer Funkbeleg auf CT138/TBS.
+
+[Native Abschlussprüfung](https://github.com/JanHG98/netcore-tetra/actions/runs/38807448143) an `93f8e8bb`:41 Rust- und2 Integrationsfälle je Ubuntu-Version sowie der Vorlagen-/Bash-Abgleich bestanden. Der [zentrale Quellabgleich](https://github.com/JanHG98/netcore-tetra/actions/runs/38807448169) ist ebenfalls grün.
