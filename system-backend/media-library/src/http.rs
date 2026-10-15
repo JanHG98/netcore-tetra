@@ -390,6 +390,9 @@ fn asset_file_response(
                 ),
             )],
         ),
+        Err(error) if library.asset(asset_id).is_some_and(|asset| asset.local_offloaded) => {
+            json_response(503, &json!({"error":error,"retryable":true}))
+        }
         Err(error) => not_found(error),
     }
 }

@@ -3,12 +3,14 @@ on:
   pull_request:
     paths:
       - 'system-backend/media-library/**'
+      - 'tools/test_media_nas_archive.py'
       - '.github/workflows/media-nas-archive.yml'
       - 'Docs/services/media-library/dateien-und-archivstruktur.md'
   push:
     branches: [main]
     paths:
       - 'system-backend/media-library/**'
+      - 'tools/test_media_nas_archive.py'
       - '.github/workflows/media-nas-archive.yml'
   workflow_dispatch:
 permissions:
@@ -26,3 +28,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Verify archive, eviction, recall, restart and open file ownership
         run: cargo test --locked -p netcore-media-library
+      - name: Real HTTP archive, NAS outage, recall and basis-station WAV delivery
+        run: |
+          cargo build --locked -p netcore-media-library
+          python3 -B tools/test_media_nas_archive.py -v
