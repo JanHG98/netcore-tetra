@@ -3,6 +3,7 @@
 
 // Was: Bindet das Untermodul Konfiguration in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
+mod archive;
 mod config;
 // Was: Bindet das Untermodul HTTP in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.

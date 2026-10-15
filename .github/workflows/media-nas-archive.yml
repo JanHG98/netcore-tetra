@@ -1,0 +1,55 @@
+name: Media NAS archive and recall
+on:
+  pull_request:
+    paths:
+      - 'system-backend/media-library/**'
+      - 'tools/test_media_nas_archive.py'
+      - '.github/workflows/media-nas-archive.yml'
+      - 'Docs/services/media-library/dateien-und-archivstruktur.md'
+      - 'Docs/services/media-library/installation-im-lxc.md'
+  push:
+    branches: [main]
+    paths:
+      - 'system-backend/media-library/**'
+      - 'tools/test_media_nas_archive.py'
+      - '.github/workflows/media-nas-archive.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify archive, eviction, recall, restart and open file ownership
+        run: cargo test --locked -p netcore-media-library
+      - name: Real HTTP archive, NAS outage, recall and basis-station WAV delivery
+        run: |
+          cargo build --locked -p netcore-media-library
+          python3 -B tools/test_media_nas_archive.py -v
+
+  generated:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify canonical deployment profiles and operator Bash blocks
+        run: |
+          python3 deploy/open-lab/netcore-deploy.py check-generated
+          python3 - <<'PY'
+          import re
+          import subprocess
+          from pathlib import Path
+          path = Path('Docs/services/media-library/installation-im-lxc.md')
+          blocks = re.findall(r'```bash\n(.*?)```', path.read_text(), re.S)
+          assert blocks, 'No operator blocks found'
+          for block in blocks:
+              subprocess.run(['bash', '-n'], input=block, text=True, check=True)
+          print(f'Media operator Bash blocks: {len(blocks)} passed')
+          PY

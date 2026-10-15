@@ -115,6 +115,10 @@ pub fn write_atomic(path: &Path, bytes: &[u8], fsync: bool) -> Result<(), String
         file.sync_all().map_err(|error| format!("cannot sync {}: {error}", part.display()))?;
     }
     fs::rename(&part, path).map_err(|error| format!("cannot publish {}: {error}", path.display()))?;
+    if fsync {
+        File::open(parent).and_then(|directory| directory.sync_all())
+            .map_err(|error| format!("cannot sync directory {}: {error}", parent.display()))?;
+    }
     Ok(())
 }
 
@@ -136,6 +140,10 @@ pub fn copy_atomic(source: &Path, destination: &Path, fsync: bool) -> Result<u64
     }
     fs::rename(&part, destination)
         .map_err(|error| format!("cannot publish {}: {error}", destination.display()))?;
+    if fsync {
+        File::open(parent).and_then(|directory| directory.sync_all())
+            .map_err(|error| format!("cannot sync directory {}: {error}", parent.display()))?;
+    }
     Ok(bytes)
 }
 
@@ -420,6 +428,10 @@ fn command_partial_path(output: &Path) -> PathBuf {
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
 pub fn waveform(path: &Path, points: usize) -> Result<Vec<f32>, String> {
     let bytes = fs::read(path).map_err(|error| format!("cannot read preview {}: {error}", path.display()))?;
+    waveform_bytes(&bytes, points)
+}
+
+pub fn waveform_bytes(bytes: &[u8], points: usize) -> Result<Vec<f32>, String> {
     let data = wav_data_chunk(&bytes)?;
     if data.len() < 2 {
         return Ok(Vec::new());

@@ -8,7 +8,6 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::path::PathBuf;
 use std::thread;
 use std::time::Instant;
 
@@ -70,7 +69,7 @@ struct HttpRequest {
 // Warum: Die feste Variantenliste verhindert ungültige Zwischenwerte und zwingt den Code zu einer bewussten Fallbehandlung.
 enum ResponseBody {
     Bytes(Vec<u8>),
-    File(PathBuf),
+    File(File),
 }
 
 // Was: Bündelt die zusammengehörigen Werte für HTTP response in einem Datentyp.
@@ -391,6 +390,9 @@ fn asset_file_response(
                 ),
             )],
         ),
+        Err(error) if library.asset(asset_id).is_some_and(|asset| asset.local_offloaded) => {
+            json_response(503, &json!({"error":error,"retryable":true}))
+        }
         Err(error) => not_found(error),
     }
 }
@@ -514,7 +516,7 @@ fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Re
     // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     let length = match &response.body {
         ResponseBody::Bytes(bytes) => bytes.len() as u64,
-        ResponseBody::File(path) => std::fs::metadata(path)?.len(),
+        ResponseBody::File(file) => file.metadata()?.len(),
     };
     let mut headers = format!(
         concat!(
@@ -540,8 +542,7 @@ fn write_response(stream: &mut TcpStream, response: HttpResponse) -> std::io::Re
     // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
     match response.body {
         ResponseBody::Bytes(bytes) => stream.write_all(&bytes),
-        ResponseBody::File(path) => {
-            let mut file = File::open(path)?;
+        ResponseBody::File(mut file) => {
             std::io::copy(&mut file, stream)?;
             Ok(())
         }
@@ -599,12 +600,12 @@ fn html(value: &str) -> HttpResponse {
 
 // Was: Führt den Arbeitsschritt `file_response` für file response aus.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
-fn file_response(path: PathBuf, content_type: &'static str, headers: Vec<(String, String)>) -> HttpResponse {
+fn file_response(file: File, content_type: &'static str, headers: Vec<(String, String)>) -> HttpResponse {
     HttpResponse {
         status: 200,
         content_type,
         headers,
-        body: ResponseBody::File(path),
+        body: ResponseBody::File(file),
     }
 }
 

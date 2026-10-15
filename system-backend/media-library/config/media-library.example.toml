@@ -73,6 +73,14 @@ max_total_bytes = 21474836480
 # Warum: Der Wert wird ausdrücklich festgelegt, damit Build oder Dienst nicht von unbekannten Standardannahmen abhängen.
 fsync_imports = true
 
+# Geprüfte Archivkopien lokal als begrenzten Cache vorhalten.
+auto_offload = true
+local_cache_max_bytes = 2147483648
+local_cache_max_age_secs = 86400
+min_free_bytes = 2147483648
+# Verhindert lokale Schattenkopien unter einem ausgefallenen NAS-Mount.
+archive_require_network_mount = true
+
 # Was: Öffnet den Konfigurationsabschnitt `runtime`.
 # Warum: Zusammengehörige Einstellungen bleiben dadurch klar gruppiert und leichter auffindbar.
 [runtime]
@@ -114,6 +122,8 @@ auto_approve_tts = false
 # Automatically copy completed basis-station recordings and TTS media to archive_root.
 auto_archive_recordings = true
 auto_archive_tts = true
+# Auch reguläre Uploads erhalten automatisch einen geprüften NAS-Beleg.
+auto_archive_uploads = true
 
 # End-to-end radio playout. In basisstation mode the Media Library delegates
 # the approved preview WAV to the selected TBS. The TBS downloads the complete
