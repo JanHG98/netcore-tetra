@@ -57,7 +57,7 @@ impl Fixture {
             "kind":kind, "approve":true,
             "data_base64":base64::engine::general_purpose::STANDARD.encode(wav),
         })).unwrap();
-        let asset = self.library.upload(input).unwrap();
+        let asset = self.library.create_upload(input).unwrap();
         let original = asset.original_path.as_ref().unwrap();
         let processed = media::process_asset(&self.config, original, original.parent().unwrap(), "audio/wav").unwrap();
         self.library.complete_processing(&asset.asset_id, processed).unwrap()
