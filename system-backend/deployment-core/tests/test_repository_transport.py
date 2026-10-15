@@ -119,6 +119,7 @@ class TransportTests(unittest.TestCase):
         working = self.root / 'working'
         subprocess.run(['git', 'init', '-b', 'main', str(working)], check=True, capture_output=True)
         for name, body in {'Cargo.toml': b'workspace', 'system-backend/test/runtime.py': b'first runtime\n',
+                           'Docs/basisstation.config.sanitized.example.toml': b'[tbs]\n',
                            'Docs/large.pdf': os.urandom(1024 * 1024), 'wiki/large.dat': os.urandom(32768)}.items():
             path = working / name
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -156,7 +157,8 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(git(source, 'rev-parse', 'HEAD'), self.sha)
         self.assertEqual(git(source, 'rev-list', '--count', 'HEAD'), '1')
         self.assertEqual((source / 'system-backend/test/runtime.py').read_text(), 'first runtime\n')
-        self.assertFalse((source / 'Docs').exists())
+        self.assertFalse((source / 'Docs/large.pdf').exists())
+        self.assertEqual((source / deploy.RUNTIME_DOCS[0]).read_text(), '[tbs]\n')
         self.assertFalse((source / 'wiki').exists())
         missing = git(source, 'rev-list', '--objects', '--missing=print', '--all')
         self.assertIn('?' + self.doc_blob, missing)
@@ -210,7 +212,8 @@ class TransportTests(unittest.TestCase):
             source = repo.checkout(commit, self.logs.append)
         except RuntimeError as exc:
             self.fail(str(exc) + '\n' + '\n'.join(self.logs[-20:]) + '\n' + repr(self.http.backend_errors))
-        self.assertFalse((source / 'Docs').exists())
+        self.assertEqual(sorted(p.relative_to(source).as_posix() for p in (source / 'Docs').rglob('*') if p.is_file()),
+                         sorted(deploy.RUNTIME_DOCS))
         self.assertFalse((source / 'wiki').exists())
         members = tomllib.loads((source / 'Cargo.toml').read_text())['workspace']['members']
         for member in members:
@@ -218,6 +221,7 @@ class TransportTests(unittest.TestCase):
         catalog = json.loads((source / 'system-backend/deployment-core/catalog.json').read_text())
         for service in catalog:
             self.assertTrue((source / service['config_template']).is_file(), service['name'])
+            self.assertTrue((source / service['install']).is_file(), service['name'])
         archive = self.root / 'agents.tar'
         git(source, 'archive', '--format=tar', '--output', str(archive), 'HEAD', '--',
             'tools/operator', 'system-backend/deployment-core')
@@ -228,7 +232,7 @@ class TransportTests(unittest.TestCase):
         self.assertIn('tools/operator/update-netcore-service.py', names)
         self.assertFalse(any(name.startswith(('Docs/', 'crates/')) for name in names))
         print(f'WORKSPACE_PROOF: {len(members)} Cargo members, {len(catalog)} service templates, '
-              f'agent archive {archive.stat().st_size} bytes; Docs/wiki excluded')
+              f'agent archive {archive.stat().st_size} bytes; large Docs/wiki excluded, TBS template included')
 
     def test_truncated_lazy_blob_download_is_retried_in_a_fresh_private_tree(self):
         self.http.drop_blob = 1

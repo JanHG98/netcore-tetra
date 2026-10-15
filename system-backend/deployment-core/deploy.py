@@ -21,6 +21,8 @@ from bindings import resolve_config
 from common import CATALOG, ROOT, SHA, atomic_write, identifier, json_file, request_json, toml_dump
 
 HEALTH_TIMEOUT_SECONDS = 60
+RUNTIME_SUBSET_VERSION = '2'
+RUNTIME_DOCS = ('Docs/basisstation.config.sanitized.example.toml',)
 
 
 class CommandFailed(RuntimeError):
@@ -197,13 +199,13 @@ class Repository:
                                         capture_output=True, text=True, timeout=10)
                 actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=previous,
                                                  text=True, timeout=10).strip()
-                if policy.returncode == 0 and policy.stdout.strip() == '1' and actual == sha:
+                if policy.returncode == 0 and policy.stdout.strip() == RUNTIME_SUBSET_VERSION and actual == sha:
                     log('Geprüfter Runtime-Quellcommit bereits im Cache: ' + sha)
                     return previous
             # Build a complete replacement privately. A failed fetch or lazy
             # blob download during checkout never modifies the selected cache.
             for attempt in range(1, 4):
-                log(f'Runtime-Quellabruf {attempt}/3: Commit {sha}; HTTP/1.1, flach, ohne Docs/wiki')
+                log(f'Runtime-Quellabruf {attempt}/3: Commit {sha}; HTTP/1.1, flach, ohne große Dokumentationsdateien')
                 try:
                     with tempfile.TemporaryDirectory(prefix='source-new-', dir=self.state) as temporary:
                         source = Path(temporary) / 'source'
@@ -212,7 +214,8 @@ class Repository:
                         for name, value in (('http.version', 'HTTP/1.1'), ('pack.threads', '1'),
                                 ('remote.origin.promisor', 'true'), ('remote.origin.partialclonefilter', 'blob:none')):
                             run(['git', 'config', name, value], log, source, timeout=30)
-                        run(['git', 'sparse-checkout', 'set', '--no-cone', '/*', '!/Docs/', '!/wiki/'],
+                        run(['git', 'sparse-checkout', 'set', '--no-cone', '/*', '!/Docs/*', '!/wiki/',
+                             *('/' + name for name in RUNTIME_DOCS)],
                             log, source, timeout=30)
                         run(['git', 'fetch', '--depth=1', '--filter=blob:none', '--no-tags',
                              'origin', sha], log, source, timeout=300)
@@ -221,7 +224,7 @@ class Repository:
                                                          text=True, timeout=10).strip()
                         if actual != sha:
                             raise RuntimeError('Commit verification failed')
-                        run(['git', 'config', 'netcore.runtimeSubset', '1'], log, source, timeout=30)
+                        run(['git', 'config', 'netcore.runtimeSubset', RUNTIME_SUBSET_VERSION], log, source, timeout=30)
                         selected = self.state / ('source-' + uuid.uuid4().hex)
                         source.rename(selected)
                     break
