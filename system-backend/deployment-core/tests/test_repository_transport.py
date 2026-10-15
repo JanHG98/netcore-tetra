@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -27,6 +28,7 @@ class GitHTTP:
         self.directory = directory
         self.commit = commit.encode()
         self.posts = []
+        self.backend_errors = []
         self.drop = 0
         self.drop_blob = 0
         self.fail_current_blobs = False
@@ -51,9 +53,15 @@ class GitHTTP:
                 env = dict(os.environ, GIT_PROJECT_ROOT=str(fixture.directory), GIT_HTTP_EXPORT_ALL='1',
                            PATH_INFO=path, QUERY_STRING=query, REQUEST_METHOD=self.command,
                            CONTENT_TYPE=self.headers.get('Content-Type', ''), CONTENT_LENGTH=str(len(body)),
+                           HTTP_CONTENT_ENCODING=self.headers.get('Content-Encoding', ''),
                            GIT_PROTOCOL=self.headers.get('Git-Protocol', ''), REMOTE_ADDR='127.0.0.1')
-                output = subprocess.run(['git', 'http-backend'], env=env, input=body,
-                                        capture_output=True, check=True, timeout=30).stdout
+                response = subprocess.run(['git', 'http-backend'], env=env, input=body,
+                                          capture_output=True, timeout=30)
+                if response.returncode:
+                    fixture.backend_errors.append(response.stderr.decode(errors='replace'))
+                    self.send_error(500)
+                    return
+                output = response.stdout
                 delimiter = b'\r\n\r\n' if b'\r\n\r\n' in output else b'\n\n'
                 headers, payload = output.split(delimiter, 1)
                 fields = dict(line.split(':', 1) for line in headers.decode().splitlines() if ':' in line)
@@ -186,12 +194,22 @@ class TransportTests(unittest.TestCase):
         workspace = Path(os.environ['NETCORE_TRANSPORT_WORKSPACE']).resolve()
         origin = self.root / 'workspace.git'
         subprocess.run(['git', 'clone', '--bare', '--shared', str(workspace), str(origin)], check=True, capture_output=True)
+        # Shared clones borrow the source's object directory. Preserve the
+        # shallow boundary of actions/checkout as well as its objects.
+        shallow = Path(git(workspace, 'rev-parse', '--git-path', 'shallow'))
+        if not shallow.is_absolute():
+            shallow = workspace / shallow
+        if shallow.is_file():
+            shutil.copyfile(shallow, origin / 'shallow')
         git(origin, 'config', 'uploadpack.allowFilter', 'true')
         git(origin, 'config', 'uploadpack.allowAnySHA1InWant', 'true')
         commit = git(workspace, 'rev-parse', 'HEAD')
         repo = deploy.Repository(dict(repository=self.http.url.replace('/origin.git', '/workspace.git'),
                                       state_dir=str(self.root / 'workspace-state')))
-        source = repo.checkout(commit, self.logs.append)
+        try:
+            source = repo.checkout(commit, self.logs.append)
+        except RuntimeError as exc:
+            self.fail(str(exc) + '\n' + '\n'.join(self.logs[-20:]) + '\n' + repr(self.http.backend_errors))
         self.assertFalse((source / 'Docs').exists())
         self.assertFalse((source / 'wiki').exists())
         members = tomllib.loads((source / 'Cargo.toml').read_text())['workspace']['members']
