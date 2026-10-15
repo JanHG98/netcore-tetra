@@ -29,6 +29,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Real HTTP Git transport, truncated packs, cache and mutex guards
+        env:
+          NETCORE_TRANSPORT_WORKSPACE: ${{ github.workspace }}
         run: python3 -B -m unittest discover -s system-backend/deployment-core/tests -p 'test_repository_*.py' -v
       - name: Existing pinning and process stream contract
         run: PYTHONPATH=system-backend/deployment-core/tests python3 -B -m unittest test_core.CoreTests.test_git_branch_resolves_to_pinned_commit test_core.CoreTests.test_command_stream_no_lost_output_or_shell -v

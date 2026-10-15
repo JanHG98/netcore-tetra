@@ -1,5 +1,6 @@
 """Real smart HTTP Git transport, truncated packs and immutable runtime caches."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import json
 import os
 from pathlib import Path
 import socket
@@ -7,11 +8,14 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
+import tomllib
 import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import deploy
+from jobs import Jobs
 
 
 def git(path, *args):
@@ -19,11 +23,13 @@ def git(path, *args):
 
 
 class GitHTTP:
-    def __init__(self, directory):
+    def __init__(self, directory, commit):
         self.directory = directory
+        self.commit = commit.encode()
         self.posts = []
         self.drop = 0
         self.drop_blob = 0
+        self.fail_current_blobs = False
         self.denied = False
         fixture = self
 
@@ -55,11 +61,18 @@ class GitHTTP:
                     fixture.posts.append(body)
                 drop = False
                 if self.command == 'POST' and b'want ' in body:
+                    commit_request = b'want ' + fixture.commit in body
+                    if commit_request:
+                        fixture.fail_current_blobs = fixture.drop_blob > 0
+                        if fixture.drop_blob:
+                            fixture.drop_blob -= 1
                     if fixture.drop:
                         fixture.drop -= 1
                         drop = True
-                    elif fixture.drop_blob and b'filter blob:none' not in body:
-                        fixture.drop_blob -= 1
+                    elif not commit_request and fixture.fail_current_blobs:
+                        # Git can retry individual blobs internally after a
+                        # failed prefetch. Fail the whole first checkout, then
+                        # let the next private preparation fetch succeed.
                         drop = True
                 self.send_response(200)
                 for name, value in fields.items():
@@ -116,7 +129,7 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(cloned.returncode, 0, cloned.stderr.decode(errors='replace'))
         git(self.origin, 'config', 'uploadpack.allowFilter', 'true')
         git(self.origin, 'config', 'uploadpack.allowAnySHA1InWant', 'true')
-        self.http = GitHTTP(self.root)
+        self.http = GitHTTP(self.root, self.sha)
         self.addCleanup(self.http.close)
         self.state = self.root / 'state'
         self.repo = deploy.Repository(dict(repository=self.http.url, state_dir=str(self.state)))
@@ -150,6 +163,54 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(git(source, 'rev-parse', 'HEAD'), self.sha)
         self.assertEqual(sum('Git-Transport unterbrochen' in line for line in self.logs), 1)
         self.assertTrue(all(b'git-receive-pack' not in body for body in self.http.posts))
+
+    def test_one_persisted_job_runs_installer_once_after_recovered_git_download(self):
+        self.http.drop = 1
+        installations = []
+        def execute(request, log):
+            source = self.repo.checkout(request['commit'], log)
+            installations.append((source / 'system-backend/test/runtime.py').read_text())
+            return dict(service=request['service'], commit=request['commit'], ready=True)
+        jobs = Jobs(self.root / 'queue', execute)
+        submitted = jobs.submit(dict(service='ip-gateway', action='update', commit=self.sha, confirm_restart=True))
+        deadline = time.monotonic() + 45
+        while jobs.get(submitted['id'])['status'] in ('queued', 'running') and time.monotonic() < deadline:
+            time.sleep(.02)
+        result = jobs.get(submitted['id'])
+        self.assertEqual(result['status'], 'succeeded', result['log'])
+        self.assertEqual(installations, ['first runtime\n'])
+        self.assertEqual(len(jobs.list()), 1)
+
+    @unittest.skipUnless(os.environ.get('NETCORE_TRANSPORT_WORKSPACE'), 'Full workspace proof runs in focused Linux CI')
+    def test_actual_repository_workspace_and_agent_archive_remain_complete(self):
+        workspace = Path(os.environ['NETCORE_TRANSPORT_WORKSPACE']).resolve()
+        origin = self.root / 'workspace.git'
+        subprocess.run(['git', 'clone', '--bare', '--shared', str(workspace), str(origin)], check=True, capture_output=True)
+        git(origin, 'config', 'uploadpack.allowFilter', 'true')
+        git(origin, 'config', 'uploadpack.allowAnySHA1InWant', 'true')
+        commit = git(workspace, 'rev-parse', 'HEAD')
+        repo = deploy.Repository(dict(repository=self.http.url.replace('/origin.git', '/workspace.git'),
+                                      state_dir=str(self.root / 'workspace-state')))
+        source = repo.checkout(commit, self.logs.append)
+        self.assertFalse((source / 'Docs').exists())
+        self.assertFalse((source / 'wiki').exists())
+        members = tomllib.loads((source / 'Cargo.toml').read_text())['workspace']['members']
+        for member in members:
+            self.assertTrue((source / member / 'Cargo.toml').is_file(), member)
+        catalog = json.loads((source / 'system-backend/deployment-core/catalog.json').read_text())
+        for service in catalog:
+            self.assertTrue((source / service['config_template']).is_file(), service['name'])
+        archive = self.root / 'agents.tar'
+        git(source, 'archive', '--format=tar', '--output', str(archive), 'HEAD', '--',
+            'tools/operator', 'system-backend/deployment-core')
+        import tarfile
+        with tarfile.open(archive) as packed:
+            names = packed.getnames()
+        self.assertIn('system-backend/deployment-core/deploy.py', names)
+        self.assertIn('tools/operator/update-netcore-service.py', names)
+        self.assertFalse(any(name.startswith(('Docs/', 'crates/')) for name in names))
+        print(f'WORKSPACE_PROOF: {len(members)} Cargo members, {len(catalog)} service templates, '
+              f'agent archive {archive.stat().st_size} bytes; Docs/wiki excluded')
 
     def test_truncated_lazy_blob_download_is_retried_in_a_fresh_private_tree(self):
         self.http.drop_blob = 1
