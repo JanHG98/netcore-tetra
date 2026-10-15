@@ -26,6 +26,7 @@ DEFAULT_CONFIG = Path("/etc/netcore/log-archive.json")
 STATE = Path("/var/lib/netcore-log-archive")
 PROGRAM = Path("/opt/netcore-log-archive/archive-netcore-logs.py")
 RSYSLOG_RULE = Path("/etc/logrotate.d/rsyslog")
+GLOBAL_ROTATION = Path("/etc/logrotate.conf")
 SYSTEMD_UNITS = Path("/etc/systemd/system")
 NETWORK_FILESYSTEMS = {"nfs", "nfs4", "cifs", "smb3"}
 ROTATED = re.compile(
@@ -357,7 +358,7 @@ def archive_pass(config, apply):
     return result
 
 
-def adapt_rsyslog_rule(text):
+def adapt_rsyslog_rule(text, global_text=""):
     """Keep the distro's reopen script; only this rule's retention becomes archival."""
     lines = text.splitlines()
     starts = [i for i, line in enumerate(lines) if line.strip() == "{"]
@@ -368,6 +369,24 @@ def adapt_rsyslog_rule(text):
             "rsyslog-Rotation benötigt ein vorhandenes Reopen-Skript")
     require(not any(line.strip() in {"copytruncate", "copy"} for line in lines),
             "copy/copytruncate werden für verlustfreie Logarchivierung nicht unterstützt")
+    # Ubuntu's /etc/logrotate.conf supplies su/create before including rsyslog.
+    # This timer deliberately runs just the rsyslog rule, so make those inherited
+    # defaults explicit. In particular, /var/log may be group-writable by syslog.
+    defaults = {}
+    for line in global_text.splitlines():
+        value = line.split("#", 1)[0].strip()
+        if value.startswith("include ") or value == "{":
+            break
+        if re.fullmatch(r"su\s+[A-Za-z0-9_-]+\s+[A-Za-z0-9_-]+", value):
+            defaults["su"] = value
+        if re.fullmatch(r"create(?:\s+[0-7]{3,4}(?:\s+[A-Za-z0-9_-]+(?:\s+[A-Za-z0-9_-]+)?)?)?", value):
+            defaults["create"] = value
+    body = lines[starts[0] + 1:ends[0]]
+    inherited = []
+    if not any(re.match(r"\s*su\s+", line) for line in body):
+        inherited.append("    " + defaults.get("su", "su root root"))
+    if not any(re.match(r"\s*(?:create|nocreate)(?:\s|$)", line) for line in body):
+        inherited.append("    " + defaults.get("create", "create"))
     result, script = [], False
     for index, line in enumerate(lines):
         directive = line.strip().split(maxsplit=1)[0] if line.strip() else ""
@@ -382,6 +401,7 @@ def adapt_rsyslog_rule(text):
         if index == starts[0]:
             result.extend(["    rotate -1", "    maxsize 64M", "    nocompress",
                            "    dateext", "    dateformat -%Y%m%d-%H%M%S"])
+            result.extend(inherited)
         if directive == "endscript":
             script = False
     return "\n".join(result) + "\n"
@@ -438,7 +458,8 @@ def install(args):
     require(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}", host), "Ungültiger Hostname")
     rule_path = RSYSLOG_RULE
     old_rule = rule_path.read_text() if rule_path.is_file() else None
-    new_rule = adapt_rsyslog_rule(old_rule) if old_rule is not None else None
+    global_text = GLOBAL_ROTATION.read_text() if GLOBAL_ROTATION.is_file() else ""
+    new_rule = adapt_rsyslog_rule(old_rule, global_text) if old_rule is not None else None
     if not args.apply:
         return {"phase": "planned", "config": config, "mount": mount,
                 "rsyslog_rotation": new_rule is not None,

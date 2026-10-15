@@ -290,6 +290,57 @@ class RotationTests(unittest.TestCase):
             self.assertEqual(checked.returncode, 0, checked.stderr)
 
 
+
+    def test_global_ubuntu_su_and_create_are_made_explicit(self):
+        value = archive.adapt_rsyslog_rule(
+            RULE, "weekly\nsu root adm\nrotate 4\ncreate 0640 root adm\n"
+                  "include /etc/logrotate.d\nsu attacker attacker\n")
+        self.assertIn("su root adm\n", value)
+        self.assertIn("create 0640 root adm\n", value)
+        self.assertNotIn("attacker", value)
+
+    def test_explicit_rule_su_and_create_remain_authoritative(self):
+        rule = RULE.replace("weekly", "weekly\n su root root\n create 0600 root root")
+        value = archive.adapt_rsyslog_rule(rule, "su root adm\ncreate 0640 root adm\n")
+        self.assertIn("su root root\n", value)
+        self.assertIn("create 0600 root root\n", value)
+        self.assertNotIn("su root adm", value)
+
+    def test_real_group_writable_ubuntu_log_directory_rotates_and_recreates(self):
+        import grp
+        self.assertIsNotNone(shutil.which("logrotate"))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            gid = grp.getgrnam("adm").gr_gid
+            os.chown(root, 0, gid)
+            root.chmod(0o775)
+            current = root / "syslog"
+            current.write_bytes(b"native ubuntu log\n")
+            current.chmod(0o640)
+            os.chown(current, 0, gid)
+            raw = (str(current) + "\n{\n rotate 4\n weekly\n missingok\n notifempty\n"
+                   " compress\n delaycompress\n postrotate\n /bin/true\n endscript\n}\n")
+            config = root / "rotation.conf"
+            state = root / "state"
+            config.write_text(raw)
+            rejected = subprocess.run(["logrotate", "--debug", "--state", str(state),
+                                       str(config)], capture_output=True, text=True)
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertIn("insecure permissions", rejected.stderr)
+            config.write_text(archive.adapt_rsyslog_rule(
+                raw, "su root adm\ncreate\ninclude /etc/logrotate.d\n"))
+            corrected = subprocess.run(["logrotate", "--force", "--state", str(state),
+                                        str(config)], capture_output=True, text=True)
+            self.assertEqual(corrected.returncode, 0, corrected.stderr)
+            self.assertTrue(current.is_file())
+            self.assertEqual(current.read_bytes(), b"")
+            self.assertEqual(current.stat().st_gid, gid)
+            self.assertEqual(current.stat().st_mode & 0o777, 0o640)
+            archived = list(root.glob("syslog-????????-??????"))
+            self.assertEqual(len(archived), 1)
+            self.assertEqual(archived[0].read_bytes(), b"native ubuntu log\n")
+
+
 class InstallTests(unittest.TestCase):
     def test_install_does_not_wait_for_huge_transfer_and_starts_both_timers(self):
         from argparse import Namespace
