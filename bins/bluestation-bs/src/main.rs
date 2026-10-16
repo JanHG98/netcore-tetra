@@ -390,6 +390,11 @@ fn build_bs_stack(
     // re-inject SendSds commands through the CMCE command dispatcher, same as the dashboard.
     if let Some(d) = c_d.get(&TetraEntity::Cmce) {
         cmce.set_wx_cmd_sender(d.clone_sender());
+        let sda_path = tetra_entities::net_sda::journal_path(std::path::Path::new(config_path));
+        match tetra_entities::net_sda::runtime::start_worker(cfg.clone(), d.clone_sender(), sda_path) {
+            Ok(requests) => cmce.set_sda_service(requests),
+            Err(error) => tracing::error!("SDA: cannot start service: {error}"),
+        }
     }
     // Restart recovery: when enabled, seed MM from the on-disk cache and start the cold-start
     // re-registration sweep. The cache path is the configured override, else

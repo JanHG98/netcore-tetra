@@ -258,6 +258,8 @@ pub struct SdsBsSubentity {
     wx_cmd_tx: Option<crossbeam_channel::Sender<ControlCommand>>,
     /// Monotonic timestamp of the last periodic WX auto-send, to rate-limit the broadcast.
     last_periodic_wx: Option<std::time::Instant>,
+    /// Bounded queue to the NetCore SDA worker; no file/network I/O in the radio thread.
+    sda_requests: Option<crossbeam_channel::Sender<crate::net_sda::engine::SdaRequest>>,
     /// Active status-based emergency sessions, keyed by source ISSI. Populated when a radio sends
     /// an emergency status (U-STATUS pre-coded status Emergency); refreshed on re-sends; removed on
     /// a non-Emergency status, clear-timeout (tick), or operator clear. Non-empty means at least one
@@ -293,6 +295,7 @@ impl SdsBsSubentity {
             last_dltime: TdmaTime::default(),
             wx_cmd_tx: None,
             last_periodic_wx: None,
+            sda_requests: None,
             emergency_sessions: std::collections::HashMap::new(),
             status_reply_last: HashMap::new(),
             last_status_by_issi: HashMap::new(),
@@ -312,6 +315,10 @@ impl SdsBsSubentity {
     pub fn set_wx_cmd_sender(&mut self, tx: crossbeam_channel::Sender<ControlCommand>) {
         self.wx_cmd_tx = Some(tx);
     }
+    pub fn set_sda_service(&mut self, requests: crossbeam_channel::Sender<crate::net_sda::engine::SdaRequest>) {
+        self.sda_requests = Some(requests);
+    }
+
 
     // Was: Führt den Arbeitsschritt `shared_config` für shared Konfiguration aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
@@ -859,6 +866,12 @@ impl SdsBsSubentity {
         // to the dashboard/control ISSI. Consume it before the WX responder so it is not logged as
         // a bogus weather request.
         if self.handle_sepura_emergency_sds(queue, source_ssi, dest_ssi, &pdu.user_defined_data) {
+            return;
+        }
+
+        // NC1 shares the dashboard/service ISSI with WX on existing stations.
+        // Claim it first so a disabled or busy weather responder cannot swallow SDA.
+        if self.handle_sda_request(queue, source_ssi, dest_ssi, rx_is_group, &pdu.user_defined_data) {
             return;
         }
 
@@ -1721,6 +1734,33 @@ impl SdsBsSubentity {
             }
             _ => None,
         }
+    }
+
+    /// Claim only NC1 text to the individual local service, independently of WX.
+    fn handle_sda_request(&mut self, queue: &mut MessageQueue, source: u32, dest: u32, is_group: bool, data: &SdsUserData) -> bool {
+        use crate::net_sda::{engine::SdaRequest, is_server_message, is_service_message};
+        let SdsUserData::Type4(bits, bytes) = data else { return false; };
+        if (*bits as usize) != bytes.len() * 8 { return false; }
+        let text = Self::extract_sds_text(data);
+        let protocol_id = bytes.first().copied().unwrap_or_default();
+        if !is_service_message(dest, is_group, protocol_id, Self::is_sds_tl_report(data), &text) {
+            return false;
+        }
+        let reference = Self::sds_tl_message_reference(data);
+        let accepted = is_server_message(&text) || self.sda_requests.as_ref().is_some_and(|tx| {
+            tx.try_send(SdaRequest { source_issi: source, message_reference: reference, text }).is_ok()
+        });
+        if let Some(mr) = reference {
+            // Transport receipt is separate from the later, persisted application result.
+            let status = if accepted { 0 } else { SDS_TL_STATUS_UNDELIVERABLE };
+            self.send_d_sds_data(queue, dest, source, SsiType::Issi,
+                SdsUserData::Type4(32, vec![protocol_id, 0x10, status, mr]));
+        }
+        if !accepted {
+            tracing::warn!("SDA: worker unavailable or queue full; rejecting request from ISSI {}", source);
+        }
+        self.emit(TelemetryEvent::SdsActivity { source_issi: source, dest_issi: dest, source: "sda".into() });
+        true
     }
 
     /// Handle a weather request SDS addressed to the service ISSI. Spawns a worker that

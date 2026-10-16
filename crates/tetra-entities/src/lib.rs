@@ -21,6 +21,8 @@ pub mod net_control_room;
 // Was: Bindet das Untermodul net Audio- und Mediendaten in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod net_media;
+/// NetCore SDA text commands, bounded replies and local journal.
+pub mod net_sda;
 // Was: Bindet das Untermodul net Telemetrie in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
 pub mod net_telemetry;
