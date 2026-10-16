@@ -2,7 +2,9 @@
 
 **Quellen:** [system-backend/sip-switch](../../../system-backend/sip-switch) · [Repository-Root](../../..). Bei Befehlen das in der Anleitung angegebene Arbeitsverzeichnis beachten.
 
-Stand: **9. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../roadmaps/gesamtroadmap.md).
+Stand: **16. Oktober 2026**. Die Anleitung beschreibt die im Hauptzweig vorhandene Umsetzung; Anlagen- und Funkabnahmen stehen in der [Gesamtroadmap](../../roadmaps/gesamtroadmap.md).
+
+**Stationsverwaltung im WebUI:** [Basisstationen anlegen, bearbeiten, löschen und private SIP-TOML direkt für Deploy herunterladen](basisstationen-im-webui.md). Die Anleitung enthält den vollständigen Updateblock für bestehende SIP-Switch-LXC.
 
 Der zentrale SIP-Switch ist im Normalbetrieb die **einzige Vermittlungsstelle zwischen NetCore-TETRA und dem vorhandenen PBX**. Die lokale TBS behält trotzdem ihren eigenen Asterisk als Edge-B2BUA und Notvermittlung.
 

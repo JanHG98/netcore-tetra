@@ -41,6 +41,11 @@ Danach in `/etc/netcore/sip-switch.toml` unter `[pbx]` Benutzername, Auth-Benutz
 
 ## 3. Jede TBS im SIP Switch anlegen
 
+Im WebUI auf Port 8300 unter **Basisstationen** anlegen, bearbeiten oder löschen.
+Mit Zentraladresse und eigenem PBX-Ersatzweg lässt sich dort die private
+SIP-Fallback-TOML für Deploy herunterladen. [Bedienung und vollständiger
+Updateblock](basisstationen-im-webui.md). Alternativ bleibt der CLI-Weg verfügbar:
+
 ```bash
 ./install/add-tbs-openlab.sh \
   SRV-M-TBS-01 \
