@@ -412,6 +412,14 @@ class SipSwitch:
             return {"revision": self.config_revision(), "central_host": host, "central_port": int_value(port, 5060),
                     "fallback_host": self.config.pbx.get("host", ""), "fallback_port": self.config.pbx.get("port", 5060)}
 
+    @staticmethod
+    def _pbx_registration_identity(pbx: dict[str, Any]) -> tuple[str, int, str]:
+        # REGISTER uses username in client_uri; auth/from/contact overrides do not
+        # give two registrations separate PBX accounts.
+        host = str(pbx.get("host", "")).strip().rstrip(".").lower()
+        user = str(pbx.get("username") or pbx.get("contact_user") or "netcore-tetra").strip()
+        return host, int_value(pbx.get("port"), 5060), user
+
     def station_export(self, item: dict[str, Any]) -> str:
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", item.get("node_id", "")):
             raise StationError("Stationskennung muss zum Deploy-Profil passen: 1-64 Zeichen, Buchstaben/Ziffern/Punkt/_/-", 409)
@@ -437,9 +445,22 @@ class SipSwitch:
         if pbx.get("auth_username") and not pbx.get("password"):
             raise StationError("Passwort für die PBX-Anmeldung im Stationseditor ergänzen", 409)
         pbx.update(enabled=True, mode="registration", port=station_port(pbx.get("port", 5060), "PBX-Port"), allow="ulaw")
+        identity = self._pbx_registration_identity(pbx)
+        shared = self.config.pbx
+        if str(shared.get("mode", "ip_trunk")).lower() == "registration" and identity == self._pbx_registration_identity(shared):
+            raise StationError("PBX-Ersatzweg verwendet die Registrierung des zentralen Switch-Trunks; eigenen PBX-Benutzer für diese TBS eintragen", 409)
+        for other in self.config.tbs:
+            if other.get("node_id") == item["node_id"] or not bool_value(other.get("enabled", True), True):
+                continue
+            fallback = other.get("fallback_pbx", {})
+            if fallback.get("host") and fallback.get("username") and identity == self._pbx_registration_identity(fallback):
+                raise StationError("PBX-Ersatzweg verwendet bereits die Registrierung der Station " + str(other["node_id"]) + "; eigenen PBX-Benutzer für diese TBS eintragen", 409)
         data = {"service": {"name": "netcore-tbs-sip-fallback", "phase": "11c", "mode": "open_lab", "node_id": item["node_id"]},
                 "central": central, "fallback_pbx": pbx}
-        return "# Private SIP-Konfiguration: im Deploy-UI beim gleichnamigen TBS-Profil importieren.\n" + config_toml(data)
+        return ("# Private SIP-Konfiguration: im Deploy-UI beim gleichnamigen TBS-Profil importieren.\n"
+                "# Im Image: native TBS :5062 -> lokaler Asterisk 127.0.0.1:5060 -> SIP-Switch [central].\n"
+                "# Nur bei bestätigtem Zentralausfall: lokaler Asterisk -> eigener PBX-Zugang [fallback_pbx].\n"
+                + config_toml(data))
 
     def station_list(self) -> list[dict[str, Any]]:
         with self.lock:
@@ -1618,12 +1639,12 @@ html[data-netcore-ui] :where(.core-main, .core-side, .core-detail) { min-width: 
 <label>Maximale Kontakte<input id="station-contacts" type="number" min="1" max="32" value="1" required></label>
 <label><input id="station-enabled" type="checkbox" checked>Station aktiviert</label>
 </div>
-<h3>Zentralweg für das Image</h3><div class="station-grid">
+<h3>Zentralweg für das Image</h3><p>Im Pi verbindet sich die native TBS mit ihrem lokalen Asterisk auf 127.0.0.1:5060. Dieser meldet sich am hier eingetragenen zentralen SIP-Switch an.</p><div class="station-grid">
 <label>SIP-Switch-Adresse<input id="station-central-host" placeholder="IP oder DNS, vom Pi erreichbar"><small>Kein localhost; vorbelegt mit der Adresse dieser WebUI.</small></label>
 <label>SIP-Port<input id="station-central-port" type="number" min="1" max="65535" value="5060" required></label>
 </div>
 <h3>Eigener PBX-Ersatzweg dieser TBS</h3>
-<p>Den zugehörigen TBS-Zugang im vorhandenen PBX eintragen. Er wird nur beim Ausfall des Zentralwegs verwendet. Der gemeinsame Switch-Trunk wird nicht übernommen.</p>
+<p>Den zugehörigen TBS-Zugang im vorhandenen PBX eintragen. Er wird nur beim Ausfall des Zentralwegs verwendet. Jede TBS braucht dafür einen eigenen PBX-Benutzer, getrennt vom zentralen Switch-Trunk und von anderen TBS. Doppelte Registrierungen an derselben PBX-Adresse und demselben Port sperren den TOML-Export.</p>
 <div class="station-grid">
 <label>PBX-Adresse<input id="station-pbx-host" placeholder="IP oder DNS des PBX"></label>
 <label>PBX-Port<input id="station-pbx-port" type="number" min="1" max="65535" value="5060" required></label>

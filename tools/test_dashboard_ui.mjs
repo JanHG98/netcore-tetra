@@ -316,6 +316,24 @@ try {
       assert.deepEqual(admin.errors, [], `${name}: JavaScript must not throw`);
     });
   }
+  await check('SIP REGISTER shows only confirmed registration as connected and explains the local hop', async () => {
+    await navigate(admin.page, 'asterisk');
+    const previous = fixtureApi['/api/asterisk/status'];
+    try {
+      for (const status of ['registering', 'not registered', 'auth challenge', 'failed 403', 'registered']) {
+        fixtureApi['/api/asterisk/status'] = {config: {enabled: true, configured: true, remote: '127.0.0.1:5060'},
+          runtime: {enabled: true, configured: true, register_status: status, active_dialogs: 0}};
+        await admin.page.evaluate(() => loadAsteriskStatus());
+        assert.equal(await admin.page.locator('#ast-register').textContent(), status);
+        assert.equal(await admin.page.locator('#ast-register-card').evaluate(el => el.classList.contains('is-ok')), status === 'registered');
+        assert.equal(await admin.page.locator('#ast-hero-pill').evaluate(el => el.classList.contains('pill-ok')), status === 'registered');
+        assert.ok(await admin.page.locator('#ast-local-hint').isVisible());
+      }
+      fixtureApi['/api/asterisk/status'].config.remote = '10.0.1.125:5060';
+      await admin.page.evaluate(() => loadAsteriskStatus());
+      assert.equal(await admin.page.locator('#ast-local-hint').isVisible(), false);
+    } finally {fixtureApi['/api/asterisk/status'] = previous;}
+  });
   await check('RF spectrum/waterfall left and quality metrics right', async () => {
     await navigate(admin.page, 'rf');
     const spectrum = await admin.page.locator('#rf-spectrum').boundingBox();

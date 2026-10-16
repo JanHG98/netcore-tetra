@@ -3190,7 +3190,8 @@ tbody tr:hover td{background:color-mix(in srgb,var(--bg3) 70%, transparent);}
           </div>
           <div class="info-grid">
             <div class="info-row"><div class="info-key" data-i18n="ast_sip_listen">SIP-Listener</div><div class="info-val" id="ast-sip-listen">—</div></div>
-            <div class="info-row"><div class="info-key" data-i18n="ast_remote">Asterisk-Gegenstelle</div><div class="info-val" id="ast-remote">—</div></div>
+            <div class="info-row"><div class="info-key" data-i18n="ast_remote">SIP-Gegenstelle</div><div class="info-val" id="ast-remote">—</div></div>
+            <p id="ast-local-hint" class="muted" style="grid-column:1/-1" hidden>127.0.0.1:5060 ist der lokale Asterisk im Pi. Er verbindet die native TBS mit dem zentralen SIP-Switch oder bei Zentralausfall mit dem PBX-Ersatzweg. Der REGISTER-Status hier zeigt nur die lokale Anmeldung.</p>
             <div class="info-row"><div class="info-key" data-i18n="ast_rtp">RTP-Ports</div><div class="info-val" id="ast-rtp">—</div></div>
             <div class="info-row"><div class="info-key" data-i18n="ast_codec">Codec</div><div class="info-val" id="ast-codec">—</div></div>
             <div class="info-row"><div class="info-key">Zeitlimit für eingehenden Rufaufbau</div><div class="info-val" id="ast-setup-timeout">—</div></div>
@@ -4933,7 +4934,7 @@ const LANGS={
     "ast_last_rx":"Letzter Empfang",
     "ast_last_tx":"Letzte Sendung",
     "ast_register":"REGISTER",
-    "ast_remote":"Asterisk-Gegenstelle",
+    "ast_remote":"SIP-Gegenstelle",
     "ast_rtp":"RTP-Ports",
     "ast_sip_listen":"SIP-Listener",
     "asterisk":"Asterisk SIP",
@@ -8465,7 +8466,10 @@ async function loadAsteriskStatus(){
     set('ast-register', rt.register_status||'—');
     set('ast-dialogs', (rt.active_dialogs??0)+' active dialogs');
     set('ast-sip-listen', rt.sip_listen||c.sip_listen);
-    set('ast-remote', rt.remote||c.remote);
+    const remote=rt.remote||c.remote||'';
+    set('ast-remote', remote);
+    const localHint=document.getElementById('ast-local-hint');
+    if(localHint) localHint.hidden=!/^127\.0\.0\.1:5060$/.test(remote);
     set('ast-rtp', rt.rtp_port_range||c.rtp_port_range);
     set('ast-codec', rt.codec||c.codec);
     set('ast-setup-timeout', (c.inbound_setup_timeout_secs??20)+'s');
@@ -8475,7 +8479,7 @@ async function loadAsteriskStatus(){
     // Hero connection pill — driven by the live REGISTER state.
     const enabled=!!(c.enabled||rt.enabled);
     const reg=(rt.register_status||'').toLowerCase();
-    const registered=/regist|ok|online|200/.test(reg)&&!/fail|error|unreach|timeout/.test(reg);
+    const registered=enabled&&reg==='registered';
     setIntegrationHero('ast', enabled, registered, rt.register_status||(enabled?t('offline'):'deaktiviert'),
       (c.configured||rt.configured)?(rt.sip_listen||c.sip_listen||''):'');
     const cc=document.getElementById('ast-configured-card');
@@ -8485,6 +8489,8 @@ async function loadAsteriskStatus(){
   }catch(e){
     set('ast-configured','—');set('ast-enabled','Status nicht verfügbar');set('ast-register','—');
     set('ast-last-error',t('conn_error'));
+    const localHint=document.getElementById('ast-local-hint');
+    if(localHint) localHint.hidden=true;
     setIntegrationHero('ast', false, false, t('conn_error'), '');
   }
 }

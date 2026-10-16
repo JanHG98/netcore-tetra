@@ -84,6 +84,41 @@ class StationTests(StationFixture, unittest.TestCase):
             self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
             self.assertEqual(self.path.with_suffix('.toml.bak').stat().st_mode & 0o777, 0o600)
 
+    def test_export_rejects_shared_switch_registration_even_with_other_auth_and_from(self):
+        item = self.create()
+        self.app.config.pbx.update(mode='registration', host='PBX.EXAMPLE.', username='101')
+        item['fallback_pbx'].update(host='pbx.example', username='101', auth_username='other-auth', from_user='other-from')
+        with self.assertRaisesRegex(StationError, 'zentralen Switch-Trunks') as error:
+            self.app.station_export(item)
+        self.assertEqual(error.exception.status, 409)
+        public = next(v for v in self.app.station_list() if v['node_id'] == item['node_id'])
+        self.assertFalse(public['export_ready'])
+        self.assertNotIn('private-pbx-secret', public['export_error'])
+        # Different digest or From fields do not change the REGISTER client_uri.
+        self.assertNotIn('shared-trunk-secret', public['export_error'])
+
+    def test_export_rejects_duplicate_enabled_station_fallback_but_allows_disabled(self):
+        first = self.create()
+        second = self.payload('TBS-SECOND')
+        second['aliases'] = []
+        self.app.change_station('create', second)
+        with self.assertRaisesRegex(StationError, 'TBS-SECOND'):
+            self.app.station_export(first)
+        self.app.change_station('update', {'revision': self.app.config_revision(), 'enabled': False}, 'TBS-SECOND')
+        self.assertEqual(validate_sip_config(self.app.station_export(first), 'TBS-TEST')['fallback_pbx']['username'], 'dedicated-tbs')
+
+    def test_export_allows_distinct_registration_and_ip_trunk(self):
+        item = self.create()
+        original = copy.deepcopy(item['fallback_pbx'])
+        self.app.config.pbx.update(mode='registration', **original)
+        for changed in ({'username': 'another-tbs'}, {'host': '10.0.1.161'}, {'port': 5070}):
+            with self.subTest(changed=changed):
+                item['fallback_pbx'] = {**original, **changed}
+                validate_sip_config(self.app.station_export(item), 'TBS-TEST')
+        item['fallback_pbx'] = original
+        self.app.config.pbx['mode'] = 'ip_trunk'
+        validate_sip_config(self.app.station_export(item), 'TBS-TEST')
+
     def test_update_rename_preserves_passwords_settings_and_other_stations(self):
         item = copy.deepcopy(self.create())
         self.app.change_station('update', {'revision': self.app.config_revision(), 'node_id': 'TBS-RENAMED',
@@ -287,6 +322,16 @@ class StationHttpTests(StationFixture, unittest.TestCase):
         self.assertEqual(self.request('PUT', '/api/v1/tbs/TBS-TEST', body)[0], 200)
         self.assertEqual(self.request('DELETE', '/api/v1/tbs/TBS-TEST', {'revision': self.app.config_revision()})[0], 200)
         self.assertEqual(self.request('GET', '/api/v1/tbs/TBS-TEST/config.toml')[0], 404)
+
+    def test_http_download_rejects_pbx_collision_without_returning_private_toml(self):
+        self.create()
+        self.app.config.pbx.update(mode='registration', username='dedicated-tbs')
+        status, headers, body = self.request('GET', '/api/v1/tbs/TBS-TEST/config.toml')
+        self.assertEqual(status, 409)
+        self.assertNotIn('Content-Disposition', headers)
+        self.assertIn('Switch-Trunks', body.decode())
+        self.assertNotIn(b'private-pbx-secret', body)
+        self.assertNotIn(b'shared-trunk-secret', body)
 
     def test_http_conflict_wrong_origin_and_bad_json_have_clear_status(self):
         self.assertEqual(self.request('POST', '/api/v1/tbs', self.payload(), {'Origin': 'http://elsewhere.test'})[0], 403)

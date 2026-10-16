@@ -40,6 +40,23 @@ Danach die SIP-Switch-Seite vollständig neu laden. Ein vorhandener Deploy-Stand
 mit dem Feld **SIP-Fallback-Konfiguration** benötigt für diesen Export kein neues
 Importformat und kein zusätzliches VM-Update.
 
+## SIP-Verbindungen im Pi
+
+Das Image richtet zwei getrennte SIP-Prozesse im Pi ein. Die native TBS hört
+auf Port5062 und registriert sich mit einem privaten, beim Imagebau erzeugten
+Zugang am lokalen Asterisk auf `127.0.0.1:5060`. Dieser Asterisk registriert sich
+am zentralen SIP-Switch aus `[central]`. Bei bestätigtem Zentralausfall schaltet
+er ausschließlich auf den eigenen PBX-Zugang aus `[fallback_pbx]` um. Der Pi
+registriert sich dabei nicht an seinem eigenen nativen SIP-Listener.
+
+Die TBS-WebUI zeigt unter **SIP-Gegenstelle** den ersten dieser Schritte.
+`registered` bestätigt diese Anmeldung, nicht die Erreichbarkeit des zentralen
+Switches oder des PBX. `registering`, `not registered` und `auth challenge`
+sind keine bestätigte Anmeldung. Bei einem dauerhaft wartenden Zustand zuerst
+lokalen Asterisk-Dienst, dessen UDP-Port5060, den geladenen nativen Endpoint und
+die übereinstimmenden lokalen Zugangsdaten prüfen; erst danach die äußeren
+Registrierungen und die exklusive Umschaltung.
+
 ## Station anlegen, bearbeiten und löschen
 
 1. **Basisstation anlegen** öffnen. Die Stationskennung muss genau dem
@@ -53,7 +70,10 @@ Importformat und kein zusätzliches VM-Update.
    Zugriff über einen Proxy oder eine andere Managementadresse anpassen.
 4. Unter **Eigener PBX-Ersatzweg dieser TBS** den vorbereiteten TBS-Zugang am
    vorhandenen PBX eintragen: Adresse, Port, Benutzer und gegebenenfalls
-   Auth-Benutzer/Passwort. Der zentrale gemeinsame PBX-Trunk wird nicht kopiert.
+   Auth-Benutzer/Passwort. Der TBS-Benutzer muss sich vom zentralen registrierenden PBX-Trunk und von
+   den Ersatzwegen anderer aktivierter TBS an derselben PBX unterscheiden.
+   Ein anderer Auth-, From- oder Contact-Benutzer ersetzt keine eigene
+   REGISTER-Identität.
    Ohne Auth-Benutzer darf das Passwort bei einem entsprechend eingerichteten
    PBX leer bleiben. From-/Contact-Werte sind optional.
 5. **Speichern und anwenden** schreibt `/etc/netcore/sip-switch.toml`, sichert
@@ -77,7 +97,14 @@ Bei **TOML bereit** auf **SIP-TOML ↓** klicken. Die Datei heißt zum Beispiel
 `SRV-M-TBS-01-sip-fallback.toml`. Sie enthält die privaten Zugangsdaten für
 `[central]` und `[fallback_pbx]` sowie die Stationskennung unter `[service]`.
 Ist die Station deaktiviert oder fehlen notwendige Angaben, zeigt die Tabelle
-die Ergänzung an und bietet keinen unvollständigen Download an.
+die Ergänzung an und bietet keinen unvollständigen Download an. Das gilt auch
+bei einer doppelten PBX-Registrierung: gleicher PBX-Host, Port und
+REGISTER-Benutzer wie der registrierende zentrale Trunk oder der Ersatzweg einer
+anderen aktivierten TBS. Der direkte Download endet dann mit HTTP409 ohne
+private TOML. Hostnamen werden ohne Beachtung der Groß-/Kleinschreibung und ohne
+abschließenden Punkt verglichen; verschiedene DNS-Namen derselben PBX werden
+nicht automatisch aufgelöst. Bereits erzeugte Images werden dadurch nicht
+nachträglich korrigiert.
 
 In Deploy unter **Images** dasselbe TBS-Profil auswählen, **SIP für diese Station
 einrichten** öffnen und die Datei unter **SIP-Fallback-Konfiguration** auswählen.
@@ -91,6 +118,23 @@ Der vorhandene lokale Image-Fallback unterstützt UDP. Bei einem zentral auf TCP
 konfigurierten Switch weist der Export darauf hin; es wird kein irreführendes
 UDP-Profil ausgegeben. Die PBX-Zugänge und die Reihenfolge ihrer eingehenden
 Routen müssen im vorhandenen PBX eingerichtet sein.
+
+## Anlagenbefund am 16. Oktober 2026
+
+Die lesende Prüfung des laufenden Switches zeigt für den zentralen PBX-Trunk
+und für den Ersatzweg von SRV-M-TBS-01 jeweils `10.0.1.21:5060` mit
+REGISTER-Benutzer `101`. Bei gemeinsamer Nutzung können sich diese Kontakte am
+PBX verdrängen. Im PBX einen eigenen Zugang für die TBS einrichten und dessen
+zugehörige Daten im Stationseditor unter **Eigener PBX-Ersatzweg** übernehmen.
+Anschließend neu exportieren, beim gleichnamigen Deploy-Profil importieren und
+ein neues Image bauen. Der zentrale Switch-Trunk behält seinen eigenen Zugang.
+
+Der Export enthält als zentrale Gegenstelle korrekt `10.0.1.125:5060`.
+Die im TBS-Status sichtbare Loopbackadresse gehört zum lokalen Asterisk.
+Zum Diagnosezeitpunkt ist der Pi laut Betreiber ausgeschaltet oder im Neustart;
+fehlende HTTP-/SIP-Antworten sind deshalb kein Nachweis eines SIP-Fehlers.
+Die Ursache des früheren dauerhaften `registering` und der echte
+Registrierungs-/Rufablauf bleiben nach dem Start zu prüfen.
 
 ## Nachweise und Grenzen
 
