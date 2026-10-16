@@ -77,6 +77,18 @@ def main():
                 return child
 
             run('ip', 'link', 'set', 'lo', 'up')
+            # Server and client must have separate routing tables. Otherwise a
+            # ping to a server tunnel address is local delivery, not VPN traffic.
+            netns = work / 'netns'
+            netns.mkdir()
+            Path('/run/netns').mkdir(parents=True, exist_ok=True)
+            run('mount', '--bind', netns, '/run/netns')
+            run('ip', 'netns', 'add', 'nc-vpn-server')
+            run('ip', 'link', 'add', 'nc-uplink', 'type', 'veth', 'peer', 'name', 'nc-peer')
+            run('ip', 'link', 'set', 'nc-peer', 'netns', 'nc-vpn-server')
+            run('ip', '-n', 'nc-vpn-server', 'link', 'set', 'lo', 'up')
+            run('ip', '-n', 'nc-vpn-server', 'address', 'add', '192.0.2.2/24', 'dev', 'nc-peer')
+            run('ip', '-n', 'nc-vpn-server', 'link', 'set', 'nc-peer', 'up')
             run('openssl', 'req', '-new', '-x509', '-newkey', 'rsa:2048', '-nodes',
                 '-keyout', work / 'ca.key', '-out', work / 'ca.pem', '-days', '2',
                 '-subj', '/CN=NetCore disposable VPN CA')
@@ -98,14 +110,14 @@ def main():
                 'tls-auth "' + str(work / 'ta.key') + '" 0\n'
                 'script-security 3\nauth-user-pass-verify "' + str(auth) + '" via-env\n'
                 'verb 3\n')
-            spawn(['openvpn', '--config', str(server)], 'openvpn-server')
+            spawn(['ip', 'netns', 'exec', 'nc-vpn-server', 'openvpn', '--config', str(server)], 'openvpn-server')
             wait_for(lambda: 'Initialization Sequence Completed' in
                      (work / 'openvpn-server.log').read_text())
 
             # Same portable directive shapes as the operator's export, with
             # actual short-lived certificates and no external profile files.
             profile = ('dev tun\npersist-tun\npersist-key\nclient\nresolv-retry infinite\n'
-                       'reneg-sec 0\nremote 127.0.0.1 1194 udp4\nlport 0\n'
+                       'reneg-sec 0\nremote 192.0.2.2 1194 udp4\nlport 0\n'
                        'verify-x509-name server name\nremote-cert-tls server\nauth-user-pass\n')
             for tag, filename in [('ca', 'ca.pem'), ('cert', 'client.pem'),
                                   ('key', 'client.key'), ('tls-auth', 'ta.key')]:
@@ -149,7 +161,6 @@ def main():
                 private.mkdir()
                 Path(target).mkdir(parents=True, exist_ok=True)
                 run('mount', '--bind', private, target)
-            run('ip', 'link', 'add', 'nc-uplink', 'type', 'dummy')
             # OpenVPN sanitizes the up-helper environment. Bind the private
             # bus at its standard path so that helper cannot reach the host bus.
             bus_address = 'unix:path=/run/dbus/system_bus_socket'
@@ -176,9 +187,8 @@ def main():
 
             wait_for(lambda: 'nc-uplink' in run('nmcli', '-g', 'DEVICE', 'device'))
             run('nmcli', 'device', 'set', 'nc-uplink', 'managed', 'yes')
-            # NM manages its own synthetic carrier. A veth created behind
-            # udev in another network namespace is deliberately not managed.
-            run('nmcli', 'connection', 'add', 'type', 'dummy', 'ifname', 'nc-uplink',
+            # Explicitly manage this disposable wired peer, not runner policy.
+            run('nmcli', 'connection', 'add', 'type', 'ethernet', 'ifname', 'nc-uplink',
                 'con-name', 'fixture-uplink', 'ipv4.method', 'manual', 'ipv4.addresses',
                 '192.0.2.1/24', 'ipv4.gateway', '192.0.2.2', 'ipv6.method', 'disabled')
             run('nmcli', '--wait', '15', 'connection', 'up', 'fixture-uplink')
@@ -190,7 +200,8 @@ def main():
                 # The synthetic carrier models a connected wired interface;
                 # production's nmcli device/SSID parsing has separate tests.
                 policy.apply_policy(json.loads(cfg.read_text()),
-                    [dict(type='ethernet', addresses=['192.0.2.1/24'])], active)
+                    [dict(type='ethernet', addresses=run('nmcli', '-g', 'IP4.ADDRESS',
+                        'device', 'show', 'nc-uplink').splitlines())], active)
             def traffic():
                 assert key in run('nmcli', '-g', 'UUID', 'connection', 'show', '--active').splitlines()
                 run('ping', '-c', '1', '-W', '3', '10.67.0.1', timeout=10)
