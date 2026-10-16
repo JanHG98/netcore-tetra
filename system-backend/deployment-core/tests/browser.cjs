@@ -410,6 +410,7 @@ const path = require('node:path');
     assert.equal(await page.locator('#template-editor-save').isDisabled(),true);
     await page.locator('#template-source').fill(importedTemplate+'\n# Nicht speichern');
     await page.locator('#template-editor-cancel').click();
+    await page.waitForFunction(()=>document.querySelector('#template-source').value==='');
     assert.equal((await (await page.request.get(url+'/api/v1/template')).json()).toml,importedTemplate);
     assert.equal(await page.locator('#template-source').inputValue(),'','Closing must clear the private editor buffer');
     await page.locator('#template-edit').click();
