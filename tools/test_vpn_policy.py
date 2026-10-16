@@ -73,6 +73,33 @@ class PolicyTests(unittest.TestCase):
             policy.apply_policy(self.cfg, self.away, set(), runner=self.runner)
         self.runner.assert_not_called()
 
+    def test_device_collection_preserves_ssid_and_ignores_tunnel_addresses(self):
+        answers = {
+            ('-t', '-f', 'DEVICE', 'device'): 'eth0\nwlan0\ntun0',
+            ('-g', 'GENERAL.STATE', 'device', 'show', 'eth0'): '100 (connected)',
+            ('-g', 'GENERAL.TYPE', 'device', 'show', 'eth0'): 'ethernet',
+            ('-g', 'IP4.ADDRESS', 'device', 'show', 'eth0'): '192.0.2.10/24',
+            ('-g', 'GENERAL.STATE', 'device', 'show', 'wlan0'): '100 (connected)',
+            ('-g', 'GENERAL.TYPE', 'device', 'show', 'wlan0'): 'wifi',
+            ('-g', 'IP4.ADDRESS', 'device', 'show', 'wlan0'): '172.16.0.1/24',
+            ('-g', 'GENERAL.CON-UUID', 'device', 'show', 'wlan0'): 'wifi-uuid',
+            ('-g', '802-11-wireless.ssid', 'connection', 'show', 'uuid', 'wifi-uuid'): 'Home:WiFi',
+            ('-g', 'GENERAL.STATE', 'device', 'show', 'tun0'): '100 (connected)',
+            ('-g', 'GENERAL.TYPE', 'device', 'show', 'tun0'): 'tun',
+            ('-g', 'UUID', 'connection', 'show', '--active'): self.key,
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            import json
+            path = Path(temp) / 'network.json'
+            path.write_text(json.dumps(self.cfg))
+            with patch.object(policy, 'query', side_effect=lambda *args: answers[args]):
+                with patch.object(policy, 'apply_policy', return_value='home') as apply:
+                    policy.main(path)
+            self.assertEqual(apply.call_args.args[1], [
+                dict(type='ethernet', addresses=['192.0.2.10/24']),
+                dict(type='wifi', addresses=['172.16.0.1/24'], ssid='Home:WiFi')])
+            self.assertEqual(apply.call_args.args[2], {self.key})
+
     def test_malformed_lan_addresses_are_ignored(self):
         self.assertFalse(policy.trusted(
             [dict(type='ethernet', addresses=['', 'invalid'])], [], '10.0.1.0/24'))

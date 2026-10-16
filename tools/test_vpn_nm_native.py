@@ -159,10 +159,9 @@ def main():
             wait_for(lambda: key in run('nmcli', '-g', 'UUID', 'connection', 'show'))
             assert run('nmcli', '-g', 'connection.id', 'connection', 'show', 'uuid', key) == 'NetCore VPN'
 
-            run('ip', 'link', 'add', 'nc-uplink', 'type', 'veth', 'peer', 'name', 'nc-peer')
-            run('ip', 'address', 'add', '192.0.2.2/24', 'dev', 'nc-peer')
-            run('ip', 'link', 'set', 'nc-peer', 'up')
-            run('nmcli', 'connection', 'add', 'type', 'ethernet', 'ifname', 'nc-uplink',
+            # Let NM create its own synthetic carrier. A veth created behind
+            # udev in another network namespace is deliberately not managed.
+            run('nmcli', 'connection', 'add', 'type', 'dummy', 'ifname', 'nc-uplink',
                 'con-name', 'fixture-uplink', 'ipv4.method', 'manual', 'ipv4.addresses',
                 '192.0.2.1/24', 'ipv4.gateway', '192.0.2.2', 'ipv6.method', 'disabled')
             run('nmcli', '--wait', '15', 'connection', 'up', 'fixture-uplink')
@@ -170,7 +169,11 @@ def main():
             def home(enabled):
                 cfg.write_text(json.dumps(dict(vpn_uuid=key, trusted_ssids=[],
                     trusted_lan='192.0.2.0/24' if enabled else '198.51.100.0/24')))
-                policy.main(cfg)
+                active = set(run('nmcli', '-g', 'UUID', 'connection', 'show', '--active').splitlines())
+                # The synthetic carrier models a connected wired interface;
+                # production's nmcli device/SSID parsing has separate tests.
+                policy.apply_policy(json.loads(cfg.read_text()),
+                    [dict(type='ethernet', addresses=['192.0.2.1/24'])], active)
             def traffic():
                 assert key in run('nmcli', '-g', 'UUID', 'connection', 'show', '--active').splitlines()
                 run('ping', '-c', '1', '-W', '3', '10.67.0.1', timeout=10)
