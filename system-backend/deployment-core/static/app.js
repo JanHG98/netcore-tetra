@@ -280,7 +280,7 @@ async function refresh() {
       $('image-controller').value = status.advertise_url || location.origin;
       $('seeds').value = status.settings.seeds.join('\n'); $('bindings').value = Object.entries(status.settings.bindings).map(([key,value])=>`${key}=${value}`).join('\n'); initialized = true;
     }
-    $('template-status').textContent = status.has_template ? 'Standort-Template vorhanden. RF- und SDR-Einstellungen werden daraus übernommen.' : 'Noch kein Standort-Template. Importiere eine geprüfte TBS-Konfiguration; sie wird nicht per Discovery verteilt.';
+    renderTemplateState();
     if (requestedProfileRevision === profileRevision) renderProfiles(profiles);
     renderNodes(); renderJobs();
     if (status.role === 'controller') {
@@ -406,6 +406,56 @@ $('settings-form').onsubmit=guarded(async()=>{
   await api('/api/v1/settings',{ref:$('settings-ref').value,seeds:$('seeds').value.split('\n').map(x=>x.trim()).filter(Boolean),bindings});
   $('deploy-ref').value=$('settings-ref').value;notice('Einstellungen gespeichert.');await refresh();
 });
+let templateSubmitting=false,templateRevision=0;
+function renderTemplateState(){
+  $('template-status').textContent=status.has_template?'Standort-Template vorhanden. RF- und SDR-Einstellungen werden daraus übernommen.':'Noch kein Standort-Template. Erstelle es hier im Formular oder importiere eine vorhandene TBS-Konfiguration.';
+  $('template-new').disabled=status.has_template||templateSubmitting;
+  $('template-new').title=status.has_template?'Ein Standort-Template ist bereits vorhanden. Eine andere geprüfte Vorlage kannst du importieren.':'';
+}
+function templateValues(){
+  const fields=$('template-form').elements;
+  const number=name=>Number(fields.namedItem(name).value);
+  return {main_carrier:number('main_carrier'),secondary_carrier:$('template-dual').checked?number('secondary_carrier'):null,
+    sample_rate:number('sample_rate'),device:fields.namedItem('device').value,
+    freq_band:number('freq_band'),freq_offset:number('freq_offset'),duplex_spacing:number('duplex_spacing'),
+    custom_duplex_spacing:fields.namedItem('custom_duplex_spacing').value===''?null:number('custom_duplex_spacing'),
+    reverse_operation:fields.namedItem('reverse_operation').checked};
+}
+async function previewTemplate(){
+  if(!$('template-form').reportValidity())return;
+  const revision=++templateRevision;
+  $('template-error').textContent='';
+  try{
+    const result=await api('/api/v1/template/preview',templateValues());
+    if(revision!==templateRevision)return;
+    const mhz=value=>(value/1000000).toLocaleString('de-DE',{maximumFractionDigits:6})+' MHz';
+    $('template-rf').textContent='TBS-TX (Downlink): '+mhz(result.rf.tx_freq)+' · TBS-RX (Uplink): '+mhz(result.rf.rx_freq)+' · SDR-Mitten TX/RX: '+mhz(result.rf.tx_center_freq)+' / '+mhz(result.rf.rx_center_freq);
+    $('template-preview').textContent=result.toml;$('template-toml').hidden=false;
+  }catch(error){if(revision===templateRevision){$('template-error').textContent=error.message;$('template-rf').textContent='';$('template-toml').hidden=true;}}
+}
+$('template-new').onclick=guarded(async()=>{
+  $('template-form').reset();$('template-secondary-carrier').disabled=false;
+  $('template-form').querySelector('details').open=false;$('template-toml').open=false;$('template-toml').hidden=true;
+  $('template-error').textContent='';$('template-rf').textContent='Frequenzen werden berechnet …';
+  $('template-dialog').showModal();await previewTemplate();
+});
+$('template-form').oninput=()=>{
+  templateRevision++;$('template-secondary-carrier').disabled=!$('template-dual').checked;
+  $('template-toml').hidden=true;$('template-rf').textContent='Einstellungen geändert. Vorschau neu anzeigen.';$('template-error').textContent='';
+};
+$('template-preview-button').onclick=previewTemplate;
+$('template-cancel').onclick=()=>{$('template-dialog').close();templateRevision++;};
+$('template-form').onsubmit=async event=>{
+  event.preventDefault();if(templateSubmitting)return;templateSubmitting=true;templateRevision++;
+  $('template-error').textContent='';
+  for(const id of ['template-save','template-preview-button','template-cancel'])$(id).disabled=true;
+  try{
+    await api('/api/v1/template/create',templateValues());
+    status.has_template=true;renderTemplateState();$('template-dialog').close();
+    notice('Standort-Template erstellt. Du kannst jetzt ein TBS-Profil anlegen.');await refresh();
+  }catch(error){$('template-error').textContent=error.message;if(error.status===409)await refresh();}
+  finally{templateSubmitting=false;for(const id of ['template-save','template-preview-button','template-cancel'])$(id).disabled=false;renderTemplateState();}
+};
 $('template').onchange=guarded(async()=>{const file=$('template').files[0];if(file){await api('/api/v1/template',{toml:await file.text()});notice('Standort-Template gespeichert.');await refresh();}});
 $('profile-list').onclick=async event=>{
   const button=event.target.closest('[data-remove-profile]');if(!button||profileDeleting)return;

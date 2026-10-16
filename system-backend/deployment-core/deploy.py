@@ -252,6 +252,89 @@ def validate_profile(profile):
     return {k: profile[k] for k in ('name', 'mcc', 'mnc', 'issi', 'la', 'cc')}
 
 
+
+# Same duplex-spacing rows (kHz) as tetra_core::freqs, bands 0 through 8.
+TBS_DUPLEX_KHZ = (
+    (None, 1600, 10000, 10000, 10000, 10000, 10000, None, None),
+    (None, 4500, None, 36000, 7000, None, None, None, 45000),
+    (0, 0, 0, 0, 0, 0, 0, 0, 0),
+    (None, None, None, 8000, 8000, None, None, None, 18000),
+    (None, None, None, 18000, 5000, None, 30000, 30000, None),
+    (None, None, None, None, 9500, None, None, None, None),
+    (None,) * 9,
+    (None,) * 9,
+)
+
+
+def new_tbs_template(settings, endpoints=None):
+    """Create a credential-free site template with matching SYSINFO/SDR frequencies."""
+    defaults = dict(freq_band=4, main_carrier=720, secondary_carrier=721, freq_offset=0,
+                    duplex_spacing=0, reverse_operation=False, custom_duplex_spacing=None,
+                    sample_rate=600000, device='')
+    if not isinstance(settings, dict) or set(settings) - defaults.keys():
+        raise ValueError('Unbekannte Felder für das TBS-Template')
+    values = {**defaults, **settings}
+
+    def integer(key, low, high, optional=False):
+        value = values[key]
+        if optional and value is None:
+            return None
+        if type(value) is not int or not low <= value <= high:
+            raise ValueError(f'{key}: erwartet {low}…{high}')
+        return value
+
+    band = integer('freq_band', 1, 8)
+    main = integer('main_carrier', 0, 3999)
+    secondary = integer('secondary_carrier', 0, 3999, optional=True)
+    offset = integer('freq_offset', -6250, 12500)
+    if offset not in (-6250, 0, 6250, 12500):
+        raise ValueError('Frequenzoffset: -6250, 0, 6250 oder 12500 Hz wählen')
+    spacing_id = integer('duplex_spacing', 0, 7)
+    custom = integer('custom_duplex_spacing', 0, 100000000, optional=True)
+    reverse = values['reverse_operation']
+    if type(reverse) is not bool:
+        raise ValueError('reverse_operation muss ein Wahrheitswert sein')
+    rate = integer('sample_rate', 48000, 100000000)
+    device = values['device']
+    if not isinstance(device, str) or len(device) > 512 or any(ord(c) < 32 or ord(c) == 127 for c in device):
+        raise ValueError('Ungültige SoapySDR-Geräteparameter')
+    spacing = custom
+    if spacing is None:
+        khz = TBS_DUPLEX_KHZ[spacing_id][band]
+        if khz is None:
+            raise ValueError('Duplexabstand ist für dieses Frequenzband nicht definiert')
+        spacing = khz * 1000
+    if secondary == main:
+        raise ValueError('Hauptträger und zweiter Träger müssen verschieden sein')
+    if secondary is not None and (abs(secondary - main) + 1) * 25000 > rate:
+        raise ValueError('Beide 25-kHz-Träger müssen in die gewählte SDR-Samplerate passen')
+    carriers = [main] if secondary is None else [main, secondary]
+    tx = [band * 100000000 + carrier * 25000 + offset for carrier in carriers]
+    rx = [frequency + (spacing if reverse else -spacing) for frequency in tx]
+    if min(tx + rx) <= 0 or max(tx + rx) > 4294967295:
+        raise ValueError('Ungültige abgeleitete Sende-/Empfangsfrequenz')
+    soapy = dict(tx_freq=tx[0], rx_freq=rx[0], sample_rate=rate,
+                 tx_center_freq=(min(tx) + max(tx)) / 2,
+                 rx_center_freq=(min(rx) + max(rx)) / 2)
+    if device.strip():
+        soapy['device'] = device.strip()
+    cell = dict(freq_band=band, main_carrier=main, duplex_spacing=spacing_id,
+                freq_offset=offset, reverse_operation=reverse, location_area=1, colour_code=1,
+                timezone='Europe/Berlin', local_ssi_ranges=[[0, 90]],
+                system_wide_services=True, no_minimum_mode=True, voice_service=True)
+    if secondary is not None:
+        cell['secondary_carrier'] = secondary
+    if custom is not None:
+        cell['custom_duplex_spacing'] = custom
+    config = dict(config_version='0.6', stack_mode='Bs', service_name='tetra',
+                  phy_io=dict(backend='SoapySdr', soapysdr=soapy),
+                  net_info=dict(mcc=901, mnc=1510), cell_info=cell,
+                  dashboard=dict(bind='0.0.0.0', port=8080),
+                  control_room=dict(enabled=True, host='node-gateway', port=8080,
+                                    use_tls=False, endpoint_path='/ws/node'))
+    return resolve_config('tbs', config, endpoints or {})[0]
+
+
 def tbs_config(template, profile):
     profile = validate_profile(profile)
     data = tomllib.loads(template)
