@@ -43,8 +43,11 @@ class ActualAsteriskTests(unittest.TestCase):
             (config/filename).write_text('#include '+include+'\n', encoding='utf-8')
         (config/'modules.conf').write_text('[modules]\nautoload=yes\nnoload=chan_sip.so\n', encoding='utf-8')
         app.render_asterisk()
+        lookups = []
         def cli(command, timeout=5):
             result = subprocess.run([binary, '-C', str(main), '-rx', command], capture_output=True, text=True, timeout=timeout)
+            if command.startswith('pjsip show endpoint '):
+                lookups.append((command, result.returncode, result.stdout + result.stderr))
             return result.returncode == 0, result.stdout + result.stderr
         app.run_asterisk = cli
         with (root/'startup.log').open('w') as log:
@@ -68,7 +71,12 @@ class ActualAsteriskTests(unittest.TestCase):
                 self.assertNotIn(first, auth)
                 self.assertRegex(cli('pjsip show aor tbs-tbs-test')[1], r'max_contacts\s*:\s*2')
                 long_endpoint = 'tbs-' + 'long-' * 18 + 'end'
-                app.change_station('update', {'revision': app.config_revision(), 'endpoint_id': long_endpoint}, 'TBS-TEST')
+                try:
+                    app.change_station('update', {'revision': app.config_revision(), 'endpoint_id': long_endpoint}, 'TBS-TEST')
+                except Exception:
+                    print('Exact endpoint lookup diagnostics:', lookups[-5:], flush=True)
+                    print('Isolated startup log tail:', (root/'startup.log').read_text(encoding='utf-8')[-12000:], flush=True)
+                    raise
                 self.assertIn(long_endpoint[:30], cli('pjsip show endpoint ' + long_endpoint)[1])
                 self.assertIn('actual-updated-secret', cli('pjsip show auth ' + long_endpoint + '-auth')[1])
                 app.change_station('delete', {'revision': app.config_revision()}, 'TBS-TEST')
