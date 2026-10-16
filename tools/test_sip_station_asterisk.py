@@ -70,7 +70,7 @@ class ActualAsteriskTests(unittest.TestCase):
                 self.assertIn('actual-updated-secret', auth)
                 self.assertNotIn(first, auth)
                 self.assertRegex(cli('pjsip show aor tbs-tbs-test')[1], r'max_contacts\s*:\s*2')
-                long_endpoint = 'tbs-' + 'long-' * 18 + 'end'
+                long_endpoint = 'tbs-' + 'long-' * 13 + 'limit'
                 try:
                     app.change_station('update', {'revision': app.config_revision(), 'endpoint_id': long_endpoint}, 'TBS-TEST')
                 except Exception:

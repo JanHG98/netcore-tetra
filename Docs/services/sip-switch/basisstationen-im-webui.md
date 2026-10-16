@@ -8,8 +8,8 @@ Stand: 16. Oktober 2026. Der SIP-Switch verwaltet seine Basisstationen unter
 Im **zentralen SIP-Switch-LXC als root** ausführen. Das aktualisiert auch die
 systemd-Schreibfreigabe für `/etc/netcore`; ein reines Runtime-Dateiupdate reicht
 für diese erstmalige Übernahme nicht. Vorhandene SIP-/PBX-Konfigurationen bleiben
-beim Update erhalten. Asterisk wird neu geladen, der Verwaltungsdienst neu
-gestartet. Den Updateblock außerhalb eines laufenden Telefonieversuchs ausführen.
+beim Update erhalten. Der geprüfte Runtime-Updater startet den Verwaltungsdienst
+neu und schreibt den Versionsbeleg für Discovery/Deploy. Den Updateblock außerhalb eines laufenden Telefonieversuchs ausführen.
 
 ```bash
 (
@@ -23,10 +23,14 @@ gestartet. Den Updateblock außerhalb eines laufenden Telefonieversuchs ausführ
   git -C "$NC_SRC" fetch --depth 1 --filter=blob:none origin refs/heads/main
   NC_REF=$(git -C "$NC_SRC" rev-parse FETCH_HEAD)
   git -C "$NC_SRC" sparse-checkout init --cone
-  git -C "$NC_SRC" sparse-checkout set system-backend/sip-switch
+  git -C "$NC_SRC" sparse-checkout set tools/operator system-backend/sip-switch system-backend/deployment-core
   git -C "$NC_SRC" checkout --detach "$NC_REF"
   [[ "$(git -C "$NC_SRC" rev-parse HEAD)" == "$NC_REF" ]]
-  bash "$NC_SRC/system-backend/sip-switch/install/update.sh"
+  install -m 0644 "$NC_SRC/system-backend/sip-switch/systemd/netcore-sip-switch.service" \
+    /etc/systemd/system/netcore-sip-switch.service
+  systemctl daemon-reload
+  python3 -B "$NC_SRC/tools/operator/update-netcore-service.py" \
+    --service sip-switch --commit "$NC_REF" --apply
   systemctl is-active netcore-sip-switch.service asterisk.service
   printf 'SIP-Switch aktualisiert: %s\n' "$NC_REF"
 )

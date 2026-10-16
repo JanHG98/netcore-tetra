@@ -178,7 +178,7 @@ class StationTests(StationFixture, unittest.TestCase):
 
     def test_truncated_endpoint_column_is_accepted_after_exact_id_lookup(self):
         data = self.payload()
-        data['endpoint_id'] = 'tbs-' + 'long-' * 18 + 'end'
+        data['endpoint_id'] = 'tbs-' + 'long-' * 13 + 'limit'
         def cli(command, **kwargs):
             if command.startswith('pjsip show endpoint '):
                 return True, ' Endpoint: <Endpoint/CID> <State>\n Endpoint: ' + data['endpoint_id'][:40] + ' Not in use'
@@ -192,6 +192,7 @@ class StationTests(StationFixture, unittest.TestCase):
         for values in ({'node_id': '../bad'}, {'node_id': ''}, {'password': 'abc;injected'}, {'password': 123},
                        {'max_contacts': True}, {'enabled': 'false'}, {'aliases': ['bad\nline']},
                        {'endpoint_id': '-bad-id'}, {'username': 'bad-user-'},
+                       {'endpoint_id': 'e' * 75}, {'username': 'u' * 80},
                        {'fallback_pbx': {'host': 'localhost'}}, {'provisioning': {'central_port': True}},
                        {'fallback_pbx': {'password': ['bad']}}, {'server': {'bind': 'elsewhere'}}):
             data = self.payload()

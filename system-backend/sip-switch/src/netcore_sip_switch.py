@@ -472,6 +472,9 @@ class SipSwitch:
             item[key] = station_text(body.get(key, default), key, required=True, identifier=True)
             if key != "node_id" and safe_id(item[key]) != item[key]:
                 raise StationError(key + ": keine Bindestriche am Anfang oder Ende verwenden")
+            maximum = {"endpoint_id": 74, "username": 79}.get(key)
+            if maximum and len(item[key]) > maximum:
+                raise StationError(key + ": maximal " + str(maximum) + " Zeichen (Asterisk-Abschnittsgrenze)")
         if (previous is None or item["node_id"] != previous["node_id"]) and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", item["node_id"]):
             raise StationError("Stationskennung: 1-64 Zeichen wie im Deploy-TBS-Profil; Buchstaben/Ziffern/Punkt/_/-")
         if body.get("password"):
@@ -1608,8 +1611,8 @@ html[data-netcore-ui] :where(.core-main, .core-side, .core-detail) { min-width: 
 <h2 id="station-title">Basisstation anlegen</h2>
 <div class="station-grid">
 <label>Stationskennung<input id="station-node" required maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_.\-]{0,63}" placeholder="SRV-M-TBS-01"><small>Genau wie das TBS-Profil in Deploy.</small></label>
-<label>Endpoint-ID<input id="station-endpoint" maxlength="120" placeholder="automatisch aus Stationskennung"></label>
-<label>SIP-Benutzer am Switch<input id="station-user" maxlength="120" placeholder="automatisch aus Endpoint-ID"></label>
+<label>Endpoint-ID<input id="station-endpoint" maxlength="74" placeholder="automatisch aus Stationskennung"></label>
+<label>SIP-Benutzer am Switch<input id="station-user" maxlength="79" placeholder="automatisch aus Endpoint-ID"></label>
 <label>Zentralpasswort<input id="station-password" type="password" autocomplete="new-password" maxlength="253"><small>Leer: vorhandenes behalten; bei neuer Station automatisch erzeugen.</small></label>
 <label>Aliase<input id="station-aliases" placeholder="TBS-01, weiterer-alias"><small>Mit Komma trennen.</small></label>
 <label>Maximale Kontakte<input id="station-contacts" type="number" min="1" max="32" value="1" required></label>
