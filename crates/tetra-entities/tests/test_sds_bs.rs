@@ -3,6 +3,7 @@
 
 // Was: Bindet das Untermodul common in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
+#[path = "common/sds.rs"]
 mod common;
 
 use std::time::Duration;
@@ -155,6 +156,11 @@ fn test_sds_brew_forward() {
         pbx_gateway_issis: None,
         local_issi_allowlist: None,
         local_issi_blocklist: Vec::new(),
+        subscriber_type_deregister: 0,
+        subscriber_type_register: 1,
+        subscriber_type_reregister: 2,
+        subscriber_type_affiliate: 8,
+        subscriber_type_deaffiliate: 9,
     });
     let mut test = ComponentTest::from_config(config, Some(dltime));
 
@@ -368,6 +374,11 @@ fn test_brew_inbound_allowed_bypasses_whitelist_but_honors_local_ranges() {
         pbx_gateway_issis: None,
         local_issi_allowlist: None,
         local_issi_blocklist: Vec::new(),
+        subscriber_type_deregister: 0,
+        subscriber_type_register: 1,
+        subscriber_type_reregister: 2,
+        subscriber_type_affiliate: 8,
+        subscriber_type_deaffiliate: 9,
     });
     let test = ComponentTest::from_config(config, None);
 
@@ -479,6 +490,11 @@ fn test_u_status_brew_forward() {
         pbx_gateway_issis: None,
         local_issi_allowlist: None,
         local_issi_blocklist: Vec::new(),
+        subscriber_type_deregister: 0,
+        subscriber_type_register: 1,
+        subscriber_type_reregister: 2,
+        subscriber_type_affiliate: 8,
+        subscriber_type_deaffiliate: 9,
     });
     let mut test = ComponentTest::from_config(config, Some(dltime));
 
@@ -937,7 +953,7 @@ fn build_u_status_msg(src: u32, dest: u32, status: u16) -> SapMsg {
     }
 }
 
-/// FH-FEAT-014: an authorized ISSI sending a U-STATUS to 9999 whose status code maps to the "ip"
+/// FH-FEAT-014: an authorized ISSI sending a U-STATUS to 4010001 whose status code maps to the "ip"
 /// action gets a text-SDS reply addressed back to it.
 #[test]
 // Was: Prüft automatisch den Fall u Status command IP-Daten replies to authorized.
@@ -957,14 +973,14 @@ fn test_u_status_command_ip_replies_to_authorized() {
     test.populate_entities(vec![TetraEntity::Cmce], vec![TetraEntity::Mle, TetraEntity::Brew]);
     register_subscriber(&mut test, 1000001);
 
-    test.submit_message(build_u_status_msg(1000001, 9999, 50));
+    test.submit_message(build_u_status_msg(1000001, 4010001, 50));
     test.run_stack(Some(2));
 
     let after = test.dump_sinks();
     let reply = d_sds_to(&after, 1000001);
     assert!(
         !reply.is_empty(),
-        "authorized U-STATUS (action=ip) to 9999 must produce an SDS reply to the requester"
+        "authorized U-STATUS (action=ip) to 4010001 must produce an SDS reply to the requester"
     );
 }
 
@@ -987,13 +1003,13 @@ fn test_u_status_command_unauthorized_no_reply() {
     test.populate_entities(vec![TetraEntity::Cmce], vec![TetraEntity::Mle, TetraEntity::Brew]);
     register_subscriber(&mut test, 1000002);
 
-    test.submit_message(build_u_status_msg(1000002, 9999, 50));
+    test.submit_message(build_u_status_msg(1000002, 4010001, 50));
     test.run_stack(Some(2));
 
     let after = test.dump_sinks();
     assert!(
         d_sds_to(&after, 1000002).is_empty(),
-        "unauthorized U-STATUS to 9999 must be ignored (no reply)"
+        "unauthorized U-STATUS to 4010001 must be ignored (no reply)"
     );
 }
 
@@ -1019,6 +1035,11 @@ fn brew_test_config() -> tetra_config::bluestation::StackConfig {
         pbx_gateway_issis: None,
         local_issi_allowlist: None,
         local_issi_blocklist: Vec::new(),
+        subscriber_type_deregister: 0,
+        subscriber_type_register: 1,
+        subscriber_type_reregister: 2,
+        subscriber_type_affiliate: 8,
+        subscriber_type_deaffiliate: 9,
     });
     config
 }
