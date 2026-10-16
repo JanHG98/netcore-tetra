@@ -4,6 +4,7 @@ Das Quellenregister dokumentiert die tatsächlich bereitgestellten Normfassungen
 
 [Gesamte Dokumentation](../README.md)
 
+- [NetCore-SDA-Nachrichten und lokale Basisstationsverarbeitung](netcore-sda-nachrichten.md)
 - [ETSI-/PDU-Konformitätsmatrix](etsi-pdu-konformitaetsmatrix.md)
 - [ETSI-Quellenregister für die SwMI-Roadmap](etsi-quellenregister.md)
 - [Implementierungslücken und Runtime-Risiken](implementierungsluecken-und-laufzeitrisiken.md)

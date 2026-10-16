@@ -1720,6 +1720,18 @@ fn send_control_cmd(cmd_tx: &Arc<Mutex<Option<CmdSender>>>, cmd: ControlCommand)
     }
 }
 
+/// Structured, locally persisted SDA records and latest unit status per source ISSI.
+fn serve_sda_log(stream: TcpStream, config_path: &str) {
+    let path = crate::net_sda::journal_path(std::path::Path::new(config_path));
+    match crate::net_sda::Journal::load(&path) {
+        Ok(journal) => http_json_response(stream, 200, &journal.snapshot().to_string()),
+        Err(error) => {
+            tracing::warn!("SDA: cannot read journal for dashboard: {error}");
+            http_json_response(stream, 500, r#"{"error":"SDA-Protokoll nicht lesbar"}"#);
+        }
+    }
+}
+
 /// GET /api/sds-log — the persisted SDS Log as a JSON array, newest entry first.
 // Was: Diese Funktion stellt TETRA-Kurznachricht (SDS) log.
 // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
@@ -3799,6 +3811,14 @@ fn handle_connection(
             }
         }
         serve_sds_log_clear(buf.into_inner(), &state);
+    } else if req_line.split_whitespace().take(2).eq(["GET", "/api/sda-log"]) {
+        let mut buf = BufReader::new(stream);
+        loop {
+            let mut line = String::new();
+            let _ = buf.read_line(&mut line);
+            if line == "\r\n" || line.is_empty() || line == "\n" { break; }
+        }
+        serve_sda_log(buf.into_inner(), &config_path);
     } else if req_line.contains("GET /api/sds-log") {
         // Return the persisted SDS Log (newest first) as JSON.
         let mut buf = BufReader::new(stream);
@@ -8924,3 +8944,48 @@ tdma_frame_offset = 6
     }
 }
 
+#[cfg(test)]
+mod sda_log_tests {
+    use super::*;
+    use std::time::Duration;
+
+    fn fetch(config_path: &str) -> (u16, serde_json::Value) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let config_path = config_path.to_owned();
+        let server = std::thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            serve_sda_log(stream, &config_path);
+        });
+        let mut client = TcpStream::connect(address).unwrap();
+        client.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+        let mut text = String::new();
+        client.read_to_string(&mut text).unwrap();
+        server.join().unwrap();
+        let (headers, body) = text.split_once("\r\n\r\n").unwrap();
+        let status = headers.split_whitespace().nth(1).unwrap().parse().unwrap();
+        (status, serde_json::from_str(body).unwrap())
+    }
+
+    #[test]
+    fn sda_http_snapshot_reports_persisted_local_records_and_current_unit_status() {
+        let id = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        let dir = std::env::temp_dir().join(format!("netcore-sda-http-{}-{id}", std::process::id()));
+        std::fs::create_dir(&dir).unwrap();
+        let config_path = dir.join("config.toml");
+        let path = crate::net_sda::journal_path(&config_path);
+        let mut log = crate::net_sda::Journal::default();
+        log.record(&path, 5102, crate::net_sda::parse_command("NC1|STATUS|TRUPP1|ENROUTE").unwrap()).unwrap();
+        let (status, body) = fetch(config_path.to_str().unwrap());
+        assert_eq!(status, 200);
+        assert_eq!(body["scope"], "local");
+        assert_eq!(body["records"][0]["source_issi"], 5102);
+        assert_eq!(body["unit_statuses"][0]["command"]["status"], "ENROUTE");
+        std::fs::write(&path, b"corrupted").unwrap();
+        let (status, body) = fetch(config_path.to_str().unwrap());
+        assert_eq!(status, 500);
+        assert!(body.get("error").is_some());
+        assert_eq!(std::fs::read(&path).unwrap(), b"corrupted");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+}

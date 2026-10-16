@@ -5,6 +5,12 @@ on:
     branches: [main]
     paths:
       - crates/tetra-entities/src/net_dashboard/**
+      - crates/tetra-entities/src/net_sda/**
+      - crates/tetra-entities/src/cmce/**
+      - crates/tetra-entities/src/lib.rs
+      - crates/tetra-entities/tests/test_sda_service.rs
+      - crates/tetra-entities/tests/test_sds_bs.rs
+      - bins/bluestation-bs/src/main.rs
       - tools/test_dashboard_ui.mjs
       - tools/test-wifi-policy.mjs
       - crates/tetra-config/**
@@ -17,6 +23,13 @@ permissions:
   contents: read
 
 jobs:
+  sda-protocol:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test SDA protocol, persistence, idempotence and bounded radio replies
+        run: cargo test --locked -p tetra-entities --no-default-features --lib net_sda::
   browser:
     runs-on: ubuntu-24.04
     steps:
@@ -56,4 +69,7 @@ jobs:
         run: |
           cargo check --locked -p bluestation-bs
           cargo test --locked -p tetra-entities --features recording,asterisk --lib net_dashboard::
+          cargo test --locked -p tetra-entities --features recording,asterisk --lib net_sda::
+          cargo test --locked -p tetra-entities --features recording,asterisk --test test_sda_service
+          cargo test --locked -p tetra-entities --features recording,asterisk --test test_sds_bs
 

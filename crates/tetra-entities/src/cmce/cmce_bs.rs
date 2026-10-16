@@ -54,6 +54,10 @@ impl CmceBs {
     pub fn set_wx_cmd_sender(&mut self, tx: crossbeam_channel::Sender<ControlCommand>) {
         self.sds.set_wx_cmd_sender(tx);
     }
+    pub fn set_sda_service(&mut self, requests: crossbeam_channel::Sender<crate::net_sda::engine::SdaRequest>) {
+        self.sds.set_sda_service(requests);
+    }
+
 
     /// Execute a single control command. Shared by both the main `control` link (where a
     /// `responder` is supplied so request/response commands can reply) and the dashboard
