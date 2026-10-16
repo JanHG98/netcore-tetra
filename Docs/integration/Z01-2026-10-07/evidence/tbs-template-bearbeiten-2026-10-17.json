@@ -1,0 +1,82 @@
+{
+  "local_date": "2026-10-17",
+  "task": "Z01.4",
+  "pull_request": "https://github.com/JanHG98/netcore-tetra/pull/105",
+  "production_code_commit": "edd99f1e92ac13f98dd0436f88fc0ffa2269ab95",
+  "validated_head": "edd99f1e92ac13f98dd0436f88fc0ffa2269ab95",
+  "ci_run": 38981621563,
+  "native": [
+    {
+      "os": "ubuntu-24.04",
+      "job": 117243558107,
+      "python_tests": 14,
+      "rust_tests": 1,
+      "generated_and_edited_native_configs": 3,
+      "conclusion": "success"
+    },
+    {
+      "os": "ubuntu-26.04",
+      "job": 117243557876,
+      "python_tests": 14,
+      "rust_tests": 1,
+      "generated_and_edited_native_configs": 3,
+      "conclusion": "success"
+    }
+  ],
+  "source_consistency": {
+    "job": 117243557343,
+    "run": 38981621505,
+    "conclusion": "success"
+  },
+  "local_visual_preview": {
+    "desktop": "passed",
+    "mobile": "passed",
+    "fixture": true,
+    "editor_save_invalid_conflict_reload_cancel": "passed",
+    "production_mutations": 0
+  },
+  "deployment": {
+    "executed": false,
+    "origin": "http://10.0.1.131:8320",
+    "node_id": "VM-H-DEPLOY-01",
+    "existing_template": true,
+    "live_create_button": true,
+    "live_edit_button": false,
+    "note": "The existing VM operator update must be run again for the editor; no production template content retrieved or changed.",
+    "checked_at": "2026-10-16T23:31:42.310Z"
+  },
+  "limits": [
+    "Manual editor saves validate TOML syntax, UTF-8 size and required core tables; RF values must remain consistent.",
+    "Image build and host installers are simulated in browser/API fixtures.",
+    "No complete new image or physical Pi/radio acceptance."
+  ],
+  "merged_commit": "e6f9a1f5cc6746bc883d001e1e0bd9f978ccc33e",
+  "browser": {
+    "job": 117243558020,
+    "conclusion": "success",
+    "scope": [
+      "Imported original TOML with comments and extra settings",
+      "Open at document start, edit, cancel and clear private editor buffer",
+      "Reject invalid syntax without replacing stored template",
+      "Concurrent editor conflict retains unsaved input through refresh",
+      "Confirmed reload and dismissed reload",
+      "Edited import used by a new image request",
+      "Desktop and mobile layouts"
+    ],
+    "limits": "Image build and host installers are fixtures"
+  },
+  "deployment_regression": {
+    "job": 117243558020,
+    "python_cases": 168,
+    "skipped": 2,
+    "operator_update_cases": 143,
+    "conclusion": "success"
+  },
+  "previous_version_backup": {
+    "editor": "passed",
+    "reimport": "passed",
+    "invalid_and_identical_import_keep_useful_backup": "passed",
+    "mode": "0600"
+  },
+  "verified_at": "2026-10-16T23:31:48.116Z"
+}

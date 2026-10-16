@@ -123,15 +123,26 @@ Deployment-Discovery-/Browserjob bestätigt den Weg ohne Vorlagenimport bis zum
 Imageauftrag und anschließend den weiterhin verwendbaren Dateiimport.
 [Datierter Nachweis](../integration/Z01-2026-10-07/evidence/tbs-template-erstellen-2026-10-17.json).
 
-Die tatsächliche Übernahme auf VM-H-DEPLOY-01 ist noch nicht bestätigt. Die
-letzte lesende Prüfung zeigt dort bereits eine Vorlage und die bisherige
-Oberfläche ohne Erstellen-Knopf. Für die neue Funktion den Updateblock oben
+Die aktuelle lesende Prüfung auf VM-H-DEPLOY-01 bestätigt eine vorhandene
+Vorlage und bereits die Erstellen-Funktion. Der neue Knopf **Template anzeigen /
+bearbeiten** fehlt dort noch. Für diese Ergänzung den Updateblock oben erneut
 ausführen. Die installierte Vorlage wird dabei erhalten.
 
 ## Ergänzende Abnahme der Template-Bearbeitung
 
-Anzeige des importierten Originals, Kommentare und Zusatzabschnitte, Syntaxfehler,
-Versionskonflikte, Abbrechen/Neuladen, geschützte Sicherung und die Übernahme einer
-bearbeiteten Vorlage in einen neuen Imageauftrag werden gesondert geprüft.
-Abschluss und Repo-Übernahme werden nach dem gezielten CI-Lauf ergänzt; die
-tatsächliche Aktualisierung auf VM-H-DEPLOY-01 bleibt ein eigener Anlagenbeleg.
+[PR #105](https://github.com/JanHG98/netcore-tetra/pull/105) ist übernommen.
+[Abschlusslauf](https://github.com/JanHG98/netcore-tetra/actions/runs/38981621563)
+an `edd99f1e`: auf Ubuntu 24.04 und 26.04 jeweils 14 Template-API-/Persistenzfälle
+und ein nativer Rust-Test mit drei erzeugten und bearbeiteten TBS-Konfigurationen
+bestanden. Geprüft sind das importierte Original, Kommentare und Zusatzabschnitte,
+Syntaxfehler, Versionskonflikte, geschützte Sicherungen bei Bearbeitung und erneutem
+Import sowie die Übernahme einer bearbeiteten Vorlage in einen neuen Imageauftrag.
+
+Der vollständige Deployment-Discovery-/Browserjob besteht mit 168 Python-Fällen
+(zwei bestehende Skips), 143 Operator-Updateprüfungen und dem Browserweg über
+Abbrechen, Speichern, Konflikt und bestätigtes Neuladen bis zum Imageauftrag.
+Desktop- und Mobilansicht sowie das Quellgate sind geprüft.
+[Datierter Nachweis](../integration/Z01-2026-10-07/evidence/tbs-template-bearbeiten-2026-10-17.json).
+Der eigentliche Imagebau und die Dienstinstaller sind in diesen Browser-/API-Fällen
+simuliert. Neuer vollständiger Imagebau und physische Pi-/Funkabnahme bleiben eigene
+Anlagenbelege; die Bearbeiten-Funktion muss noch auf die Deploy-VM übernommen werden.
