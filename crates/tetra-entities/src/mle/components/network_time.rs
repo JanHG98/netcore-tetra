@@ -14,10 +14,7 @@ pub fn encode_tetra_network_time(tz_name: &str) -> Option<u64> {
     encode_tetra_network_time_inner(Utc::now(), tz)
 }
 
-fn encode_tetra_network_time_inner(
-    now_utc: chrono::DateTime<Utc>,
-    tz: chrono_tz::Tz,
-) -> Option<u64> {
+fn encode_tetra_network_time_inner(now_utc: chrono::DateTime<Utc>, tz: chrono_tz::Tz) -> Option<u64> {
     let year = now_utc.year();
     if !(2000..=2062).contains(&year) {
         return None;
@@ -43,18 +40,8 @@ fn encode_tetra_network_time_inner(
 mod tests {
     use super::*;
 
-    fn encode(
-        year: i32,
-        month: u32,
-        day: u32,
-        hour: u32,
-        minute: u32,
-        second: u32,
-        zone: &str,
-    ) -> u64 {
-        let at = Utc
-            .with_ymd_and_hms(year, month, day, hour, minute, second)
-            .unwrap();
+    fn encode(year: i32, month: u32, day: u32, hour: u32, minute: u32, second: u32, zone: &str) -> u64 {
+        let at = Utc.with_ymd_and_hms(year, month, day, hour, minute, second).unwrap();
         encode_tetra_network_time_inner(at, zone.parse().unwrap()).unwrap()
     }
 
@@ -79,10 +66,7 @@ mod tests {
     #[test]
     fn utc_epoch_and_year_are_encoded_even_without_offset() {
         assert_eq!(encode(2000, 1, 1, 0, 0, 0, "UTC"), 0x7FF);
-        assert_eq!(
-            fields(encode(2026, 1, 1, 0, 0, 0, "UTC")),
-            (0, false, 0, 26, 0x7FF)
-        );
+        assert_eq!(fields(encode(2026, 1, 1, 0, 0, 0, "UTC")), (0, false, 0, 26, 0x7FF));
     }
 
     #[test]
@@ -91,10 +75,7 @@ mod tests {
             let berlin = fields(encode(2026, month, 15, 12, 0, 0, "Europe/Berlin"));
             let utc = fields(encode(2026, month, 15, 12, 0, 0, "UTC"));
             assert_eq!(berlin.0, utc.0);
-            assert_eq!(
-                (berlin.1, berlin.2, berlin.3, berlin.4),
-                (false, offset, 26, 0x7FF)
-            );
+            assert_eq!((berlin.1, berlin.2, berlin.3, berlin.4), (false, offset, 26, 0x7FF));
         }
     }
 
@@ -133,10 +114,7 @@ mod tests {
         let last = fields(encode(2024, 12, 31, 23, 59, 59, "UTC"));
         assert_eq!(last, (15_811_199, false, 0, 24, 0x7FF));
         assert!(last.0 < 0xF1_42FF);
-        assert_eq!(
-            fields(encode(2025, 1, 1, 0, 0, 0, "UTC")),
-            (0, false, 0, 25, 0x7FF)
-        );
+        assert_eq!(fields(encode(2025, 1, 1, 0, 0, 0, "UTC")), (0, false, 0, 25, 0x7FF));
     }
 
     #[test]

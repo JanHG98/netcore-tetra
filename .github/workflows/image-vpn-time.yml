@@ -28,6 +28,21 @@ jobs:
           /usr/bin/python3 tools/test_vpn_policy.py
       - name: Actual private NetworkManager and authenticated OpenVPN tunnel
         run: sudo unshare --mount --net --pid --fork --kill-child --mount-proc /usr/bin/python3 tools/test_vpn_nm_native.py --disposable-runner
+  vpn-bookworm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Real Pi OS base-version libnm and OpenVPN in Debian Bookworm
+        run: |
+          docker run --rm --privileged -v "$GITHUB_WORKSPACE:/src:ro" -w /src debian:bookworm-slim bash -ec '
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install --no-install-recommends -y python3 network-manager network-manager-openvpn network-manager-openvpn-gnome python3-gi gir1.2-nm-1.0 openvpn openssl dbus iproute2 iputils-ping
+            python3 tools/test_image_vpn.py
+            python3 tools/test_vpn_policy.py
+            unshare --mount --net --pid --fork --kill-child --mount-proc python3 tools/test_vpn_nm_native.py --disposable-runner
+          '
   time:
     runs-on: ubuntu-24.04
     timeout-minutes: 20

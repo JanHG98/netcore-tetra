@@ -134,6 +134,7 @@ def main():
             shutil.copy2(source, connections / 'netcore-vpn.nmconnection')
             for target, name in [('/etc/NetworkManager/system-connections', 'connections'),
                                  ('/run/NetworkManager', 'nm-run'),
+                                 ('/run/dbus', 'bus-run'),
                                  ('/var/lib/NetworkManager', 'nm-state')]:
                 private = work / name
                 private.mkdir(exist_ok=True)
@@ -149,7 +150,9 @@ def main():
                 Path(target).mkdir(parents=True, exist_ok=True)
                 run('mount', '--bind', private, target)
             run('ip', 'link', 'add', 'nc-uplink', 'type', 'dummy')
-            bus_address = 'unix:path=' + str(work / 'bus')
+            # OpenVPN sanitizes the up-helper environment. Bind the private
+            # bus at its standard path so that helper cannot reach the host bus.
+            bus_address = 'unix:path=/run/dbus/system_bus_socket'
             bus_config = work / 'bus.conf'
             bus_config.write_text(
                 '<busconfig><type>system</type><listen>' + bus_address + '</listen>'
@@ -158,14 +161,15 @@ def main():
                 '<allow receive_sender="*"/></policy></busconfig>')
             os.environ['DBUS_SYSTEM_BUS_ADDRESS'] = bus_address
             spawn(['dbus-daemon', '--nofork', '--config-file=' + str(bus_config)], 'dbus')
-            wait_for(lambda: (work / 'bus').exists())
+            wait_for(lambda: Path('/run/dbus/system_bus_socket').exists())
             nm_config = work / 'NetworkManager.conf'
             nm_config.write_text('[main]\nplugins=keyfile\nauth-polkit=false\nno-auto-default=*\n'
                                  '[keyfile]\nunmanaged-devices=none\n'
                                  '[device-fixture]\nmatch-device=interface-name:nc-uplink\nmanaged=1\n'
                                  '[logging]\nlevel=WARN\n')
             nm_args = ['NetworkManager', '--no-daemon', '--config=' + str(nm_config),
-                       '--pid-file=' + str(work / 'nm.pid'), '--state-file=' + str(work / 'nm.state')]
+                       '--pid-file=' + str(work / 'nm.pid'), '--state-file=' + str(work / 'nm.state'),
+                       '--log-level=DEBUG']
             nm = spawn(nm_args, 'networkmanager')
             wait_for(lambda: key in run('nmcli', '-g', 'UUID', 'connection', 'show'))
             assert run('nmcli', '-g', 'connection.id', 'connection', 'show', 'uuid', key) == 'NetCore VPN'
@@ -214,6 +218,8 @@ def main():
                   'idempotent policy and daemon restart without login.', flush=True)
         except Exception:
             try:
+                print(run('journalctl', '_COMM=NetworkManager', '--since', '-3min',
+                          '--no-pager', '-n', '100'), file=sys.stderr)
                 print(run('journalctl', '-t', 'nm-openvpn', '--since', '-3min',
                           '--no-pager', '-n', '80'), file=sys.stderr)
             except Exception:
