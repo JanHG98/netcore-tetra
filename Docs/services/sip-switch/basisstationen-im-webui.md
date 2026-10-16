@@ -94,6 +94,14 @@ Routen müssen im vorhandenen PBX eingerichtet sein.
 
 ## Nachweise und Grenzen
 
+[Abschlussprüfung](https://github.com/JanHG98/netcore-tetra/actions/runs/38954506305) am produktiven
+Code `e85cf239`: auf Ubuntu 24.04 und 26.04 jeweils 55 Python-Fälle
+bestanden; Chromium bestätigt den vollständigen Download-/Deploy-Importablauf.
+Eine echte Asterisk-22.11.0-Instanz übernimmt Endpoint, Passwort und Kontaktlimit,
+benennt den Endpoint um und entfernt Endpoint/Auth wieder ohne Daemon-Neustart.
+Dabei werden auch 74 Zeichen Endpoint-ID und 79 Zeichen Auth-Abschnitt geprüft;
+längere Kennungen lehnt die API vor dem Schreiben ab.
+
 Gezielte Prüfungen: `tools/test_sip_station_management.py` für Persistenz,
 Konflikte, aktive Rufe, Rücknahme, private HTTP-Downloads und tatsächliche
 Offline-Image-Einrichtung; `tools/test_sip_station_ui.cjs` für die echte
