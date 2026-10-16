@@ -66,6 +66,7 @@ def main():
     os.environ['LC_ALL'] = 'C'
     children = []
     logs = []
+    mount_targets = []
     with tempfile.TemporaryDirectory(prefix='netcore-vpn-native-') as directory:
         work = Path(directory)
         try:
@@ -79,6 +80,7 @@ def main():
             # sysfs records the network namespace at mount time. Older libnm
             # otherwise sees host devices and strictly unmanages fixture links.
             run('mount', '-t', 'sysfs', 'sysfs', '/sys')
+            mount_targets.append('/sys')
             run('ip', 'link', 'set', 'lo', 'up')
             # Server and client must have separate routing tables. Otherwise a
             # ping to a server tunnel address is local delivery, not VPN traffic.
@@ -86,6 +88,7 @@ def main():
             netns.mkdir()
             Path('/run/netns').mkdir(parents=True, exist_ok=True)
             run('mount', '--bind', netns, '/run/netns')
+            mount_targets.append('/run/netns')
             run('ip', 'netns', 'add', 'nc-vpn-server')
             run('ip', 'link', 'add', 'nc-uplink', 'type', 'veth', 'peer', 'name', 'nc-peer')
             run('ip', 'link', 'set', 'nc-peer', 'netns', 'nc-vpn-server')
@@ -155,6 +158,7 @@ def main():
                 private.mkdir(exist_ok=True)
                 Path(target).mkdir(parents=True, exist_ok=True)
                 run('mount', '--bind', private, target)
+                mount_targets.append(target)
 
             # Ubuntu's vendor conf.d marks non-WiFi devices unmanaged. Keep
             # all three layers private rather than inheriting runner policy.
@@ -164,6 +168,7 @@ def main():
                 private.mkdir()
                 Path(target).mkdir(parents=True, exist_ok=True)
                 run('mount', '--bind', private, target)
+                mount_targets.append(target)
             # OpenVPN sanitizes the up-helper environment. Bind the private
             # bus at its standard path so that helper cannot reach the host bus.
             bus_address = 'unix:path=/run/dbus/system_bus_socket'
@@ -253,6 +258,16 @@ def main():
                         child.wait(timeout=5)
             for log in logs:
                 log.close()
+            subprocess.run(['ip', 'netns', 'delete', 'nc-vpn-server'],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            for target in reversed(mount_targets):
+                run('umount', target)
+            # ip-netns can propagate its shared self-bind back to the source
+            # directory. Only unmount remaining mounts under our own temp root.
+            own_mounts = [line.split()[4] for line in Path('/proc/self/mountinfo').read_text().splitlines()
+                          if line.split()[4].startswith(str(work) + '/')]
+            for target in sorted(own_mounts, key=len, reverse=True):
+                run('umount', target)
 
 
 if __name__ == '__main__':
