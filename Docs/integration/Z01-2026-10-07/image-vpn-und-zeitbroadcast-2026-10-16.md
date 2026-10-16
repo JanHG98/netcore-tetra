@@ -107,14 +107,15 @@ bleiben Betreiberabnahmen.
 
 ## Nachweise
 
-Produktiver Prüfstand: `fbc538acc258ff3841bf63b464d1728991142876`.
+VPN-/Zeit-Prüfstand: `151368a6c9bd732d59757ae34bb9d4ffd96d1391`.
+ARM64-Personalisierung: `fbc538acc258ff3841bf63b464d1728991142876`.
 
-- [Native VPN-/Zeitprüfung](https://github.com/JanHG98/netcore-tetra/actions/runs/38922557745):
+- [Native VPN-/Zeitprüfung](https://github.com/JanHG98/netcore-tetra/actions/runs/38924137691):
   Ubuntu 24.04, Ubuntu 26.04 und Debian Bookworm jeweils 24 VPN- und 14
   Policy-/Materialfälle sowie ein tatsächlicher zertifikat-/passwortgeschützter
   OpenVPN-Tunnel mit tls-auth, Datenverkehr zwischen getrennten Netz-Namespaces,
   Heimnetzabschaltung, Schutz vor Doppelaktivierung und Wiederverbindung nach
-  NetworkManager-Neustart ohne Desktop oder Secret-Agent.
+  NetworkManager-Neustart ohne Desktop oder Secret-Agent; echte nmcli-Abfrage eines WLAN-Profils mit Umlauten und Doppelpunkt ebenfalls bestanden.
 - Neun Rust-Fälle: der gemeldete Berliner Oktoberzeitpunkt, UTC, positive und
   negative Viertelstundenoffsets, Sommer-/Winterzeitwechsel, Schaltjahr,
   Jahreswechsel, ungültige Werte und vollständige Broadcast-PDU-Serialisierung.
