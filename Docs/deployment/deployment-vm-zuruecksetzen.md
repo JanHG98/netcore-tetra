@@ -106,3 +106,79 @@ Danach den [gezielten Endbelegabgleich](netcore-dienste-aktualisieren.md#verlore
 für genau diese IDs durchführen. Frühere Zuordnungen anderer Controlleraufträge
 sind kein Endbeleg dieser beiden Versuche. Tatsächlicher Abgleich und erneuter
 Reset bleiben bis zu eigenen Betreiber-Ausgaben offen.
+
+## Die beiden bestätigten Endbelege übernehmen und Reset fortsetzen
+
+Direktprüfung am16.10.2026 um23:03 Europe/Berlin: Agentenidentität,
+Dienst/Aktion, fest angenommener Commit `03422f36920e0a94e0238fc1ceaa13a901177c77`
+und Annahmezeit innerhalb des jeweiligen lokalen Versuchzeitfensters stimmen
+überein. Die unveränderte `proof()`-Funktion des vorhandenen Abgleichhelfers
+bestätigt beide Endbelege mit frischen GETs jeweils zweimal.
+[Maschinenlesbarer Befund](../integration/Z01-2026-10-07/evidence/reset-remote-abschluesse-2026-10-16.json).
+
+| Controller-Auftrag | Ausdrücklich zugeordneter Agentenauftrag | Tatsächlicher Endzustand |
+| --- | --- | --- |
+| `9d4f6ec344c34cafa32529e9145aa801` | `4df693018f55412b901cd51bd2e0e9e8` auf Observability | `failed`, `Command exited with 1: bash` |
+| `a96edf31da0c40d1a6f03797a32b738f` | `3ecc5df49ff64ac0a3c3b0cb88a79a0a` auf warn-control / node-gateway | `succeeded`, `live=true`, `ready=true` |
+
+Auf **VM-H-DEPLOY-01** ausführen. Der Block prüft zunächst beide Zuordnungen
+lesend und verlangt freie Controlleraufträge. Bei gestopptem Controller prüft
+der Helfer erneut, übernimmt nur diese beiden Endbelege und protokolliert die
+ursprünglichen Zeilen samt Nachweis in der privaten Datenbank. Ein Fehler nach
+dem Controller-Stopp startet ihn über den EXIT-Trap wieder; der Reset folgt erst
+nach erfolgreichem Abgleich. Der Observability-Updatefehler wird als Fehler
+erhalten, während Node-Gateway seinen tatsächlich erfolgreichen Endstatus erhält.
+Der folgende Anwendungsreset sichert diesen Verlauf und die Konfiguration.
+
+```bash
+(
+  set -Eeuo pipefail
+  NC_REF=e589287457be441f65f480df2386d00f808ccbfc
+  NC_DIR=$(mktemp -d /tmp/netcore-reset-abgleich.XXXXXX)
+
+  for NC_FILE in reconcile-remote-job.py reset-deployment-vm.py; do
+    curl --http1.1 --fail --show-error --retry 3 \
+      "https://raw.githubusercontent.com/JanHG98/netcore-tetra/$NC_REF/tools/operator/$NC_FILE" \
+      -o "$NC_DIR/$NC_FILE"
+  done
+
+  nc_abgleichen() {
+    sudo python3 -B "$NC_DIR/reconcile-remote-job.py" \
+      9d4f6ec344c34cafa32529e9145aa801 \
+      --remote-job 4df693018f55412b901cd51bd2e0e9e8 "$@"
+    sudo python3 -B "$NC_DIR/reconcile-remote-job.py" \
+      a96edf31da0c40d1a6f03797a32b738f \
+      --remote-job 3ecc5df49ff64ac0a3c3b0cb88a79a0a "$@"
+  }
+
+  nc_abgleichen
+
+  sudo python3 - <<'PY'
+import sqlite3
+from contextlib import closing
+with closing(sqlite3.connect(
+    "file:/var/lib/netcore-deployment/jobs.sqlite3?mode=ro",
+    uri=True, timeout=5
+)) as db:
+    active = db.execute(
+        "SELECT id,status FROM jobs WHERE status IN ('queued','running')"
+    ).fetchall()
+if active:
+    raise SystemExit("Noch aktive Controller-Aufträge: " + str(active))
+PY
+
+  trap 'sudo systemctl start netcore-deployment.service' EXIT
+  sudo systemctl stop netcore-deployment.service
+  nc_abgleichen --apply
+  sudo systemctl start netcore-deployment.service
+  trap - EXIT
+
+  sudo python3 -B "$NC_DIR/reset-deployment-vm.py" --apply
+)
+```
+
+Der Block ist auf Bash-Syntax geprüft; Abgleichhelfer und Reset sind auf den
+vorhandenen geprüften Quellstand gepinnt. Die HTTP-Prüfung war lesend. Die
+Datenbankübernahme auf der VM und der tatsächliche Reset sind bis zur passenden
+Betreiber-Ausgabe nicht als ausgeführt dokumentiert. Erfolg des Resets ist
+`phase=completed`; danach die WebUI mit Strg+F5 neu laden.

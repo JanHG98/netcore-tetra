@@ -1,0 +1,68 @@
+{
+  "observed_at": "2026-10-16T21:03:10.229Z",
+  "source_commit": "e589287457be441f65f480df2386d00f808ccbfc",
+  "source": "Direct HTTP manifests and exact job GETs; verified proof() executed twice against current controller rows",
+  "controller": "http://10.0.1.131:8320",
+  "read_only": true,
+  "controller_database_reconciliation_applied": false,
+  "vm_reset_completed": false,
+  "proofs": [
+    {
+      "local_id": "9d4f6ec344c34cafa32529e9145aa801",
+      "phase": "remote_proof_verified_twice",
+      "remote_id": "4df693018f55412b901cd51bd2e0e9e8",
+      "remote_status": "failed",
+      "commit": "03422f36920e0a94e0238fc1ceaa13a901177c77",
+      "receipt_source": "operator_selected",
+      "attempt_window": {
+        "local_created": 1792174701.6216722,
+        "local_updated": 1792174936.8124819,
+        "remote_created": 1792174921.7826607,
+        "maximum_clock_skew_seconds": 5
+      },
+      "ready": null
+    },
+    {
+      "local_id": "a96edf31da0c40d1a6f03797a32b738f",
+      "phase": "remote_proof_verified_twice",
+      "remote_id": "3ecc5df49ff64ac0a3c3b0cb88a79a0a",
+      "remote_status": "succeeded",
+      "commit": "03422f36920e0a94e0238fc1ceaa13a901177c77",
+      "receipt_source": "operator_selected",
+      "attempt_window": {
+        "local_created": 1792174701.6218503,
+        "local_updated": 1792175532.3197844,
+        "remote_created": 1792175517.2887921,
+        "maximum_clock_skew_seconds": 5
+      },
+      "ready": true
+    }
+  ],
+  "agents": [
+    {
+      "node_id": "Observability",
+      "service": "observability",
+      "origin": "http://10.0.1.143:8321",
+      "local_job": "9d4f6ec344c34cafa32529e9145aa801",
+      "remote_job": "4df693018f55412b901cd51bd2e0e9e8",
+      "remote_created": 1792174921.7826607,
+      "remote_updated": 1792176045.4111075,
+      "status": "failed",
+      "commit": "03422f36920e0a94e0238fc1ceaa13a901177c77",
+      "error": "Command exited with 1: bash"
+    },
+    {
+      "node_id": "warn-control",
+      "service": "node-gateway",
+      "origin": "http://10.0.1.129:8321",
+      "local_job": "a96edf31da0c40d1a6f03797a32b738f",
+      "remote_job": "3ecc5df49ff64ac0a3c3b0cb88a79a0a",
+      "remote_created": 1792175517.2887921,
+      "remote_updated": 1792175924.3582096,
+      "status": "succeeded",
+      "commit": "03422f36920e0a94e0238fc1ceaa13a901177c77",
+      "live": true,
+      "ready": true
+    }
+  ]
+}
