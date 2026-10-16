@@ -140,6 +140,15 @@ def main():
                 Path(target).mkdir(parents=True, exist_ok=True)
                 run('mount', '--bind', private, target)
 
+            # Ubuntu's vendor conf.d marks non-WiFi devices unmanaged. Keep
+            # all three layers private rather than inheriting runner policy.
+            for target, name in [('/etc/NetworkManager/conf.d', 'nm-conf-etc'),
+                                 ('/usr/lib/NetworkManager/conf.d', 'nm-conf-vendor')]:
+                private = work / name
+                private.mkdir()
+                Path(target).mkdir(parents=True, exist_ok=True)
+                run('mount', '--bind', private, target)
+            run('ip', 'link', 'add', 'nc-uplink', 'type', 'dummy')
             bus_address = 'unix:path=' + str(work / 'bus')
             bus_config = work / 'bus.conf'
             bus_config.write_text(
@@ -152,6 +161,8 @@ def main():
             wait_for(lambda: (work / 'bus').exists())
             nm_config = work / 'NetworkManager.conf'
             nm_config.write_text('[main]\nplugins=keyfile\nauth-polkit=false\nno-auto-default=*\n'
+                                 '[keyfile]\nunmanaged-devices=none\n'
+                                 '[device-fixture]\nmatch-device=interface-name:nc-uplink\nmanaged=1\n'
                                  '[logging]\nlevel=WARN\n')
             nm_args = ['NetworkManager', '--no-daemon', '--config=' + str(nm_config),
                        '--pid-file=' + str(work / 'nm.pid'), '--state-file=' + str(work / 'nm.state')]
@@ -159,7 +170,9 @@ def main():
             wait_for(lambda: key in run('nmcli', '-g', 'UUID', 'connection', 'show'))
             assert run('nmcli', '-g', 'connection.id', 'connection', 'show', 'uuid', key) == 'NetCore VPN'
 
-            # Let NM create its own synthetic carrier. A veth created behind
+            wait_for(lambda: 'nc-uplink' in run('nmcli', '-g', 'DEVICE', 'device'))
+            run('nmcli', 'device', 'set', 'nc-uplink', 'managed', 'yes')
+            # NM manages its own synthetic carrier. A veth created behind
             # udev in another network namespace is deliberately not managed.
             run('nmcli', 'connection', 'add', 'type', 'dummy', 'ifname', 'nc-uplink',
                 'con-name', 'fixture-uplink', 'ipv4.method', 'manual', 'ipv4.addresses',
