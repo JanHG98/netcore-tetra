@@ -1,10 +1,11 @@
-# TBS-Standort-Template direkt in Deploy erstellen
+# TBS-Standort-Templates in Deploy erstellen, anzeigen und bearbeiten
 
 Stand: 17. Oktober 2026 · Z01.4
 
 Eine neue Deploy-VM benötigt keine zuvor exportierte TBS-Konfiguration mehr.
-Unter **Neue Basisstation** stehen **TBS-Template erstellen** und der bestehende
-**TBS-Template importieren**-Weg zur Verfügung.
+Unter **Neue Basisstation** stehen **TBS-Template erstellen**, **TBS-Template
+importieren** und für gespeicherte Vorlagen **Template anzeigen / bearbeiten**
+zur Verfügung.
 
 ## Erstes Template anlegen
 
@@ -40,8 +41,39 @@ beim Imageauftrag eingerichtet.
 Es gibt weiterhin ein gemeinsames Standort-Template. Die Erstellen-Funktion
 überschreibt eine bereits vorhandene Vorlage nicht; auch gleichzeitiges
 Erstellen wird mit HTTP 409 abgefangen. Eine andere geprüfte TOML kann über den
-bestehenden Importweg übernommen werden. Bereits erzeugte Images ändern sich
-dadurch nicht. Vorschau und **Abbrechen** verändern keine Vorlage.
+bestehenden Importweg übernommen oder die gespeicherte Vorlage direkt über
+**Template anzeigen / bearbeiten** geändert werden. Bereits erzeugte Images
+ändern sich dadurch nicht. Vorschau und **Abbrechen** verändern keine Vorlage.
+
+## Gespeichertes Template anzeigen und bearbeiten
+
+1. Unter **Neue Basisstation** auf **Template anzeigen / bearbeiten** klicken.
+2. Der Editor lädt die vollständige, aktuell auf der Deploy-VM gespeicherte TOML.
+   Bei einem Import ist das dessen Inhalt einschließlich Kommentaren und
+   zusätzlicher Abschnitte; auch ältere importierte Vorlagen sind sichtbar.
+3. Gewünschte Werte direkt in der TOML ändern und **Änderungen speichern** wählen.
+   Geprüft werden UTF-8, TOML-Syntax und die Grundabschnitte **net_info**,
+   **cell_info** und **phy_io**. Zusätzliche Einstellungen werden erhalten.
+4. **Abbrechen** verwirft die Eingabe. Das automatische Aktualisieren der
+   Deploy-Seite verändert einen geöffneten Editor nicht.
+
+Vor jedem tatsächlichen Austausch wird die vorherige Fassung als
+**tbs-site-template.toml.bak** neben dem Standort-Template gesichert. Vorlage
+und Sicherung sind nur für den Dienstbenutzer beziehungsweise root lesbar.
+Der Template-Inhalt wird erst beim ausdrücklichen Öffnen geladen, mit
+**Cache-Control: no-store** ausgeliefert und nicht in Statuslisten veröffentlicht.
+
+Ein zweiter Browser oder ein neuer Import kann die gespeicherte Vorlage
+zwischenzeitlich ändern. Dann lehnt **Änderungen speichern** den alten Stand
+mit HTTP 409 ab und lässt die eigene Eingabe im Editor stehen.
+**Gespeicherte Version neu laden** lädt den aktuellen Stand; bei einer eigenen
+ungespeicherten Änderung wird das Verwerfen vorher bestätigt.
+
+Der TOML-Editor bearbeitet die Werte direkt. Bei manuellen RF-Änderungen müssen
+Träger, TX-/RX-Frequenzen, SDR-Mitten und Samplerate zusammenpassen. Die
+automatische Frequenzberechnung des Erstellformulars wird dabei nicht über die
+importierte Konfiguration gelegt. Änderungen gelten für folgende Imageaufträge
+und Neuinstallationen; bereits erzeugte Images ändern sich dadurch nicht.
 
 ## Bestehende Deploy-VM aktualisieren
 
@@ -95,3 +127,11 @@ Die tatsächliche Übernahme auf VM-H-DEPLOY-01 ist noch nicht bestätigt. Die
 letzte lesende Prüfung zeigt dort bereits eine Vorlage und die bisherige
 Oberfläche ohne Erstellen-Knopf. Für die neue Funktion den Updateblock oben
 ausführen. Die installierte Vorlage wird dabei erhalten.
+
+## Ergänzende Abnahme der Template-Bearbeitung
+
+Anzeige des importierten Originals, Kommentare und Zusatzabschnitte, Syntaxfehler,
+Versionskonflikte, Abbrechen/Neuladen, geschützte Sicherung und die Übernahme einer
+bearbeiteten Vorlage in einen neuen Imageauftrag werden gesondert geprüft.
+Abschluss und Repo-Übernahme werden nach dem gezielten CI-Lauf ergänzt; die
+tatsächliche Aktualisierung auf VM-H-DEPLOY-01 bleibt ein eigener Anlagenbeleg.

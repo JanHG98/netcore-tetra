@@ -50,6 +50,7 @@ const path = require('node:path');
     // A fresh controller can create its first site template without a local file.
     await page.waitForFunction(()=>!document.querySelector('#template-new').disabled);
     assert.equal((await (await page.request.get(url+'/api/v1/status')).json()).has_template,false);
+    assert.equal(await page.locator('#template-edit').isDisabled(),true);
     await page.locator('#template-new').click();
     await page.locator('#template-rf').getByText(/418 MHz.*408 MHz/).waitFor();
     await page.locator('#template-secondary-carrier').fill('720');
@@ -396,10 +397,81 @@ const path = require('node:path');
       if(applied===true)assert.match(await page.locator('#notice').textContent(),/gelöscht, aber die dauerhafte Speicherung konnte nicht bestätigt werden/);
       assert.equal(await page.locator('#image-artifacts .image-card').count(),2);
     }
-    // Import remains available after the complete create/profile/image workflow.
-    await page.locator('#template').setInputFiles({name:'site.toml',mimeType:'text/plain',buffer:Buffer.from(createdTemplate)});
+    // Import remains available, and its exact original document can be viewed and edited.
+    const importedTemplate='# Importkommentar bleibt erhalten\n'+createdTemplate+'\n[recording]\nenabled = false\n# Eigene Zusatzoption bleibt\n';
+    await page.locator('#template').setInputFiles({name:'site.toml',mimeType:'text/plain',buffer:Buffer.from(importedTemplate)});
     await page.getByText('Standort-Template gespeichert.',{exact:true}).waitFor();
     assert.equal(mutations.filter(request=>request.path==='/api/v1/template').length,1);
+    await page.locator('#template-edit').click();
+    await page.locator('#template-editor-dialog').waitFor({state:'visible'});
+    assert.equal(await page.locator('#template-source').inputValue(),importedTemplate);
+    assert.equal(await page.locator('#template-editor-save').isDisabled(),true);
+    await page.locator('#template-source').fill(importedTemplate+'\n# Nicht speichern');
+    await page.locator('#template-editor-cancel').click();
+    assert.equal((await (await page.request.get(url+'/api/v1/template')).json()).toml,importedTemplate);
+    assert.equal(await page.locator('#template-source').inputValue(),'','Closing must clear the private editor buffer');
+    await page.locator('#template-edit').click();
+    await page.locator('#template-source').fill('password = "invalid-private-fixture');
+    await page.locator('#template-editor-save').click();
+    await page.locator('#template-editor-error').getByText(/Ungültige TOML-Syntax/).waitFor();
+    assert.equal((await (await page.request.get(url+'/api/v1/template')).json()).toml,importedTemplate);
+    const editedTemplate=importedTemplate.replace('"sample_rate" = 600000','"sample_rate" = 1200000');
+    await page.locator('#template-source').fill(editedTemplate);
+    await page.screenshot({path:'/tmp/netcore-deployment-template-editor-desktop.png',fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    await page.locator('#template-editor-save').scrollIntoViewIfNeeded();
+    assert.ok(await page.locator('#template-editor-dialog').evaluate(el=>el.getBoundingClientRect().right<=innerWidth));
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    await page.screenshot({path:'/tmp/netcore-deployment-template-editor-mobile.png',fullPage:true});
+    await page.setViewportSize({width:1440,height:1100});
+    await page.locator('#template-editor-save').click();
+    await page.locator('#template-editor-dialog').waitFor({state:'hidden'});
+    await page.getByText('Standort-Template aktualisiert. Neue Imageaufträge übernehmen die Änderungen.',{exact:true}).waitFor();
+    const editedDocument=await (await page.request.get(url+'/api/v1/template')).json();
+    assert.equal(editedDocument.toml,editedTemplate);
+    const editedProfileConfig=await (await page.request.get(url+'/api/v1/profiles/TBS-02/config')).text();
+    assert.match(editedProfileConfig,/"?sample_rate"? = 1200000/);
+    assert.match(editedProfileConfig,/\["?recording"?\]/);
+    // Another editor wins; polling and a rejected save must retain our unsaved input.
+    await page.locator('#template-edit').click();
+    const unsaved=editedTemplate+'\n# Meine offene Änderung';
+    await page.locator('#template-source').fill(unsaved);
+    const otherVersion=editedTemplate+'\n# Anderer Browser';
+    const otherSave=await page.request.post(url+'/api/v1/template/update',{data:{revision:editedDocument.revision,toml:otherVersion}});
+    assert.equal(otherSave.status(),200);
+    await page.locator('#template-editor-save').click();
+    await page.locator('#template-editor-error').getByText(/inzwischen geändert/).waitFor();
+    await page.evaluate(()=>refresh());
+    assert.equal(await page.locator('#template-source').inputValue(),unsaved);
+    page.once('dialog',dialog=>dialog.dismiss());
+    await page.locator('#template-editor-reload').click();
+    assert.equal(await page.locator('#template-source').inputValue(),unsaved);
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator('#template-editor-reload').click();
+    await page.waitForFunction(source=>document.querySelector('#template-source').value===source,otherVersion);
+    assert.equal(await page.locator('#template-editor-save').isDisabled(),true);
+    await page.locator('#template-editor-cancel').click();
+    // The edited import remains usable by the real controller/worker image request.
+    const beforeEditImages=await (await page.request.get(url+'/api/v1/images')).json();
+    const oldArtifactIds=new Set(beforeEditImages.artifacts.map(item=>item.id));
+    await page.locator('#image-profile').selectOption('TBS-02');
+    const editedSubmission=page.waitForResponse(response=>response.url().endsWith('/api/v1/images/build')&&response.request().method()==='POST');
+    await page.locator('#image-build').click();
+    const editedResponse=await editedSubmission;
+    assert.equal(editedResponse.status(),202);
+    const editedJob=await editedResponse.json();
+    await page.waitForFunction(async id=>{
+      const state=await (await fetch('/api/v1/images')).json();
+      return state.jobs.find(job=>job.id===id)?.status==='succeeded';
+    },editedJob.id,{timeout:15000});
+    await page.waitForFunction(()=>document.querySelectorAll('#image-artifacts .image-card').length===3,null,{timeout:15000});
+    const afterEditImages=await (await page.request.get(url+'/api/v1/images')).json();
+    const newArtifact=afterEditImages.artifacts.find(item=>!oldArtifactIds.has(item.id));
+    assert.ok(newArtifact);
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator('[data-remove-image="'+newArtifact.id+'"]').click();
+    await page.waitForFunction(()=>document.querySelectorAll('#image-artifacts .image-card').length===2,null,{timeout:15000});
+
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
     await page.screenshot({path:'/tmp/netcore-deployment-desktop.png',fullPage:true});
     await page.setViewportSize({width:390,height:844});
@@ -427,7 +499,7 @@ const path = require('node:path');
     await page.getByText('Image gelöscht. Das Buildprotokoll bleibt erhalten.').waitFor();
     assert.equal(await page.locator('#image-artifacts .image-card').count(),0);
     assert.deepEqual(errors,[]);
-    console.log('PASS: real WebUI, Discovery type/role/online/text filters, bulk preview/cancel/live/partial continuation, one commit and no retry, persistent inventory removal/restore, new site template without import, invalid RF/cancel/persistence/preview, TBS wizard and image build followed by existing import, remote job, all desktop choices/login gating, automatic-main KDE/Lite submission, private SIP/VPN credentials roundtrip/download/cleanup, profile cancel/error/pending/deletion/503 reconciliation/empty state, preserved images, desktop and mobile');
+    console.log('PASS: real WebUI, Discovery type/role/online/text filters, bulk preview/cancel/live/partial continuation, one commit and no retry, persistent inventory removal/restore, new site template without import, original imported TOML viewed/edited with comments and extras, syntax rejection, preserved unsaved conflict/reload/cancel and edited-template image request, invalid RF/cancel/persistence/preview, TBS wizard and image build followed by existing import, remote job, all desktop choices/login gating, automatic-main KDE/Lite submission, private SIP/VPN credentials roundtrip/download/cleanup, profile cancel/error/pending/deletion/503 reconciliation/empty state, preserved images, desktop and mobile');
   } finally {if(browser)await browser.close();fixture.kill('SIGTERM');}
 })().catch(e=>{console.error(e);process.exitCode=1;});
 

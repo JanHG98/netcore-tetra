@@ -154,5 +154,95 @@ class TemplateHttpTests(unittest.TestCase):
         self.assertEqual(config['cell_info']['colour_code'], PROFILE['cc'])
 
 
+    def imported_document(self):
+        text = '# Standortkommentar bleibt erhalten\n' + toml_dump(new_tbs_template({}))
+        return text + '\n[recording]\nenabled = false\n# Eigene Ergänzung\n[custom.site]\nlabel = "bleibt"\n'
+
+    def test_private_template_get_keeps_original_bytes_and_is_not_a_status_field(self):
+        self.assertEqual(self.request('/api/v1/template')[0], 404)
+        original = self.imported_document().replace('\n', '\r\n')
+        self.assertEqual(self.request('/api/v1/template', {'toml': original})[0], 200)
+        with urlopen(self.url + '/api/v1/template', timeout=5) as response:
+            self.assertEqual(response.headers['Cache-Control'], 'no-store')
+            self.assertIsNone(response.headers.get('Access-Control-Allow-Origin'))
+            document = json.load(response)
+        self.assertEqual(document['toml'], original)
+        self.assertEqual(len(document['revision']), 64)
+        self.assertEqual(self.path.read_bytes(), original.encode())
+        status = self.request('/api/v1/status')[1]
+        self.assertNotIn('Standortkommentar', json.dumps(status))
+        self.assertNotIn('toml', status)
+        self.app.cfg['role'] = 'agent'
+        self.assertEqual(self.request('/api/v1/template')[0], 404)
+        self.assertEqual(self.request('/api/v1/template/update', document)[0], 404)
+
+    def test_edit_preserves_comments_extensions_and_private_previous_version(self):
+        original = self.imported_document()
+        self.request('/api/v1/template', {'toml': original})
+        document = self.request('/api/v1/template')[1]
+        edited = original.replace('"sample_rate" = 600000', '"sample_rate" = 1200000')
+        status, saved = self.request('/api/v1/template/update', {'toml': edited, 'revision': document['revision']})
+        self.assertEqual(status, 200)
+        self.assertEqual(self.path.read_text(), edited)
+        backup = self.path.with_suffix('.toml.bak')
+        self.assertEqual(backup.read_text(), original)
+        self.assertEqual(backup.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
+        self.assertNotEqual(saved['revision'], document['revision'])
+        self.assertEqual(self.request('/api/v1/template')[1]['revision'], saved['revision'])
+        self.assertEqual(tomllib.loads(edited)['custom']['site']['label'], 'bleibt')
+
+    def test_invalid_edits_or_imports_keep_saved_document_and_do_not_echo_its_content(self):
+        original = self.imported_document()
+        self.request('/api/v1/template', {'toml': original})
+        revision = self.request('/api/v1/template')[1]['revision']
+        for text in ('password = "private-syntax-fixture', '[net_info]\nx=1',
+                '[net_info]\n[cell_info]\nphy_io=3', ' ' * 196609, None):
+            status, error = self.request('/api/v1/template/update', {'toml': text, 'revision': revision})
+            self.assertEqual(status, 400)
+            self.assertNotIn('private-syntax-fixture', json.dumps(error))
+            self.assertEqual(self.path.read_text(), original)
+            self.assertFalse(self.path.with_suffix('.toml.bak').exists())
+        self.assertEqual(self.request('/api/v1/template', {'toml': 'net_info=1\ncell_info=2\nphy_io=3'})[0], 400)
+        self.assertEqual(self.path.read_text(), original)
+        self.assertEqual(self.request('/api/v1/template/update', {'toml': original})[0], 400)
+        self.assertEqual(self.request('/api/v1/template/update', {'toml': original, 'revision': revision}, Origin='http://elsewhere.invalid')[0], 400)
+
+    def test_stale_editor_conflicts_after_an_import_or_a_concurrent_editor(self):
+        original = self.imported_document()
+        self.request('/api/v1/template', {'toml': original})
+        document = self.request('/api/v1/template')[1]
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(lambda suffix: self.request('/api/v1/template/update',
+                {'toml': original + suffix, 'revision': document['revision']}), ('\n# Browser A', '\n# Browser B')))
+        self.assertEqual(sorted(result[0] for result in results), [200, 409])
+        self.assertIn(self.path.read_text(), (original + '\n# Browser A', original + '\n# Browser B'))
+        stale = self.request('/api/v1/template')[1]
+        imported = original + '\n# Neuer Dateiimport'
+        self.request('/api/v1/template', {'toml': imported})
+        self.assertEqual(self.request('/api/v1/template/update', {'toml': original + '\n# Veraltet', 'revision': stale['revision']})[0], 409)
+        self.assertEqual(self.path.read_text(), imported)
+
+    def test_edited_import_is_used_by_new_profile_image_requests(self):
+        original = '# Importiert\n' + toml_dump(new_tbs_template({})) + '\n[recording]\nenabled = false\n'
+        self.request('/api/v1/template', {'toml': original})
+        document = self.request('/api/v1/template')[1]
+        edited = original.replace('"sample_rate" = 600000', '"sample_rate" = 1200000')
+        self.assertEqual(self.request('/api/v1/template/update', {'toml': edited, 'revision': document['revision']})[0], 200)
+        self.request('/api/v1/profiles', PROFILE)
+        self.app.repo.resolve_latest_main = lambda log: 'b' * 40
+        self.app.images = Mock()
+        self.app.images.request.return_value = {'id': 'edited-template-fixture'}
+        request = image_request()
+        request.pop('config')
+        request['profile'] = PROFILE['name']
+        self.assertEqual(self.request('/api/v1/images/build', request)[0], 202)
+        config = tomllib.loads(self.app.images.request.call_args.args[1]['config'])
+        self.assertEqual(config['phy_io']['soapysdr']['sample_rate'], 1200000)
+        self.assertFalse(config['recording']['enabled'])
+        self.assertEqual(config['control_room']['node_id'], PROFILE['name'])
+        self.assertEqual(self.path.read_text(), edited)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

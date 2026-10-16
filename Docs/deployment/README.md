@@ -4,7 +4,7 @@ Für eine neue Anlage mit der [aktuellen Inbetriebnahme](../handbooks/inbetriebn
 
 [Gesamte Dokumentation](../README.md)
 
-- [TBS-Standort-Template direkt in Deploy erstellen](tbs-template-im-webui-erstellen.md)
+- [TBS-Standort-Templates erstellen, anzeigen und bearbeiten](tbs-template-im-webui-erstellen.md)
 - [Deployment-VM: Builds, Caches und Anwendungszustand vollständig zurücksetzen](deployment-vm-zuruecksetzen.md)
 - [Image: VPN fertig einrichten und Zeitbroadcast korrigieren](../integration/Z01-2026-10-07/image-vpn-und-zeitbroadcast-2026-10-16.md)
 - [Logs automatisch auf dem Archiv-NAS ablegen](logarchiv-auf-nas.md)

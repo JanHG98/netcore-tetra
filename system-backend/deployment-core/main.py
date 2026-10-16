@@ -5,6 +5,7 @@ import argparse
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 import json
+import hashlib
 import logging
 import os
 from pathlib import Path
@@ -23,7 +24,7 @@ from urllib.parse import parse_qs, urlsplit
 from common import (CATALOG, PROTOCOL, ROOT, SHA, VERSION, atomic_write, identifier,
                     json_file, load_config, peer_url, request_json, toml_dump)
 from deploy import (Deployer, Repository, installed_service, probe, service_spec, tbs_config,
-                    validate_job, validate_profile, new_tbs_template)
+                    validate_job, validate_profile, new_tbs_template, validate_tbs_template)
 from discovery import Discovery, DiscoveryPersistenceUncertain
 from jobs import Jobs, JobConflict, RemoteJobFailed, RemoteJobUncertain
 from bulk_updates import BulkUpdates, verified_manifest
@@ -35,6 +36,10 @@ REMOTE_REQUEST_TIMEOUT = 15
 REMOTE_RETRY_SECONDS = 300
 REMOTE_POLL_INTERVAL = 2
 REMOTE_JOB_SECONDS = 7200
+
+
+class TemplateConflict(ValueError):
+    """A template changed after the editor loaded its exact bytes."""
 
 
 class ProfileInUse(ValueError):
@@ -149,6 +154,32 @@ class App:
                     settings={k: self.cfg[k] for k in ('seeds', 'bindings', 'ref')},
                     advertise_url=self.cfg.get('advertise_url', ''),
                     has_template=(self.state / 'tbs-site-template.toml').is_file())
+
+    def template_document(self):
+        with self.lock:
+            path = self.state / 'tbs-site-template.toml'
+            if not path.is_file():
+                raise KeyError('template')
+            raw = path.read_bytes()
+        return {'toml': raw.decode('utf-8'), 'revision': hashlib.sha256(raw).hexdigest()}
+
+    def update_template(self, data):
+        template = data.get('toml')
+        validate_tbs_template(template)
+        revision = data.get('revision')
+        if not isinstance(revision, str) or len(revision) != 64:
+            raise ValueError('Template zuerst laden; gültige Revision erforderlich')
+        with self.lock:
+            path = self.state / 'tbs-site-template.toml'
+            if not path.is_file():
+                raise KeyError('template')
+            before = path.read_bytes()
+            if hashlib.sha256(before).hexdigest() != revision:
+                raise TemplateConflict('Das Template wurde inzwischen geändert. Deine Eingabe bleibt im Editor; gespeicherte Version neu laden und Änderungen erneut übernehmen.')
+            if before != template.encode('utf-8'):
+                atomic_write(path.with_suffix('.toml.bak'), before.decode('utf-8'))
+                atomic_write(path, template)
+        return {'saved': True, 'revision': hashlib.sha256(template.encode('utf-8')).hexdigest()}
 
     def metrics(self):
         # Scrapes never trigger discovery, health probes, Git, or deployments.
@@ -441,6 +472,8 @@ def handler(app):
                     return self.send(app.jobs.batch(path.rsplit('/', 1)[-1]))
                 if path.startswith('/api/v1/jobs/'):
                     return self.send(app.jobs.get(path.rsplit('/', 1)[-1]))
+                if path == '/api/v1/template' and app.cfg['role'] == 'controller':
+                    return self.send(app.template_document())
                 if path == '/api/v1/profiles':
                     with app.lock:
                         profiles = deepcopy(list(app.profiles.values()))
@@ -467,6 +500,8 @@ def handler(app):
                 self.send({'error': 'Not found'}, 404)
             except KeyError:
                 self.send({'error': 'Eintrag nicht gefunden'}, 404)
+            except TemplateConflict as exc:
+                self.send({'error': str(exc)}, 409)
             except ProfileInUse as exc:
                 self.send({'error': str(exc)}, 409)
             except JobConflict as exc:
@@ -588,12 +623,11 @@ def handler(app):
                         return self.send({'error': 'Ein Standort-Template ist bereits vorhanden. Die Erstellung überschreibt es nicht.'}, 409)
                     atomic_write(target, template)
                 return self.send({'saved': True}, 201)
+            if path == '/api/v1/template/update':
+                return self.send(app.update_template(data))
             if path == '/api/v1/template':
                 template = data.get('toml', '')
-                parsed = tomllib.loads(template)
-                for key in ('net_info', 'cell_info', 'phy_io'):
-                    if key not in parsed:
-                        raise ValueError('TBS-Template benötigt ' + key)
+                validate_tbs_template(template)
                 with app.lock:
                     atomic_write(app.state / 'tbs-site-template.toml', template)
                 return self.send({'saved': True})
