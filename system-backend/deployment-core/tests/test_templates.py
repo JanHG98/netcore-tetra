@@ -128,7 +128,8 @@ class TemplateHttpTests(unittest.TestCase):
         for action in ('preview', 'create'):
             self.assertEqual(self.request('/api/v1/template/' + action, {'secondary_carrier': 720})[0], 400)
         self.assertFalse(self.path.exists())
-        self.assertEqual(self.request('/api/v1/template/create', {}, Origin='http://elsewhere.invalid')[0], 403)
+        self.assertEqual(self.request('/api/v1/template/create', {}, Origin='http://elsewhere.invalid')[0], 400)
+        self.assertFalse(self.path.exists())
         self.app.cfg['role'] = 'agent'
         self.assertEqual(self.request('/api/v1/template/create', {})[0], 404)
         self.assertFalse(self.path.exists())
