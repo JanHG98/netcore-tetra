@@ -1,0 +1,76 @@
+{
+  "local_date": "2026-10-17",
+  "task": "Z01.4",
+  "pull_request": "https://github.com/JanHG98/netcore-tetra/pull/104",
+  "production_code_commit": "a55a767e2d5d145acc72266ae9fa71cfb1f62f5c",
+  "native_verified_commit": "c629e0a6cd46df97395dd5f806fcdfb4b2ccfb87",
+  "native": [
+    {
+      "os": "ubuntu-24.04",
+      "job": 117237090481,
+      "python_tests": 8,
+      "rust_tests": 1,
+      "generated_native_configs": 3,
+      "conclusion": "success"
+    },
+    {
+      "os": "ubuntu-26.04",
+      "job": 117237090517,
+      "python_tests": 8,
+      "rust_tests": 1,
+      "generated_native_configs": 3,
+      "conclusion": "success"
+    }
+  ],
+  "source_consistency": {
+    "job": 117237090860,
+    "conclusion": "success"
+  },
+  "local_visual_preview": {
+    "desktop": "passed",
+    "mobile": "passed",
+    "fixture": true,
+    "production_mutations": 0
+  },
+  "deployment": {
+    "executed": false,
+    "origin": "http://10.0.1.131:8320",
+    "node_id": "VM-H-DEPLOY-01",
+    "role": "controller",
+    "existing_template": true,
+    "live_create_button": false,
+    "note": "No SSH connection established; documented VM119 operator update remains to be run."
+  },
+  "limits": [
+    "Image build and host installers are simulated in browser/API fixtures",
+    "No complete new image or physical Pi/radio acceptance",
+    "No production template created or replaced"
+  ],
+  "ci_run": 38979603088,
+  "validated_head": "c629e0a6cd46df97395dd5f806fcdfb4b2ccfb87",
+  "merged_commit": "a6b8aa6d4587ce39d0f1d0cc30d9e88592c6d74c",
+  "browser": {
+    "job": 117237090621,
+    "conclusion": "success",
+    "scope": [
+      "Empty controller -> template preview -> create -> profile -> image request without template import",
+      "RF error and cancel without a stored template",
+      "Page reload preserves saved template",
+      "Subsequent existing TOML import",
+      "Desktop and mobile layouts"
+    ],
+    "limits": "Image build and host installers are fixtures"
+  },
+  "deployment_regression": {
+    "job": 117237090621,
+    "python_cases": 162,
+    "skipped": 2,
+    "operator_update_cases": 143,
+    "conclusion": "success",
+    "skipped_cases": [
+      "Native conffile fixture requires root, dpkg and dpkg-deb",
+      "Full workspace proof runs in focused Linux CI"
+    ]
+  },
+  "verified_at": "2026-10-16T23:09:30.658Z"
+}

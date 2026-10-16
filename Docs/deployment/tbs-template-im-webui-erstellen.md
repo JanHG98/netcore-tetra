@@ -83,5 +83,15 @@ Profil, Imageauftrag sowie Desktop- und Mobilansicht. Der eigentliche Imagebau
 und die Dienstinstaller sind dabei simuliert; ein neues vollständiges Image
 und die physische Pi-/Funkabnahme sind gesonderte Anlagenbelege.
 
-CI-Abschluss und Übernahme werden nach Auswertung des Pull Requests ergänzt.
-Die tatsächliche Übernahme auf VM-H-DEPLOY-01 ist noch nicht bestätigt.
+[PR #104](https://github.com/JanHG98/netcore-tetra/pull/104) ist übernommen.
+[Deployment-Abschlussprüfung](https://github.com/JanHG98/netcore-tetra/actions/runs/38979603088)
+an `c629e0a6`: auf Ubuntu24.04/26.04 jeweils8 neue Python-Fälle und der native
+Rust-Test mit drei tatsächlich erzeugten Konfigurationen bestanden. Der volle
+Deployment-Discovery-/Browserjob bestätigt den Weg ohne Vorlagenimport bis zum
+Imageauftrag und anschließend den weiterhin verwendbaren Dateiimport.
+[Datierter Nachweis](../integration/Z01-2026-10-07/evidence/tbs-template-erstellen-2026-10-17.json).
+
+Die tatsächliche Übernahme auf VM-H-DEPLOY-01 ist noch nicht bestätigt. Die
+letzte lesende Prüfung zeigt dort bereits eine Vorlage und die bisherige
+Oberfläche ohne Erstellen-Knopf. Für die neue Funktion den Updateblock oben
+ausführen. Die installierte Vorlage wird dabei erhalten.
