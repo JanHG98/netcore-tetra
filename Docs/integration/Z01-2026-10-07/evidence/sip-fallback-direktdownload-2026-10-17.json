@@ -1,0 +1,94 @@
+{
+  "verified_at": "2026-10-16T22:44:58.603Z",
+  "local_date": "2026-10-17",
+  "task": "Z01.4",
+  "pull_request": "https://github.com/JanHG98/netcore-tetra/pull/103",
+  "validated_head": "4e4c551f6c2eac97748368bb5c2c383e9a4c5416",
+  "ci": {
+    "run": 38976944494,
+    "native": [
+      {
+        "os": "ubuntu-24.04",
+        "job": 117228560216,
+        "tests": 65,
+        "skipped": 0,
+        "conclusion": "success"
+      },
+      {
+        "os": "ubuntu-26.04",
+        "job": 117228560276,
+        "tests": 65,
+        "skipped": 0,
+        "conclusion": "success"
+      }
+    ],
+    "browser": {
+      "job": 117228560005,
+      "conclusion": "success",
+      "scope": [
+        "Direct save and download with automatic SIP-Switch access only",
+        "Direct save and download with activated FreePBX fallback and its own credentials",
+        "Both files imported through actual Deploy UI/controller/worker validation",
+        "Repeat download from station list",
+        "Conflicting FreePBX registration refuses export without downloading a file",
+        "Saved conflicting station corrected and downloaded without duplicate station",
+        "Existing password preserved on edit and stale editor rejected"
+      ],
+      "limits": "Browser image build and Asterisk CLI are fixtures"
+    },
+    "source_consistency": {
+      "job": 117228561059,
+      "conclusion": "success"
+    },
+    "asterisk": {
+      "job": 117228560342,
+      "version": "22.11.0",
+      "conclusion": "success",
+      "scope": [
+        "Actual SIP401/200 REGISTER using automatic switch credentials",
+        "Endpoint/auth/AOR changes and removal"
+      ]
+    }
+  },
+  "local_visual_preview": {
+    "desktop": "passed",
+    "mobile": "passed",
+    "station_saved": false
+  },
+  "rollout": {
+    "job_id": "028c90f7b7ba4a5c9ae05c141fae146b",
+    "origin": "http://10.0.1.125:8321",
+    "node_id": "SIP-Switch",
+    "service": "sip-switch",
+    "action": "update",
+    "commit": "396d17997ba324846981fa570e7e84c511c508af",
+    "submitted_at": "2026-10-16T22:41:42.871Z",
+    "status": "succeeded",
+    "stations_before": 0,
+    "result": {
+      "live": true,
+      "ready": true
+    },
+    "installed_manifest_commit": "396d17997ba324846981fa570e7e84c511c508af",
+    "readiness_http": 200,
+    "health": {
+      "asterisk": true,
+      "mobility_core": true,
+      "pbx": true
+    },
+    "stations_after": 0,
+    "live_ui": {
+      "http": 200,
+      "save_and_download_button": true,
+      "desktop_and_mobile_preview": "passed",
+      "preview_saved": false,
+      "write_requests": 0
+    }
+  },
+  "limits": [
+    "No production station was created for UI verification",
+    "No FreePBX account created",
+    "No new full image or physical Pi/PBX/radio acceptance"
+  ],
+  "installed_commit": "396d17997ba324846981fa570e7e84c511c508af"
+}

@@ -167,6 +167,22 @@ Löschen. Gleichzeitige oder externe Änderungen führen zu einem Konflikt.
 Öffentliche Stations- und Konfigurationsantworten enthalten keine Passwörter.
 Für die WebUI gilt weiterhin der vorhandene OPEN-LAB-Betrieb.
 
+## Nachweis des direkten TOML-Downloads
+
+[PR #103](https://github.com/JanHG98/netcore-tetra/pull/103) ist übernommen.
+Die [SIP-Prüfung](https://github.com/JanHG98/netcore-tetra/actions/runs/38976944494)
+an `4e4c551f` besteht auf Ubuntu24.04/26.04 je65 Fälle ohne Skip, beide direkten
+Downloads mit anschließendem tatsächlichem Deploy-Import sowie die echte
+Asterisk22.11.0-REGISTER-Prüfung. Im Browser wird auch ein doppeltes FreePBX-
+Konto ohne Dateidownload abgewiesen und danach dieselbe gespeicherte Station
+korrigiert und erfolgreich heruntergeladen.
+
+Der SIP-Switch läuft tatsächlich mit `396d1799`; Auftrag
+`028c90f7b7ba4a5c9ae05c141fae146b` ist `succeeded`, `live=true`, `ready=true`.
+Der neue Knopf und die Desktop-/Mobilvorschau sind live geprüft. Die Vorschau
+hat keine Station gespeichert.
+[Datierter Abschlussbeleg](../../integration/Z01-2026-10-07/evidence/sip-fallback-direktdownload-2026-10-17.json).
+
 ## Nachweise der automatischen Einrichtung
 
 Gezielte Prüfungen decken die Anlage allein mit Namen, automatisch erzeugte
