@@ -1,0 +1,61 @@
+name: Image VPN and network time
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['system-backend/deployment-core/**', 'crates/tetra-entities/src/mle/components/network_time.rs', 'tools/test_*vpn*.py', '.github/workflows/image-vpn-time.yml']
+  push:
+    branches: [main]
+    paths: ['system-backend/deployment-core/**', 'crates/tetra-entities/src/mle/components/network_time.rs', 'tools/test_*vpn*.py', '.github/workflows/image-vpn-time.yml']
+permissions:
+  contents: read
+jobs:
+  vpn:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Native NetworkManager and OpenVPN prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y network-manager network-manager-openvpn network-manager-openvpn-gnome python3-gi gir1.2-nm-1.0 openvpn openssl dbus udev iproute2 iputils-ping
+      - name: Validation, provisioning, material and policy regressions
+        run: |
+          /usr/bin/python3 tools/test_image_vpn.py
+          /usr/bin/python3 tools/test_vpn_policy.py
+      - name: Actual private NetworkManager and authenticated OpenVPN tunnel
+        run: sudo unshare --mount --net --pid --fork --kill-child --mount-proc /usr/bin/python3 tools/test_vpn_nm_native.py --disposable-runner
+  vpn-bookworm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Real Pi OS base-version libnm and OpenVPN in Debian Bookworm
+        run: |
+          docker run --rm --privileged -v "$GITHUB_WORKSPACE:/src:ro" -w /src debian:bookworm-slim bash -ec '
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install --no-install-recommends -y python3 network-manager network-manager-openvpn network-manager-openvpn-gnome python3-gi gir1.2-nm-1.0 openvpn openssl dbus udev iproute2 iputils-ping
+            python3 tools/test_image_vpn.py
+            python3 tools/test_vpn_policy.py
+            unshare --mount --net --pid --fork --kill-child --mount-proc python3 tools/test_vpn_nm_native.py --disposable-runner
+          '
+  time:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Native radio build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsoapysdr-dev libgsm1-dev pkg-config cmake
+          cmake -S tetra-codec-master -B /tmp/netcore-codec -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib
+          cmake --build /tmp/netcore-codec
+          sudo cmake --install /tmp/netcore-codec
+          sudo ldconfig
+      - name: ETSI time fields, DST, year rollover and actual broadcast PDU
+        run: cargo test --locked -p tetra-entities --lib mle::components::network_time::tests

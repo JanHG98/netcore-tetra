@@ -30,6 +30,14 @@ def main():
         work = Path(temp)
         compressed = download_base(work)
         image, root = work / 'image.img', work / 'root'
+        # The actual NM importer requires a complete client trust profile.
+        # Generate a public CA fixture instead of the old write-only dummy.
+        subprocess.run(['openssl', 'req', '-new', '-x509', '-newkey', 'rsa:2048', '-nodes',
+                        '-keyout', str(work / 'fixture-ca.key'), '-out', str(work / 'fixture-ca.pem'),
+                        '-days', '2', '-subj', '/CN=NetCore ARM64 image fixture CA'],
+                       check=True, capture_output=True, timeout=30)
+        vpn_fixture = ('client\ndev tun\nremote vpn.fixture.invalid 1194\nauth-user-pass\n<ca>\n'
+                       + (work / 'fixture-ca.pem').read_text() + '</ca>\n')
         expand_base(compressed, image)
         parts = partition_table(image)
         start = parts[1]['start']
@@ -60,6 +68,14 @@ def main():
                          'test "$(dpkg --print-architecture)" = arm64; '
                          'for g in netcore spi gpio; do getent group "$g" || groupadd --system "$g"; done; '
                          'useradd --system --gid netcore --groups audio,spi,gpio --shell /usr/sbin/nologin netcore'])
+                atomic_write(root / 'etc/initramfs-tools/conf.d/zz-netcore-image.conf',
+                             '# NetCore portable Pi image\nMODULES=most\n', 0o644)
+                command(['chroot', root, '/bin/bash', '-c',
+                         'set -Eeuo pipefail; export DEBIAN_FRONTEND=noninteractive; '
+                         'NC_APT=(apt-get -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold); '
+                         '"${NC_APT[@]}" -o APT::Update::Error-Mode=any update; '
+                         '"${NC_APT[@]}" install -y network-manager-openvpn network-manager-openvpn-gnome '
+                         'python3-gi gir1.2-nm-1.0'], timeout=1200)
                 if args.desktop != 'none':
                     # Production sets this before any APT operation. Desktop
                     # dependencies can trigger initramfs generation in the chroot.
@@ -73,7 +89,7 @@ def main():
                              'netcore_install_desktop "$1"', 'desktop-smoke', args.desktop], timeout=1800)
                 req = validate_image(image_request(password='test-image-not-for-distribution', wifi_ssid='NetCore Test',
                                                    wifi_password='example-password', overlay='sx1255',
-                                                   vpn_config='client\ndev tun\nremote vpn.fixture.invalid 1194\nauth-user-pass\n',
+                                                   vpn_config=vpn_fixture,
                                                    vpn_username='arm64-fixture-user', vpn_password='arm64-fixture-vpn-secret',
                                                    desktop=args.desktop))
                 atomic_write(root / 'root/netcore-image-request.json', json.dumps(req))
@@ -89,6 +105,14 @@ def main():
                 vpn = root / 'etc/openvpn/client/netcore.conf'
                 assert vpn.stat().st_mode & 0o777 == 0o600
                 assert 'auth-user-pass /etc/openvpn/client/netcore.auth\n' in vpn.read_text()
+                nm_profile = root / 'etc/NetworkManager/system-connections/netcore-vpn.nmconnection'
+                assert nm_profile.stat().st_mode & 0o777 == 0o600
+                assert 'id=NetCore VPN' in nm_profile.read_text()
+                assert 'password=arm64-fixture-vpn-secret' in nm_profile.read_text()
+                network = json.loads((root / 'etc/netcore/image-network.json').read_text())
+                assert network['vpn_uuid'] in nm_profile.read_text()
+                import tomllib
+                assert tomllib.loads((root / 'etc/netcore/config.toml').read_text())['cell_info']['timezone'] == req['timezone']
                 assert 'arm64-fixture' not in (root / 'usr/share/netcore-image/station.json').read_text()
                 assert (root / 'etc/systemd/system/timers.target.wants/netcore-vpn-policy.timer').is_symlink()
                 station = json.loads((root / 'usr/share/netcore-image/station.json').read_text())
