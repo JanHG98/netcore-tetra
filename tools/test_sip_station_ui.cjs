@@ -56,7 +56,7 @@ function fixture(script, args = []) {
   await page.locator('#station-pbx-enabled').check();
   await page.getByLabel('FreePBX-Benutzer',{exact:true}).pressSequentially('dedicated-ui-pbx');
   assert.equal(await page.locator('#station-pbx-auth').inputValue(),'dedicated-ui-pbx');
-  await page.getByLabel('FreePBX-Passwort',{exact:true}).fill('browser-private-secret');
+  await page.getByLabel(/^FreePBX-Passwort/).fill('browser-private-secret');
   await page.locator('#station-save').click();
   await page.locator('#station-dialog').waitFor({state:'hidden'});
   assert.match(await page.locator('#station-message').textContent(), /Asterisk neu geladen/);
@@ -116,6 +116,7 @@ function fixture(script, args = []) {
   await deployment.locator('#image-password').fill('ci-private-os-password');
   await deployment.locator('details').filter({has:deployment.locator('#image-sip')}).locator('summary').click();
   for(const importFilename of [centralFilename,filename]){
+   await deployment.locator('#image-password').fill('ci-private-os-password');
    await deployment.locator('#image-sip').setInputFiles(importFilename);
    const submission=deployment.waitForResponse(r=>r.url().endsWith('/api/v1/images/build')&&r.request().method()==='POST');
    await deployment.locator('#image-build').click();
