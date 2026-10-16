@@ -16,12 +16,12 @@
 <label>Maximale Kontakte<input id="station-contacts" type="number" min="1" max="32" value="1" required></label>
 <label><input id="station-enabled" type="checkbox" checked>Station aktiviert</label>
 </div>
-<h3>Zentralweg für das Image</h3><div class="station-grid">
+<h3>Zentralweg für das Image</h3><p>Im Pi verbindet sich die native TBS mit ihrem lokalen Asterisk auf 127.0.0.1:5060. Dieser meldet sich am hier eingetragenen zentralen SIP-Switch an.</p><div class="station-grid">
 <label>SIP-Switch-Adresse<input id="station-central-host" placeholder="IP oder DNS, vom Pi erreichbar"><small>Kein localhost; vorbelegt mit der Adresse dieser WebUI.</small></label>
 <label>SIP-Port<input id="station-central-port" type="number" min="1" max="65535" value="5060" required></label>
 </div>
 <h3>Eigener PBX-Ersatzweg dieser TBS</h3>
-<p>Den zugehörigen TBS-Zugang im vorhandenen PBX eintragen. Er wird nur beim Ausfall des Zentralwegs verwendet. Der gemeinsame Switch-Trunk wird nicht übernommen.</p>
+<p>Den zugehörigen TBS-Zugang im vorhandenen PBX eintragen. Er wird nur beim Ausfall des Zentralwegs verwendet. Jede TBS braucht dafür einen eigenen PBX-Benutzer, getrennt vom zentralen Switch-Trunk und von anderen TBS. Doppelte Registrierungen an derselben PBX-Adresse und demselben Port sperren den TOML-Export.</p>
 <div class="station-grid">
 <label>PBX-Adresse<input id="station-pbx-host" placeholder="IP oder DNS des PBX"></label>
 <label>PBX-Port<input id="station-pbx-port" type="number" min="1" max="65535" value="5060" required></label>

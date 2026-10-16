@@ -18,6 +18,22 @@ Erreichbarkeit, Discovery-Netzkonfiguration und erlaubten Netze werden erhalten.
 Manuelle Seeds/Bindings und der ausgewaehlte Update-Ref werden zurueckgesetzt;
 es gilt danach wieder `main`. Der erste Imagebuild muss seine Basis neu aufbauen.
 
+## Erfolgreicher Betreiberabschluss am 16.10.2026
+
+Jan bestätigt den Abgleich beider exakten Remote-Aufträge und anschließend
+`phase=completed`, `changed=true`. Observability bleibt korrekt `failed`
+(Audit `20d298a950ca4134968b02b00959fbd2`); warn-control/node-gateway erhält
+`succeeded` (Audit `b8ab64c0d34b45de9a3472f194fd135c`). Die geschützte Sicherung
+liegt unter `/var/lib/netcore-deployment-resets/20261016T210430Z-bixsix43`.
+
+Eine anschließende direkte HTTP-Prüfung bestätigt Controller-Readiness,
+verfügbaren Builder sowie leere Imageaufträge, Artefakte, aktive Profile,
+gespeicherte Profile und Sammelupdates. Der Anwendungsreset ist abgeschlossen;
+die früheren Abbruch-/Fortsetzungsabschnitte unten bleiben als Ablaufbeleg
+erhalten. Ein neuer Imagebuild und die zuvor fehlgeschlagene
+Observability-Aktualisierung sind damit noch nicht abgenommen.
+[Endbelege, Audits und Abschluss](../integration/Z01-2026-10-07/evidence/reset-remote-abschluesse-2026-10-16.json).
+
 ## Auf VM-H-DEPLOY-01 ausfuehren
 
 Der folgende Block pinnt den ausgecheckten Stand einmal auf einen vollstaendigen
