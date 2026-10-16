@@ -466,10 +466,12 @@ class SipSwitch:
         for key in ("node_id", "endpoint_id", "username"):
             default = item.get(key, "")
             if key == "endpoint_id" and not default:
-                default = "tbs-" + item["node_id"].lower()
+                default = safe_id("tbs-" + item["node_id"].lower())
             if key == "username" and not default:
                 default = item["endpoint_id"]
             item[key] = station_text(body.get(key, default), key, required=True, identifier=True)
+            if key != "node_id" and safe_id(item[key]) != item[key]:
+                raise StationError(key + ": keine Bindestriche am Anfang oder Ende verwenden")
         if (previous is None or item["node_id"] != previous["node_id"]) and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", item["node_id"]):
             raise StationError("Stationskennung: 1-64 Zeichen wie im Deploy-TBS-Profil; Buchstaben/Ziffern/Punkt/_/-")
         if body.get("password"):
