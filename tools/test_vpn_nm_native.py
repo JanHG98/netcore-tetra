@@ -53,7 +53,7 @@ def certificate(work, name, usage):
     run('openssl', 'req', '-new', '-newkey', 'rsa:2048', '-nodes',
         '-keyout', work / (name + '.key'), '-out', work / (name + '.csr'),
         '-subj', '/CN=' + name)
-    (work / (name + '.ext')).write_text('extendedKeyUsage=' + usage + '\n')
+    (work / (name + '.ext')).write_text('keyUsage=digitalSignature,keyEncipherment\nextendedKeyUsage=' + usage + '\n')
     run('openssl', 'x509', '-req', '-in', work / (name + '.csr'),
         '-CA', work / 'ca.pem', '-CAkey', work / 'ca.key', '-CAcreateserial',
         '-out', work / (name + '.pem'), '-days', '2',
@@ -213,6 +213,11 @@ def main():
                   'real certificate+password+tls-auth VPN, tunnel traffic, home disconnect, '
                   'idempotent policy and daemon restart without login.', flush=True)
         except Exception:
+            try:
+                print(run('journalctl', '-t', 'nm-openvpn', '--since', '-3min',
+                          '--no-pager', '-n', '80'), file=sys.stderr)
+            except Exception:
+                pass
             for log in logs:
                 log.flush()
                 print(log.name + ':\n' + Path(log.name).read_text()[-6000:], file=sys.stderr)
