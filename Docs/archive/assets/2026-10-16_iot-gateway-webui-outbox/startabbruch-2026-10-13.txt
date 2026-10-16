@@ -1,0 +1,83 @@
+Oct 13 22:24:19 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Scheduled restart job, restart counter is at 976.
+Oct 13 22:24:19 IoT-Gateway systemd[1]: Started netcore-iot-gateway.service - NetCore-Tetra IoT Gateway and MQTT Bridge (OPEN LAB MODE).
+Oct 13 22:20:48 IoT-Gateway python3[128587]: 2026-10-13T22:20:48.778680Z  WARN netcore_iot_gateway: IoT Gateway starts in OPEN LAB mode: no login, no tokens, no MQTT credentials and no TLS
+Oct 13 22:20:48 IoT-Gateway python3[128587]: 2026-10-13T22:20:48.779179Z  WARN netcore_iot_gateway: Phase 5 keeps command execution policy-controlled; real Home Assistant/Homematic writes are opt-in
+Oct 13 22:20:48 IoT-Gateway python3[128587]: 2026-10-13T22:20:48.779402Z  INFO netcore_iot_gateway: IoT Gateway WebUI/API=10.0.1.119:8240 MQTT=127.0.0.1:1883 prefix=netcore/v1 sources=4 command_mode=open_lab_sandbox policies=3 home_assistant=true homematic_mode=home_assistant_mqtt
+Oct 13 22:20:48 IoT-Gateway python3[128587]: Error: Custom { kind: Other, error: "outbox limit 20000 would be exceeded" }
+Oct 13 22:20:48 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Main process exited, code=exited, status=1/FAILURE
+Oct 13 22:20:48 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Failed with result 'exit-code'.
+Oct 13 22:20:51 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Scheduled restart job, restart counter is at 968.
+Oct 13 22:20:51 IoT-Gateway systemd[1]: Started netcore-iot-gateway.service - NetCore-Tetra IoT Gateway and MQTT Bridge (OPEN LAB MODE).
+Oct 13 22:20:53 IoT-Gateway python3[128596]: Discovery: 0 dependency fields resolved
+Oct 13 22:20:53 IoT-Gateway python3[128596]: 2026-10-13T22:20:53.949240Z  WARN netcore_iot_gateway: IoT Gateway starts in OPEN LAB mode: no login, no tokens, no MQTT credentials and no TLS
+Oct 13 22:20:53 IoT-Gateway python3[128596]: 2026-10-13T22:20:53.949459Z  WARN netcore_iot_gateway: Phase 5 keeps command execution policy-controlled; real Home Assistant/Homematic writes are opt-in
+Oct 13 22:20:53 IoT-Gateway python3[128596]: 2026-10-13T22:20:53.949576Z  INFO netcore_iot_gateway: IoT Gateway WebUI/API=10.0.1.119:8240 MQTT=127.0.0.1:1883 prefix=netcore/v1 sources=4 command_mode=open_lab_sandbox policies=3 home_assistant=true homematic_mode=home_assistant_mqtt
+Oct 13 22:20:53 IoT-Gateway python3[128596]: Error: Custom { kind: Other, error: "outbox limit 20000 would be exceeded" }
+Oct 13 22:20:53 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Main process exited, code=exited, status=1/FAILURE
+Oct 13 22:20:53 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Failed with result 'exit-code'.
+Oct 13 22:20:57 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Scheduled restart job, restart counter is at 969.
+Oct 13 22:20:57 IoT-Gateway systemd[1]: Started netcore-iot-gateway.service - NetCore-Tetra IoT Gateway and MQTT Bridge (OPEN LAB MODE).
+Oct 13 22:20:59 IoT-Gateway python3[128605]: Discovery: 0 dependency fields resolved
+Oct 13 22:20:59 IoT-Gateway python3[128605]: 2026-10-13T22:20:59.655336Z  WARN netcore_iot_gateway: IoT Gateway starts in OPEN LAB mode: no login, no tokens, no MQTT credentials and no TLS
+Oct 13 22:20:59 IoT-Gateway python3[128605]: 2026-10-13T22:20:59.657513Z  WARN netcore_iot_gateway: Phase 5 keeps command execution policy-controlled; real Home Assistant/Homematic writes are opt-in
+Oct 13 22:20:59 IoT-Gateway python3[128605]: 2026-10-13T22:20:59.658893Z  INFO netcore_iot_gateway: IoT Gateway WebUI/API=10.0.1.119:8240 MQTT=127.0.0.1:1883 prefix=netcore/v1 sources=4 command_mode=open_lab_sandbox policies=3 home_assistant=true homematic_mode=home_assistant_mqtt
+Oct 13 22:21:00 IoT-Gateway python3[128605]: Error: Custom { kind: Other, error: "outbox limit 20000 would be exceeded" }
+Oct 13 22:21:00 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Main process exited, code=exited, status=1/FAILURE
+Oct 13 22:21:00 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Failed with result 'exit-code'.
+Oct 13 22:21:03 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Scheduled restart job, restart counter is at 970.
+Oct 13 22:21:03 IoT-Gateway systemd[1]: Started netcore-iot-gateway.service - NetCore-Tetra IoT Gateway and MQTT Bridge (OPEN LAB MODE).
+Oct 13 22:21:40 IoT-Gateway python3[128622]: Discovery: 0 dependency fields resolved
+Oct 13 22:21:40 IoT-Gateway python3[128622]: 2026-10-13T22:21:40.860962Z  WARN netcore_iot_gateway: IoT Gateway starts in OPEN LAB mode: no login, no tokens, no MQTT credentials and no TLS
+Oct 13 22:21:40 IoT-Gateway python3[128622]: 2026-10-13T22:21:40.860985Z  WARN netcore_iot_gateway: Phase 5 keeps command execution policy-controlled; real Home Assistant/Homematic writes are opt-in
+Oct 13 22:21:40 IoT-Gateway python3[128622]: 2026-10-13T22:21:40.860993Z  INFO netcore_iot_gateway: IoT Gateway WebUI/API=10.0.1.119:8240 MQTT=127.0.0.1:1883 prefix=netcore/v1 sources=4 command_mode=open_lab_sandbox policies=3 home_assistant=true homematic_mode=home_assistant_mqtt
+Oct 13 22:21:40 IoT-Gateway python3[128622]: Error: Custom { kind: Other, error: "outbox limit 20000 would be exceeded" }
+Oct 13 22:21:40 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Main process exited, code=exited, status=1/FAILURE
+Oct 13 22:21:40 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Failed with result 'exit-code'.
+Oct 13 22:21:44 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Scheduled restart job, restart counter is at 971.
+Oct 13 22:21:44 IoT-Gateway systemd[1]: Started netcore-iot-gateway.service - NetCore-Tetra IoT Gateway and MQTT Bridge (OPEN LAB MODE).
+Oct 13 22:21:52 IoT-Gateway python3[128648]: Discovery: 0 dependency fields resolved
+Oct 13 22:21:52 IoT-Gateway python3[128648]: 2026-10-13T22:21:52.326313Z  WARN netcore_iot_gateway: IoT Gateway starts in OPEN LAB mode: no login, no tokens, no MQTT credentials and no TLS
+Oct 13 22:21:52 IoT-Gateway python3[128648]: 2026-10-13T22:21:52.326405Z  WARN netcore_iot_gateway: Phase 5 keeps command execution policy-controlled; real Home Assistant/Homematic writes are opt-in
+Oct 13 22:21:52 IoT-Gateway python3[128648]: 2026-10-13T22:21:52.326427Z  INFO netcore_iot_gateway: IoT Gateway WebUI/API=10.0.1.119:8240 MQTT=127.0.0.1:1883 prefix=netcore/v1 sources=4 command_mode=open_lab_sandbox policies=3 home_assistant=true homematic_mode=home_assistant_mqtt
+Oct 13 22:21:52 IoT-Gateway python3[128648]: Error: Custom { kind: Other, error: "outbox limit 20000 would be exceeded" }
+Oct 13 22:21:52 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Main process exited, code=exited, status=1/FAILURE
+Oct 13 22:21:52 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Failed with result 'exit-code'.
+Oct 13 22:21:55 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Scheduled restart job, restart counter is at 972.
+Oct 13 22:21:55 IoT-Gateway systemd[1]: Started netcore-iot-gateway.service - NetCore-Tetra IoT Gateway and MQTT Bridge (OPEN LAB MODE).
+Oct 13 22:22:17 IoT-Gateway python3[128657]: Discovery: 0 dependency fields resolved
+Oct 13 22:22:17 IoT-Gateway python3[128657]: 2026-10-13T22:22:17.619141Z  WARN netcore_iot_gateway: IoT Gateway starts in OPEN LAB mode: no login, no tokens, no MQTT credentials and no TLS
+Oct 13 22:22:17 IoT-Gateway python3[128657]: 2026-10-13T22:22:17.619366Z  WARN netcore_iot_gateway: Phase 5 keeps command execution policy-controlled; real Home Assistant/Homematic writes are opt-in
+Oct 13 22:22:17 IoT-Gateway python3[128657]: 2026-10-13T22:22:17.619475Z  INFO netcore_iot_gateway: IoT Gateway WebUI/API=10.0.1.119:8240 MQTT=127.0.0.1:1883 prefix=netcore/v1 sources=4 command_mode=open_lab_sandbox policies=3 home_assistant=true homematic_mode=home_assistant_mqtt
+Oct 13 22:22:17 IoT-Gateway python3[128657]: Error: Custom { kind: Other, error: "outbox limit 20000 would be exceeded" }
+Oct 13 22:22:17 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Main process exited, code=exited, status=1/FAILURE
+Oct 13 22:22:17 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Failed with result 'exit-code'.
+Oct 13 22:22:20 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Scheduled restart job, restart counter is at 973.
+Oct 13 22:22:20 IoT-Gateway systemd[1]: Started netcore-iot-gateway.service - NetCore-Tetra IoT Gateway and MQTT Bridge (OPEN LAB MODE).
+Oct 13 22:23:17 IoT-Gateway python3[128668]: Discovery: 0 dependency fields resolved
+Oct 13 22:23:17 IoT-Gateway python3[128668]: 2026-10-13T22:23:17.491737Z  WARN netcore_iot_gateway: IoT Gateway starts in OPEN LAB mode: no login, no tokens, no MQTT credentials and no TLS
+Oct 13 22:23:17 IoT-Gateway python3[128668]: 2026-10-13T22:23:17.491781Z  WARN netcore_iot_gateway: Phase 5 keeps command execution policy-controlled; real Home Assistant/Homematic writes are opt-in
+Oct 13 22:23:17 IoT-Gateway python3[128668]: 2026-10-13T22:23:17.491795Z  INFO netcore_iot_gateway: IoT Gateway WebUI/API=10.0.1.119:8240 MQTT=127.0.0.1:1883 prefix=netcore/v1 sources=4 command_mode=open_lab_sandbox policies=3 home_assistant=true homematic_mode=home_assistant_mqtt
+Oct 13 22:23:17 IoT-Gateway python3[128668]: Error: Custom { kind: Other, error: "outbox limit 20000 would be exceeded" }
+Oct 13 22:23:17 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Main process exited, code=exited, status=1/FAILURE
+Oct 13 22:23:17 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Failed with result 'exit-code'.
+Oct 13 22:23:20 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Scheduled restart job, restart counter is at 974.
+Oct 13 22:23:20 IoT-Gateway systemd[1]: Started netcore-iot-gateway.service - NetCore-Tetra IoT Gateway and MQTT Bridge (OPEN LAB MODE).
+Oct 13 22:23:52 IoT-Gateway python3[128690]: Discovery: 0 dependency fields resolved
+Oct 13 22:23:52 IoT-Gateway python3[128690]: 2026-10-13T22:23:52.151420Z  WARN netcore_iot_gateway: IoT Gateway starts in OPEN LAB mode: no login, no tokens, no MQTT credentials and no TLS
+Oct 13 22:23:52 IoT-Gateway python3[128690]: 2026-10-13T22:23:52.151454Z  WARN netcore_iot_gateway: Phase 5 keeps command execution policy-controlled; real Home Assistant/Homematic writes are opt-in
+Oct 13 22:23:52 IoT-Gateway python3[128690]: 2026-10-13T22:23:52.151474Z  INFO netcore_iot_gateway: IoT Gateway WebUI/API=10.0.1.119:8240 MQTT=127.0.0.1:1883 prefix=netcore/v1 sources=4 command_mode=open_lab_sandbox policies=3 home_assistant=true homematic_mode=home_assistant_mqtt
+Oct 13 22:23:52 IoT-Gateway python3[128690]: Error: Custom { kind: Other, error: "outbox limit 20000 would be exceeded" }
+Oct 13 22:23:52 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Main process exited, code=exited, status=1/FAILURE
+Oct 13 22:23:52 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Failed with result 'exit-code'.
+Oct 13 22:23:55 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Scheduled restart job, restart counter is at 975.
+Oct 13 22:23:55 IoT-Gateway systemd[1]: Started netcore-iot-gateway.service - NetCore-Tetra IoT Gateway and MQTT Bridge (OPEN LAB MODE).
+Oct 13 22:24:15 IoT-Gateway python3[128707]: Discovery: 0 dependency fields resolved
+Oct 13 22:24:15 IoT-Gateway python3[128707]: 2026-10-13T22:24:15.965301Z  WARN netcore_iot_gateway: IoT Gateway starts in OPEN LAB mode: no login, no tokens, no MQTT credentials and no TLS
+Oct 13 22:24:15 IoT-Gateway python3[128707]: 2026-10-13T22:24:15.965317Z  WARN netcore_iot_gateway: Phase 5 keeps command execution policy-controlled; real Home Assistant/Homematic writes are opt-in
+Oct 13 22:24:15 IoT-Gateway python3[128707]: 2026-10-13T22:24:15.965321Z  INFO netcore_iot_gateway: IoT Gateway WebUI/API=10.0.1.119:8240 MQTT=127.0.0.1:1883 prefix=netcore/v1 sources=4 command_mode=open_lab_sandbox policies=3 home_assistant=true homematic_mode=home_assistant_mqtt
+Oct 13 22:24:15 IoT-Gateway python3[128707]: Error: Custom { kind: Other, error: "outbox limit 20000 would be exceeded" }
+Oct 13 22:24:15 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Main process exited, code=exited, status=1/FAILURE
+Oct 13 22:24:15 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Failed with result 'exit-code'.
+Oct 13 22:24:19 IoT-Gateway systemd[1]: netcore-iot-gateway.service: Scheduled restart job, restart counter is at 976.
+Oct 13 22:24:19 IoT-Gateway systemd[1]: Started netcore-iot-gateway.service - NetCore-Tetra IoT Gateway and MQTT Bridge (OPEN LAB MODE).
+curl: (7) Failed to connect to 127.0.0.1 port 8240 after 0 ms: Could not connect to server
