@@ -27,7 +27,8 @@ NC_APT=(apt-get -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-co
   git ca-certificates curl python3 python3-soapysdr build-essential pkg-config cmake \
   libssl-dev libsqlite3-dev libsoapysdr-dev soapysdr-tools libasound2-dev libgsm1-dev \
   alsa-utils device-tree-compiler ffmpeg jq sqlite3 nfs-common network-manager \
-  openssh-server sudo tzdata openvpn iw rfkill cloud-guest-utils iproute2 nftables polkitd
+  openssh-server sudo tzdata openvpn iw rfkill cloud-guest-utils iproute2 nftables polkitd \
+  network-manager-openvpn network-manager-openvpn-gnome python3-gi gir1.2-nm-1.0
 install -d /opt /usr/share/netcore-image
 source /usr/local/lib/netcore-image/desktop-setup.sh
 netcore_install_desktop "$NETCORE_DESKTOP"

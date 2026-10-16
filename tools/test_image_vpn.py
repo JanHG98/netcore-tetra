@@ -263,9 +263,10 @@ class ImageVpnTests(unittest.TestCase):
                     Path(path).write_text(value, encoding='utf-8')
                     os.chmod(path, mode)
                 stack.enter_context(patch('personalize.atomic_write', side_effect=windows_write))
-            personalize.configure_vpn(req, root=root, runner=runner)
+            stack.enter_context(patch('personalize.render_vpn', return_value='102a6a50-84ed-4d06-81e3-e8c27fb6bc30'))
+            return personalize.configure_vpn(req, root=root, runner=runner)
 
-    def test_image_uses_two_line_0600_authfile_and_enables_only_policy_timer(self):
+    def test_image_uses_private_auth_and_nm_profile_with_one_policy(self):
         with tempfile.TemporaryDirectory() as directory:
             root, runner = Path(directory), Mock()
             req = self.authenticated()
@@ -275,7 +276,9 @@ class ImageVpnTests(unittest.TestCase):
             self.assertEqual(auth.read_text(), USERNAME + '\n' + PASSWORD + '\n')
             self.assertEqual(config.read_text(), req['vpn_config'])
             self.assertNotIn(PASSWORD, config.read_text())
-            runner.assert_called_once_with('systemctl', 'enable', 'netcore-vpn-policy.timer')
+            self.assertEqual(runner.call_args_list, [
+                unittest.mock.call('systemctl', 'disable', 'openvpn-client@netcore.service'),
+                unittest.mock.call('systemctl', 'enable', 'netcore-vpn-policy.timer')])
             self.assertNotIn(PASSWORD, repr(runner.call_args))
             if os.name == 'posix':
                 self.assertEqual(auth.stat().st_mode & 0o777, 0o600)
@@ -302,3 +305,4 @@ class ImageVpnTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+
