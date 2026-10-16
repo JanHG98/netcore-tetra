@@ -1,0 +1,102 @@
+{
+  "verified_at": "2026-10-16T22:13:52.830Z",
+  "local_date": "2026-10-17",
+  "task": "Z01.4",
+  "pull_request": "https://github.com/JanHG98/netcore-tetra/pull/102",
+  "validated_head": "df9ccc0952e81ee845afab5e362f987171f208f6",
+  "installed_commit": "57510d259ce691c1505f0bd44fd35299cc403a3f",
+  "ci": {
+    "run": 38973913722,
+    "native": [
+      {
+        "os": "ubuntu-24.04",
+        "job": 117218628031,
+        "tests": 65,
+        "skipped": 0,
+        "conclusion": "success"
+      },
+      {
+        "os": "ubuntu-26.04",
+        "job": 117218627693,
+        "tests": 65,
+        "skipped": 0,
+        "conclusion": "success"
+      }
+    ],
+    "browser": {
+      "job": 117218628145,
+      "conclusion": "success",
+      "scope": [
+        "name-only station",
+        "two explicitly labelled optional FreePBX fields",
+        "central-only and fallback private downloads",
+        "two actual Deploy controller/worker imports",
+        "stale-form conflict",
+        "light/dark/mobile layout"
+      ],
+      "limits": "Image build and Asterisk CLI are fixtures in this browser job"
+    },
+    "asterisk": {
+      "job": 117218628098,
+      "version": "22.11.0",
+      "conclusion": "success",
+      "scope": [
+        "Actual SIP401/200 REGISTER using automatically exported switch address, username and password without FreePBX credentials",
+        "Loaded endpoint/auth/AOR updates and removal"
+      ]
+    },
+    "source_consistency": {
+      "job": 117218628064,
+      "conclusion": "success"
+    },
+    "desktop_runner_blocker": {
+      "job": 117218628138,
+      "error": "qemu-aarch64 not in database of installed binary formats",
+      "stage": "Ubuntu24.04 runner prerequisite before image build"
+    }
+  },
+  "rollout": {
+    "job_id": "f205f11b8c8443558435c1802e033425",
+    "origin": "http://10.0.1.125:8321",
+    "node_id": "SIP-Switch",
+    "service": "sip-switch",
+    "action": "update",
+    "commit": "57510d259ce691c1505f0bd44fd35299cc403a3f",
+    "submitted_at": "2026-10-16T22:11:13.992Z",
+    "status": "succeeded",
+    "result": {
+      "live": true,
+      "ready": true
+    },
+    "installed_manifest_commit": "57510d259ce691c1505f0bd44fd35299cc403a3f",
+    "readiness_http": 200,
+    "health": {
+      "asterisk": true,
+      "mobility_core": true,
+      "pbx": true
+    },
+    "automatic_defaults": {
+      "central_host": "10.0.1.125",
+      "central_port": 5060,
+      "freepbx_host": "10.0.1.21",
+      "freepbx_port": 5060
+    },
+    "live_ui": {
+      "http": 200,
+      "optional_freepbx_checkbox": true,
+      "automatic_switch_target": true,
+      "manual_switch_password_field": false,
+      "desktop_and_mobile_dark_preview": "passed",
+      "preview_saved": false,
+      "stations_before": 0,
+      "stations_after": 0
+    }
+  },
+  "next_step": "Update existing Deploy controller and image builder with the documented VM119 helper before importing a central-only TOML",
+  "limits": [
+    "Deploy VM update not executed by this session",
+    "No new complete desktop image or physical Pi registration accepted",
+    "No FreePBX account created",
+    "Live browser check did not save a station"
+  ]
+}

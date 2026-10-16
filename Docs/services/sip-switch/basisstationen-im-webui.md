@@ -1,6 +1,6 @@
 # Basisstationen automatisch am SIP-Switch einrichten
 
-Stand: 16. Oktober 2026 · Z01.4. Für den normalen SIP-Betrieb genügt der Name
+Stand: 17. Oktober 2026 · Z01.4. Für den normalen SIP-Betrieb genügt der Name
 der Basisstation. Der SIP-Switch erstellt ihren Benutzer und ihr Passwort und
 ermittelt seine erreichbare SIP-Adresse. Ein direkter **FreePBX-Fallback** ist
 optional und hat eigene Zugangsdaten.
@@ -164,8 +164,23 @@ SIP-Switch-Zugangsdaten, zentralen Export ohne FreePBX, den tatsächlichen
 Offline-Renderer und den ausgeschalteten Fallback bei Zentralausfall ab. Der
 Browser prüft beide Downloads und den Import durch den tatsächlichen
 Deploy-Controller/Worker. Die echte Asterisk-Prüfung verlangt einen SIP401/200-
-REGISTER mit den automatisch exportierten Daten. Der native Linux-/Browser-
-Abschlusslauf und die Anlagenübernahme werden separat festgehalten.
+REGISTER mit den automatisch exportierten Daten.
+
+[PR #102](https://github.com/JanHG98/netcore-tetra/pull/102) ist übernommen;
+[SIP-Abschlussprüfung](https://github.com/JanHG98/netcore-tetra/actions/runs/38973913722)
+am Stand `df9ccc09`: auf Ubuntu24.04/26.04 je65 Fälle ohne Skip, beide tatsächlichen
+privaten Downloads/Deploy-Importe und echter SIP401/200-REGISTER mit automatisch
+erzeugten Daten an Asterisk22.11.0 bestanden. Der laufende SIP-Switch ist über
+seinen verifizierten Agenten auf `57510d25` aktualisiert: Auftrag
+`f205f11b8c8443558435c1802e033425`, `succeeded`, `live=true`, `ready=true`.
+Manifest, automatische Adresse `10.0.1.125:5060` und neue Oberfläche sind live
+bestätigt; Desktop und dunkle Mobilansicht wurden ohne Speichern einer Station
+geprüft. [Maschinenlesbarer Nachweis](../../integration/Z01-2026-10-07/evidence/sip-namensanlage-freepbx-optional-2026-10-17.json).
+
+Der noch erforderliche Deploy-VM-Updateblock steht oben. Die separate
+Ubuntu24.04-Desktop-/Image-CI bleibt bereits an der fehlenden
+`qemu-aarch64`-Registrierung des Runners blockiert. Ein vollständiger neuer
+Imagebau und die tatsächliche Pi-/PBX-/Funkabnahme sind damit nicht belegt.
 
 ## Nachweise der Registrierungskorrektur
 
