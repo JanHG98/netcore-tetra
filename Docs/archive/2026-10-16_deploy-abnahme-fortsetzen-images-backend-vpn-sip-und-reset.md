@@ -3,8 +3,10 @@
 **Gespräch:** „Deploy Abnahme fortsetzen“, 12.–16.10.2026.  
 **Übergabe:** 16.10.2026, Europe/Berlin, wegen erreichter maximaler Chatlänge.  
 **Aufgabe:** Z01.4 – reale Anlagenabnahme und gezielte Nachbesserungen.  
-**Geprüfter Repository-Stand:** `main@d54cb89f27e7c33bba73b0de430c7eac3dee768e`.  
-**Unmittelbare Fortsetzung:** [PR #100 – Deployment-Anwendungsreset](https://github.com/JanHG98/netcore-tetra/pull/100), am Übergabepunkt offen und noch mit einer fehlgeschlagenen nativen Prüfung.
+**Geprüfter Repository-Stand beim Chatwechsel:** `main@d54cb89f27e7c33bba73b0de430c7eac3dee768e`.  
+**Offener Stand beim Chatwechsel:** [PR #100 – Deployment-Anwendungsreset](https://github.com/JanHG98/netcore-tetra/pull/100), am Übergabepunkt offen und noch mit einer fehlgeschlagenen nativen Prüfung.
+
+**Fortsetzung abgeschlossen:** PR #100 mit bestandenem Loop-Fix nach `main@e589287457be441f65f480df2386d00f808ccbfc` übernommen; tatsächliche VM-Ausführung offen. Siehe Abschnitt10.
 
 [Gesamtroadmap](../roadmaps/gesamtroadmap.md) · [Archivübersicht](README.md) · [Z01-Nachweise](../integration/Z01-2026-10-07/README.md)
 
@@ -194,3 +196,11 @@ Anschließend Profile/Standortdaten und private SIP-TOML neu einrichten, ein Ima
 - Für VM- und LXC-Änderungen den jeweils dokumentierten festen Quellstand und passenden Ausführungshost verwenden.
 - Vorbereitete Updateblöcke nicht als bereits auf der Anlage ausgeführt kennzeichnen.
 - Frühere RF-/Pi-Teilabnahmen bewahren; neuere Korrekturen benötigen die dazu passende erneute Abnahme.
+
+## 10. Fortsetzung im neuen Chat am 16.10.2026
+
+Der Loop-Abschluss wurde in `2166fa3a` korrigiert; `1dab9ec2416d744f065e03a667bdb56ae07c0664` enthält zusätzlich die aufgelöste Dokumentationsübergabe. Der Helfer wartet nach dem Trennen höchstens zehn Sekunden auf das tatsächliche Verschwinden aller ausgewählten Geräte. Bei weiter belegtem Gerät erfolgt weiterhin kein Umbenennen oder Löschen der Anwendungsdateien.
+
+Die neue Regression reproduziert den Fehler mit der vorherigen Quelle und besteht mit der Korrektur. Die [native Matrix](https://github.com/JanHG98/netcore-tetra/actions/runs/38965045061) besteht auf Ubuntu24.04 und26.04 jeweils alle20 Fälle ohne Skip, einschließlich echter eigener/fremder Loopgeräte, privatem Mountnamespace, Symlinkschutz, SQLite und Rücknahme. Der [maschinelle Folgebefund](assets/2026-10-16_deploy-abnahme/reset-fortsetzung-nachweise.json) hält Quelle und Grenzen fest. systemd-Steuerung und die abschließenden HTTP-Antworten sind in den Tests simuliert.
+
+Der [vollständige Resetblock](../deployment/deployment-vm-zuruecksetzen.md#auf-vm-h-deploy-01-ausfuehren) ist auch auf Bash-Syntax geprüft. Seine Ausführung auf VM-H-DEPLOY-01 sowie der leere reale HTTP-Anwendungszustand bleiben vom Betreiber zu bestätigen. Die Angaben in Abschnitt8 bewahren den ursprünglichen, noch fehlgeschlagenen Übergabestand.

@@ -1,0 +1,61 @@
+{
+  "productive_commit": "1dab9ec2416d744f065e03a667bdb56ae07c0664",
+  "date": "2026-10-16",
+  "prior_head": "191f3384131b8e8b49e13c3ad63759d28bf66bc1",
+  "pr": 100,
+  "change": "Wait up to ten seconds for asynchronous loop release before moving backing files.",
+  "regression_reproduced_with_old_source": true,
+  "local": {
+    "passed": 16,
+    "skipped": 4
+  },
+  "native": {
+    "ubuntu_24_04": {
+      "passed": 20,
+      "skipped": 0,
+      "run": "https://github.com/JanHG98/netcore-tetra/actions/runs/38965045061/job/117189320251"
+    },
+    "ubuntu_26_04": {
+      "passed": 20,
+      "skipped": 0,
+      "run": "https://github.com/JanHG98/netcore-tetra/actions/runs/38965045061/job/117189321588"
+    }
+  },
+  "bash_syntax": "passed",
+  "systemd_control_in_tests": "simulated",
+  "final_http_in_tests": "simulated",
+  "actual_vm119_reset": "not yet performed",
+  "merged_main": "e589287457be441f65f480df2386d00f808ccbfc",
+  "checks": [
+    {
+      "name": "reset (ubuntu-26.04)",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/38965045061/job/117189321588"
+    },
+    {
+      "name": "runtime-update (ubuntu-26.04)",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/38965045002/job/117189320744"
+    },
+    {
+      "name": "runtime-update (ubuntu-24.04)",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/38965045002/job/117189320330"
+    },
+    {
+      "name": "reset (ubuntu-24.04)",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/38965045061/job/117189320251"
+    },
+    {
+      "name": "syslog-runtime",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/38965044968/job/117189320224"
+    },
+    {
+      "name": "source-consistency",
+      "conclusion": "success",
+      "url": "https://github.com/JanHG98/netcore-tetra/actions/runs/38965044968/job/117189319915"
+    }
+  ]
+}

@@ -49,8 +49,8 @@ Loopgeraete mit dem exakten eigenen `work/<32-stellige-ID>/image.img`-Backing;
 fremde Geraete bleiben erhalten. Nach erfolgreichem `losetup --detach` wartet er
 hoechstens zehn Sekunden auf das tatsaechliche Verschwinden der ausgewaehlten
 Loopgeraete. Der Kernel darf sie verzoegert freigeben; bleiben sie sichtbar,
-endet der Reset vor dem Umbenennen oder Loeschen von Anwendungsdateien. Symlinks und abweichende Unit-/Zustandspfade
-werden vor dem Reset abgewiesen.
+endet der Reset vor dem Umbenennen oder Loeschen von Anwendungsdateien. Symlinks und abweichende
+Unit-/Zustandspfade werden vor dem Reset abgewiesen.
 
 Konfiguration, private Auftragsquittungen, alte Profil-/Inventardaten und ein
 begrenzter Dienstjournalausschnitt bleiben unter dem ausgegebenen
@@ -68,6 +68,14 @@ Danach die WebUI mit Strg+F5 laden. Die automatische Versionspruefung darf sofor
 einen neuen Checkauftrag erzeugen. AutoDiscovery darf reale Hosts erneut anzeigen;
 das sind keine wiederhergestellten Altauftraege. Standort-TOML, TBS-Profile,
 manuelle Bindings und bei Bedarf Seeds werden neu eingerichtet.
+
+## Geprüfter Quellstand
+
+PR #100 ist in `main@e589287457be441f65f480df2386d00f808ccbfc` übernommen. Der produktive
+Stand `1dab9ec2` besteht auf Ubuntu24.04 und26.04 jeweils20 native Fälle ohne
+Skip, einschließlich eigener/fremder Loopgeräte, privatem Mountnamespace,
+SQLite und Rücknahme. Der vollständige Bash-Block ist syntaktisch geprüft.
+[Prüfnachweis](../archive/assets/2026-10-16_deploy-abnahme/reset-fortsetzung-nachweise.json).
 
 ## Nachweisgrenze
 
