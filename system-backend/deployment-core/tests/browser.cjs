@@ -405,6 +405,8 @@ const path = require('node:path');
     await page.locator('#template-edit').click();
     await page.locator('#template-editor-dialog').waitFor({state:'visible'});
     assert.equal(await page.locator('#template-source').inputValue(),importedTemplate);
+    assert.equal(await page.locator('#template-source').evaluate(el=>el.selectionStart),0);
+    assert.equal(await page.locator('#template-source').evaluate(el=>el.scrollTop),0);
     assert.equal(await page.locator('#template-editor-save').isDisabled(),true);
     await page.locator('#template-source').fill(importedTemplate+'\n# Nicht speichern');
     await page.locator('#template-editor-cancel').click();

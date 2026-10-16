@@ -469,6 +469,7 @@ function renderTemplateEditor(){
 async function loadTemplateEditor(){
   const document=await api('/api/v1/template');
   $('template-source').value=document.toml;
+  $('template-source').setSelectionRange(0,0);$('template-source').scrollTop=0;
   templateEditorOriginal=$('template-source').value;templateEditorRevision=document.revision;
   $('template-editor-error').textContent='';
 }
