@@ -76,6 +76,9 @@ def main():
                 children.append(child)
                 return child
 
+            # sysfs records the network namespace at mount time. Older libnm
+            # otherwise sees host devices and strictly unmanages fixture links.
+            run('mount', '-t', 'sysfs', 'sysfs', '/sys')
             run('ip', 'link', 'set', 'lo', 'up')
             # Server and client must have separate routing tables. Otherwise a
             # ping to a server tunnel address is local delivery, not VPN traffic.
