@@ -40,3 +40,7 @@
 .template-note,.template-preview{padding:0 25px 20px;font-size:12px}.template-preview pre{max-height:240px;overflow:auto;margin:12px 0 0;background:var(--bg);padding:12px;border-radius:6px}
 .template-preview summary{cursor:pointer;color:var(--muted)}#template-error{color:var(--red)}.template-buttons{flex-wrap:wrap;gap:12px}
 @media(max-width:520px){.template-dialog .form-grid{padding:20px}.template-heading{padding:20px 20px 0}.template-note,.template-preview{padding:0 20px 20px}.template-buttons{padding:0 20px 20px}.template-actions{max-width:100%}.template-actions .button,.template-actions button{white-space:normal}}
+
+.template-source-field{padding:24px 25px}.template-source-field label{margin-bottom:8px}.template-source-field textarea{display:block;max-width:100%;min-height:240px;max-height:55vh;font:12px/1.65 ui-monospace,SFMono-Regular,monospace;tab-size:4}
+.template-source-field p{font-size:12px;margin-top:12px}#template-editor-error{color:var(--red);white-space:pre-wrap}
+@media(max-width:520px){.template-source-field{padding:20px}.template-source-field textarea{font-size:12px}}

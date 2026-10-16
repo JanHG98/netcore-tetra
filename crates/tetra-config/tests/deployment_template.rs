@@ -9,12 +9,15 @@ fn deploy_created_templates_pass_the_actual_tbs_parser_and_rf_validation() {
 import sys
 sys.path.insert(0, 'system-backend/deployment-core')
 from common import toml_dump
-from deploy import new_tbs_template, tbs_config
+from deploy import new_tbs_template, tbs_config, validate_tbs_template
 profile = dict(name='TBS-CREATOR', mcc=901, mnc=1510, issi=4010007, la=3, cc=7)
 for settings in ({}, {'secondary_carrier': None},
         {'freq_offset': -6250, 'main_carrier': 719, 'secondary_carrier': 720,
          'custom_duplex_spacing': 7600000, 'reverse_operation': True}):
-    print(tbs_config(toml_dump(new_tbs_template(settings)), profile), end='\0')
+    imported = '# Imported comment\n' + toml_dump(new_tbs_template(settings)) + '\n[recording]\nenabled = false\n'
+    edited = imported.replace('"sample_rate" = 600000', '"sample_rate" = 1200000')
+    validate_tbs_template(edited)
+    print(tbs_config(edited, profile), end='\0')
 "#;
     let output = Command::new("python3").args(["-c", script]).current_dir(root)
         .output().expect("run actual Deploy template generator");
@@ -28,6 +31,7 @@ for settings in ({}, {'secondary_carrier': None},
         assert_eq!(config.net.mcc, 901);
         assert_eq!(config.cell.location_area, 3);
         assert_eq!(config.cell.colour_code, 7);
+        assert!(!config.recording.enabled);
         assert!(config.brew.is_none());
         assert!(!config.asterisk.enabled);
         assert_eq!(config.dashboard.as_ref().unwrap().port, 8080);

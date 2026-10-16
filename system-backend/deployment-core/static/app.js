@@ -409,8 +409,9 @@ $('settings-form').onsubmit=guarded(async()=>{
 let templateSubmitting=false,templateRevision=0;
 function renderTemplateState(){
   $('template-status').textContent=status.has_template?'Standort-Template vorhanden. RF- und SDR-Einstellungen werden daraus übernommen.':'Noch kein Standort-Template. Erstelle es hier im Formular oder importiere eine vorhandene TBS-Konfiguration.';
+  $('template-edit').disabled=!status.has_template||templateEditorBusy;
   $('template-new').disabled=status.has_template||templateSubmitting;
-  $('template-new').title=status.has_template?'Ein Standort-Template ist bereits vorhanden. Eine andere geprüfte Vorlage kannst du importieren.':'';
+  $('template-new').title=status.has_template?'Ein Standort-Template ist bereits vorhanden. Du kannst es anzeigen und bearbeiten oder eine andere geprüfte Vorlage importieren.':'';
 }
 function templateValues(){
   const fields=$('template-form').elements;
@@ -455,6 +456,48 @@ $('template-form').onsubmit=async event=>{
     notice('Standort-Template erstellt. Du kannst jetzt ein TBS-Profil anlegen.');await refresh();
   }catch(error){$('template-error').textContent=error.message;if(error.status===409)await refresh();}
   finally{templateSubmitting=false;for(const id of ['template-save','template-preview-button','template-cancel'])$(id).disabled=false;renderTemplateState();}
+};
+let templateEditorBusy=false,templateEditorRevision='',templateEditorOriginal='';
+function renderTemplateEditor(){
+  const dirty=$('template-source').value!==templateEditorOriginal;
+  $('template-source').disabled=templateEditorBusy;
+  $('template-editor-save').disabled=templateEditorBusy||!dirty;
+  $('template-editor-reload').disabled=templateEditorBusy;
+  $('template-editor-cancel').disabled=templateEditorBusy;
+  $('template-editor-cancel').textContent=dirty?'Abbrechen':'Schließen';
+}
+async function loadTemplateEditor(){
+  const document=await api('/api/v1/template');
+  $('template-source').value=document.toml;
+  $('template-source').setSelectionRange(0,0);$('template-source').scrollTop=0;
+  templateEditorOriginal=$('template-source').value;templateEditorRevision=document.revision;
+  $('template-editor-error').textContent='';
+}
+$('template-edit').onclick=guarded(async()=>{
+  if(templateEditorBusy)return;templateEditorBusy=true;renderTemplateState();
+  try{await loadTemplateEditor();$('template-editor-dialog').showModal();}
+  finally{templateEditorBusy=false;renderTemplateEditor();renderTemplateState();}
+});
+$('template-source').oninput=()=>{ $('template-editor-error').textContent='';renderTemplateEditor(); };
+$('template-editor-cancel').onclick=()=>$('template-editor-dialog').close();
+$('template-editor-dialog').addEventListener('cancel',event=>{if(templateEditorBusy)event.preventDefault();});
+$('template-editor-dialog').addEventListener('close',()=>{
+  $('template-source').value='';templateEditorOriginal='';templateEditorRevision='';$('template-editor-error').textContent='';
+});
+$('template-editor-reload').onclick=async()=>{
+  if(templateEditorBusy)return;
+  if($('template-source').value!==templateEditorOriginal&&!confirm('Ungespeicherte Änderungen verwerfen und die gespeicherte Template-Version neu laden?'))return;
+  templateEditorBusy=true;renderTemplateEditor();
+  try{await loadTemplateEditor();}catch(error){$('template-editor-error').textContent=error.message;}
+  finally{templateEditorBusy=false;renderTemplateEditor();renderTemplateState();}
+};
+$('template-editor-form').onsubmit=async event=>{
+  event.preventDefault();if(templateEditorBusy)return;templateEditorBusy=true;renderTemplateEditor();
+  try{
+    await api('/api/v1/template/update',{revision:templateEditorRevision,toml:$('template-source').value});
+    $('template-editor-dialog').close();notice('Standort-Template aktualisiert. Neue Imageaufträge übernehmen die Änderungen.');await refresh();
+  }catch(error){$('template-editor-error').textContent=error.message;}
+  finally{templateEditorBusy=false;renderTemplateEditor();renderTemplateState();}
 };
 $('template').onchange=guarded(async()=>{const file=$('template').files[0];if(file){await api('/api/v1/template',{toml:await file.text()});notice('Standort-Template gespeichert.');await refresh();}});
 $('profile-list').onclick=async event=>{

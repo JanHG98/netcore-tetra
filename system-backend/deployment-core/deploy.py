@@ -266,6 +266,27 @@ TBS_DUPLEX_KHZ = (
 )
 
 
+def validate_tbs_template(template):
+    """Validate the editable document without reserializing or dropping extensions."""
+    if not isinstance(template, str) or '\x00' in template or len(template.encode('utf-8')) > 196608:
+        raise ValueError('TBS-Template muss UTF-8-TOML mit höchstens 192 KiB sein')
+    try:
+        parsed = tomllib.loads(template)
+    except tomllib.TOMLDecodeError as error:
+        line = getattr(error, 'lineno', None)
+        column = getattr(error, 'colno', None)
+        if line is None:
+            location = re.search(r'\(at line (\d+), column (\d+)\)', str(error))
+            if location:
+                line, column = location.groups()
+        suffix = f' (Zeile {line}, Spalte {column})' if line is not None else ''
+        raise ValueError('Ungültige TOML-Syntax' + suffix) from None
+    for section in ('net_info', 'cell_info', 'phy_io'):
+        if not isinstance(parsed.get(section), dict):
+            raise ValueError('TBS-Template benötigt den Abschnitt [' + section + ']')
+    return parsed
+
+
 def new_tbs_template(settings, endpoints=None):
     """Create a credential-free site template with matching SYSINFO/SDR frequencies."""
     defaults = dict(freq_band=4, main_carrier=720, secondary_carrier=721, freq_offset=0,
