@@ -332,6 +332,12 @@ try {
       fixtureApi['/api/asterisk/status'].config.remote = '10.0.1.125:5060';
       await admin.page.evaluate(() => loadAsteriskStatus());
       assert.equal(await admin.page.locator('#ast-local-hint').isVisible(), false);
+      await admin.page.route('**/api/asterisk/status', route => route.fulfill({status: 503, body: '{}'}));
+      await admin.page.evaluate(() => loadAsteriskStatus());
+      assert.equal(await admin.page.locator('#ast-register').textContent(), '—');
+      assert.equal(await admin.page.locator('#ast-register-card').evaluate(el => el.classList.contains('is-ok')), false);
+      assert.equal(await admin.page.locator('#ast-hero-pill').evaluate(el => el.classList.contains('pill-ok')), false);
+      await admin.page.unroute('**/api/asterisk/status');
     } finally {fixtureApi['/api/asterisk/status'] = previous;}
   });
   await check('RF spectrum/waterfall left and quality metrics right', async () => {

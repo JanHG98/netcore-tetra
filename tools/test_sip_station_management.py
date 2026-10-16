@@ -97,7 +97,7 @@ class StationTests(StationFixture, unittest.TestCase):
         # Different digest or From fields do not change the REGISTER client_uri.
         self.assertNotIn('shared-trunk-secret', public['export_error'])
 
-    def test_export_rejects_duplicate_enabled_station_fallback_but_allows_disabled(self):
+    def test_export_rejects_duplicate_station_fallback_even_if_central_endpoint_disabled(self):
         first = self.create()
         second = self.payload('TBS-SECOND')
         second['aliases'] = []
@@ -105,7 +105,11 @@ class StationTests(StationFixture, unittest.TestCase):
         with self.assertRaisesRegex(StationError, 'TBS-SECOND'):
             self.app.station_export(first)
         self.app.change_station('update', {'revision': self.app.config_revision(), 'enabled': False}, 'TBS-SECOND')
-        self.assertEqual(validate_sip_config(self.app.station_export(first), 'TBS-TEST')['fallback_pbx']['username'], 'dedicated-tbs')
+        # Disabling the central endpoint does not stop an existing Pi image's fallback.
+        with self.assertRaisesRegex(StationError, 'TBS-SECOND'):
+            self.app.station_export(first)
+        self.app.change_station('update', {'revision': self.app.config_revision(), 'fallback_pbx': {'username': 'another-tbs'}}, 'TBS-SECOND')
+        validate_sip_config(self.app.station_export(first), 'TBS-TEST')
 
     def test_export_allows_distinct_registration_and_ip_trunk(self):
         item = self.create()

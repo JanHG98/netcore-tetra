@@ -8491,6 +8491,10 @@ async function loadAsteriskStatus(){
     set('ast-last-error',t('conn_error'));
     const localHint=document.getElementById('ast-local-hint');
     if(localHint) localHint.hidden=true;
+    for(const id of ['ast-configured-card','ast-register-card']){
+      const card=document.getElementById(id);
+      if(card){card.classList.remove('is-ok','is-warn','is-danger');card.classList.add('is-idle');}
+    }
     setIntegrationHero('ast', false, false, t('conn_error'), '');
   }
 }

@@ -71,7 +71,7 @@ Registrierungen und die exklusive Umschaltung.
 4. Unter **Eigener PBX-Ersatzweg dieser TBS** den vorbereiteten TBS-Zugang am
    vorhandenen PBX eintragen: Adresse, Port, Benutzer und gegebenenfalls
    Auth-Benutzer/Passwort. Der TBS-Benutzer muss sich vom zentralen registrierenden PBX-Trunk und von
-   den Ersatzwegen anderer aktivierter TBS an derselben PBX unterscheiden.
+   den Ersatzwegen anderer konfigurierter TBS an derselben PBX unterscheiden.
    Ein anderer Auth-, From- oder Contact-Benutzer ersetzt keine eigene
    REGISTER-Identität.
    Ohne Auth-Benutzer darf das Passwort bei einem entsprechend eingerichteten
@@ -100,8 +100,10 @@ Ist die Station deaktiviert oder fehlen notwendige Angaben, zeigt die Tabelle
 die Ergänzung an und bietet keinen unvollständigen Download an. Das gilt auch
 bei einer doppelten PBX-Registrierung: gleicher PBX-Host, Port und
 REGISTER-Benutzer wie der registrierende zentrale Trunk oder der Ersatzweg einer
-anderen aktivierten TBS. Der direkte Download endet dann mit HTTP409 ohne
-private TOML. Hostnamen werden ohne Beachtung der Groß-/Kleinschreibung und ohne
+anderen konfigurierten TBS. Der direkte Download endet dann mit HTTP409 ohne
+private TOML. Auch eine im Switch deaktivierte Station reserviert ihren
+PBX-Ersatzweg, weil das Deaktivieren ihres zentralen Endpoints einen bereits
+laufenden Pi nicht abschaltet. Hostnamen werden ohne Beachtung der Groß-/Kleinschreibung und ohne
 abschließenden Punkt verglichen; verschiedene DNS-Namen derselben PBX werden
 nicht automatisch aufgelöst. Bereits erzeugte Images werden dadurch nicht
 nachträglich korrigiert.

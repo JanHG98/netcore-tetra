@@ -449,8 +449,9 @@ class SipSwitch:
         shared = self.config.pbx
         if str(shared.get("mode", "ip_trunk")).lower() == "registration" and identity == self._pbx_registration_identity(shared):
             raise StationError("PBX-Ersatzweg verwendet die Registrierung des zentralen Switch-Trunks; eigenen PBX-Benutzer für diese TBS eintragen", 409)
+        # Disabling a central endpoint does not stop a Pi image's PBX fallback.
         for other in self.config.tbs:
-            if other.get("node_id") == item["node_id"] or not bool_value(other.get("enabled", True), True):
+            if other.get("node_id") == item["node_id"]:
                 continue
             fallback = other.get("fallback_pbx", {})
             if fallback.get("host") and fallback.get("username") and identity == self._pbx_registration_identity(fallback):
