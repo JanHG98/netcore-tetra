@@ -30,7 +30,8 @@ function fixture(script, args = []) {
   const [sipUrl,deployUrl] = await Promise.all([sip.url,deploy.url]);
   browser = await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE_PATH});
   const context = await browser.newContext({viewport:{width:1440,height:1050},acceptDownloads:true});
-  const page = await context.newPage(), errors=[];
+  const page = await context.newPage(), errors=[], downloads=[];
+  page.on('download', download=>downloads.push(download));
   page.on('pageerror', error => errors.push(error.message));
   page.on('dialog', dialog => dialog.accept());
   await page.goto(sipUrl);
@@ -39,13 +40,13 @@ function fixture(script, args = []) {
   assert.equal(await page.locator('#station-pbx-enabled').isChecked(),false);
   assert.equal(await page.locator('#station-pbx-fields').isVisible(),false);
   assert.equal(await page.locator('#station-password').count(),0);
-  await page.locator('#station-save').click();
+  const centralDownloadEvent=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Speichern und TOML herunterladen',exact:true}).click();
   await page.locator('#station-dialog').waitFor({state:'hidden'});
   const row = () => page.locator('#tbsRows tr').filter({has:page.getByText('TBS-SIP-UI',{exact:true})});
   await row().getByText('TOML bereit',{exact:true}).waitFor();
-  const centralDownloadEvent=page.waitForEvent('download');
-  await row().getByRole('button',{name:'SIP-TOML ↓',exact:true}).click();
   const centralDownload=await centralDownloadEvent;
+  assert.equal(centralDownload.suggestedFilename(),'TBS-SIP-UI-sip-fallback.toml');
   const centralFilename=path.join(temporary,'central-only.toml');
   await centralDownload.saveAs(centralFilename);
   const centralText=await readFile(centralFilename,'utf8');
@@ -57,9 +58,17 @@ function fixture(script, args = []) {
   await page.getByLabel('FreePBX-Benutzer',{exact:true}).pressSequentially('dedicated-ui-pbx');
   assert.equal(await page.locator('#station-pbx-auth').inputValue(),'dedicated-ui-pbx');
   await page.getByLabel(/^FreePBX-Passwort/).fill('browser-private-secret');
-  await page.locator('#station-save').click();
+  const fallbackDownloadEvent=page.waitForEvent('download');
+  await page.locator('#station-save-download').click();
   await page.locator('#station-dialog').waitFor({state:'hidden'});
-  assert.match(await page.locator('#station-message').textContent(), /Asterisk neu geladen/);
+  const fallbackDownload=await fallbackDownloadEvent;
+  const fallbackFilename=path.join(temporary,'with-freepbx.toml');
+  await fallbackDownload.saveAs(fallbackFilename);
+  const fallbackText=await readFile(fallbackFilename,'utf8');
+  assert.match(fallbackText,/\[fallback_pbx\]\s+enabled = true/);
+  assert.ok(fallbackText.includes('browser-private-secret'));
+  assert.ok(fallbackText.includes('dedicated-ui-pbx'));
+  assert.match(await page.locator('#station-message').textContent(), /Private SIP-TOML heruntergeladen/);
   await row().getByRole('button',{name:'Bearbeiten',exact:true}).click();
   assert.equal(await page.locator('#station-pbx-password').inputValue(), '');
   assert.match(await page.locator('#station-pbx-password').getAttribute('placeholder'), /vorhanden/);
@@ -115,7 +124,7 @@ function fixture(script, args = []) {
   await deployment.locator('#image-profile').selectOption('TBS-SIP-UI');
   await deployment.locator('#image-password').fill('ci-private-os-password');
   await deployment.locator('details').filter({has:deployment.locator('#image-sip')}).locator('summary').click();
-  for(const importFilename of [centralFilename,filename]){
+  for(const importFilename of [centralFilename,fallbackFilename]){
    await deployment.locator('#image-password').fill('ci-private-os-password');
    await deployment.locator('#image-sip').setInputFiles(importFilename);
    const submission=deployment.waitForResponse(r=>r.url().endsWith('/api/v1/images/build')&&r.request().method()==='POST');
@@ -136,6 +145,31 @@ function fixture(script, args = []) {
   const images=await (await deployment.request.get(deployUrl+'/api/v1/images')).json();
   assert.equal(images.artifacts.find(a=>a.profile.name==='TBS-SIP-UI').sip_setup,'configured');
   assert.ok(!JSON.stringify(images).includes('browser-private-secret'));
+  // A saved station with a conflicting FreePBX identity must never download an unsafe file.
+  const downloadCount=downloads.length;
+  await page.locator('#station-new').click();
+  await page.locator('#station-node').fill('TBS-FALLBACK-CONFLICT');
+  await page.locator('#station-pbx-enabled').check();
+  await page.getByLabel('FreePBX-Benutzer',{exact:true}).fill('dedicated-ui-pbx');
+  await page.getByLabel(/^FreePBX-Passwort/).fill('conflict-private-secret');
+  await page.locator('#station-save-download').click();
+  await page.locator('#station-dialog').waitFor({state:'hidden'});
+  await page.locator('#station-message').getByText(/Basisstation gespeichert; TOML konnte nicht heruntergeladen werden:.*TBS-SIP-UI/).waitFor();
+  assert.equal(downloads.length,downloadCount);
+  const conflictRow=page.locator('#tbsRows tr').filter({has:page.getByText('TBS-FALLBACK-CONFLICT',{exact:true})});
+  assert.equal(await conflictRow.getByRole('button',{name:'SIP-TOML ↓',exact:true}).isDisabled(),true);
+  await conflictRow.getByRole('button',{name:'Bearbeiten',exact:true}).click();
+  await page.getByLabel('FreePBX-Benutzer',{exact:true}).fill('dedicated-conflict-fixed');
+  const recoveredDownloadEvent=page.waitForEvent('download');
+  await page.locator('#station-save-download').click();
+  const recoveredDownload=await recoveredDownloadEvent;
+  const recoveredFilename=path.join(temporary,'recovered.toml');
+  await recoveredDownload.saveAs(recoveredFilename);
+  assert.ok((await readFile(recoveredFilename,'utf8')).includes('conflict-private-secret'));
+  listed=await (await page.request.get(sipUrl+'/api/v1/tbs')).json();
+  assert.equal(listed.filter(v=>v.node_id==='TBS-FALLBACK-CONFLICT').length,1);
+  await conflictRow.getByRole('button',{name:'Löschen',exact:true}).click();
+  await conflictRow.waitFor({state:'detached'});
   await row().getByRole('button',{name:'Löschen',exact:true}).click();
   await row().waitFor({state:'detached'});
   await page.reload();
@@ -143,7 +177,7 @@ function fixture(script, args = []) {
   listed=await (await page.request.get(sipUrl+'/api/v1/tbs')).json();
   assert.ok(!listed.some(v=>v.node_id==='TBS-SIP-UI'));
   assert.deepEqual(errors,[]);
-  console.log('PASS: name-only station with automatic SIP credentials, optional FreePBX using two fields, central-only and fallback downloads imported into Deploy; real HTTP CRUD, stale-form guard, private download, light/dark/mobile UI and downloaded TOML imported via real Deploy controller/worker validation. Image build and Asterisk CLI are fixtures.');
+  console.log('PASS: name-only station with automatic SIP credentials, optional FreePBX using two fields, direct save-and-download with and without FreePBX imported into Deploy, repeat download, conflicting fallback refused without a file and corrected without duplicate station; real HTTP CRUD, stale-form guard, private download, light/dark/mobile UI and downloaded TOML imported via real Deploy controller/worker validation. Image build and Asterisk CLI are fixtures.');
  } finally {
   if(browser)await browser.close();
   sip.child.kill('SIGTERM');deploy.child.kill('SIGTERM');

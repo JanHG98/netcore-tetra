@@ -81,8 +81,10 @@ Aufträge verhindern das Update. Danach die Deploy-Seite mit **Strg+F5** laden.
 4. **FreePBX-Fallback bei Ausfall des SIP-Switch aktivieren** ausgeschaltet
    lassen, wenn nur der Zentralweg benötigt wird. Dafür sind keine
    FreePBX-Benutzer- oder Passwortangaben nötig.
-5. **Speichern und anwenden** übernimmt den SIP-Switch-Zugang dauerhaft und
-   lädt Asterisk neu. Bei **TOML bereit** auf **SIP-TOML ↓** klicken.
+5. **Speichern und TOML herunterladen** übernimmt den SIP-Switch-Zugang
+   dauerhaft, lädt Asterisk neu und lädt die private TOML direkt herunter.
+   **Speichern und anwenden** speichert ohne Download. Ein erneuter Download ist
+   in der Stationsliste bei **TOML bereit** über **SIP-TOML ↓** möglich.
 
 Die Adresse wird aus einer expliziten Asterisk-Advertise-Adresse, einem
 konkreten SIP-Bind oder der lokalen Route zur konfigurierten Telefonanlage
@@ -108,12 +110,20 @@ des SIP-Switch:
    Telefonanlagenkonfiguration des SIP-Switch übernommen. Auth-/From-/Contact-
    Benutzer folgen dem eingegebenen FreePBX-Benutzer; abweichende Werte stehen
    unter **Erweiterte FreePBX-Einstellungen**.
-4. Speichern und die neue private TOML herunterladen.
+4. **Speichern und TOML herunterladen** wählen. Die Datei enthält die
+   automatisch erzeugten SIP-Switch-Daten und den eingeschalteten
+   FreePBX-Fallback samt dessen eigenen Zugangsdaten. Sie lässt sich wie die
+   Datei ohne Fallback beim gleichnamigen Deploy-Profil importieren.
 
 Der gemeinsame FreePBX-Trunk des SIP-Switch ist ein anderer Zugang. Gleicher
 PBX-Host, Port und REGISTER-Benutzer wie beim registrierenden Switch-Trunk
 oder dem aktivierten FreePBX-Fallback einer anderen Station sperren den
-Fallback-Export mit einer konkreten Meldung und HTTP409. Hostnamen werden
+Fallback-Export mit einer konkreten Meldung und HTTP409. Auch der direkte
+Speichern-und-Download-Knopf umgeht diese Prüfung nicht: Eine erfolgreiche
+Speicherung und ein anschließend gesperrter Download werden getrennt gemeldet.
+Die bereits gespeicherte Station über **Bearbeiten** korrigieren und erneut
+**Speichern und TOML herunterladen** wählen. Dabei bleibt ein vorhandenes
+FreePBX-Passwort bei leerem Passwortfeld erhalten. Hostnamen werden
 unabhängig von Groß-/Kleinschreibung und einem abschließenden Punkt verglichen;
 DNS-Aliase werden nicht aufgelöst. Ein im Switch deaktivierter zentraler
 Stationsendpoint reserviert seinen weiterhin konfigurierten aktiven Fallback,

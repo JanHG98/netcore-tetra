@@ -1698,9 +1698,9 @@ html[data-netcore-ui] :where(.core-main, .core-side, .core-detail) { min-width: 
 <label>SIP-Switch-Adresse<input id="station-central-host" placeholder="automatisch ermittelt"><small>Nur bei abweichender erreichbarer SIP-Adresse anpassen.</small></label>
 <label>SIP-Switch-Port<input id="station-central-port" type="number" min="1" max="65535" value="5060" required></label>
 </div></details>
-<p>Die private TOML enthält den automatisch erzeugten SIP-Switch-Zugang und nur bei aktiviertem FreePBX-Fallback dessen Zugangsdaten. In Deploy beim gleichnamigen TBS-Profil importieren.</p>
+<p>Mit <strong>Speichern und TOML herunterladen</strong> wird die Station angewendet und ihre private Datei direkt heruntergeladen – mit SIP-Switch-Zugang und bei aktiviertem FreePBX-Fallback auch dessen Zugangsdaten. In Deploy beim gleichnamigen TBS-Profil importieren.</p>
 <p id="station-error" class="bad" role="alert"></p>
-<div class="toolbar"><button class="primary" id="station-save" type="submit">Speichern und anwenden</button><button id="station-cancel" type="button">Abbrechen</button></div>
+<div class="toolbar"><button class="primary" id="station-save-download" type="submit">Speichern und TOML herunterladen</button><button id="station-save" type="submit">Speichern und anwenden</button><button id="station-cancel" type="button">Abbrechen</button></div>
 </form></dialog>
 <section class="panel" id="decisions"><h2>Letzte Routen</h2><div class="tablewrap"><table><thead><tr><th>Zeit</th><th>Richtung</th><th>Ziel</th><th>Aktion</th><th>Route</th><th>Grund</th></tr></thead><tbody id="decisionRows"></tbody></table></div></section><section class="panel" id="calls-panel"><h2>SIP-Rufe</h2><div class="tablewrap"><table><thead><tr><th>Token</th><th>Richtung</th><th>Ziel</th><th>Status</th><th>TBS</th><th>Dialstatus</th></tr></thead><tbody id="callRows"></tbody></table></div></section><section class="panel" id="events-panel"><h2>Ereignisse</h2><pre id="events" class="muted"></pre></section></main><script>let stationRows=[],stationSettings={},stationEditing=null,stationRevision="";const el=id=>document.getElementById(id);async function api(path,opt){const r=await fetch(path,opt);let v={};try{v=await r.json()}catch{}if(!r.ok)throw new Error(v.error||v.reason||r.statusText);return v}function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}async function refresh(){try{const[s,t,d,c,e,settings]=await Promise.all([api('/api/v1/status'),api('/api/v1/tbs'),api('/api/v1/decisions?limit=30'),api('/api/v1/calls?limit=30'),api('/api/v1/events?limit=30'),api('/api/v1/tbs-settings')]);stationRows=t;stationSettings=settings;const h=s.health;el('health').innerHTML=(h.asterisk?'<span class="ok">● Asterisk</span>':'<span class="bad">● Asterisk</span>')+' &nbsp; '+(h.mobility_core?'<span class="ok">● Mobility</span>':'<span class="bad">● Mobility</span>')+' &nbsp; '+(h.pbx?'<span class="ok">● FreePBX (Switch-Trunk)</span>':'<span class="bad">● FreePBX (Switch-Trunk)</span>');el('cards').innerHTML=[['Rufe aktiv',s.calls_active],['Rufe gesamt',s.calls_total],['TBS konfiguriert',s.tbs_configured],['TBS registriert',s.tbs_registered],['Routen OK',s.metrics.routes_resolved],['Routen abgelehnt',s.metrics.routes_rejected],['Medienmodus',s.media_mode],['FreePBX-Trunk',s.pbx_mode]].map(x=>`<div class="card"><div class="muted">${x[0]}</div><div class="value">${esc(x[1])}</div></div>`).join('');el('tbsRows').innerHTML=t.map((x,i)=>`<tr><td>${esc(x.node_id)}</td><td>${esc(x.provisioning?.central_host||stationSettings.central_host||'')}:${esc(x.provisioning?.central_port||stationSettings.central_port||5060)}</td><td>${esc(x.username)}</td><td>${x.enabled===false?'deaktiviert':x.runtime?.registered?'<span class="ok">registriert</span>':'<span class="bad">kein Kontakt</span>'}<small class="station-note muted">${esc(x.export_ready?'TOML bereit':x.export_error||'')}</small></td><td>${!(x.fallback_pbx?.enabled??!!x.fallback_pbx?.username)?'Aus (optional)':esc(x.fallback_pbx?.username||'FreePBX-Zugang ergänzen')+' @ '+esc(x.fallback_pbx?.host||stationSettings.fallback_host)}</td><td><div class="station-actions"><button data-station="${i}" data-action="edit">Bearbeiten</button><button data-station="${i}" data-action="download" ${x.export_ready===false?'disabled':''} title="${esc(x.export_error||'Private SIP-Konfiguration herunterladen')}">SIP-TOML ↓</button><button data-station="${i}" data-action="delete">Löschen</button></div></td></tr>`).join('');el('decisionRows').innerHTML=d.map(x=>`<tr><td>${esc(x.created_at)}</td><td>${esc(x.direction)}</td><td>${esc(x.number)}</td><td>${esc(x.action)}</td><td>${esc(x.node_id||x.endpoint)}</td><td>${esc(x.reason)}</td></tr>`).join('');el('callRows').innerHTML=c.map(x=>`<tr><td>${esc(x.call_token)}</td><td>${esc(x.direction)}</td><td>${esc(x.number)}</td><td>${esc(x.state)}</td><td>${esc(x.node_id||'–')}</td><td>${esc(x.dial_status||'–')}</td></tr>`).join('');el('events').textContent=e.map(x=>`${x.timestamp} ${x.event_type} ${x.subject?.id||''}`).join('\n')}catch(e){el('health').innerHTML='<span class="bad">UI-Fehler: '+esc(e.message)+'</span>'}}async function testRoute(){try{const q=new URLSearchParams({direction:direction.value,number:number.value,caller:caller.value,check_contact:'false'});const r=await api('/api/v1/resolve?'+q);el('routeResult').textContent=JSON.stringify(r,null,2)}catch(e){el('routeResult').textContent=e.message}}async function renderAsterisk(){try{const r=await api('/api/v1/actions/render-asterisk',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});alert(JSON.stringify(r))}catch(e){alert(e.message)}}async function reloadAsterisk(){try{const r=await api('/api/v1/actions/reload-asterisk',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});alert(r.output||'OK');refresh()}catch(e){alert(e.message)}}
 function stationMessage(message,bad=false){el('station-message').textContent=message;el('station-message').className=bad?'bad':'ok'}
@@ -1738,14 +1738,25 @@ for(const id of ['node','central-host','central-port','pbx-host','pbx-port'])el(
 el('station-new').addEventListener('click',()=>openStation());
 el('station-cancel').addEventListener('click',()=>el('station-dialog').close());
 el('station-form').addEventListener('submit',async event=>{
- event.preventDefault();el('station-save').disabled=true;el('station-error').textContent='';
+ event.preventDefault();const download=event.submitter===el('station-save-download');let saved=false;
+ for(const id of ['station-save','station-save-download'])el(id).disabled=true;el('station-error').textContent='';
  const value=id=>el('station-'+id).value;
  const data={revision:stationRevision,node_id:value('node').trim(),aliases:value('aliases').split(',').map(s=>s.trim()).filter(Boolean),max_contacts:Number(value('contacts')),enabled:el('station-enabled').checked,
   provisioning:{central_host:value('central-host').trim(),central_port:Number(value('central-port'))},
   fallback_pbx:{enabled:el('station-pbx-enabled').checked,host:value('pbx-host').trim(),port:Number(value('pbx-port')),username:value('pbx-user').trim(),auth_username:value('pbx-auth').trim(),password:value('pbx-password'),from_user:value('pbx-from').trim(),from_domain:value('pbx-domain').trim(),contact_user:value('pbx-contact').trim()}};
- try{await api('/api/v1/tbs'+(stationEditing?'/'+encodeURIComponent(stationEditing):''),{method:stationEditing?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});el('station-dialog').close();stationMessage('Basisstation gespeichert; Asterisk neu geladen.');await refresh()}
- catch(error){el('station-error').textContent=error.message}finally{el('station-save').disabled=false}
+ try{
+  await api('/api/v1/tbs'+(stationEditing?'/'+encodeURIComponent(stationEditing):''),{method:stationEditing?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  saved=true;el('station-pbx-password').value='';el('station-dialog').close();stationMessage('Basisstation gespeichert; Asterisk neu geladen.');await refresh();
+  if(download)await downloadStation(data.node_id);
+ }catch(error){if(saved)stationMessage('Basisstation gespeichert; TOML konnte nicht heruntergeladen werden: '+error.message,true);else el('station-error').textContent=error.message}
+ finally{for(const id of ['station-save','station-save-download'])el(id).disabled=false}
 });
+async function downloadStation(node){
+ const response=await fetch('/api/v1/tbs/'+encodeURIComponent(node)+'/config.toml',{cache:'no-store'});
+ if(!response.ok){const problem=await response.json();throw new Error(problem.error||response.statusText)}
+ const url=URL.createObjectURL(await response.blob()),link=document.createElement('a');link.href=url;link.download=node+'-sip-fallback.toml';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
+ stationMessage('Private SIP-TOML heruntergeladen. In Deploy beim Profil '+node+' importieren.');
+}
 el('tbsRows').addEventListener('click',async event=>{
  const button=event.target.closest('button[data-station]');if(!button)return;
  const item=stationRows[Number(button.dataset.station)],action=button.dataset.action;if(!item)return;
@@ -1754,12 +1765,7 @@ el('tbsRows').addEventListener('click',async event=>{
  button.disabled=true;
  try{
   if(action==='delete'){await api('/api/v1/tbs/'+encodeURIComponent(item.node_id),{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:item.revision})});stationMessage('Basisstation gelöscht; Asterisk neu geladen.');await refresh()}
-  else if(action==='download'){
-   const response=await fetch('/api/v1/tbs/'+encodeURIComponent(item.node_id)+'/config.toml',{cache:'no-store'});
-   if(!response.ok){const problem=await response.json();throw new Error(problem.error||response.statusText)}
-   const url=URL.createObjectURL(await response.blob()),link=document.createElement('a');link.href=url;link.download=item.node_id+'-sip-fallback.toml';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
-   stationMessage('Private SIP-TOML heruntergeladen. In Deploy beim Profil '+item.node_id+' importieren.');
-  }
+  else if(action==='download')await downloadStation(item.node_id);
  }catch(error){stationMessage(error.message,true)}finally{button.disabled=false}
 });
 refresh();setInterval(refresh,3000)</script><script id="netcore-service-shell">/* NetCore shell enhancement: existing DOM nodes, listeners, IDs and API calls stay intact. */
