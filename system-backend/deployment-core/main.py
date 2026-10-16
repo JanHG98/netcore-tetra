@@ -21,9 +21,9 @@ from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlsplit
 
 from common import (CATALOG, PROTOCOL, ROOT, SHA, VERSION, atomic_write, identifier,
-                    json_file, load_config, peer_url, request_json)
+                    json_file, load_config, peer_url, request_json, toml_dump)
 from deploy import (Deployer, Repository, installed_service, probe, service_spec, tbs_config,
-                    validate_job, validate_profile)
+                    validate_job, validate_profile, new_tbs_template)
 from discovery import Discovery, DiscoveryPersistenceUncertain
 from jobs import Jobs, JobConflict, RemoteJobFailed, RemoteJobUncertain
 from bulk_updates import BulkUpdates, verified_manifest
@@ -571,12 +571,23 @@ def handler(app):
             if path == '/api/v1/profiles':
                 profile = validate_profile(data)
                 if not (app.state / 'tbs-site-template.toml').exists():
-                    raise ValueError('Zuerst ein Standort-Template importieren')
+                    raise ValueError('Zuerst ein Standort-Template erstellen oder importieren')
                 with app.lock:
                     updated = dict(app.profiles)
                     updated[profile['name']] = profile
                     app.persist_profiles(updated)
                 return self.send(profile, 201)
+            if path in ('/api/v1/template/preview', '/api/v1/template/create'):
+                config = new_tbs_template(data, app.discovery.snapshot()['endpoints'])
+                template = toml_dump(config)
+                if path.endswith('/preview'):
+                    return self.send({'toml': template, 'rf': config['phy_io']['soapysdr']})
+                with app.lock:
+                    target = app.state / 'tbs-site-template.toml'
+                    if target.exists():
+                        return self.send({'error': 'Ein Standort-Template ist bereits vorhanden. Die Erstellung überschreibt es nicht.'}, 409)
+                    atomic_write(target, template)
+                return self.send({'saved': True}, 201)
             if path == '/api/v1/template':
                 template = data.get('toml', '')
                 parsed = tomllib.loads(template)

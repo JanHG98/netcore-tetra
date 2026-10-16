@@ -9,6 +9,20 @@ on:
 permissions:
   contents: read
 jobs:
+  template-config:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: New template API, persistence and image request
+        run: python3 -m unittest discover -s system-backend/deployment-core/tests -p test_templates.py -v
+      - name: Actual TBS parser and RF validation of generated templates
+        run: cargo test --locked -p tetra-config --test deployment_template
   discovery:
     runs-on: ubuntu-latest
     steps:

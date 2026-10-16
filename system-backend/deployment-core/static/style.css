@@ -31,3 +31,12 @@
 @media(max-width:1100px){.discovery-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.bulk-actions{align-items:flex-start;flex-direction:column}}
 @media(max-width:700px){.forgotten-node{align-items:flex-start;flex-direction:column;gap:12px}.bulk-panel .panel-head{align-items:flex-start;flex-direction:column}.bulk-run-heading{align-items:flex-start;flex-direction:column}.bulk-run-heading label{width:100%;max-width:none}.bulk-run-heading p{margin:0}.bulk-skipped li{flex-direction:column;gap:3px}.bulk-skipped li span{text-align:left}}
 @media(max-width:520px){.discovery-filters{grid-template-columns:1fr;padding:18px}.discovery-scope{padding:0 18px 18px}.bulk-actions,.bulk-preview-heading,.bulk-source,.bulk-run-heading,.forgotten-panel summary,.forgotten-node{padding-left:18px;padding-right:18px}.bulk-actions>div{width:100%;flex-wrap:wrap}.bulk-actions>div button:first-child{flex:1}.compact-table th,.compact-table td{padding-left:14px;padding-right:14px}.filter-empty{align-items:flex-start;flex-direction:column}}
+
+/* Site-template creation uses the same forms as the TBS and image workflow. */
+.template-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.template-dialog{width:min(900px,calc(100% - 32px));max-height:90vh;overflow:auto;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text)}
+.template-dialog::backdrop{background:#0009}.template-heading{padding:24px 25px 0}.template-heading p{font-size:12px;max-width:700px}
+.template-dialog .template-check{flex-direction:row;align-items:center;gap:10px}.template-check input{width:auto;accent-color:var(--cyan)}
+.template-note,.template-preview{padding:0 25px 20px;font-size:12px}.template-preview pre{max-height:240px;overflow:auto;margin:12px 0 0;background:var(--bg);padding:12px;border-radius:6px}
+.template-preview summary{cursor:pointer;color:var(--muted)}#template-error{color:var(--red)}.template-buttons{flex-wrap:wrap;gap:12px}
+@media(max-width:520px){.template-dialog .form-grid{padding:20px}.template-heading{padding:20px 20px 0}.template-note,.template-preview{padding:0 20px 20px}.template-buttons{padding:0 20px 20px}.template-actions{max-width:100%}.template-actions .button,.template-actions button{white-space:normal}}
