@@ -29,8 +29,10 @@ class ActualAsteriskTests(unittest.TestCase):
         app.config.raw['pbx'].update(mode='ip_trunk', password='')
         fixture.path.write_text(config_toml(app.config.raw), encoding='utf-8')
         modules = next(p.parent for p in Path('/usr/lib').glob('**/asterisk/modules/chan_pjsip.so'))
+        data_dir = next(p for p in (Path('/var/lib/asterisk'), Path('/usr/share/asterisk'))
+                        if (p/'documentation/core-en_US.xml').is_file())
         directories = {'astetcdir': config, 'astmoddir': modules, 'astvarlibdir': root/'var',
-            'astdbdir': root/'db', 'astkeydir': root/'keys', 'astdatadir': '/usr/share/asterisk',
+            'astdbdir': root/'db', 'astkeydir': root/'keys', 'astdatadir': data_dir,
             'astagidir': root/'agi', 'astspooldir': root/'spool', 'astrundir': root/'run', 'astlogdir': root/'logs'}
         for name,value in directories.items():
             if name not in {'astmoddir', 'astdatadir'}:
@@ -46,12 +48,13 @@ class ActualAsteriskTests(unittest.TestCase):
             return result.returncode == 0, result.stdout + result.stderr
         app.run_asterisk = cli
         with (root/'startup.log').open('w') as log:
-            daemon = subprocess.Popen([binary, '-f', '-g', '-C', str(main)], stdout=log, stderr=log)
+            daemon = subprocess.Popen([binary, '-f', '-g', '-U', 'root', '-G', 'root', '-C', str(main)], stdout=log, stderr=log)
             try:
                 for _ in range(100):
                     if cli('core waitfullybooted')[0]:
                         break
-                    self.assertIsNone(daemon.poll(), 'Asterisk exited; inspect isolated startup log')
+                    if daemon.poll() is not None:
+                        self.fail('Asterisk exited before test: ' + (root/'startup.log').read_text(encoding='utf-8')[-10000:])
                     time.sleep(.1)
                 else:
                     self.fail('Asterisk did not boot')
