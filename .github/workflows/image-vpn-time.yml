@@ -21,7 +21,7 @@ jobs:
       - name: Native NetworkManager and OpenVPN prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y network-manager network-manager-openvpn network-manager-openvpn-gnome python3-gi gir1.2-nm-1.0 openvpn openssl dbus iproute2 iputils-ping
+          sudo apt-get install -y network-manager network-manager-openvpn network-manager-openvpn-gnome python3-gi gir1.2-nm-1.0 openvpn openssl dbus udev iproute2 iputils-ping
       - name: Validation, provisioning, material and policy regressions
         run: |
           /usr/bin/python3 tools/test_image_vpn.py
@@ -38,7 +38,7 @@ jobs:
           docker run --rm --privileged -v "$GITHUB_WORKSPACE:/src:ro" -w /src debian:bookworm-slim bash -ec '
             export DEBIAN_FRONTEND=noninteractive
             apt-get update
-            apt-get install --no-install-recommends -y python3 network-manager network-manager-openvpn network-manager-openvpn-gnome python3-gi gir1.2-nm-1.0 openvpn openssl dbus iproute2 iputils-ping
+            apt-get install --no-install-recommends -y python3 network-manager network-manager-openvpn network-manager-openvpn-gnome python3-gi gir1.2-nm-1.0 openvpn openssl dbus udev iproute2 iputils-ping
             python3 tools/test_image_vpn.py
             python3 tools/test_vpn_policy.py
             unshare --mount --net --pid --fork --kill-child --mount-proc python3 tools/test_vpn_nm_native.py --disposable-runner

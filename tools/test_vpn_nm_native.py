@@ -81,6 +81,18 @@ def main():
             # otherwise sees host devices and strictly unmanages fixture links.
             run('mount', '-t', 'sysfs', 'sysfs', '/sys')
             mount_targets.append('/sys')
+            # Bookworm's libnm waits for udev initialization. Supply a real
+            # private udev daemon/database rather than the runner/container's.
+            for target, name in [('/run/udev', 'udev-run'), ('/etc/udev/rules.d', 'udev-rules')]:
+                private = work / name
+                private.mkdir()
+                Path(target).mkdir(parents=True, exist_ok=True)
+                run('mount', '--bind', private, target)
+                mount_targets.append(target)
+            (work / 'udev-rules/99-netcore-fixture.rules').write_text(
+                'SUBSYSTEM=="net", KERNEL=="nc-uplink", ENV{NM_UNMANAGED}="0"\n')
+            spawn(['/lib/systemd/systemd-udevd', '--resolve-names=never'], 'udevd')
+            wait_for(lambda: Path('/run/udev/control').exists())
             run('ip', 'link', 'set', 'lo', 'up')
             # Server and client must have separate routing tables. Otherwise a
             # ping to a server tunnel address is local delivery, not VPN traffic.
@@ -95,6 +107,7 @@ def main():
             run('ip', '-n', 'nc-vpn-server', 'link', 'set', 'lo', 'up')
             run('ip', '-n', 'nc-vpn-server', 'address', 'add', '192.0.2.2/24', 'dev', 'nc-peer')
             run('ip', '-n', 'nc-vpn-server', 'link', 'set', 'nc-peer', 'up')
+            run('udevadm', 'settle', '--timeout=10')
             run('openssl', 'req', '-new', '-x509', '-newkey', 'rsa:2048', '-nodes',
                 '-keyout', work / 'ca.key', '-out', work / 'ca.pem', '-days', '2',
                 '-subj', '/CN=NetCore disposable VPN CA')
@@ -188,7 +201,7 @@ def main():
                                  '[logging]\nlevel=WARN\n')
             nm_args = ['NetworkManager', '--no-daemon', '--config=' + str(nm_config),
                        '--pid-file=' + str(work / 'nm.pid'), '--state-file=' + str(work / 'nm.state'),
-                       '--log-level=DEBUG']
+                       '--log-level=DEBUG', '--debug']
             nm = spawn(nm_args, 'networkmanager')
             wait_for(lambda: key in run('nmcli', '-g', 'UUID', 'connection', 'show'))
             assert run('nmcli', '-g', 'connection.id', 'connection', 'show', 'uuid', key) == 'NetCore VPN'
