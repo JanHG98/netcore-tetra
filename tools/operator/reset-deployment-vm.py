@@ -148,6 +148,21 @@ def owned_loops(rows):
     return result
 
 
+def wait_for_detach(devices, timeout=10):
+    # Linux can finish a successful LOOP_CLR_FD asynchronously. Do not move or
+    # delete backing files until every selected device has actually disappeared.
+    pending = set(devices)
+    deadline = time.monotonic() + timeout
+    while pending:
+        pending &= {row['name'] for row in loops()}
+        if not pending:
+            return
+        if time.monotonic() >= deadline:
+            raise RuntimeError('Build-Loopgeraet ist noch belegt; keine Dateien loeschen: '
+                               + ', '.join(sorted(pending)))
+        time.sleep(0.1)
+
+
 def fresh_config(old):
     cfg = {**DEFAULTS, **{key: old[key] for key in KEEP if key in old}}
     # No inherited seeds, manual bindings, template path, ref, profile or secrets.
@@ -246,8 +261,7 @@ def reset(apply=False):
         attached = owned_loops(loops())
         for device in attached:
             run(['losetup', '--detach', device])
-        if set(attached) & {row['name'] for row in loops()}:
-            raise RuntimeError('Build-Loopgeraet ist noch belegt; keine Dateien loeschen')
+        wait_for_detach(attached)
         BACKUPS.mkdir(mode=0o700, exist_ok=True)
         os.chmod(BACKUPS, 0o700)
         backup = Path(tempfile.mkdtemp(prefix=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ-'), dir=BACKUPS))

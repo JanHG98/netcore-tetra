@@ -164,11 +164,34 @@ class ResetTest(unittest.TestCase):
         row = dict(name='/dev/loop9', **{'back-file': str(reset.BUILDER / 'work' / ('a' * 32) / 'image.img')})
         original = self.fake_run
         self.runner.side_effect = lambda args, **kw: json.dumps({'loopdevices': [row]}) if list(args)[:2] == ['losetup', '--json'] else original(args, **kw)
-        with self.assertRaisesRegex(RuntimeError, 'Loopgeraet ist noch belegt'):
-            reset.reset(True)
+        with patch.object(reset.time, 'monotonic', side_effect=[0, 11]):
+            with self.assertRaisesRegex(RuntimeError, 'Loopgeraet ist noch belegt'):
+                reset.reset(True)
         self.assertTrue(self.db.exists())
         self.assertTrue((reset.BUILDER / 'cache/generalized.img').exists())
         self.assertFalse(reset.BACKUPS.exists())
+
+    def test_delayed_loop_detach_finishes_before_backing_files_move(self):
+        own = dict(name='/dev/loop9', **{
+            'back-file': str(reset.BUILDER / 'work' / ('a' * 32) / 'image.img')})
+        foreign = dict(name='/dev/loop10', **{'back-file': str(self.base / 'unrelated.img')})
+        snapshots = iter(([own, foreign], [own, foreign], [foreign]))
+        original = self.fake_run
+        def run(args, **kw):
+            if list(args)[:2] == ['losetup', '--json']:
+                # All observations occur before backing files may be moved.
+                self.assertTrue(self.db.exists())
+                self.assertTrue((reset.BUILDER / 'cache/generalized.img').exists())
+                return json.dumps({'loopdevices': next(snapshots)})
+            return original(args, **kw)
+        self.runner.side_effect = run
+        with patch.object(reset.time, 'sleep') as sleeping:
+            result = reset.reset(True)
+        self.assertEqual(result['phase'], 'completed')
+        self.assertTrue(sleeping.called)
+        detaches = [call for call in self.calls if call[:2] == ['losetup', '--detach']]
+        self.assertEqual(detaches, [['losetup', '--detach', '/dev/loop9']])
+        self.assertTrue((Path(result['backup']) / 'controller/jobs.sqlite3').exists())
 
     def test_private_mount_prevents_renames_and_deletion(self):
         self.mount(reset.BUILDER / 'work/old/root/boot/firmware')

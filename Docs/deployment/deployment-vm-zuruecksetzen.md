@@ -46,7 +46,10 @@ Der Helfer stoppt Controller und Builder mit ihren kompletten Prozessgruppen.
 Vor Dateiaenderungen prueft er erneut die Remote-Quittungen, die Cgroups und
 auch in anderen privaten Namespaces verbliebene Mounts. Er loest ausschliesslich
 Loopgeraete mit dem exakten eigenen `work/<32-stellige-ID>/image.img`-Backing;
-fremde Geraete bleiben erhalten. Symlinks und abweichende Unit-/Zustandspfade
+fremde Geraete bleiben erhalten. Nach erfolgreichem `losetup --detach` wartet er
+hoechstens zehn Sekunden auf das tatsaechliche Verschwinden der ausgewaehlten
+Loopgeraete. Der Kernel darf sie verzoegert freigeben; bleiben sie sichtbar,
+endet der Reset vor dem Umbenennen oder Loeschen von Anwendungsdateien. Symlinks und abweichende Unit-/Zustandspfade
 werden vor dem Reset abgewiesen.
 
 Konfiguration, private Auftragsquittungen, alte Profil-/Inventardaten und ein
