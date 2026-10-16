@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-16",
+  "timezone": "Europe/Berlin",
+  "conversation_title": "Deploy Abnahme fortsetzen",
+  "conversation_window": "2026-10-12/2026-10-16",
+  "kind": "technical_handoff",
+  "full_transcript_available": false,
+  "complete_image_inventory_available": false,
+  "reason": "Direct chat/app access failed; recovered conversation context and repository evidence used.",
+  "repository": "https://github.com/JanHG98/netcore-tetra",
+  "main": "d54cb89f27e7c33bba73b0de430c7eac3dee768e",
+  "task": "Z01.4",
+  "open_pr": {
+    "number": 100,
+    "head": "191f3384131b8e8b49e13c3ad63759d28bf66bc1",
+    "state": "open",
+    "run": "https://github.com/JanHG98/netcore-tetra/actions/runs/38962651476",
+    "ubuntu_24_04": "failure: actual loop detach completion",
+    "ubuntu_26_04": "success: 19 tests",
+    "vm119_reset_verified": false
+  },
+  "merged_prs": [
+    70,
+    71,
+    81,
+    84,
+    87,
+    90,
+    91,
+    92,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99
+  ],
+  "physical_evidence": {
+    "kde_calls_sds_local_media_wlan": "operator-confirmed 2026-10-13",
+    "kde_image_5ea8d3be": "operator-confirmed 2026-10-16",
+    "discovery_agents_updated": 28,
+    "uncertain_remote_jobs": "operator global check empty",
+    "new_backend_rollout_verified": false,
+    "new_vpn_time_sip_acceptance_verified": false,
+    "ct138_archive_and_recall_verified": false
+  },
+  "source_paths": [
+    "Docs/roadmaps/gesamtroadmap.md",
+    "Docs/integration/Z01-2026-10-07/image-ui-desktop-fixes-2026-10-12.md",
+    "Docs/integration/Z01-2026-10-07/image-vpn-und-zeitbroadcast-2026-10-16.md",
+    "Docs/services/sip-switch/basisstationen-im-webui.md",
+    "Docs/deployment/netcore-dienste-aktualisieren.md",
+    "Docs/deployment/logarchiv-auf-nas.md",
+    "Docs/services/media-library/installation-im-lxc.md"
+  ]
+}

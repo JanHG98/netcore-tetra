@@ -18,6 +18,7 @@ Der frühere Satz „vollständiger ARM64-Build offen“ gilt für die damaligen
 
 ## Unterlagen und heutiger Betrieb
 
+- [Chatübergabe vom 16.10.2026: Deploy-Abnahme, VPN/SIP und offener Anwendungsreset](../../archive/2026-10-16_deploy-abnahme-fortsetzen-images-backend-vpn-sip-und-reset.md)
 - [VM119: Build, NVMe und Recovery](imagebuilder-vm119.md)
 - [Anlagenpiloten und Teilabnahmen](anlagenabnahme-z01-4.md)
 - [CT136: APIs, Syslog und NAS](observability-ct136.md)
