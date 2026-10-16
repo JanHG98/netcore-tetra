@@ -128,5 +128,31 @@
     "Original native registering cause remains unproven until Pi boot",
     "No new complete desktop image, physical Pi registration, PBX call, or on-air call accepted"
   ],
-  "merge_commit": "0abea2608e5a18408fba4dcadb60a7e952b6fe9d"
+  "merge_commit": "0abea2608e5a18408fba4dcadb60a7e952b6fe9d",
+  "operator_rollout": {
+    "operator_report": "SIP-Switch updated",
+    "verified_at": "2026-10-16T21:49:56.981Z",
+    "verification": "Direct read-only HTTP; new export-conflict response confirms the registration guard is active, exact installed commit not independently verified",
+    "switch": {
+      "origin": "http://10.0.1.125:8300",
+      "http_status": 200,
+      "asterisk_healthy": true,
+      "mobility_core_healthy": true,
+      "pbx_healthy": true,
+      "pbx_registration": "Registered",
+      "calls_active": 0
+    },
+    "station": {
+      "node_id": "SRV-M-TBS-01",
+      "registered_at_switch": false,
+      "export_ready": false,
+      "export_error": "PBX-Ersatzweg verwendet die Registrierung des zentralen Switch-Trunks; eigenen PBX-Benutzer für diese TBS eintragen",
+      "central_host": "10.0.1.125",
+      "fallback_host": "10.0.1.21",
+      "fallback_register_user": "101"
+    },
+    "pbx_ui_title": "FreePBX Administration",
+    "deployment_profiles": 0,
+    "pi_status_request": "http://10.0.1.20:8080/api/asterisk/status timed out; power state not re-confirmed"
+  }
 }
