@@ -1,0 +1,23 @@
+name: Deployment application reset
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/operator/reset-deployment-vm.py
+      - tools/test_deployment_reset.py
+      - .github/workflows/deployment-reset.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reset:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Disposable filesystem, SQLite history, loop/mount/cgroup guards and rollback
+        run: sudo python3 tools/test_deployment_reset.py
