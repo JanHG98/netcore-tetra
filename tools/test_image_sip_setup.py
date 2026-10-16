@@ -47,6 +47,15 @@ class ImageSipSetupTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'fallback_pbx.username fehlt'):
             self.validate(self.text(fallback_pbx={'host': '10.0.1.21'}))
 
+    def test_central_only_accepts_absent_or_disabled_freepbx_and_discards_inactive_secrets(self):
+        data = tomllib.loads(self.text())
+        del data['fallback_pbx']
+        self.assertEqual(self.validate(toml_dump(data))['fallback_pbx'], {'enabled': False})
+        inactive = {'enabled': False, 'password': 'inactive-freepbx-secret'}
+        self.assertEqual(self.validate(self.text(fallback_pbx=inactive))['fallback_pbx'], {'enabled': False})
+        with self.assertRaisesRegex(ValueError, 'FreePBX-Aktivierung'):
+            self.validate(self.text(fallback_pbx={'enabled': 'false'}))
+
     def test_profile_mismatch_is_rejected(self):
         with self.assertRaisesRegex(ValueError, 'Stationskennung passt nicht'):
             self.validate(self.text(service={'node_id': 'SRV-M-TBS-03'}))
@@ -79,7 +88,7 @@ class ImageSipSetupTests(unittest.TestCase):
         self.assertEqual(config['failover']['default_mode'], 'central')
         self.assertEqual(config['failover']['state_file'], '/var/lib/netcore-tbs-sip-fallback/state.json')
 
-    def test_rendered_image_has_exclusive_registration_private_secret_and_enable_only(self):
+    def test_rendered_image_has_exclusive_registration_private_secret_and_enable_only(self, central_only=False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             executable = root / 'usr/local/bin/netcore-tbs-sip-fallback'
@@ -94,7 +103,8 @@ class ImageSipSetupTests(unittest.TestCase):
                         Path(path).write_text(text)
                         os.chmod(path, mode)
                     stack.enter_context(patch('common.atomic_write', side_effect=windows_write))
-                native = sip.configure_local_sip(self.text(), 'SRV-M-TBS-01', root=root, runner=runner)
+                text = self.text(fallback_pbx={'enabled': False}) if central_only else self.text()
+                native = sip.configure_local_sip(text, 'SRV-M-TBS-01', root=root, runner=runner)
             self.assertEqual(native['remote_host'], '127.0.0.1')
             self.assertEqual(native['remote_port'], 5060)
             self.assertEqual(native['local_user'], 'netcore-native-srv-m-tbs-01')
@@ -106,11 +116,22 @@ class ImageSipSetupTests(unittest.TestCase):
             config = tomllib.loads(config_file.read_text())
             self.assertEqual(config['central']['password'], 'fixture-central')
             self.assertEqual(config['native_tbs']['password'], native['password'])
+            if central_only:
+                pjsip = (root / 'etc/asterisk/netcore-tbs-fallback-pjsip.conf').read_text()
+                dialplan = (root / 'etc/asterisk/netcore-tbs-fallback-extensions.conf').read_text()
+                registration = (root / 'etc/asterisk/netcore-registration-pbx-direct.conf').read_text()
+                self.assertNotIn('netcore-pbx-fallback-', pjsip + dialplan + registration)
+                self.assertNotIn('pbx_direct', dialplan)
+                self.assertIn('netcore-central-srv-m-tbs-01', pjsip + dialplan)
+                self.assertEqual(config['fallback_pbx'], {'enabled': False})
             runner.assert_called_once_with(['systemctl', 'enable', 'asterisk.service', 'netcore-tbs-sip-failover.service'],
                                           check=True, capture_output=True, text=True)
             self.assertTrue((root / 'etc/systemd/system/tetra.service.d/30-local-sip.conf').is_file())
             if os.name == 'posix':
                 self.assertEqual(config_file.stat().st_mode & 0o777, 0o600)
+
+    def test_rendered_central_only_image_has_no_freepbx_objects_or_routes(self):
+        self.test_rendered_image_has_exclusive_registration_private_secret_and_enable_only(central_only=True)
 
 
 if __name__ == '__main__':

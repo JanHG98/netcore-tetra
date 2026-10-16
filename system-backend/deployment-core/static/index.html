@@ -72,7 +72,7 @@
       </div><p class="option-note">Mit VPN-Profil: Im lokalen LAN oder einem der lokalen WLANs bleibt der Tunnel aus. In anderen Netzen wird er automatisch gestartet. Funkdienste laufen unabhängig davon weiter.</p>
     </details>
     <details class="image-options"><summary>SIP für diese Station einrichten <span>optional · eigene Zugangsdaten</span></summary>
-      <label>SIP-Fallback-Konfiguration<input id="image-sip" type="file" accept=".toml"><small>Private TOML-Datei für das ausgewählte TBS-Profil mit zentralem SIP-Switch und PBX-Ersatzweg. Die Datei wird im Image eingerichtet; Zugangsdaten erscheinen nicht im Buildprotokoll.</small></label>
+      <label>SIP-Switch-Konfiguration<input id="image-sip" type="file" accept=".toml"><small>Private TOML-Datei aus dem SIP-Switch für das ausgewählte TBS-Profil. Der SIP-Switch-Zugang wird automatisch übernommen; ein direkter FreePBX-Fallback ist optional. Die Datei wird im Image eingerichtet; Zugangsdaten erscheinen nicht im Buildprotokoll.</small></label>
       <p class="option-note">Ohne Datei bleibt die lokale PBX deaktiviert und SIP wird als „Einrichtung erforderlich“ markiert. Du kannst das Image trotzdem erstellen.</p>
     </details>
     <div class="form-bottom"><p>Der erste Build kann mehrere Stunden dauern. Danach: Image → Raspberry Pi Imager → „Eigenes Image“. Die Funkhardware wird beim Start auf dem Pi geprüft.</p><button id="image-build" type="submit" disabled>Image erstellen →</button></div>

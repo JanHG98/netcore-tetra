@@ -121,6 +121,28 @@ class FallbackTests(unittest.TestCase):
         self.controller.cli = FakeCLI(Path(cfg['failover']['active_registration_file']))
         fallback.atomic_write(self.controller.active_file, fallback.render_active_registration(cfg, 'central'))
 
+    def test_disabled_freepbx_never_switches_on_central_outage(self):
+        controller = self.controller
+        controller.cfg['fallback_pbx'] = {'enabled': False}
+        fallback.ensure(controller.cfg)
+        controller.routing_ready = lambda: False
+        for now in range(10, 30):
+            controller.tick(now)
+        self.assertEqual(controller.state['mode'], 'central')
+        self.assertEqual(controller.state['phase'], 'CENTRAL_UNAVAILABLE')
+        self.assertNotIn('pbx-direct', controller.active_file.read_text())
+        with self.assertRaisesRegex(ValueError, 'FreePBX fallback is disabled'):
+            controller.switch_mode('pbx_direct', 'manual', 31)
+        controller.routing_ready = lambda: True
+        controller.tick(32)
+        self.assertEqual(controller.state['phase'], 'CENTRAL_ACTIVE')
+
+    def test_disabled_freepbx_ignores_a_saved_direct_mode(self):
+        cfg = self.controller.cfg
+        cfg['fallback_pbx'] = {'enabled': False}
+        fallback.atomic_json(Path(cfg['failover']['state_file']), {'mode': 'pbx_direct'})
+        self.assertEqual(fallback.read_state(cfg)['mode'], 'central')
+
     def test_failed_reload_rolls_back_registration_and_db(self):
         controller = self.controller
         original = controller.cli.reload_registrations
