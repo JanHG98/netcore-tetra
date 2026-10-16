@@ -3,6 +3,7 @@
 
 // Was: Bindet das Untermodul common in diesen Bereich ein.
 // Warum: Die Funktionalität bleibt dadurch thematisch getrennt und trotzdem über das übergeordnete Modul erreichbar.
+#[path = "common/sds.rs"]
 mod common;
 
 use std::time::Duration;
