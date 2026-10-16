@@ -565,7 +565,10 @@ class SipSwitch:
                     continue
                 wanted = endpoint in current and bool_value(current[endpoint].get("enabled", True), True)
                 ok, output = self.run_asterisk("pjsip show endpoint " + endpoint, timeout=3)
-                present = bool(re.search(r"^\s*Endpoint:\s+" + re.escape(endpoint) + r"(?:/|\s|$)", output, re.MULTILINE))
+                # Asterisk truncates the endpoint column even for an exact-ID
+                # lookup. Exclude the heading and accept its displayed prefix.
+                row = re.search(r"^\s*Endpoint:\s+([^<\s][^\s]*)", output, re.MULTILINE)
+                present = bool(row and endpoint.startswith(row[1].split("/", 1)[0]))
                 if not ok or present != wanted:
                     raise StationError("Asterisk hat den geänderten SIP-Endpoint nicht übernommen", 503)
         except (OSError, ValueError):

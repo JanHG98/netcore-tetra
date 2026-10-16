@@ -176,6 +176,17 @@ class StationTests(StationFixture, unittest.TestCase):
             self.app.change_station('create', self.payload())
         self.assertEqual(self.app.config_revision(), revision)
 
+    def test_truncated_endpoint_column_is_accepted_after_exact_id_lookup(self):
+        data = self.payload()
+        data['endpoint_id'] = 'tbs-' + 'long-' * 18
+        def cli(command, **kwargs):
+            if command.startswith('pjsip show endpoint '):
+                return True, ' Endpoint: <Endpoint/CID> <State>\n Endpoint: ' + data['endpoint_id'][:40] + ' Not in use'
+            return True, 'Reloaded'
+        self.run.side_effect = cli
+        self.app.change_station('create', data)
+        self.assertIn('pjsip show endpoint ' + data['endpoint_id'], [call.args[0] for call in self.run.call_args_list])
+
     def test_injection_wrong_types_and_unknown_fields_are_rejected_before_writes(self):
         revision = self.app.config_revision()
         for values in ({'node_id': '../bad'}, {'node_id': ''}, {'password': 'abc;injected'}, {'password': 123},
