@@ -88,3 +88,21 @@ Mount in einem getrennten Namespace geprueft. systemd-Steuerung und die
 abschliessende HTTP-Antwort werden in diesen Tests simuliert. Der tatsaechliche
 Reset auf VM119 bleibt ein eigener Betreiberbeleg. Ein Reset beweist keine
 Ursache eines vorherigen Buildstillstands.
+
+## Betreiberabbruch vor Änderungen am 16.10.2026
+
+Auf VM-H-DEPLOY-01 blockiert die Vorprüfung am Quellstand `e5892874` folgende
+Controlleraufträge, jeweils lokal `failed` und ohne gespeicherte Remote-ID:
+
+| Host | Dienst | Controller-Auftrag |
+| --- | --- | --- |
+| Observability | observability | `9d4f6ec344c34cafa32529e9145aa801` |
+| warn-control | node-gateway | `a96edf31da0c40d1a6f03797a32b738f` |
+
+Der Reset wurde vor Unit-Stopp und Dateiänderungen abgebrochen. Der tatsächliche
+Agenten-Endzustand ist dadurch noch nicht bekannt. Zuerst Agentenursprung,
+Zielcommit, lokales Versuchzeitfenster und etwaige Originalquittungen im Log lesen.
+Danach den [gezielten Endbelegabgleich](netcore-dienste-aktualisieren.md#verlorene-post-antwort-mit-ausdrücklich-gewähltem-agentenauftrag)
+für genau diese IDs durchführen. Frühere Zuordnungen anderer Controlleraufträge
+sind kein Endbeleg dieser beiden Versuche. Tatsächlicher Abgleich und erneuter
+Reset bleiben bis zu eigenen Betreiber-Ausgaben offen.
