@@ -1,0 +1,71 @@
+name: SIP station management and Deploy import
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - system-backend/sip-switch/**
+      - system-backend/deployment-core/image/sip_setup.py
+      - tools/test_sip_station_*
+      - .github/workflows/sip-station-management.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Durable station changes, HTTP and actual offline Deploy rendering
+        run: |
+          python3 tools/test_sip_station_management.py
+          python3 tools/test_image_sip_setup.py
+          python3 tools/test_sip_network_runtime.py
+          python3 tools/test_sip_config_permissions.py
+          python3 tools/test_sip_number_routing.py
+          python3 tools/check_sip_switch_phase11c.py
+          python3 tools/embed_auxiliary_service_design.py --check
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sip-ui" --no-save playwright@1.62.1
+          "$RUNNER_TEMP/sip-ui/node_modules/.bin/playwright" install --with-deps chromium
+      - name: SIP WebUI and actual download imported into Deploy WebUI
+        env:
+          NODE_PATH: ${{ runner.temp }}/sip-ui/node_modules
+        run: node tools/test_sip_station_ui.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sip-station-ui
+          path: target/service-ui-preview/sip-stations/
+  asterisk:
+    runs-on: ubuntu-24.04
+    container: debian:bookworm
+    timeout-minutes: 20
+    steps:
+      - name: Install checkout prerequisites in disposable container
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates python3
+      - uses: actions/checkout@v4
+      - name: Install actual Asterisk using the production package/source selector
+        shell: bash
+        env:
+          NETCORE_ASTERISK_BUILD_JOBS: '2'
+        run: |
+          source system-backend/sip-switch/install/ensure-asterisk.sh
+          netcore_ensure_asterisk
+      - name: Verify endpoint, authentication updates and removal in actual PJSIP
+        run: python3 tools/test_sip_station_asterisk.py
