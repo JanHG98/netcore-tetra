@@ -138,7 +138,25 @@ fehlende HTTP-/SIP-Antworten sind deshalb kein Nachweis eines SIP-Fehlers.
 Die Ursache des früheren dauerhaften `registering` und der echte
 Registrierungs-/Rufablauf bleiben nach dem Start zu prüfen.
 
-## Nachweise und Grenzen
+## Nachweise der Registrierungskorrektur
+
+[PR #101](https://github.com/JanHG98/netcore-tetra/pull/101) ist in
+`main@0abea260` übernommen. Am produktiven Code `6e958c29` bestehen auf
+Ubuntu24.04/26.04 jeweils59 Fälle ohne Skip, einschließlich der neuen
+PBX-Kontenkonflikte, einer echten HTTP409-Antwort ohne private TOML und des
+unveränderten Offline-SIP-Renderers. Chromium bestätigt den tatsächlichen
+Download und Deploy-Import. Die Dashboard-Prüfung besteht150 Browserfälle,
+77 Rust-Fälle und den Defaultfeature-Check der Basisstation; insbesondere
+bleiben `registering`/`not registered` ohne Grünstatus und Statusfehler entfernen
+eine vorherige Grünanzeige. Eine echte Asterisk22.11.0-Instanz bestätigt weiterhin
+Endpoint/Auth/AOR, Passwort-/Kontaktlimitänderung und Entfernen ohne
+Daemon-Neustart. [Prüfnachweis und Anlagenabgrenzung](../../integration/Z01-2026-10-07/evidence/sip-registrierung-und-export-2026-10-16.json).
+
+Die separate Ubuntu24.04-Image-/Desktop-CI scheitert weiterhin bereits an der
+fehlenden `qemu-aarch64`-binfmt-Registrierung des Runners. Damit ist kein neuer
+vollständiger Desktopimagebau oder echter Pi-Registrierungsablauf belegt.
+
+## Frühere Nachweise und Grenzen
 
 [Abschlussprüfung](https://github.com/JanHG98/netcore-tetra/actions/runs/38954506305) am produktiven
 Code `e85cf239`: auf Ubuntu 24.04 und 26.04 jeweils 55 Python-Fälle

@@ -1,0 +1,132 @@
+{
+  "date": "2026-10-16",
+  "code_commit": "6e958c298de39880e8123a9a07228115a276e3b6",
+  "pull_request": "https://github.com/JanHG98/netcore-tetra/pull/101",
+  "changes": [
+    "Reject duplicate PBX REGISTER host/port/user against the central registration and configured TBS fallback identities, including disabled central endpoints",
+    "Require exact enabled registered status for green TBS SIP indicator; clear stale status on HTTP error",
+    "Explain native TBS5062 to local Asterisk5060 to central Switch or exclusive PBX fallback"
+  ],
+  "ci": {
+    "sip_workflow_run": 38968478113,
+    "native": [
+      {
+        "os": "ubuntu-24.04",
+        "job": 117200736511,
+        "tests": 59,
+        "skipped": 0,
+        "conclusion": "success"
+      },
+      {
+        "os": "ubuntu-26.04",
+        "job": 117200736550,
+        "tests": 59,
+        "skipped": 0,
+        "conclusion": "success"
+      }
+    ],
+    "sip_browser": {
+      "job": 117200736486,
+      "conclusion": "success",
+      "scope": "actual SIP download and actual Deploy controller/worker validation; image build and Asterisk CLI are fixtures"
+    },
+    "dashboard_workflow_run": 38968477949,
+    "dashboard_browser": {
+      "job": 117200735401,
+      "checks": 150,
+      "failed": 0,
+      "conclusion": "success"
+    },
+    "dashboard_rust": {
+      "job": 117200734904,
+      "tests": 77,
+      "failed": 0,
+      "conclusion": "success",
+      "cargo_check_bluestation_bs": "success"
+    },
+    "source_consistency": {
+      "job": 117200736269,
+      "conclusion": "success"
+    },
+    "asterisk": {
+      "job": 117200736158,
+      "version": "22.11.0",
+      "conclusion": "success",
+      "scope": "actual central Asterisk station endpoint/auth/AOR updates and removal; no physical Pi registration"
+    },
+    "service_webui": {
+      "job": 117200736978,
+      "conclusion": "success",
+      "auxiliary_checks": 431
+    },
+    "known_runner_failures": [
+      {
+        "name": "image-desktops (kde)",
+        "id": 117200735717,
+        "error": [
+          "2026-10-16T21:21:20.0099334Z update-binfmts: warning: qemu-aarch64 not in database of installed binary formats.",
+          "2026-10-16T21:21:20.0126562Z ##[error]Process completed with exit code 2."
+        ]
+      },
+      {
+        "name": "image-desktops (gnome)",
+        "id": 117200735648,
+        "error": [
+          "2026-10-16T21:22:04.6869203Z update-binfmts: warning: qemu-aarch64 not in database of installed binary formats.",
+          "2026-10-16T21:22:04.6893938Z ##[error]Process completed with exit code 2."
+        ]
+      },
+      {
+        "name": "image-desktops (pios)",
+        "id": 117200735475,
+        "error": [
+          "2026-10-16T21:22:06.5722582Z update-binfmts: warning: qemu-aarch64 not in database of installed binary formats.",
+          "2026-10-16T21:22:06.5753765Z ##[error]Process completed with exit code 2."
+        ]
+      },
+      {
+        "name": "image-engine (ubuntu-24.04)",
+        "id": 117200735306,
+        "error": [
+          "2026-10-16T21:21:52.9869285Z update-binfmts: warning: qemu-aarch64 not in database of installed binary formats.",
+          "2026-10-16T21:21:52.9897485Z ##[error]Process completed with exit code 2."
+        ]
+      },
+      {
+        "name": "image-desktops (xfce)",
+        "id": 117200735783,
+        "error": [
+          "2026-10-16T21:22:52.0056509Z update-binfmts: warning: qemu-aarch64 not in database of installed binary formats.",
+          "2026-10-16T21:22:52.0086333Z ##[error]Process completed with exit code 2."
+        ]
+      }
+    ],
+    "image_engine_ubuntu_26": "pending_at_documentation"
+  },
+  "plant_observation": {
+    "source": "Read-only SIP-Switch configuration API; passwords excluded",
+    "central_pbx": {
+      "host": "10.0.1.21",
+      "port": 5060,
+      "register_user": "101"
+    },
+    "station_fallback": {
+      "node_id": "SRV-M-TBS-01",
+      "host": "10.0.1.21",
+      "port": 5060,
+      "register_user": "101"
+    },
+    "station_central": {
+      "host": "10.0.1.125",
+      "port": 5060
+    },
+    "pi": "Operator states powered off or restarting"
+  },
+  "acceptance_limits": [
+    "No credentials or running PBX/SIP configurations changed",
+    "Dedicated TBS PBX account must be configured before a new export",
+    "Original native registering cause remains unproven until Pi boot",
+    "No new complete desktop image, physical Pi registration, PBX call, or on-air call accepted"
+  ],
+  "merge_commit": "0abea2608e5a18408fba4dcadb60a7e952b6fe9d"
+}
