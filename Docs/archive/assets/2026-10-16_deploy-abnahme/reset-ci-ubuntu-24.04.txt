@@ -1,0 +1,21 @@
+Source: https://github.com/JanHG98/netcore-tetra/actions/runs/38962651476/job/117181309396
+Head: 191f3384131b8e8b49e13c3ad63759d28bf66bc1
+Environment: Ubuntu24.04; disposable root integration test; no VM119 execution.
+
+==============================
+2026-10-16T20:30:02.1069243Z ERROR: test_actual_loop_detach_preserves_unrelated_loop (__main__.ResetTest.test_actual_loop_detach_preserves_unrelated_loop)
+2026-10-16T20:30:02.1070326Z ----------------------------------------------------------------------
+2026-10-16T20:30:02.1070963Z Traceback (most recent call last):
+2026-10-16T20:30:02.1072291Z   File "/home/runner/work/netcore-tetra/netcore-tetra/tools/test_deployment_reset.py", line 272, in test_actual_loop_detach_preserves_unrelated_loop
+2026-10-16T20:30:02.1073507Z     self.assertEqual(reset.reset(True)['phase'], 'completed')
+2026-10-16T20:30:02.1074197Z                      ^^^^^^^^^^^^^^^^^
+2026-10-16T20:30:02.1074732Z   File "/home/runner/work/netcore-tetra/netcore-tetra/tools/operator/reset-deployment-vm.py", line 250, in reset
+2026-10-16T20:30:02.1075562Z     raise RuntimeError('Build-Loopgeraet ist noch belegt; keine Dateien loeschen')
+2026-10-16T20:30:02.1076102Z RuntimeError: Build-Loopgeraet ist noch belegt; keine Dateien loeschen
+2026-10-16T20:30:02.1076405Z 
+2026-10-16T20:30:02.1076566Z ----------------------------------------------------------------------
+2026-10-16T20:30:02.1076900Z Ran 19 tests in 0.349s
+2026-10-16T20:30:02.1077040Z 
+2026-10-16T20:30:02.1077135Z FAILED (errors=1)
+2026-10-16T20:30:02.1235706Z ##[error]Process completed with exit code 1.
+2026-10-16T20:30:02.1452331Z
