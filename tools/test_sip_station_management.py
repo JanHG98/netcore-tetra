@@ -70,6 +70,7 @@ class StationTests(StationFixture, unittest.TestCase):
         saved = tomllib.loads(self.path.read_text(encoding='utf-8'))
         self.assertEqual(saved, self.app.config.raw)
         self.assertTrue(saved['custom']['keep'])
+        self.assertRegex(self.path.read_text(encoding='utf-8'), r'(?m)^\[server\]\nbind = ')
         self.assertTrue(self.path.with_suffix('.toml.bak').exists())
         self.assertIn('core reload', [call.args[0] for call in self.run.call_args_list])
         pjsip = (self.root / 'asterisk/netcore-pjsip.conf').read_text(encoding='utf-8')
@@ -281,6 +282,13 @@ class StationHttpTests(StationFixture, unittest.TestCase):
         self.assertEqual(self.request('POST', '/api/v1/tbs', body)[0], 409)
         self.assertEqual(self.request('PUT', '/api/v1/tbs/absent', self.payload())[0], 404)
         self.assertEqual(self.request('POST', '/api/v1/tbs', self.payload(), {'Content-Type': 'text/plain'})[0], 415)
+        request = Request(self.url + '/api/v1/tbs', data=b'{"password":"must-stay-private',
+                          headers={'Content-Type': 'application/json'})
+        with self.assertRaises(HTTPError) as error:
+            self.opener.open(request, timeout=5)
+        with error.exception as response:
+            self.assertEqual(response.code, 400)
+            self.assertNotIn(b'must-stay-private', response.read())
 
 
 if __name__ == '__main__':

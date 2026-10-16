@@ -96,6 +96,8 @@ def private_write(path: Path, content: str) -> None:
 
 def config_toml(data: dict[str, Any]) -> str:
     """Preserve all parsed settings, including nested station tables and mappings."""
+    def name(value):
+        return value if re.fullmatch(r"[A-Za-z0-9_-]+", value) else json.dumps(value, ensure_ascii=False)
     def scalar(value):
         if isinstance(value, bool):
             return str(value).lower()
@@ -111,10 +113,10 @@ def config_toml(data: dict[str, Any]) -> str:
     lines = []
     def table(values, path=(), array=False):
         if path:
-            lines.append(("[[" if array else "[") + ".".join(json.dumps(k) for k in path) + ("]]" if array else "]"))
+            lines.append(("[[" if array else "[") + ".".join(name(k) for k in path) + ("]]" if array else "]"))
         for key, value in values.items():
             if not isinstance(value, dict) and not (isinstance(value, list) and value and isinstance(value[0], dict)):
-                lines.append(json.dumps(key) + " = " + scalar(value))
+                lines.append(name(key) + " = " + scalar(value))
         lines.append("")
         for key, value in values.items():
             if isinstance(value, dict):
@@ -564,7 +566,7 @@ class SipSwitch:
                 wanted = endpoint in current and bool_value(current[endpoint].get("enabled", True), True)
                 ok, output = self.run_asterisk("pjsip show endpoint " + endpoint, timeout=3)
                 present = bool(re.search(r"^\s*Endpoint:\s+" + re.escape(endpoint) + r"(?:/|\s|$)", output, re.MULTILINE))
-                if present != wanted or wanted and not ok:
+                if not ok or present != wanted:
                     raise StationError("Asterisk hat den geänderten SIP-Endpoint nicht übernommen", 503)
         except (OSError, ValueError):
             for path, content in before.items():

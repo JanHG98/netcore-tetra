@@ -53,12 +53,19 @@ jobs:
   asterisk:
     runs-on: ubuntu-24.04
     container: debian:bookworm
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
-      - name: Install native Asterisk in disposable container
+      - name: Install checkout prerequisites in disposable container
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git ca-certificates python3 asterisk
+          apt-get install -y --no-install-recommends git ca-certificates python3
       - uses: actions/checkout@v4
+      - name: Install actual Asterisk using the production package/source selector
+        shell: bash
+        env:
+          NETCORE_ASTERISK_BUILD_JOBS: '2'
+        run: |
+          source system-backend/sip-switch/install/ensure-asterisk.sh
+          netcore_ensure_asterisk
       - name: Verify endpoint, authentication updates and removal in actual PJSIP
         run: python3 tools/test_sip_station_asterisk.py
