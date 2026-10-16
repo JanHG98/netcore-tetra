@@ -1,7 +1,9 @@
-# Basisstationen im SIP-Switch verwalten und für Deploy exportieren
+# Basisstationen automatisch am SIP-Switch einrichten
 
-Stand: 16. Oktober 2026. Der SIP-Switch verwaltet seine Basisstationen unter
-**Basisstationen** in der WebUI auf Port **8300**.
+Stand: 16. Oktober 2026 · Z01.4. Für den normalen SIP-Betrieb genügt der Name
+der Basisstation. Der SIP-Switch erstellt ihren Benutzer und ihr Passwort und
+ermittelt seine erreichbare SIP-Adresse. Ein direkter **FreePBX-Fallback** ist
+optional und hat eigene Zugangsdaten.
 
 ## Bestehenden SIP-Switch aktualisieren
 
@@ -36,107 +38,134 @@ neu und schreibt den Versionsbeleg für Discovery/Deploy. Den Updateblock außer
 )
 ```
 
-Danach die SIP-Switch-Seite vollständig neu laden. Ein vorhandener Deploy-Stand
-mit dem Feld **SIP-Fallback-Konfiguration** benötigt für diesen Export kein neues
-Importformat und kein zusätzliches VM-Update.
+Danach die SIP-Switch-Seite mit **Strg+F5** neu laden. Die folgende Deploy-VM-Aktualisierung übernimmt das erweiterte Importformat.
 
-## SIP-Verbindungen im Pi
+## Deploy-VM für den optionalen FreePBX-Fallback aktualisieren
 
-Das Image richtet zwei getrennte SIP-Prozesse im Pi ein. Die native TBS hört
-auf Port5062 und registriert sich mit einem privaten, beim Imagebau erzeugten
-Zugang am lokalen Asterisk auf `127.0.0.1:5060`. Dieser Asterisk registriert sich
-am zentralen SIP-Switch aus `[central]`. Bei bestätigtem Zentralausfall schaltet
-er ausschließlich auf den eigenen PBX-Zugang aus `[fallback_pbx]` um. Der Pi
-registriert sich dabei nicht an seinem eigenen nativen SIP-Listener.
+Diese Erweiterung benötigt auch den neuen Importer auf der Deploy-VM. Der
+bisherige Importer verlangt noch einen PBX-Ersatzweg. In der SSH-Sitzung
+**jhoffmeister auf VM-H-DEPLOY-01** ausführen, bevor ein neues Image gebaut wird:
 
-Die TBS-WebUI zeigt unter **SIP-Gegenstelle** den ersten dieser Schritte.
-`registered` bestätigt diese Anmeldung, nicht die Erreichbarkeit des zentralen
-Switches oder des PBX. `registering`, `not registered` und `auth challenge`
-sind keine bestätigte Anmeldung. Bei einem dauerhaft wartenden Zustand zuerst
-lokalen Asterisk-Dienst, dessen UDP-Port5060, den geladenen nativen Endpoint und
-die übereinstimmenden lokalen Zugangsdaten prüfen; erst danach die äußeren
-Registrierungen und die exklusive Umschaltung.
+```bash
+(
+  set -Eeuo pipefail
+  NC_VM_SRC=$(mktemp -d /tmp/netcore-sip-auto-vm.XXXXXX)
+  git -C "$NC_VM_SRC" init -q
+  git -C "$NC_VM_SRC" remote add origin https://github.com/JanHG98/netcore-tetra.git
+  git -C "$NC_VM_SRC" config http.version HTTP/1.1
+  git -C "$NC_VM_SRC" config remote.origin.promisor true
+  git -C "$NC_VM_SRC" config remote.origin.partialclonefilter blob:none
+  git -C "$NC_VM_SRC" fetch --depth 1 --filter=blob:none origin refs/heads/main
+  NC_VM_COMMIT=$(git -C "$NC_VM_SRC" rev-parse FETCH_HEAD)
+  git -C "$NC_VM_SRC" sparse-checkout init --cone
+  git -C "$NC_VM_SRC" sparse-checkout set tools/operator system-backend/deployment-core
+  git -C "$NC_VM_SRC" checkout --detach "$NC_VM_COMMIT"
+  sudo python3 -B "$NC_VM_SRC/tools/operator/update-vm119-image-features.py" \
+    --commit "$NC_VM_COMMIT" --apply
+)
+```
 
-## Station anlegen, bearbeiten und löschen
+Erwartet ist `passed` oder `already_current`. Controller, Builder,
+Image-Rezept und Formular werden gemeinsam aktualisiert; vorhandene
+Konfigurationen, Profile und Dateien bleiben erhalten. Aktive oder ungeklärte
+Aufträge verhindern das Update. Danach die Deploy-Seite mit **Strg+F5** laden.
 
-1. **Basisstation anlegen** öffnen. Die Stationskennung muss genau dem
-   TBS-Profil in Deploy und dem Serving-Node im Mobility Core entsprechen.
-2. Endpoint-ID und SIP-Benutzer bei Bedarf eintragen; leere Felder werden bei
-   neuen Stationen aus der Stationskennung abgeleitet. Ein leeres Zentralpasswort
-   erzeugt für neue Stationen ein zufälliges Passwort. Beim Bearbeiten bedeutet
-   ein leeres Passwortfeld immer **vorhandenes Passwort behalten**.
-3. Unter **Zentralweg für das Image** die vom Pi erreichbare SIP-Switch-Adresse
-   und den SIP-Port angeben. Die WebUI-Adresse wird als Hilfe vorbelegt; beim
-   Zugriff über einen Proxy oder eine andere Managementadresse anpassen.
-4. Unter **Eigener PBX-Ersatzweg dieser TBS** den vorbereiteten TBS-Zugang am
-   vorhandenen PBX eintragen: Adresse, Port, Benutzer und gegebenenfalls
-   Auth-Benutzer/Passwort. Der TBS-Benutzer muss sich vom zentralen registrierenden PBX-Trunk und von
-   den Ersatzwegen anderer konfigurierter TBS an derselben PBX unterscheiden.
-   Ein anderer Auth-, From- oder Contact-Benutzer ersetzt keine eigene
-   REGISTER-Identität.
-   Ohne Auth-Benutzer darf das Passwort bei einem entsprechend eingerichteten
-   PBX leer bleiben. From-/Contact-Werte sind optional.
-5. **Speichern und anwenden** schreibt `/etc/netcore/sip-switch.toml`, sichert
-   die vorherige Fassung als private `.toml.bak`, rendert die Asterisk-Includes,
-   lädt Asterisk neu und prüft den betroffenen Endpoint. Scheitert das Schreiben,
-   Neuladen oder die Endpointprüfung, wird die Änderung zurückgenommen.
+## Basisstation nur mit Namen anlegen
 
-**Bearbeiten** und **Löschen** stehen an jeder Tabellenzeile. Löschen entfernt
-den zentralen SIP-Zugang dieser Station. Aktive Rufe der betroffenen Station
-sperren Änderungen bis zum Rufende. Gleichzeitige oder externe
-Konfigurationsänderungen führen zu einem Konflikt, nicht zum Überschreiben.
-Bei extern bearbeiteter TOML den SIP-Switch-Dienst neu starten, bevor die WebUI
-wieder schreibt.
+1. Die SIP-Switch-WebUI auf Port8300 öffnen und **Basisstation anlegen** wählen.
+2. Unter **Name der Basisstation** genau den Namen des Deploy-TBS-Profils
+   eintragen, zum Beispiel `SRV-M-TBS-01`.
+3. **Anmeldung am SIP-Switch · automatisch** zeigt die ermittelte Adresse und
+   den automatisch abgeleiteten Benutzer. Das private Passwort wird beim
+   Speichern erzeugt und bei späterem Bearbeiten erhalten.
+4. **FreePBX-Fallback bei Ausfall des SIP-Switch aktivieren** ausgeschaltet
+   lassen, wenn nur der Zentralweg benötigt wird. Dafür sind keine
+   FreePBX-Benutzer- oder Passwortangaben nötig.
+5. **Speichern und anwenden** übernimmt den SIP-Switch-Zugang dauerhaft und
+   lädt Asterisk neu. Bei **TOML bereit** auf **SIP-TOML ↓** klicken.
 
-Die Stationsliste und die Konfigurations-API liefern keine Passwörter. Für den
-SIP-Switch gilt weiterhin der vorhandene OPEN-LAB-Betrieb ohne WebUI-Anmeldung.
+Die Adresse wird aus einer expliziten Asterisk-Advertise-Adresse, einem
+konkreten SIP-Bind oder der lokalen Route zur konfigurierten Telefonanlage
+ermittelt. Die Routenwahl sendet kein UDP-Paket. Bei mehreren Netzen kann ein
+Administrator `asterisk.advertise_host` zentral vorgeben. Die Adresse aus dem
+HTTP-Host-Header wird nicht als SIP-Ziel übernommen.
 
-## TOML in Deploy importieren
+Aliase, Kontaktlimit, Aktivierung und eine abweichende erreichbare
+SIP-Switch-Adresse liegen unter **Erweiterte Stationseinstellungen**. Bereits
+bestehende SIP-Benutzer und Passwörter werden beim Bearbeiten erhalten.
+Die normale Anlage verlangt keine dieser erweiterten Eingaben.
 
-Bei **TOML bereit** auf **SIP-TOML ↓** klicken. Die Datei heißt zum Beispiel
-`SRV-M-TBS-01-sip-fallback.toml`. Sie enthält die privaten Zugangsdaten für
-`[central]` und `[fallback_pbx]` sowie die Stationskennung unter `[service]`.
-Ist die Station deaktiviert oder fehlen notwendige Angaben, zeigt die Tabelle
-die Ergänzung an und bietet keinen unvollständigen Download an. Das gilt auch
-bei einer doppelten PBX-Registrierung: gleicher PBX-Host, Port und
-REGISTER-Benutzer wie der registrierende zentrale Trunk oder der Ersatzweg einer
-anderen konfigurierten TBS. Der direkte Download endet dann mit HTTP409 ohne
-private TOML. Auch eine im Switch deaktivierte Station reserviert ihren
-PBX-Ersatzweg, weil das Deaktivieren ihres zentralen Endpoints einen bereits
-laufenden Pi nicht abschaltet. Hostnamen werden ohne Beachtung der Groß-/Kleinschreibung und ohne
-abschließenden Punkt verglichen; verschiedene DNS-Namen derselben PBX werden
-nicht automatisch aufgelöst. Bereits erzeugte Images werden dadurch nicht
-nachträglich korrigiert.
+## Optional: direkter FreePBX-Fallback
 
-In Deploy unter **Images** dasselbe TBS-Profil auswählen, **SIP für diese Station
-einrichten** öffnen und die Datei unter **SIP-Fallback-Konfiguration** auswählen.
-Beim Imagebau wird der vorhandene Phase-11c-Importer verwendet. Er richtet den
-lokalen Asterisk, die private native TBS-Anmeldung und den exklusiven Zentralweg
-mit PBX-Ersatzweg ein. Ein anderes TBS-Profil wird abgelehnt. Für die Verwendung
-im Pi ist ein neues Image mit dieser Datei erforderlich; ein bereits laufender
-Build wird dadurch nicht geändert.
+Nur für die direkte Anmeldung dieser TBS an FreePBX bei bestätigtem Ausfall
+des SIP-Switch:
 
-Der vorhandene lokale Image-Fallback unterstützt UDP. Bei einem zentral auf TCP
-konfigurierten Switch weist der Export darauf hin; es wird kein irreführendes
-UDP-Profil ausgegeben. Die PBX-Zugänge und die Reihenfolge ihrer eingehenden
-Routen müssen im vorhandenen PBX eingerichtet sein.
+1. In FreePBX einen eigenen TBS-Zugang vorbereiten.
+2. Bei der Station **FreePBX-Fallback bei Ausfall des SIP-Switch aktivieren**
+   einschalten.
+3. **FreePBX-Benutzer** und **FreePBX-Passwort** dieses Zugangs eingeben.
+   Die FreePBX-Adresse und der Port werden aus der zentralen
+   Telefonanlagenkonfiguration des SIP-Switch übernommen. Auth-/From-/Contact-
+   Benutzer folgen dem eingegebenen FreePBX-Benutzer; abweichende Werte stehen
+   unter **Erweiterte FreePBX-Einstellungen**.
+4. Speichern und die neue private TOML herunterladen.
 
-## Anlagenbefund am 16. Oktober 2026
+Der gemeinsame FreePBX-Trunk des SIP-Switch ist ein anderer Zugang. Gleicher
+PBX-Host, Port und REGISTER-Benutzer wie beim registrierenden Switch-Trunk
+oder dem aktivierten FreePBX-Fallback einer anderen Station sperren den
+Fallback-Export mit einer konkreten Meldung und HTTP409. Hostnamen werden
+unabhängig von Groß-/Kleinschreibung und einem abschließenden Punkt verglichen;
+DNS-Aliase werden nicht aufgelöst. Ein im Switch deaktivierter zentraler
+Stationsendpoint reserviert seinen weiterhin konfigurierten aktiven Fallback,
+weil das Deaktivieren des zentralen Endpoints einen vorhandenen Pi nicht stoppt.
 
-Die lesende Prüfung des laufenden Switches zeigt für den zentralen PBX-Trunk
-und für den Ersatzweg von SRV-M-TBS-01 jeweils `10.0.1.21:5060` mit
-REGISTER-Benutzer `101`. Bei gemeinsamer Nutzung können sich diese Kontakte am
-PBX verdrängen. Im PBX einen eigenen Zugang für die TBS einrichten und dessen
-zugehörige Daten im Stationseditor unter **Eigener PBX-Ersatzweg** übernehmen.
-Anschließend neu exportieren, beim gleichnamigen Deploy-Profil importieren und
-ein neues Image bauen. Der zentrale Switch-Trunk behält seinen eigenen Zugang.
+Bei älteren Stationen bleibt ein bereits eingetragener FreePBX-Ersatzweg
+aktiviert. Für den Zentralweg allein den Fallback im neuen Editor ausdrücklich
+ausschalten und speichern. Seine inaktiven Zugangsdaten werden nicht exportiert.
+Das ist insbesondere bei der früheren Doppelbelegung von `101` an
+`10.0.1.21:5060` möglich: Ein eigenes FreePBX-Konto ist nur Voraussetzung für
+den eingeschalteten direkten Ersatzweg, nicht für die Anmeldung am SIP-Switch.
 
-Der Export enthält als zentrale Gegenstelle korrekt `10.0.1.125:5060`.
-Die im TBS-Status sichtbare Loopbackadresse gehört zum lokalen Asterisk.
-Zum Diagnosezeitpunkt ist der Pi laut Betreiber ausgeschaltet oder im Neustart;
-fehlende HTTP-/SIP-Antworten sind deshalb kein Nachweis eines SIP-Fehlers.
-Die Ursache des früheren dauerhaften `registering` und der echte
-Registrierungs-/Rufablauf bleiben nach dem Start zu prüfen.
+## TOML in Deploy importieren und Pi starten
+
+In Deploy unter **Images** das gleichnamige TBS-Profil wählen oder nach einem
+Anwendungsreset neu anlegen. Die heruntergeladene Datei unter
+**SIP-Switch-Konfiguration** auswählen und ein neues Image bauen. Der Import
+prüft die Stationskennung und übernimmt die automatisch erzeugten
+SIP-Switch-Zugangsdaten. Bei ausgeschaltetem FreePBX-Fallback enthält das Image
+keine direkte PBX-Registrierung und keinen PBX-Ersatzrufweg. Auch nach längerem
+Zentralausfall bleibt dieser Ersatzweg aus; eine manuell erzwungene Umschaltung
+auf `pbx_direct` wird abgelehnt.
+
+Der lokale Asterisk im Pi verbindet die native TBS auf Port5062 mit dem zentralen
+SIP-Switch. Deshalb zeigt die native TBS-WebUI `127.0.0.1:5060` als lokale
+SIP-Gegenstelle. Die zentrale Adresse steht in `[central]` der privaten TOML.
+Bei aktivem FreePBX-Fallback gilt weiterhin die exklusive, bestätigte Umschaltung
+mit Hysterese; beide Registrierungen laufen nicht gleichzeitig.
+
+Der vorhandene Image-SIP-Pfad unterstützt UDP. Ein zentral auf TCP betriebener
+Switch wird beim Export abgewiesen. Ein neues Profil oder eine neue TOML ändert
+kein bereits erzeugtes Image. Die echte Anmeldung am gestarteten Pi und
+Telefonie-/Funkrufe bleiben eigene Anlagenprüfungen.
+
+## Speicherung und gleichzeitige Änderungen
+
+Die vorherige private Konfiguration wird als `.toml.bak` gesichert. Scheitern
+Schreiben, Asterisk-Neuladen oder Endpointprüfung, wird die Änderung
+zurückgenommen. Aktive Rufe der betroffenen Station sperren Bearbeiten und
+Löschen. Gleichzeitige oder externe Änderungen führen zu einem Konflikt.
+Öffentliche Stations- und Konfigurationsantworten enthalten keine Passwörter.
+Für die WebUI gilt weiterhin der vorhandene OPEN-LAB-Betrieb.
+
+## Nachweise der automatischen Einrichtung
+
+Gezielte Prüfungen decken die Anlage allein mit Namen, automatisch erzeugte
+SIP-Switch-Zugangsdaten, zentralen Export ohne FreePBX, den tatsächlichen
+Offline-Renderer und den ausgeschalteten Fallback bei Zentralausfall ab. Der
+Browser prüft beide Downloads und den Import durch den tatsächlichen
+Deploy-Controller/Worker. Die echte Asterisk-Prüfung verlangt einen SIP401/200-
+REGISTER mit den automatisch exportierten Daten. Der native Linux-/Browser-
+Abschlusslauf und die Anlagenübernahme werden separat festgehalten.
 
 ## Nachweise der Registrierungskorrektur
 

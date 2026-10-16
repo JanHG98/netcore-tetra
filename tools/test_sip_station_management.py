@@ -240,11 +240,34 @@ class StationTests(StationFixture, unittest.TestCase):
                 self.app.change_station('create', data)
             self.assertEqual(self.app.config_revision(), revision)
 
+    def test_name_only_station_exports_generated_switch_credentials_without_freepbx(self):
+        self.app.change_station('create', {'revision': self.app.config_revision(), 'node_id': 'NAME-ONLY'})
+        item = self.app.config.tbs[-1]
+        exported = validate_sip_config(self.app.station_export(item), 'NAME-ONLY')
+        self.assertEqual(exported['central']['host'], self.app.station_defaults()['central_host'])
+        self.assertEqual(exported['central']['username'], 'tbs-name-only')
+        self.assertEqual(exported['central']['password'], item['password'])
+        self.assertGreaterEqual(len(item['password']), 32)
+        self.assertEqual(exported['fallback_pbx'], {'enabled': False})
+        self.assertNotIn('shared-trunk-secret', self.app.station_export(item))
+        self.assertTrue(self.app.station_list()[-1]['export_ready'])
+
+    def test_disabling_freepbx_allows_central_export_without_inactive_credentials(self):
+        item = self.create()
+        self.app.config.pbx['mode'] = 'registration'
+        item['fallback_pbx']['username'] = 'shared-central-trunk'
+        with self.assertRaisesRegex(StationError, 'Switch-Trunks'):
+            self.app.station_export(item)
+        item['fallback_pbx']['enabled'] = False
+        text = self.app.station_export(item)
+        self.assertNotIn('private-pbx-secret', text)
+        self.assertEqual(validate_sip_config(text, 'TBS-TEST')['fallback_pbx'], {'enabled': False})
+
     def test_incomplete_or_disabled_station_has_actionable_export_error(self):
         self.app.change_station('create', {'revision': self.app.config_revision(), 'node_id': 'TBS-TEST'})
         row = self.app.station_list()[-1]
-        self.assertFalse(row['export_ready'])
-        self.assertIn('SIP-Switch-Adresse', row['export_error'])
+        self.assertTrue(row['export_ready'])
+        self.assertFalse(row['fallback_pbx']['enabled'])
         self.app.change_station('update', self.payload(), 'TBS-TEST')
         self.assertTrue(self.app.station_list()[-1]['export_ready'])
         self.app.change_station('update', {'revision': self.app.config_revision(), 'enabled': False}, 'TBS-TEST')

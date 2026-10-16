@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Disposable CI only: apply station CRUD to a real isolated Asterisk daemon."""
 import os
+import hashlib
+import re
+import uuid
 from pathlib import Path
 import shutil
 import socket
@@ -13,6 +16,47 @@ from netcore_sip_switch import config_toml
 
 
 class ActualAsteriskTests(unittest.TestCase):
+    def register_generated_account(self, central):
+        host, port = central['host'], central['port']
+        user, password = central['username'], central['password']
+        uri = f'sip:{host}:{port}'
+        call_id = uuid.uuid4().hex
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as client:
+            client.connect((host, port))
+            client.settimeout(3)
+            local_host, local_port = client.getsockname()
+            def exchange(sequence, authorization=''):
+                headers = [f'REGISTER {uri} SIP/2.0',
+                    f'Via: SIP/2.0/UDP {local_host}:{local_port};branch=z9hG4bK{uuid.uuid4().hex};rport',
+                    f'From: <sip:{user}@{host}>;tag=generated-account', f'To: <sip:{user}@{host}>',
+                    f'Call-ID: {call_id}', f'CSeq: {sequence} REGISTER', 'Max-Forwards: 70',
+                    f'Contact: <sip:{user}@{local_host}:{local_port}>', 'Expires: 120']
+                if authorization:
+                    headers.append('Authorization: Digest ' + authorization)
+                client.send(('\r\n'.join(headers + ['Content-Length: 0', '', ''])).encode())
+                for _ in range(10):
+                    message = client.recv(65536).decode()
+                    if f'Call-ID: {call_id}' in message and f'CSeq: {sequence} REGISTER' in message:
+                        return message
+                self.fail('No matching REGISTER response')
+            challenge = exchange(1)
+            self.assertTrue(challenge.startswith('SIP/2.0 401'), challenge)
+            header = next(line for line in challenge.splitlines() if line.lower().startswith('www-authenticate:'))
+            values = {key.lower(): quoted or bare for key,quoted,bare in re.findall(r'(\w+)=(?:"([^"]*)"|([^,\s]+))', header)}
+            md5 = lambda text: hashlib.md5(text.encode()).hexdigest()
+            realm, nonce = values['realm'], values['nonce']
+            first, second = md5(f'{user}:{realm}:{password}'), md5('REGISTER:' + uri)
+            cnonce, count = uuid.uuid4().hex, '00000001'
+            qop = 'auth' if 'auth' in values.get('qop', '').split(',') else ''
+            response = md5(f'{first}:{nonce}:{count}:{cnonce}:{qop}:{second}') if qop else md5(f'{first}:{nonce}:{second}')
+            authorization = f'username="{user}", realm="{realm}", nonce="{nonce}", uri="{uri}", response="{response}", algorithm=MD5'
+            if qop:
+                authorization += f', qop=auth, nc={count}, cnonce="{cnonce}"'
+            if 'opaque' in values:
+                authorization += ', opaque="' + values['opaque'] + '"'
+            registered = exchange(2, authorization)
+            self.assertTrue(registered.startswith('SIP/2.0 200'), registered)
+
     def test_actual_endpoint_auth_and_removal(self):
         binary = shutil.which('asterisk') or '/usr/sbin/asterisk'
         self.assertTrue(Path(binary).is_file(), 'Install Asterisk in the disposable CI container')
@@ -25,7 +69,7 @@ class ActualAsteriskTests(unittest.TestCase):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as listener:
             listener.bind(('127.0.0.1', 0))
             sip_port = listener.getsockname()[1]
-        app.config.raw['asterisk']['sip_bind'] = '127.0.0.1:' + str(sip_port)
+        app.config.raw['asterisk']['sip_bind'] = '0.0.0.0:' + str(sip_port)
         app.config.raw['pbx'].update(mode='ip_trunk', password='')
         fixture.path.write_text(config_toml(app.config.raw), encoding='utf-8')
         modules = next(p.parent for p in Path('/usr/lib').glob('**/asterisk/modules/chan_pjsip.so'))
@@ -61,7 +105,11 @@ class ActualAsteriskTests(unittest.TestCase):
                     time.sleep(.1)
                 else:
                     self.fail('Asterisk did not boot')
-                fixture.create()
+                app.change_station('create', {'revision': app.config_revision(), 'node_id': 'TBS-TEST'})
+                exported = station_tests.validate_sip_config(app.station_export(app.config.tbs[-1]), 'TBS-TEST')
+                self.assertEqual(exported['fallback_pbx'], {'enabled': False})
+                self.register_generated_account(exported['central'])
+                print('PASS: name-only station exported automatic switch address/user/password and completed real SIP401/200 REGISTER without FreePBX credentials')
                 self.assertIn('tbs-tbs-test', cli('pjsip show endpoint tbs-tbs-test')[1])
                 first = app.config.tbs[-1]['password']
                 self.assertIn(first, cli('pjsip show auth tbs-tbs-test-auth')[1])

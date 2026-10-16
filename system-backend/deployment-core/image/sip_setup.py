@@ -56,10 +56,20 @@ def validate_sip_config(text, profile_name):
             raise ValueError('SIP-Fallback: Werte dürfen keine Zeilenumbrüche enthalten')
     check_values(data)
 
+    if data['central'].get('enabled', True) is not True:
+        raise ValueError('SIP-Fallback: Zentralweg muss aktiviert sein')
+    pbx_enabled = data['fallback_pbx'].get('enabled', bool(data['fallback_pbx']))
+    if type(pbx_enabled) is not bool:
+        raise ValueError('SIP-Fallback: ungültige FreePBX-Aktivierung')
+    if not pbx_enabled:
+        # Do not retain inactive external credentials or render a hidden PBX route.
+        data['fallback_pbx'] = {'enabled': False}
+    else:
+        data['fallback_pbx']['enabled'] = True
     for section in ('central', 'fallback_pbx'):
         upstream = data[section]
-        if upstream.get('enabled', True) is not True:
-            raise ValueError('SIP-Fallback: Zentralweg und PBX-Ersatzweg müssen aktiviert sein')
+        if section == 'fallback_pbx' and not pbx_enabled:
+            continue
         for key in ('host', 'username'):
             value = upstream.get(key, '')
             if not isinstance(value, str) or not value.strip():
@@ -77,9 +87,9 @@ def validate_sip_config(text, profile_name):
     if not isinstance(password, str) or not password:
         raise ValueError('SIP-Fallback: central.password fehlt; Zugang am zentralen SIP-Switch einrichten')
     pbx = data['fallback_pbx']
-    if pbx.get('mode', 'registration') != 'registration':
+    if pbx_enabled and pbx.get('mode', 'registration') != 'registration':
         raise ValueError('SIP-Fallback: fallback_pbx.mode muss registration sein')
-    if pbx.get('auth_username') and not pbx.get('password'):
+    if pbx_enabled and pbx.get('auth_username') and not pbx.get('password'):
         raise ValueError('SIP-Fallback: PBX-Passwort für die angegebene Anmeldung fehlt')
     for section, keys in {
         'asterisk': ('rtp_start', 'rtp_end', 'central_dial_timeout_secs', 'fallback_dial_timeout_secs', 'tetra_dial_timeout_secs'),
