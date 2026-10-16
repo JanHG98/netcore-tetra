@@ -11,7 +11,7 @@ import uuid
 def query(*args):
     return subprocess.check_output(['nmcli', '--escape', 'no', *args],
                                    text=True, timeout=10,
-                                   env=dict(os.environ, LC_ALL='C')).strip()
+                                   env=dict(os.environ, LC_ALL='C.UTF-8')).strip()
 
 
 def value(device, field):

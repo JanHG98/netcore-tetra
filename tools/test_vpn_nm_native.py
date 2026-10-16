@@ -206,6 +206,14 @@ def main():
             wait_for(lambda: key in run('nmcli', '-g', 'UUID', 'connection', 'show'))
             assert run('nmcli', '-g', 'connection.id', 'connection', 'show', 'uuid', key) == 'NetCore VPN'
 
+            # Exercise the actual SSID query path with German UTF-8 and a colon.
+            # A C/ASCII child locale can transliterate this and miss a trusted WLAN.
+            ssid = 'F\u00fc\u00dfchen: Netz'
+            run('nmcli', 'connection', 'add', 'type', 'wifi', 'ifname', 'wlan-fixture',
+                'con-name', 'fixture-wifi', 'ssid', ssid, 'autoconnect', 'no')
+            assert policy.query('-g', '802-11-wireless.ssid', 'connection', 'show',
+                                'id', 'fixture-wifi') == ssid
+
             wait_for(lambda: 'nc-uplink' in run('nmcli', '-g', 'DEVICE', 'device'))
             run('nmcli', 'device', 'set', 'nc-uplink', 'managed', 'yes')
             # Explicitly manage this disposable wired peer, not runner policy.
