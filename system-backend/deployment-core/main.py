@@ -164,22 +164,28 @@ class App:
         return {'toml': raw.decode('utf-8'), 'revision': hashlib.sha256(raw).hexdigest()}
 
     def update_template(self, data):
-        template = data.get('toml')
-        validate_tbs_template(template)
         revision = data.get('revision')
         if not isinstance(revision, str) or len(revision) != 64:
             raise ValueError('Template zuerst laden; gültige Revision erforderlich')
+        return self.save_template(data.get('toml'), revision=revision)
+
+    def save_template(self, template, revision=None):
+        """Imports replace explicitly; editor saves require the loaded revision."""
+        validate_tbs_template(template)
+        raw = template.encode('utf-8')
         with self.lock:
             path = self.state / 'tbs-site-template.toml'
-            if not path.is_file():
-                raise KeyError('template')
-            before = path.read_bytes()
-            if hashlib.sha256(before).hexdigest() != revision:
-                raise TemplateConflict('Das Template wurde inzwischen geändert. Deine Eingabe bleibt im Editor; gespeicherte Version neu laden und Änderungen erneut übernehmen.')
-            if before != template.encode('utf-8'):
-                atomic_write(path.with_suffix('.toml.bak'), before.decode('utf-8'))
+            before = path.read_bytes() if path.is_file() else None
+            if revision is not None:
+                if before is None:
+                    raise KeyError('template')
+                if hashlib.sha256(before).hexdigest() != revision:
+                    raise TemplateConflict('Das Template wurde inzwischen geändert. Deine Eingabe bleibt im Editor; gespeicherte Version neu laden und Änderungen erneut übernehmen.')
+            if before != raw:
+                if before is not None:
+                    atomic_write(path.with_suffix('.toml.bak'), before.decode('utf-8'))
                 atomic_write(path, template)
-        return {'saved': True, 'revision': hashlib.sha256(template.encode('utf-8')).hexdigest()}
+        return {'saved': True, 'revision': hashlib.sha256(raw).hexdigest()}
 
     def metrics(self):
         # Scrapes never trigger discovery, health probes, Git, or deployments.
@@ -626,11 +632,7 @@ def handler(app):
             if path == '/api/v1/template/update':
                 return self.send(app.update_template(data))
             if path == '/api/v1/template':
-                template = data.get('toml', '')
-                validate_tbs_template(template)
-                with app.lock:
-                    atomic_write(app.state / 'tbs-site-template.toml', template)
-                return self.send({'saved': True})
+                return self.send(app.save_template(data.get('toml', '')))
             self.send({'error': 'Not found'}, 404)
     return Handler
 

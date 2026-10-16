@@ -192,6 +192,29 @@ class TemplateHttpTests(unittest.TestCase):
         self.assertEqual(self.request('/api/v1/template')[1]['revision'], saved['revision'])
         self.assertEqual(tomllib.loads(edited)['custom']['site']['label'], 'bleibt')
 
+
+    def test_reimport_backs_up_the_immediately_previous_template(self):
+        original = self.imported_document()
+        self.request('/api/v1/template', {'toml': original})
+        backup = self.path.with_suffix('.toml.bak')
+        self.assertFalse(backup.exists())
+        document = self.request('/api/v1/template')[1]
+        edited = original + '\n# Im Editor geändert'
+        self.assertEqual(self.request('/api/v1/template/update',
+            {'toml': edited, 'revision': document['revision']})[0], 200)
+        self.assertEqual(backup.read_text(), original)
+        imported = original + '\n# Neue Datei'
+        self.assertEqual(self.request('/api/v1/template', {'toml': imported})[0], 200)
+        self.assertEqual(self.path.read_text(), imported)
+        self.assertEqual(backup.read_text(), edited)
+        self.assertEqual(backup.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
+        # An identical reimport or invalid input must not replace the useful backup.
+        self.assertEqual(self.request('/api/v1/template', {'toml': imported})[0], 200)
+        self.assertEqual(self.request('/api/v1/template', {'toml': 'invalid= ['})[0], 400)
+        self.assertEqual(self.path.read_text(), imported)
+        self.assertEqual(backup.read_text(), edited)
+
     def test_invalid_edits_or_imports_keep_saved_document_and_do_not_echo_its_content(self):
         original = self.imported_document()
         self.request('/api/v1/template', {'toml': original})
