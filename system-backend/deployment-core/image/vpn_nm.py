@@ -23,7 +23,7 @@ def networkmanager():
 def private_directory(path):
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
     if path.is_symlink() or not path.is_dir():
-        raise RuntimeError('OpenVPN: ungÃƒÂ¼ltiges privates Materialverzeichnis')
+        raise RuntimeError('OpenVPN: ungültiges privates Materialverzeichnis')
     path.chmod(0o700)
 
 
@@ -50,7 +50,7 @@ def materialize_inline(profile, directory):
         else:
             result.append(raw)
     if block is not None:
-        raise RuntimeError('OpenVPN: unvollstÃƒÂ¤ndiger Inline-Block')
+        raise RuntimeError('OpenVPN: unvollständiger Inline-Block')
     return '\n'.join(result).rstrip() + '\n'
 
 
@@ -94,8 +94,8 @@ def render(req, *, root=Path('/'), nm=None):
     except Exception:
         # Plugin diagnostics can contain uploaded tokens/material. Keep them
         # out of the public build log; no unusable image may be published.
-        raise RuntimeError('OpenVPN: NetworkManager-Profil konnte nicht vollstÃƒÂ¤ndig importiert werden; '
-                           'Importmodul und portable Client-Datei prÃƒÂ¼fen') from None
+        raise RuntimeError('OpenVPN: NetworkManager-Profil konnte nicht vollständig importiert werden; '
+                           'Importmodul und portable Client-Datei prüfen') from None
     finally:
         source.unlink(missing_ok=True)
 

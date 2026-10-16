@@ -30,6 +30,14 @@ def main():
         work = Path(temp)
         compressed = download_base(work)
         image, root = work / 'image.img', work / 'root'
+        # The actual NM importer requires a complete client trust profile.
+        # Generate a public CA fixture instead of the old write-only dummy.
+        subprocess.run(['openssl', 'req', '-new', '-x509', '-newkey', 'rsa:2048', '-nodes',
+                        '-keyout', str(work / 'fixture-ca.key'), '-out', str(work / 'fixture-ca.pem'),
+                        '-days', '2', '-subj', '/CN=NetCore ARM64 image fixture CA'],
+                       check=True, capture_output=True, timeout=30)
+        vpn_fixture = ('client\ndev tun\nremote vpn.fixture.invalid 1194\nauth-user-pass\n<ca>\n'
+                       + (work / 'fixture-ca.pem').read_text() + '</ca>\n')
         expand_base(compressed, image)
         parts = partition_table(image)
         start = parts[1]['start']
@@ -81,7 +89,7 @@ def main():
                              'netcore_install_desktop "$1"', 'desktop-smoke', args.desktop], timeout=1800)
                 req = validate_image(image_request(password='test-image-not-for-distribution', wifi_ssid='NetCore Test',
                                                    wifi_password='example-password', overlay='sx1255',
-                                                   vpn_config='client\ndev tun\nremote vpn.fixture.invalid 1194\nauth-user-pass\n',
+                                                   vpn_config=vpn_fixture,
                                                    vpn_username='arm64-fixture-user', vpn_password='arm64-fixture-vpn-secret',
                                                    desktop=args.desktop))
                 atomic_write(root / 'root/netcore-image-request.json', json.dumps(req))
