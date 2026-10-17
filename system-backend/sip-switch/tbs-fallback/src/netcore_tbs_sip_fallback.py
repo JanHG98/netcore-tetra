@@ -470,6 +470,16 @@ class AsteriskCLI:
     def set_mode_db(self, mode: str) -> None:
         self.run(f"database put netcore failover_mode {mode}", check=True)
 
+    def get_mode_db(self) -> str | None:
+        proc = self.run("database get netcore failover_mode")
+        if not proc.returncode:
+            match = re.search(r"^Value:\s*(\S+)\s*$", proc.stdout, re.MULTILINE)
+            if match:
+                return match[1]
+            if proc.stdout.strip() == "Database entry not found.":
+                return None
+        raise RuntimeError((proc.stderr or proc.stdout or "Cannot read Asterisk routing mode").strip())
+
     def registration_status(self, registration_id: str) -> str:
         proc = self.run("pjsip show registrations")
         if proc.returncode:
@@ -584,6 +594,11 @@ class FailoverController:
         now = time.time() if now is None else now
         if self.state.get("phase") == "TRANSITION_FAILED":
             self.switch_mode(str(self.state["mode"]), "transition_reconcile", now)
+        elif self.cli.get_mode_db() != self.state.get("mode", "central"):
+            # Asterisk's dialplan gates both call directions on this key. Repair
+            # lost/stale AstDB state even when registration and health stay up.
+            # The consistent-mode path does not reload or change registrations.
+            self.switch_mode(str(self.state.get("mode", "central")), "asterisk_mode_reconcile", now)
         try:
             healthy, detail = self.central_probe()
         except (OSError, subprocess.SubprocessError) as error:

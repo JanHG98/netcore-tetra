@@ -7,11 +7,13 @@ import uuid
 from pathlib import Path
 import shutil
 import socket
+import shlex
 import subprocess
 import time
 import unittest
 
 import test_sip_station_management as station_tests
+import test_sip_failover_reconciliation as failover_tests
 from netcore_sip_switch import config_toml
 
 
@@ -105,6 +107,29 @@ class ActualAsteriskTests(unittest.TestCase):
                     time.sleep(.1)
                 else:
                     self.fail('Asterisk did not boot')
+                # Exercise the production AstDB reader/writer against this daemon,
+                # including the exact missing-key output seen on the live TBS.
+                isolated_cli = root / 'asterisk-cli'
+                isolated_cli.write_text('#!/bin/sh\nexec ' + shlex.quote(binary) + ' -C ' + shlex.quote(str(main)) + ' "$@"\n', encoding='utf-8')
+                isolated_cli.chmod(0o700)
+                mode_cli = failover_tests.fallback.AsteriskCLI(str(isolated_cli))
+                self.assertIsNone(mode_cli.get_mode_db())
+                mode_cli.set_mode_db('central')
+                self.assertEqual(mode_cli.get_mode_db(), 'central')
+                cli('database del netcore failover_mode')
+                self.assertIsNone(mode_cli.get_mode_db())
+                gate_fixture = failover_tests.FailoverReconciliationTests('test_healthy_central_repairs_missing_key_at_first_tick_and_after_loss')
+                gate_fixture.setUp()
+                self.addCleanup(gate_fixture.doCleanups)
+                gate_controller = gate_fixture.controller
+                gate_controller.cli = mode_cli
+                gate_controller.central_probe = lambda: (True, {'fixture_health': True})
+                gate_controller.tick(100)
+                self.assertEqual(mode_cli.get_mode_db(), 'central')
+                cli('database del netcore failover_mode')
+                gate_controller.tick(101)
+                self.assertEqual(mode_cli.get_mode_db(), 'central')
+                print('PASS: controller repairs a missing/deleted routing gate in actual Asterisk AstDB with simulated central health')
                 app.change_station('create', {'revision': app.config_revision(), 'node_id': 'TBS-TEST'})
                 exported = station_tests.validate_sip_config(app.station_export(app.config.tbs[-1]), 'TBS-TEST')
                 self.assertEqual(exported['fallback_pbx'], {'enabled': False})

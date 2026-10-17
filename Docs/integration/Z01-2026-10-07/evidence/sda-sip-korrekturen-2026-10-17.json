@@ -27,18 +27,42 @@
     "dependent_config_core_pdus_saps": "actual repository crates",
     "previous_client_regression": "new authentication wire test fails on previous production source as expected",
     "full_local_runtime_test": "blocked before entity compilation by missing SoapySDR/PothosSDR SDK",
-    "linux_ci": "not started; source and workflow prepared",
+    "linux_ci": {
+      "source_commit": "0ac7ef0df0899656eddd6d8e19736e3b1a67d443",
+      "run": "https://github.com/JanHG98/netcore-tetra/actions/runs/39044149774",
+      "status": "passed with complete native dependencies",
+      "base_station_build_check": "passed",
+      "dashboard_tests": 78,
+      "sda_tests": 12,
+      "sip_tests": 6,
+      "sda_rf_tests": 6,
+      "sds_tests": 17,
+      "browser_checks": 150
+    },
     "live_pbx_switch_radio": "not tested; hosts not reachable from session",
-    "inbound_chanunavail_root_cause": "unresolved; Asterisk contacts and failure logs required"
+    "inbound_chanunavail_root_cause": "missing AstDB routing gate confirmed; complete live call cause/acceptance pending",
+    "radio_hangup_leaves_fixed_line_call_active": "new user report; CMCE and SIP teardown trace pending"
+  },
+  "routing_gate": {
+    "host_output_date": "2026-10-17",
+    "switch_pbx_and_tbs_contacts": "Avail",
+    "tbs_central_native_and_fallback_contacts": "Avail",
+    "tbs_registration": "exactly one central registration, Registered",
+    "tbs_astdb_mode": "Database entry not found.",
+    "periodic_reconciliation": "implemented; writes only missing or mismatched values and preserves the active registration",
+    "local_regression_tests_passed": 5,
+    "before_fix_counterexample": "healthy-central missing-key regression fails against previous production controller",
+    "linux_and_actual_asterisk_astdb": "prepared; not yet run",
+    "reason_for_original_key_loss": "controller service state and logs pending"
   },
   "checks": {
     "rustfmt": "passed",
     "git_diff_check": "passed"
   },
   "next": [
-    "Publish the prepared branch and run the Linux checks",
+    "Publish and run Linux checks for the added routing-mode reconciliation",
     "Import file 13 and verify an actual INFO reply on ISSI 5102",
-    "Collect switch and TBS Asterisk contacts, registrations, mode and actual failure messages",
+    "Collect TBS failover service status and CMCE/SIP teardown messages",
     "Verify outgoing and incoming calls over the intended central path and exclusive fallback"
   ]
 }

@@ -44,6 +44,9 @@ class FakeCLI:
     def set_mode_db(self, mode: str) -> None:
         self.db_mode = mode
 
+    def get_mode_db(self) -> str | None:
+        return self.db_mode
+
     def unregister(self, registration_id: str) -> None:
         self.unregistered.append(registration_id)
 
