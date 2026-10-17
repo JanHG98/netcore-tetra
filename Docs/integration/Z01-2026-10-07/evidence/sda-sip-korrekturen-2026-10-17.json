@@ -56,7 +56,10 @@
       "source_commit": "bbe080508a24a70df6180edadeca7c6dc3cf1364",
       "run": "https://github.com/JanHG98/netcore-tetra/actions/runs/39044850193",
       "status": "passed",
-      "platforms": ["ubuntu-24.04", "ubuntu-26.04"],
+      "platforms": [
+        "ubuntu-24.04",
+        "ubuntu-26.04"
+      ],
       "tests_per_platform": 70,
       "actual_asterisk_version": "22.11.0",
       "actual_astdb_key_recovery": "passed; central health simulated",
@@ -93,14 +96,24 @@
     "failure": "226/NAMESPACE; missing state directory in ReadWritePaths",
     "live_recovery": "directory created and service restarted; user output confirms running and central",
     "permanent_fix": "StateDirectory=netcore-tbs-sip-fallback with mode 0750; update explicitly creates the directory",
-    "actual_systemd_regression": "prepared; Linux execution pending"
+    "actual_systemd_regression": {
+      "source_commit": "06beddcf4b7e5574fc7bcc9eee5b7bdd173b2546",
+      "run": "https://github.com/JanHG98/netcore-tetra/actions/runs/39045989430",
+      "platforms": [
+        "ubuntu-24.04",
+        "ubuntu-26.04"
+      ],
+      "status": "passed",
+      "before_fix": "actual sandbox fails with NAMESPACE/226 when state directory is absent",
+      "after_fix": "systemd creates state directory with mode 0750 before namespace setup; command executes successfully"
+    }
   },
   "checks": {
     "rustfmt": "passed",
     "git_diff_check": "passed"
   },
   "next": [
-    "Run the actual systemd namespace regression for the new managed state directory",
+    "Review draft PR 108 and carry the verified change into the existing TBS update path",
     "Import file 13 and verify an actual INFO reply on ISSI 5102",
     "Collect CMCE/SIP teardown messages from a new call with the updated binary",
     "Verify outgoing and incoming calls over the intended central path and exclusive fallback"

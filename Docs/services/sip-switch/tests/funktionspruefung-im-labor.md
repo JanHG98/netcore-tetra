@@ -140,8 +140,10 @@ die nachgereichte Ausgabe zeigt `active (running)` und `Value: central`.
 Damit ist der Startfehler live behoben. Ein zusätzlicher Linux-Test startet
 eine isolierte Kopie der tatsächlichen Unit mit unveränderter Sandbox und
 einem Testkommando: Ohne StateDirectory muss sie mit 226 scheitern, danach
-den Ordner anlegen und erfolgreich starten. Dieser neue Unit-Test ist noch
-ausstehend; ein vollständiger Telefonieruf folgt daraus nicht.
+den Ordner anlegen und erfolgreich starten. Der
+[Unit-Test an 06beddcf](https://github.com/JanHG98/netcore-tetra/actions/runs/39045989430)
+ist unter Ubuntu 24.04 und 26.04 mit beiden erwarteten Ergebnissen bestanden.
+Vollständige Telefonierufe müssen weiterhin separat abgenommen werden.
 
 ### Nach Funk-Auflegen stehen bleibende Telefonrufe
 
