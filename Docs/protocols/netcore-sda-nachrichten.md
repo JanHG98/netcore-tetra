@@ -39,6 +39,37 @@ Der Inhalt nach `NC1|INFO|` umfasst höchstens 140 ASCII-Zeichen. Umlaute werden
 
 Eine erfolgreiche Transportquittung bestätigt die Annahme in die lokale Arbeitswarteschlange. Erst `lokal erfasst #...` bestätigt das erfolgreiche Schreiben des Datensatzes. Bei voller oder fehlender Warteschlange erhält eine SDS-TL-Anfrage eine negative Transportquittung. Zustellberichte sowie die reservierten Servernachrichten `NC1|INFO|...` und `NC1|JOB|...` erzeugen keine weiteren Anwendungsantworten.
 
+### Leeres SDA-Fenster und Empfangsvorlage V1.9
+
+Jan meldet nach dem Senden eine leere SDA-Seite. In Datei 12 / V1.8 steht vor
+den NetCore-Empfangsregeln noch die Empfangsregel aus der Originalvorlage für
+Formular 1. Außerdem verwendet die INFO-Regel das Abfrageformular, dessen
+Textfeld erst unter den vier Abfrageknöpfen steht. Ein leeres Fenster allein
+beweist deshalb keine leere Basisstationsantwort.
+
+`13_NetCore_SDA_Rueckmeldung_V1_9.rmt` entfernt den alten Empfangsverweis und
+behält ausschließlich die getrennten Regeln für `NC1|JOB|...` und
+`NC1|INFO|...`. INFO öffnet das eigene Formular 9 **NetCore Antwort**: eine
+Beschriftung und direkt darunter vier Textzeilen für das vorhandene Feld 69
+mit höchstens 140 Zeichen. Das bestehende Menü, seine Sendefunktionen und die
+kompakten Abstände werden nicht geändert.
+
+Geprüft sind das verschlüsselte Archiv, alle 20.717 zurückgelesenen Parameter,
+die unveränderten Sendedefinitionen und ein ASCII-Empfangsmodell für Status,
+Funkprobe, Fehler, 140 Zeichen und Auftragsnummern mit führenden Nullen. Die
+unveränderten ARM-Feld-/Layoutlader übernehmen alle neun Formulare ohne
+Assertion und ohne zusätzlich gesetzte Feature-Lizenzanforderung; deren
+Parameterzugriff, Speicherzuteilung und Stringpuffer sind nachgebildet. Das
+beweist weder den vollständigen nativen Nachrichtendecoder noch die Anzeige
+am Funkgerät. Radio-Manager-Import und physische Empfangsabnahme bleiben offen.
+
+Der Worker protokolliert nach erfolgreichem Einreihen die vollständige
+Anwendungsantwort, zum Beispiel
+`SDA: reply queued for ISSI 5102: "NC1|INFO|SIP lokal: ..."`.
+Dies bestätigt das Einreihen des Downlinks, keine Funkzustellung. Die Zeile
+ermöglicht beim Gerätetest die Unterscheidung zwischen Transportquittung,
+fehlender Anwendungsantwort und einem Anzeige-/Vorlagenfehler.
+
 Auftragsantworten und Materialanforderungen sind **lokale Einträge**. Automatische Übernahme in zentrale Task-/Materialdienste und automatische Auftragserzeugung sind noch offen. Eine lokale Quittung bestätigt keine Bearbeitung durch eine Leitstelle. Das Downlinkformat `NC1|JOB|<Nummer>|<Text>` bleibt reserviert.
 
 ## Lokales Protokoll und Grenzen

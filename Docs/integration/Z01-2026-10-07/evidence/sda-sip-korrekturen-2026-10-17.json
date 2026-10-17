@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-17",
+  "scope": "Z05 / NC1-SDA-01 and SIP client transaction correction",
+  "baseline": "6d3b481",
+  "sda": {
+    "file": "13_NetCore_SDA_Rueckmeldung_V1_9.rmt",
+    "sha256": "a77adc1fca0664e897695ecad45c677477237eb1d6a3b8e55169dd6363acb200",
+    "parameters_read_back": 20717,
+    "parameter_changes": 39,
+    "active_incoming_forms": [
+      4,
+      9
+    ],
+    "reply_field": 69,
+    "max_reply_characters": 140,
+    "archive_and_ascii_contract": "passed",
+    "unmodified_firmware_field_layout_and_feature_gate_blocks": "passed with mocked parameter access, allocation and prepared string buffers",
+    "forms_loaded": 9,
+    "assertions": [],
+    "native_full_receiver_and_physical_radio": "not tested"
+  },
+  "sip": {
+    "actual_source": "crates/tetra-entities/src/net_asterisk/entity.rs",
+    "component_tests_passed": 6,
+    "local_udp": "actual sockets and datagrams",
+    "media_backend": "simulated; no real codec/audio/SDR",
+    "dependent_config_core_pdus_saps": "actual repository crates",
+    "previous_client_regression": "new authentication wire test fails on previous production source as expected",
+    "full_local_runtime_test": "blocked before entity compilation by missing SoapySDR/PothosSDR SDK",
+    "linux_ci": "not started; source and workflow prepared",
+    "live_pbx_switch_radio": "not tested; hosts not reachable from session",
+    "inbound_chanunavail_root_cause": "unresolved; Asterisk contacts and failure logs required"
+  },
+  "checks": {
+    "rustfmt": "passed",
+    "git_diff_check": "passed"
+  },
+  "next": [
+    "Publish the prepared branch and run the Linux checks",
+    "Import file 13 and verify an actual INFO reply on ISSI 5102",
+    "Collect switch and TBS Asterisk contacts, registrations, mode and actual failure messages",
+    "Verify outgoing and incoming calls over the intended central path and exclusive fallback"
+  ]
+}

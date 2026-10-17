@@ -1,7 +1,7 @@
 // NETCORE-KOMMENTAR – Was: Enthält einen Teil der Logik für laufende TETRA-Protokollinstanzen und Zustandsautomaten.
 // NETCORE-KOMMENTAR – Warum: Die Trennung in eine eigene Datei macht Zuständigkeit, Wartung und Fehlersuche übersichtlicher.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::io;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs, UdpSocket};
 use std::time::{Duration, Instant};
@@ -19,12 +19,22 @@ use uuid::Uuid;
 use crate::{MessageQueue, TetraEntityTrait};
 
 use super::audio::{PCMU_PAYLOAD_TYPE, rtp_payload};
-use super::media_worker::{MediaWorker, MediaOutput};
 use super::causes;
+use super::media_worker::{MediaOutput, MediaWorker};
 
 // Was: Legt den festen Wert `SIP_MAX_DATAGRAM` für sip max datagram fest.
 // Warum: Der benannte Wert vermeidet schwer verständliche Zahlen oder Texte direkt in der Programmlogik und hält Änderungen zentral.
 const SIP_MAX_DATAGRAM: usize = 8192;
+
+const INVITE_ACK_LIFETIME: Duration = Duration::from_secs(32);
+const MAX_INVITE_ACKS: usize = 64;
+
+struct InviteErrorAck {
+    call_id: String,
+    cseq: u32,
+    payload: String,
+    created: Instant,
+}
 
 #[derive(Clone, Debug)]
 // Was: Bündelt die zusammengehörigen Werte für digest challenge in einem Datentyp.
@@ -167,7 +177,8 @@ impl SipMessage {
     }
 
     fn disconnect_cause(&self, fallback: DisconnectCause) -> DisconnectCause {
-        self.headers.iter()
+        self.headers
+            .iter()
             .filter(|(name, _)| name.eq_ignore_ascii_case("Reason"))
             .find_map(|(_, value)| causes::from_reason(value))
             .unwrap_or(fallback)
@@ -194,6 +205,7 @@ pub struct AsteriskEntity {
     sip_socket: UdpSocket,
     remote: SocketAddr,
     dialogs: HashMap<Uuid, SipDialog>,
+    invite_error_acks: VecDeque<InviteErrorAck>,
     rtp_by_ts: HashMap<u8, Uuid>,
     next_rtp_port: u16,
     branch_counter: u64,
@@ -233,6 +245,7 @@ impl AsteriskEntity {
             sip_socket,
             remote,
             dialogs: HashMap::new(),
+            invite_error_acks: VecDeque::new(),
             rtp_by_ts: HashMap::new(),
             branch_counter: 1,
             register_cseq: 1,
@@ -270,7 +283,9 @@ impl AsteriskEntity {
     // Was: Führt den Arbeitsschritt `refresh_status` für refresh Status aus.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn refresh_status(&mut self) {
-        if self.last_status_refresh.is_some_and(|at| at.elapsed() < Duration::from_millis(250)) { return; }
+        if self.last_status_refresh.is_some_and(|at| at.elapsed() < Duration::from_millis(250)) {
+            return;
+        }
         self.last_status_refresh = Some(Instant::now());
         let mut state = self.config.state_write();
         state.asterisk_status = AsteriskRuntimeStatus {
@@ -1123,7 +1138,10 @@ impl AsteriskEntity {
             sap: Sap::Control,
             src: TetraEntity::Asterisk,
             dest: TetraEntity::Cmce,
-            msg: SapMsgInner::CmceCallControl(CallControl::NetworkCircuitSetupReject { brew_uuid, cause: cause.into_raw() as u8 }),
+            msg: SapMsgInner::CmceCallControl(CallControl::NetworkCircuitSetupReject {
+                brew_uuid,
+                cause: cause.into_raw() as u8,
+            }),
         });
     }
 
@@ -1156,7 +1174,10 @@ impl AsteriskEntity {
             sap: Sap::Control,
             src: TetraEntity::Asterisk,
             dest: TetraEntity::Cmce,
-            msg: SapMsgInner::CmceCallControl(CallControl::NetworkCircuitRelease { brew_uuid, cause: cause.into_raw() as u8 }),
+            msg: SapMsgInner::CmceCallControl(CallControl::NetworkCircuitRelease {
+                brew_uuid,
+                cause: cause.into_raw() as u8,
+            }),
         });
     }
 
@@ -1228,7 +1249,9 @@ impl AsteriskEntity {
         // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
         // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
         for dialog in self.dialogs.values_mut() {
-            if dialog.media_ready.is_none() { continue; }
+            if dialog.media_ready.is_none() {
+                continue;
+            }
             // Was: Durchläuft mehrere Einträge oder wiederholt den folgenden Arbeitsschritt solange die Bedingung gilt.
             // Warum: Gleichartige Daten werden dadurch vollständig und nach denselben Regeln verarbeitet.
             for _ in 0..32 {
@@ -1267,7 +1290,9 @@ impl AsteriskEntity {
             for result in dialog.audio.drain() {
                 match result {
                     MediaOutput::Downlink(data) => {
-                        if let Some((_, ts)) = dialog.media_ready { downlink.push((ts, data)); }
+                        if let Some((_, ts)) = dialog.media_ready {
+                            downlink.push((ts, data));
+                        }
                     }
                     MediaOutput::Uplink(payload) => {
                         let Some(remote) = dialog.rtp.remote else { continue };
@@ -1303,7 +1328,11 @@ impl AsteriskEntity {
                 sap: Sap::TmdSap,
                 src: TetraEntity::Asterisk,
                 dest: TetraEntity::Umac,
-                msg: SapMsgInner::TmdCircuitDataReq(TmdCircuitDataReq { carrier_num: self.config.config().cell.main_carrier, ts, data }),
+                msg: SapMsgInner::TmdCircuitDataReq(TmdCircuitDataReq {
+                    carrier_num: self.config.config().cell.main_carrier,
+                    ts,
+                    data,
+                }),
             });
         }
     }
@@ -1406,9 +1435,46 @@ impl AsteriskEntity {
     // Was: Diese Funktion verarbeitet invite response.
     // Warum: Die Reaktion auf dieses Ereignis bleibt damit an einer Stelle nachvollziehbar.
     fn handle_invite_response(&mut self, queue: &mut MessageQueue, msg: &SipMessage, code: u16) {
+        let Some(cseq) = msg
+            .header("CSeq")
+            .and_then(|header| header.split_whitespace().next()?.parse::<u32>().ok())
+        else {
+            return;
+        };
+        self.invite_error_acks.retain(|ack| ack.created.elapsed() < INVITE_ACK_LIFETIME);
+        if (300..=699).contains(&code)
+            && let Some(ack) = self
+                .invite_error_acks
+                .iter()
+                .find(|ack| Some(ack.call_id.as_str()) == msg.call_id() && ack.cseq == cseq)
+        {
+            // The challenged transaction may have ended, or a new authenticated
+            // INVITE may already be in progress. Re-send only its original ACK.
+            self.send_sip(ack.payload.clone(), "ACK repeated INVITE failure");
+            return;
+        }
         let Some(uuid) = self.find_dialog_by_call_id(msg.call_id()) else {
             return;
         };
+        if self.dialogs[&uuid].inbound || self.dialogs[&uuid].cseq != cseq {
+            return;
+        }
+        if (300..=699).contains(&code) {
+            let snapshot = SipDialogSnapshot::from_dialog(&self.dialogs[&uuid]);
+            if let Some(payload) = self.build_invite_error_ack(&snapshot, msg) {
+                self.invite_error_acks.push_back(InviteErrorAck {
+                    call_id: snapshot.call_id_header,
+                    cseq,
+                    payload: payload.clone(),
+                    created: Instant::now(),
+                });
+                while self.invite_error_acks.len() > MAX_INVITE_ACKS {
+                    self.invite_error_acks.pop_front();
+                }
+                // ACK uses the old CSeq and Via branch before retrying INVITE.
+                self.send_sip(payload, format!("ACK failure {uuid} SIP {code}"));
+            }
+        }
 
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
@@ -1456,33 +1522,25 @@ impl AsteriskEntity {
                 }
             }
             401 | 407 => {
-                if let Some(challenge) = Self::parse_challenge(msg) {
-                    let mut should_retry = false;
-                    if let Some(dialog) = self.dialogs.get_mut(&uuid)
-                        && !dialog.auth_retry_sent
-                    {
-                        dialog.auth = Some(challenge);
-                        dialog.auth_retry_sent = true;
-                        dialog.cseq = dialog.cseq.saturating_add(1);
-                        should_retry = true;
-                    }
-                    let ack_snapshot = self.dialogs.get(&uuid).map(SipDialogSnapshot::from_dialog);
-                    if let Some(snapshot) = ack_snapshot {
-                        let ack_text = self.build_ack_from_snapshot(&snapshot);
-                        self.send_sip(ack_text, format!("ACK auth {}", uuid));
-                    }
-                    if should_retry {
-                        self.send_invite(uuid);
-                    }
+                let challenge = Self::parse_challenge(msg);
+                if self.dialogs[&uuid].auth_retry_sent || challenge.is_none() {
+                    self.set_error(format!("INVITE uuid={uuid} authentication failed with SIP {code}"));
+                    self.send_release_to_cmce(queue, uuid, msg.disconnect_cause(causes::from_sip_status(code)));
+                    self.release_dialog(uuid, false, None);
+                    return;
                 }
+                let dialog = self.dialogs.get_mut(&uuid).unwrap();
+                dialog.auth = challenge;
+                dialog.auth_retry_sent = true;
+                dialog.cseq = dialog.cseq.saturating_add(1);
+                self.send_invite(uuid);
             }
             300..=699 => {
-                let ack_snapshot = self.dialogs.get(&uuid).map(SipDialogSnapshot::from_dialog);
-                if let Some(snapshot) = ack_snapshot {
-                    let ack_text = self.build_ack_from_snapshot(&snapshot);
-                    self.send_sip(ack_text, format!("ACK failure {}", uuid));
-                }
-                self.set_error(format!("INVITE uuid={} failed with SIP {}", uuid, code));
+                self.set_error(format!(
+                    "INVITE uuid={uuid} failed with {}; Reason: {}",
+                    msg.start_line,
+                    msg.header("Reason").unwrap_or("not supplied")
+                ));
                 self.send_release_to_cmce(queue, uuid, msg.disconnect_cause(causes::from_sip_status(code)));
                 self.release_dialog(uuid, false, None);
             }
@@ -1558,6 +1616,38 @@ impl SipDialogSnapshot {
 // Was: Implementiert das zugehörige Verhalten für `AsteriskEntity`.
 // Warum: Die Operationen bleiben dadurch direkt bei dem Datentyp, dessen Zustand sie lesen oder verändern.
 impl AsteriskEntity {
+    /// RFC 3261 section 17.1.1.3: non-2xx ACK belongs to the original
+    /// INVITE transaction. The response supplies To, including its new tag.
+    fn build_invite_error_ack(&self, dialog: &SipDialogSnapshot, response: &SipMessage) -> Option<String> {
+        let branch = dialog.invite_branch.as_deref()?;
+        let request_uri = self.request_uri(&dialog.number);
+        let to = response
+            .header("To")
+            .map(str::to_owned)
+            .unwrap_or_else(|| format!("<{request_uri}>"));
+        let caller_id = dialog
+            .source_issi
+            .filter(|source| *source != 0)
+            .map(|source| source.to_string())
+            .unwrap_or_else(|| self.asterisk_config.local_user.clone());
+        Some(format!(
+            "ACK {request_uri} SIP/2.0\r\n\
+             Via: SIP/2.0/UDP {}:{};branch={branch};rport\r\n\
+             Max-Forwards: 70\r\n\
+             From: \"{caller_id}\" <{}>;tag={}\r\n\
+             To: {to}\r\n\
+             Call-ID: {}\r\n\
+             CSeq: {} ACK\r\n\
+             Content-Length: 0\r\n\r\n",
+            self.asterisk_config.contact_host,
+            self.asterisk_config.bind_port,
+            dialog.local_uri,
+            dialog.local_tag,
+            dialog.call_id_header,
+            dialog.cseq,
+        ))
+    }
+
     // Was: Diese Funktion erstellt ack from snapshot.
     // Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
     fn build_ack_from_snapshot(&mut self, dialog: &SipDialogSnapshot) -> String {
@@ -1655,7 +1745,9 @@ mod tests {
     use super::*;
 
     fn entity() -> AsteriskEntity {
-        let mut cfg = tetra_config::bluestation::parsing::from_toml_str(r#"
+        let directory = std::env::temp_dir().to_string_lossy().replace('\\', "/");
+        let config_text = format!(
+            r#"
 config_version = "0.6"
 stack_mode = "Bs"
 [phy_io]
@@ -1670,7 +1762,15 @@ freq_offset = 0
 duplex_spacing = 4
 reverse_operation = false
 location_area = 1
-"#).unwrap();
+[audio_player]
+directory = "{directory}"
+cache_directory = "{directory}/netcore-sip-test-cache"
+[tts]
+cache_directory = "{directory}/netcore-sip-test-tts"
+template_directory = "{directory}/netcore-sip-test-templates"
+"#,
+        );
+        let mut cfg = tetra_config::bluestation::parsing::from_toml_str(&config_text).unwrap();
         cfg.asterisk.bind_addr = "127.0.0.1".into();
         cfg.asterisk.bind_port = 0;
         cfg.asterisk.remote_host = "127.0.0.1".into();
@@ -1682,10 +1782,206 @@ location_area = 1
 
     fn call() -> NetworkCircuitCall {
         NetworkCircuitCall {
-            source_issi: 5102, destination: 103, number: "103".into(),
-            priority: 0, service: 0, mode: 0, duplex: 1, method: 0,
-            communication: 0, grant: 0, permission: 0, timeout: 0, ownership: 0, queued: 0,
+            source_issi: 5102,
+            destination: 103,
+            number: "103".into(),
+            priority: 0,
+            service: 0,
+            mode: 0,
+            duplex: 1,
+            method: 0,
+            communication: 0,
+            grant: 0,
+            permission: 0,
+            timeout: 0,
+            ownership: 0,
+            queued: 0,
         }
+    }
+
+    fn receive_sip(peer: &UdpSocket) -> String {
+        let mut buffer = [0u8; SIP_MAX_DATAGRAM];
+        let (size, _) = peer.recv_from(&mut buffer).unwrap();
+        String::from_utf8(buffer[..size].to_vec()).unwrap()
+    }
+
+    fn outbound_peer() -> (AsteriskEntity, UdpSocket, Uuid, SipMessage) {
+        let peer = UdpSocket::bind("127.0.0.1:0").unwrap();
+        peer.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+        let mut entity = entity();
+        entity.remote = peer.local_addr().unwrap();
+        entity.asterisk_config.bind_port = entity.sip_socket.local_addr().unwrap().port();
+        let uuid = Uuid::new_v4();
+        entity.start_outbound_call(&mut MessageQueue::new(), uuid, call());
+        let invite = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+        (entity, peer, uuid, invite)
+    }
+
+    fn invite_response(invite: &SipMessage, code: u16, extra: &str) -> String {
+        format!(
+            "SIP/2.0 {code} Test response\r\nVia: {}\r\nFrom: {}\r\nTo: {};tag=server-{code}\r\nCall-ID: {}\r\nCSeq: {}\r\n{extra}Content-Length: 0\r\n\r\n",
+            invite.header("Via").unwrap(),
+            invite.header("From").unwrap(),
+            invite.header("To").unwrap(),
+            invite.call_id().unwrap(),
+            invite.header("CSeq").unwrap(),
+        )
+    }
+
+    fn assert_error_ack(ack: &SipMessage, invite: &SipMessage, response: &SipMessage) {
+        assert_eq!(ack.method(), Some("ACK"));
+        assert_eq!(ack.request_uri(), invite.request_uri());
+        assert_eq!(ack.call_id(), invite.call_id());
+        assert_eq!(ack.header("From"), invite.header("From"));
+        assert_eq!(ack.header("Via"), invite.header("Via"));
+        assert_eq!(ack.header("To"), response.header("To"));
+        assert_eq!(ack.header("CSeq").unwrap(), invite.header("CSeq").unwrap().replace("INVITE", "ACK"));
+    }
+
+    #[test]
+    fn authentication_acks_old_transaction_before_new_invite_and_replays_duplicates() {
+        for (code, challenge_header, authorization_header) in [
+            (401, "WWW-Authenticate", "Authorization"),
+            (407, "Proxy-Authenticate", "Proxy-Authorization"),
+        ] {
+            let (mut entity, peer, uuid, invite) = outbound_peer();
+            let challenge = format!("{challenge_header}: Digest realm=\"asterisk\", nonce=\"first\", algorithm=MD5, qop=\"auth\"\r\n");
+            let response = invite_response(&invite, code, &challenge);
+            let mut queue = MessageQueue::new();
+            entity.handle_sip_message(
+                &mut queue,
+                SipMessage::parse(response.as_bytes()).unwrap(),
+                peer.local_addr().unwrap(),
+            );
+            let ack_bytes = receive_sip(&peer);
+            let ack = SipMessage::parse(ack_bytes.as_bytes()).unwrap();
+            assert_error_ack(&ack, &invite, &SipMessage::parse(response.as_bytes()).unwrap());
+            let retry = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+            assert_eq!(retry.method(), Some("INVITE"));
+            assert_eq!(retry.header("CSeq"), Some("2 INVITE"));
+            assert_ne!(retry.header("Via"), invite.header("Via"));
+            assert_eq!(retry.header("To"), invite.header("To"));
+            assert!(retry.header(authorization_header).is_some());
+
+            // A repeated old challenge must not ACK CSeq 2, retry again, or
+            // release the new authenticated transaction.
+            entity.handle_sip_message(
+                &mut queue,
+                SipMessage::parse(response.as_bytes()).unwrap(),
+                peer.local_addr().unwrap(),
+            );
+            assert_eq!(receive_sip(&peer), ack_bytes);
+            assert_eq!(entity.dialogs[&uuid].cseq, 2);
+            assert!(queue.is_empty());
+
+            let ok = invite_response(&retry, 200, "");
+            entity.handle_sip_message(&mut queue, SipMessage::parse(ok.as_bytes()).unwrap(), peer.local_addr().unwrap());
+            let connected_ack = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+            assert_eq!(connected_ack.header("CSeq"), Some("2 ACK"));
+            assert_ne!(connected_ack.header("Via"), retry.header("Via"));
+            assert_eq!(entity.dialogs[&uuid].state, DialogState::Established);
+            assert!(matches!(
+                queue.pop_front().unwrap().msg,
+                SapMsgInner::CmceCallControl(CallControl::NetworkCircuitConnectRequest { .. })
+            ));
+        }
+    }
+
+    #[test]
+    fn final_failure_ack_survives_dialog_removal_and_expires_without_another_release() {
+        for (code, expected_cause) in [(486, 2), (503, 5)] {
+            let (mut entity, peer, _uuid, invite) = outbound_peer();
+            let response = invite_response(&invite, code, "");
+            let mut queue = MessageQueue::new();
+            entity.handle_sip_message(
+                &mut queue,
+                SipMessage::parse(response.as_bytes()).unwrap(),
+                peer.local_addr().unwrap(),
+            );
+            let ack_bytes = receive_sip(&peer);
+            assert_error_ack(
+                &SipMessage::parse(ack_bytes.as_bytes()).unwrap(),
+                &invite,
+                &SipMessage::parse(response.as_bytes()).unwrap(),
+            );
+            assert!(entity.dialogs.is_empty());
+            assert!(matches!(queue.pop_front().unwrap().msg,
+                SapMsgInner::CmceCallControl(CallControl::NetworkCircuitRelease { cause, .. }) if cause == expected_cause));
+
+            entity.handle_sip_message(
+                &mut queue,
+                SipMessage::parse(response.as_bytes()).unwrap(),
+                peer.local_addr().unwrap(),
+            );
+            assert_eq!(receive_sip(&peer), ack_bytes);
+            assert!(queue.is_empty());
+            entity.invite_error_acks.front_mut().unwrap().created = Instant::now() - Duration::from_secs(33);
+            entity.handle_sip_message(
+                &mut queue,
+                SipMessage::parse(response.as_bytes()).unwrap(),
+                peer.local_addr().unwrap(),
+            );
+            assert!(entity.invite_error_acks.is_empty());
+            peer.set_nonblocking(true).unwrap();
+            assert_eq!(
+                peer.recv_from(&mut [0u8; SIP_MAX_DATAGRAM]).unwrap_err().kind(),
+                io::ErrorKind::WouldBlock
+            );
+            assert!(queue.is_empty());
+        }
+    }
+
+    #[test]
+    fn second_authentication_failure_is_acked_and_released_without_a_retry_loop() {
+        let (mut entity, peer, _uuid, invite) = outbound_peer();
+        let first = invite_response(&invite, 401, "WWW-Authenticate: Digest realm=\"asterisk\", nonce=\"first\"\r\n");
+        let mut queue = MessageQueue::new();
+        entity.handle_sip_message(&mut queue, SipMessage::parse(first.as_bytes()).unwrap(), peer.local_addr().unwrap());
+        receive_sip(&peer);
+        let retry = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+        let rejected = invite_response(&retry, 401, "WWW-Authenticate: Digest realm=\"asterisk\", nonce=\"second\"\r\n");
+        entity.handle_sip_message(
+            &mut queue,
+            SipMessage::parse(rejected.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        assert_error_ack(
+            &SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap(),
+            &retry,
+            &SipMessage::parse(rejected.as_bytes()).unwrap(),
+        );
+        assert!(entity.dialogs.is_empty());
+        assert!(matches!(
+            queue.pop_front().unwrap().msg,
+            SapMsgInner::CmceCallControl(CallControl::NetworkCircuitRelease { .. })
+        ));
+        peer.set_nonblocking(true).unwrap();
+        assert_eq!(
+            peer.recv_from(&mut [0u8; SIP_MAX_DATAGRAM]).unwrap_err().kind(),
+            io::ErrorKind::WouldBlock
+        );
+    }
+
+    #[test]
+    fn malformed_authentication_challenge_does_not_leave_the_call_pending() {
+        let (mut entity, peer, _uuid, invite) = outbound_peer();
+        let response = invite_response(&invite, 401, "");
+        let mut queue = MessageQueue::new();
+        entity.handle_sip_message(
+            &mut queue,
+            SipMessage::parse(response.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        assert_error_ack(
+            &SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap(),
+            &invite,
+            &SipMessage::parse(response.as_bytes()).unwrap(),
+        );
+        assert!(entity.dialogs.is_empty());
+        assert!(matches!(
+            queue.pop_front().unwrap().msg,
+            SapMsgInner::CmceCallControl(CallControl::NetworkCircuitRelease { .. })
+        ));
     }
 
     #[test]
@@ -1697,9 +1993,15 @@ location_area = 1
                 entity.start_outbound_call(&mut MessageQueue::new(), uuid, call());
                 entity.mark_media_ready(uuid, 6, 3);
                 let id = entity.dialogs[&uuid].call_id_header.clone();
-                let text = format!("{method} sip:5102@localhost SIP/2.0\r\nVia: SIP/2.0/UDP localhost\r\nFrom: <sip:103@localhost>;tag=a\r\nTo: <sip:5102@localhost>;tag=b\r\nCall-ID: {id}\r\nCSeq: 2 {method}\r\n{reason}Content-Length: 0\r\n\r\n");
+                let text = format!(
+                    "{method} sip:5102@localhost SIP/2.0\r\nVia: SIP/2.0/UDP localhost\r\nFrom: <sip:103@localhost>;tag=a\r\nTo: <sip:5102@localhost>;tag=b\r\nCall-ID: {id}\r\nCSeq: 2 {method}\r\n{reason}Content-Length: 0\r\n\r\n"
+                );
                 let mut queue = MessageQueue::new();
-                entity.handle_sip_message(&mut queue, SipMessage::parse(text.as_bytes()).unwrap(), "127.0.0.1:9".parse().unwrap());
+                entity.handle_sip_message(
+                    &mut queue,
+                    SipMessage::parse(text.as_bytes()).unwrap(),
+                    "127.0.0.1:9".parse().unwrap(),
+                );
                 assert!(matches!(queue.pop_front().unwrap().msg,
                     SapMsgInner::CmceCallControl(CallControl::NetworkCircuitRelease { brew_uuid, cause: 1 }) if brew_uuid == uuid));
                 assert!(entity.dialogs.is_empty());
@@ -1710,15 +2012,18 @@ location_area = 1
 
     #[test]
     fn failed_invite_uses_sip_or_explicit_q850_reason_not_raw_integer() {
-        for (code, reason, expected) in [(486, "", 2), (404, "", 18), (503, "", 5),
-            (503, "Reason: Q.850;cause=17\r\n", 2)] {
+        for (code, reason, expected) in [(486, "", 2), (404, "", 18), (503, "", 5), (503, "Reason: Q.850;cause=17\r\n", 2)] {
             let mut entity = entity();
             let uuid = Uuid::new_v4();
             entity.start_outbound_call(&mut MessageQueue::new(), uuid, call());
             let id = entity.dialogs[&uuid].call_id_header.clone();
             let text = format!("SIP/2.0 {code} Failure\r\nCall-ID: {id}\r\nCSeq: 1 INVITE\r\n{reason}\r\n");
             let mut queue = MessageQueue::new();
-            entity.handle_sip_message(&mut queue, SipMessage::parse(text.as_bytes()).unwrap(), "127.0.0.1:9".parse().unwrap());
+            entity.handle_sip_message(
+                &mut queue,
+                SipMessage::parse(text.as_bytes()).unwrap(),
+                "127.0.0.1:9".parse().unwrap(),
+            );
             assert!(matches!(queue.pop_front().unwrap().msg,
                 SapMsgInner::CmceCallControl(CallControl::NetworkCircuitRelease { cause, .. }) if cause == expected));
             assert!(entity.dialogs.is_empty());
@@ -1726,7 +2031,9 @@ location_area = 1
         let entity = entity();
         let mut queue = MessageQueue::new();
         entity.reject_setup(&mut queue, Uuid::new_v4(), DisconnectCause::CongestionInInfrastructure);
-        assert!(matches!(queue.pop_front().unwrap().msg,
-            SapMsgInner::CmceCallControl(CallControl::NetworkCircuitSetupReject { cause: 5, .. })));
+        assert!(matches!(
+            queue.pop_front().unwrap().msg,
+            SapMsgInner::CmceCallControl(CallControl::NetworkCircuitSetupReject { cause: 5, .. })
+        ));
     }
 }
