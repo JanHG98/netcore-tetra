@@ -105,11 +105,42 @@ Fünf lokale Regressionstests bestehen; der Fall „gesunder Zentralweg und
 fehlender Schlüssel“ scheitert am vorherigen Controller wie erwartet.
 Der Linux-Workflow prüft zusätzlich die Reparatur eines gelöschten Schlüssels
 an einer isolierten echten Asterisk-AstDB mit nachgebildeter Zentralgesundheit.
-Dieser neue Linux-Lauf ist noch ausstehend. Ob der Live-Schlüssel durch einen
+Der [Linux-Lauf an bbe08050](https://github.com/JanHG98/netcore-tetra/actions/runs/39044850193)
+ist bestanden: Ubuntu 24.04 und 26.04 mit jeweils 70 Tests, SIP-/Deploy-WebUI
+und die Reparatur des gelöschten Schlüssels an Asterisk 22.11.0.
+Ob der Live-Schlüssel durch einen
 inaktiven Controller, einen Neustart oder einen anderen Eingriff fehlte,
 ist ohne dessen Dienstprotokoll offen.
 
-Jan meldet außerdem einen am Festnetz bestehen bleibenden Ruf nach dem
-Auflegen am Funkgerät und erneut Netzstau. Der gesonderte Rufabbaufehler
-bleibt bis zum Abgleich von CMCE-Freigabe und SIP-BYE/CANCEL offen; eine
-vollständige Telefonie-Abnahme ist weiterhin nicht belegt.
+### Nach Funk-Auflegen stehen bleibende Telefonrufe
+
+Jan meldet einen am Festnetz bestehen bleibenden Ruf nach dem Auflegen am
+Funkgerät und erneut Netzstau. Im bisherigen Client sind dazu passende
+Protokolllücken nachgewiesen: Er ignoriert Antworten auf BYE/CANCEL und
+verspätete INVITE-Ergebnisse nach dem lokalen Dialogabbau. Dialoganfragen
+verwenden außerdem weiter die gewählte Nummer statt des vom Peer gelieferten
+Contact-Ziels. Bei eingehenden Rufen fehlen die ursprünglichen lokalen und
+entfernten Dialog-URIs.
+
+Der Client hält nach der sofortigen RF-/Medienfreigabe nun begrenzte
+Signalisierungsdaten vor. BYE/CANCEL werden über UDP bis zur Antwort mit
+500 Millisekunden beginnend und höchstens vier Sekunden Abstand wiederholt;
+die einzelne Transaktion endet nach 32 Sekunden. Ein BYE darf genau einmal
+auf 401/407 mit neuer CSeq/Branch und passendem Digest wiederholt werden.
+Antworten oder Timeouts lösen keine zweite CMCE-Freigabe aus. Eine verspätete
+Annahme nach Funk-Abbruch erhält ACK und anschließend BYE; wiederholte
+Annahmen erhalten erneut ACK, ohne den Funkruf wieder zu verbinden.
+CANCEL wartet auf die erste vorläufige Antwort, behält die ursprünglichen
+INVITE-Kennungen und quittiert das folgende 487 korrekt. Dialog-ACK und BYE
+verwenden Contact sowie die ursprünglichen To-/From-URIs und Tags.
+[SIP-Dialogziele](https://www.rfc-editor.org/rfc/rfc3261.html#section-12.2.1.1),
+[Annahme nach Abbruch](https://www.rfc-editor.org/rfc/rfc3261.html#section-13.2.2.4).
+
+Alle 14 lokalen SIP-Tests bestehen am tatsächlichen Client mit echten
+UDP-Datagrammen und nachgebildetem Medienbackend. Die beiden neuen
+Drahtformat-/Rennfallregressionen scheitern am vorherigen Client wie erwartet.
+Der vollständige Linux-Lauf für diese Rufabbauergänzung steht noch aus.
+Eine erfolgreiche Live-Abnahme ist weiterhin nicht belegt: Dafür den
+CMCE-Freigabe-/BYE/CANCEL-Ablauf und das Ende des Festnetzkanals nach einem
+neuen Ruf mit dem aktualisierten Binary prüfen. Während des Klingelns,
+nach Annahme und bei nahezu gleichzeitigem Annehmen/Auflegen testen.

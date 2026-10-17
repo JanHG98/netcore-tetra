@@ -28,6 +28,7 @@ const SIP_MAX_DATAGRAM: usize = 8192;
 
 const INVITE_ACK_LIFETIME: Duration = Duration::from_secs(32);
 const MAX_INVITE_ACKS: usize = 64;
+const MAX_TERMINATIONS: usize = 64;
 
 struct InviteErrorAck {
     call_id: String,
@@ -77,12 +78,15 @@ struct SipDialog {
     number: String,
     call_id_header: String,
     local_uri: String,
+    remote_uri: String,
+    remote_target: String,
     local_tag: String,
     remote_tag: Option<String>,
     invite_branch: Option<String>,
     cseq: u32,
     auth: Option<DigestChallenge>,
     auth_retry_sent: bool,
+    provisional_received: bool,
     state: DialogState,
     rtp: RtpSession,
     audio: MediaWorker,
@@ -197,6 +201,24 @@ struct SipRequestContext {
     addr: SocketAddr,
 }
 
+struct PendingTermination {
+    dialog: SipDialogSnapshot,
+    cancel: bool,
+    cseq: u32,
+    payload: String,
+    auth_retry_sent: bool,
+    created: Instant,
+    next_retry: Instant,
+    retry_interval: Duration,
+}
+
+struct CancelledInvite {
+    dialog: SipDialogSnapshot,
+    cancel_sent: bool,
+    ack: Option<String>,
+    created: Instant,
+}
+
 // Was: Bündelt die zusammengehörigen Werte für asterisk entity in einem Datentyp.
 // Warum: Ein eigener Datentyp verhindert lose Einzelwerte und macht gültige Zustände leichter erkennbar.
 pub struct AsteriskEntity {
@@ -206,6 +228,8 @@ pub struct AsteriskEntity {
     remote: SocketAddr,
     dialogs: HashMap<Uuid, SipDialog>,
     invite_error_acks: VecDeque<InviteErrorAck>,
+    pending_terminations: VecDeque<PendingTermination>,
+    cancelled_invites: VecDeque<CancelledInvite>,
     rtp_by_ts: HashMap<u8, Uuid>,
     next_rtp_port: u16,
     branch_counter: u64,
@@ -246,6 +270,8 @@ impl AsteriskEntity {
             remote,
             dialogs: HashMap::new(),
             invite_error_acks: VecDeque::new(),
+            pending_terminations: VecDeque::new(),
+            cancelled_invites: VecDeque::new(),
             rtp_by_ts: HashMap::new(),
             branch_counter: 1,
             register_cseq: 1,
@@ -556,65 +582,211 @@ impl AsteriskEntity {
     // Was: Diese Funktion sendet bye or cancel.
     // Warum: Ausgehende Daten werden so einheitlich aufgebaut, geprüft und übertragen.
     fn send_bye_or_cancel(&mut self, uuid: Uuid, cancel: bool) {
-        let Some(dialog) = self.dialogs.get(&uuid).map(SipDialogSnapshot::from_dialog) else {
-            return;
-        };
+        let Some(dialog) = self.dialogs.get(&uuid) else { return };
+        let can_cancel = dialog.provisional_received;
+        let snapshot = SipDialogSnapshot::from_dialog(dialog);
+        if cancel {
+            // Keep only signaling metadata after RF/media cleanup. A CANCEL
+            // cannot be sent until the INVITE has received a provisional reply.
+            self.cancelled_invites.push_back(CancelledInvite {
+                dialog: snapshot.clone(),
+                cancel_sent: can_cancel,
+                ack: None,
+                created: Instant::now(),
+            });
+            while self.cancelled_invites.len() > MAX_TERMINATIONS {
+                self.cancelled_invites.pop_front();
+            }
+            if !can_cancel {
+                return;
+            }
+        }
+        self.start_termination(snapshot, cancel);
+    }
+
+    fn build_termination_request(&mut self, dialog: &SipDialogSnapshot, cancel: bool, cseq: u32, auth: Option<&DigestChallenge>) -> String {
         let method = if cancel { "CANCEL" } else { "BYE" };
-        let request_uri = self.request_uri(&dialog.number);
+        let request_uri = if cancel {
+            self.request_uri(&dialog.number)
+        } else {
+            dialog.remote_target.clone()
+        };
         let branch = if cancel {
-            dialog.invite_branch.clone().unwrap_or_else(|| {
-                tracing::warn!(
-                    "AsteriskEntity: CANCEL uuid={} has no stored INVITE branch; using fresh branch as fallback",
-                    uuid
-                );
-                self.next_branch()
-            })
+            dialog.invite_branch.clone().unwrap_or_else(|| self.next_branch())
         } else {
             self.next_branch()
         };
         let to = if cancel {
-            // CANCEL must match the original INVITE transaction.
-            // Do not use the early-dialog To tag from 180/183 here.
-            format!("<{}>", request_uri)
+            format!("<{}>", self.request_uri(&dialog.number))
         } else if let Some(tag) = &dialog.remote_tag {
-            format!("<{}>;tag={}", request_uri, tag)
+            format!("<{}>;tag={}", dialog.remote_uri, tag)
         } else {
-            format!("<{}>", request_uri)
+            format!("<{}>", dialog.remote_uri)
         };
-        let cseq = if cancel { dialog.cseq } else { dialog.cseq.saturating_add(1) };
-        let request = format!(
-            "{} {} SIP/2.0\r\n\
-             Via: SIP/2.0/UDP {}:{};branch={};rport\r\n\
+        let auth_line = auth
+            .map(|challenge| format!("{}\r\n", self.authorization_header(method, &request_uri, challenge)))
+            .unwrap_or_default();
+        let from = if cancel {
+            let caller = dialog
+                .source_issi
+                .filter(|source| *source != 0)
+                .map(|source| source.to_string())
+                .unwrap_or_else(|| self.asterisk_config.local_user.clone());
+            format!("\"{caller}\" <{}>;tag={}", dialog.local_uri, dialog.local_tag)
+        } else {
+            format!("<{}>;tag={}", dialog.local_uri, dialog.local_tag)
+        };
+        format!(
+            "{method} {request_uri} SIP/2.0\r\n\
+             Via: SIP/2.0/UDP {}:{};branch={branch};rport\r\n\
              Max-Forwards: 70\r\n\
-             From: <{}>;tag={}\r\n\
-             To: {}\r\n\
+             From: {from}\r\n\
+             To: {to}\r\n\
              Call-ID: {}\r\n\
-             CSeq: {} {}\r\n\
-             Contact: <{}>\r\n\
+             CSeq: {cseq} {method}\r\n\
+             {auth_line}\
              Content-Length: 0\r\n\r\n",
-            method,
-            request_uri,
-            self.asterisk_config.contact_host,
-            self.asterisk_config.bind_port,
-            branch,
-            dialog.local_uri,
-            dialog.local_tag,
-            to,
-            dialog.call_id_header,
-            cseq,
-            method,
-            self.contact_uri()
-        );
+            self.asterisk_config.contact_host, self.asterisk_config.bind_port, dialog.call_id_header,
+        )
+    }
+
+    fn start_termination(&mut self, dialog: SipDialogSnapshot, cancel: bool) {
+        let cseq = if cancel { dialog.cseq } else { dialog.cseq.saturating_add(1) };
+        let payload = self.build_termination_request(&dialog, cancel, cseq, None);
+        let method = if cancel { "CANCEL" } else { "BYE" };
         tracing::info!(
-            "AsteriskEntity: sending {} uuid={} call_id={} cseq={} branch={} to={}",
-            method,
-            uuid,
-            dialog.call_id_header,
-            cseq,
-            branch,
-            to
+            "AsteriskEntity: sending {method} uuid={} call_id={} cseq={cseq}",
+            dialog.uuid,
+            dialog.call_id_header
         );
-        self.send_sip(request, format!("{} {}", method, uuid));
+        self.send_sip(payload.clone(), format!("{method} {}", dialog.uuid));
+        let now = Instant::now();
+        self.pending_terminations.push_back(PendingTermination {
+            dialog,
+            cancel,
+            cseq,
+            payload,
+            auth_retry_sent: false,
+            created: now,
+            next_retry: now + Duration::from_millis(500),
+            retry_interval: Duration::from_millis(500),
+        });
+        while self.pending_terminations.len() > MAX_TERMINATIONS {
+            self.pending_terminations.pop_front();
+        }
+    }
+
+    fn handle_termination_response(&mut self, msg: &SipMessage, code: u16) {
+        let cseq = msg
+            .header("CSeq")
+            .and_then(|value| value.split_whitespace().next()?.parse::<u32>().ok());
+        let Some(index) = self.pending_terminations.iter().position(|pending| {
+            Some(pending.dialog.call_id_header.as_str()) == msg.call_id()
+                && Some(pending.cseq) == cseq
+                && msg.cseq_method() == Some(if pending.cancel { "CANCEL" } else { "BYE" })
+        }) else {
+            return;
+        };
+        if code < 200 {
+            let pending = &mut self.pending_terminations[index];
+            pending.retry_interval = Duration::from_secs(4);
+            pending.next_retry = Instant::now() + pending.retry_interval;
+            return;
+        }
+        let mut pending = self.pending_terminations.remove(index).unwrap();
+        if matches!(code, 401 | 407)
+            && !pending.cancel
+            && !pending.auth_retry_sent
+            && let Some(challenge) = Self::parse_challenge(msg)
+        {
+            pending.cseq = pending.cseq.saturating_add(1);
+            pending.payload = self.build_termination_request(&pending.dialog, false, pending.cseq, Some(&challenge));
+            pending.auth_retry_sent = true;
+            pending.created = Instant::now();
+            pending.retry_interval = Duration::from_millis(500);
+            pending.next_retry = pending.created + pending.retry_interval;
+            self.send_sip(pending.payload.clone(), format!("BYE authenticated {}", pending.dialog.uuid));
+            self.pending_terminations.push_back(pending);
+            return;
+        }
+        let method = if pending.cancel { "CANCEL" } else { "BYE" };
+        if code >= 300 && code != 481 {
+            self.set_error(format!(
+                "{method} uuid={} failed with {}; Reason: {}",
+                pending.dialog.uuid,
+                msg.start_line,
+                msg.header("Reason").unwrap_or("not supplied")
+            ));
+        } else {
+            tracing::info!("AsteriskEntity: {method} uuid={} completed with SIP {code}", pending.dialog.uuid);
+        }
+        // The radio has already released. Never send a second CMCE release or
+        // reinterpret an orderly local hangup as infrastructure congestion.
+    }
+
+    fn handle_cancelled_invite_response(&mut self, index: usize, msg: &SipMessage, code: u16) {
+        if code < 200 {
+            if self.cancelled_invites[index].ack.is_none() && !self.cancelled_invites[index].cancel_sent {
+                self.cancelled_invites[index].cancel_sent = true;
+                self.start_termination(self.cancelled_invites[index].dialog.clone(), true);
+            }
+            return;
+        }
+        let mut cancelled = self.cancelled_invites.remove(index).unwrap();
+        if let Some(ack) = &cancelled.ack {
+            self.send_sip(ack.clone(), "ACK repeated cancelled INVITE");
+        } else {
+            let ack = if code < 300 {
+                cancelled.dialog.remote_tag = Self::parse_to_tag(msg.header("To"));
+                if let Some(target) = Self::header_uri(msg.header("Contact")) {
+                    cancelled.dialog.remote_target = target;
+                }
+                let ack = self.build_ack_from_snapshot(&cancelled.dialog);
+                self.send_sip(ack.clone(), "ACK late accepted cancelled INVITE");
+                self.start_termination(cancelled.dialog.clone(), false);
+                Some(ack)
+            } else {
+                let ack = self.build_invite_error_ack(&cancelled.dialog, msg);
+                if let Some(payload) = &ack {
+                    self.send_sip(payload.clone(), "ACK cancelled INVITE failure");
+                }
+                ack
+            };
+            cancelled.ack = ack;
+            cancelled.created = Instant::now();
+        }
+        self.cancelled_invites.push_back(cancelled);
+    }
+
+    fn poll_termination_requests(&mut self) {
+        let now = Instant::now();
+        let mut retries = Vec::new();
+        let mut expired = Vec::new();
+        self.pending_terminations.retain_mut(|pending| {
+            if now.duration_since(pending.created) >= INVITE_ACK_LIFETIME {
+                expired.push((pending.dialog.uuid, pending.cancel));
+                return false;
+            }
+            if now >= pending.next_retry {
+                retries.push(pending.payload.clone());
+                pending.retry_interval = (pending.retry_interval * 2).min(Duration::from_secs(4));
+                pending.next_retry = now + pending.retry_interval;
+            }
+            true
+        });
+        self.cancelled_invites
+            .retain(|invite| now.duration_since(invite.created) < INVITE_ACK_LIFETIME);
+        self.invite_error_acks
+            .retain(|ack| now.duration_since(ack.created) < INVITE_ACK_LIFETIME);
+        for payload in retries {
+            self.send_sip(payload, "repeat pending SIP release");
+        }
+        for (uuid, cancel) in expired {
+            self.set_error(format!(
+                "{} uuid={uuid} timed out after local release",
+                if cancel { "CANCEL" } else { "BYE" }
+            ));
+        }
     }
 
     // Was: Führt den Arbeitsschritt `tagged_to` für tagged to aus.
@@ -789,6 +961,16 @@ impl AsteriskEntity {
             let part = part.trim();
             part.strip_prefix("tag=").map(|tag| tag.trim_matches('"').to_string())
         })
+    }
+
+    fn header_uri(header: Option<&str>) -> Option<String> {
+        let value = header?.trim();
+        let uri = if let Some((_, after)) = value.split_once('<') {
+            after.split_once('>')?.0
+        } else {
+            value.split(';').next()?.trim()
+        };
+        uri.to_ascii_lowercase().starts_with("sip:").then(|| uri.to_string())
     }
 
     // Was: Führt den Arbeitsschritt `sip_uri_user` für sip uri Benutzer aus.
@@ -971,13 +1153,18 @@ impl AsteriskEntity {
             call: call.clone(),
             number: caller_number,
             call_id_header: ctx.call_id.clone(),
-            local_uri: self.local_uri(),
+            local_uri: Self::header_uri(msg.header("To")).unwrap_or_else(|| self.local_uri()),
+            remote_uri: Self::header_uri(msg.header("From")).unwrap_or_else(|| self.request_uri("unknown")),
+            remote_target: Self::header_uri(msg.header("Contact"))
+                .or_else(|| Self::header_uri(msg.header("From")))
+                .unwrap_or_else(|| self.request_uri("unknown")),
             local_tag,
             remote_tag,
             invite_branch: None,
             cseq: 1,
             auth: None,
             auth_retry_sent: false,
+            provisional_received: false,
             state: DialogState::Inviting,
             rtp,
             audio,
@@ -1110,6 +1297,8 @@ impl AsteriskEntity {
         let dialog = SipDialog {
             uuid: brew_uuid,
             local_uri: self.local_uri(),
+            remote_uri: self.request_uri(&number),
+            remote_target: self.request_uri(&number),
             call,
             number,
             call_id_header: format!("flow-{}@{}", brew_uuid, self.asterisk_config.contact_host),
@@ -1119,6 +1308,7 @@ impl AsteriskEntity {
             cseq: 1,
             auth: None,
             auth_retry_sent: false,
+            provisional_received: false,
             state: DialogState::Inviting,
             rtp,
             audio,
@@ -1404,7 +1594,7 @@ impl AsteriskEntity {
                 }
             }
             Some("INVITE") => self.handle_invite_response(queue, &msg, code),
-            Some("BYE") | Some("CANCEL") => {}
+            Some("BYE") | Some("CANCEL") => self.handle_termination_response(&msg, code),
             _ => {}
         }
     }
@@ -1442,6 +1632,8 @@ impl AsteriskEntity {
             return;
         };
         self.invite_error_acks.retain(|ack| ack.created.elapsed() < INVITE_ACK_LIFETIME);
+        self.cancelled_invites
+            .retain(|invite| invite.created.elapsed() < INVITE_ACK_LIFETIME);
         if (300..=699).contains(&code)
             && let Some(ack) = self
                 .invite_error_acks
@@ -1453,11 +1645,22 @@ impl AsteriskEntity {
             self.send_sip(ack.payload.clone(), "ACK repeated INVITE failure");
             return;
         }
+        if let Some(index) = self
+            .cancelled_invites
+            .iter()
+            .position(|invite| Some(invite.dialog.call_id_header.as_str()) == msg.call_id() && invite.dialog.cseq == cseq)
+        {
+            self.handle_cancelled_invite_response(index, msg, code);
+            return;
+        }
         let Some(uuid) = self.find_dialog_by_call_id(msg.call_id()) else {
             return;
         };
         if self.dialogs[&uuid].inbound || self.dialogs[&uuid].cseq != cseq {
             return;
+        }
+        if (100..200).contains(&code) {
+            self.dialogs.get_mut(&uuid).unwrap().provisional_received = true;
         }
         if (300..=699).contains(&code) {
             let snapshot = SipDialogSnapshot::from_dialog(&self.dialogs[&uuid]);
@@ -1479,21 +1682,26 @@ impl AsteriskEntity {
         // Was: Unterscheidet die möglichen Varianten und führt für jeden Fall den passenden Ablauf aus.
         // Warum: Protokoll- und Zustandswerte müssen vollständig behandelt werden, damit kein Fall stillschweigend falsch weiterläuft.
         match code {
-            100 => {}
+            100 => self.dialogs.get_mut(&uuid).unwrap().provisional_received = true,
             180 | 183 => {
                 if let Some(dialog) = self.dialogs.get_mut(&uuid) {
+                    dialog.provisional_received = true;
                     dialog.state = DialogState::Ringing;
                     dialog.remote_tag = Self::parse_to_tag(msg.header("To"));
                 }
                 self.send_alert(queue, uuid);
             }
             200..=299 => {
+                let already_connected = self.dialogs[&uuid].state == DialogState::Established;
                 let remote_rtp = self.parse_sdp_remote(&msg.body);
                 let connect_call = {
                     let Some(dialog) = self.dialogs.get_mut(&uuid) else {
                         return;
                     };
                     dialog.remote_tag = Self::parse_to_tag(msg.header("To"));
+                    if let Some(target) = Self::header_uri(msg.header("Contact")) {
+                        dialog.remote_target = target;
+                    }
                     if let Some(remote_rtp) = remote_rtp {
                         dialog.rtp.remote = Some(remote_rtp);
                     }
@@ -1506,7 +1714,7 @@ impl AsteriskEntity {
                     self.send_sip(ack_text, format!("ACK {}", uuid));
                 }
                 let connect_snapshot = self.dialogs.get(&uuid).map(SipDialogSnapshot::from_dialog);
-                if let Some(snapshot) = connect_snapshot {
+                if let Some(snapshot) = connect_snapshot.filter(|_| !already_connected) {
                     let mut call = connect_call;
                     call.grant = 0;
                     call.permission = 0;
@@ -1533,6 +1741,7 @@ impl AsteriskEntity {
                 dialog.auth = challenge;
                 dialog.auth_retry_sent = true;
                 dialog.cseq = dialog.cseq.saturating_add(1);
+                dialog.provisional_received = false;
                 self.send_invite(uuid);
             }
             300..=699 => {
@@ -1586,6 +1795,8 @@ struct SipDialogSnapshot {
     number: String,
     call_id_header: String,
     local_uri: String,
+    remote_uri: String,
+    remote_target: String,
     source_issi: Option<u32>,
     local_tag: String,
     remote_tag: Option<String>,
@@ -1604,6 +1815,8 @@ impl SipDialogSnapshot {
             number: dialog.number.clone(),
             call_id_header: dialog.call_id_header.clone(),
             local_uri: dialog.local_uri.clone(),
+            remote_uri: dialog.remote_uri.clone(),
+            remote_target: dialog.remote_target.clone(),
             source_issi: Some(dialog.call.source_issi),
             local_tag: dialog.local_tag.clone(),
             remote_tag: dialog.remote_tag.clone(),
@@ -1651,12 +1864,12 @@ impl AsteriskEntity {
     // Was: Diese Funktion erstellt ack from snapshot.
     // Warum: Die Erzeugung bleibt damit reproduzierbar und von der restlichen Verarbeitung getrennt.
     fn build_ack_from_snapshot(&mut self, dialog: &SipDialogSnapshot) -> String {
-        let request_uri = self.request_uri(&dialog.number);
+        let request_uri = &dialog.remote_target;
         let branch = self.next_branch();
         let to = if let Some(tag) = &dialog.remote_tag {
-            format!("<{}>;tag={}", request_uri, tag)
+            format!("<{}>;tag={}", dialog.remote_uri, tag)
         } else {
-            format!("<{}>", request_uri)
+            format!("<{}>", dialog.remote_uri)
         };
         format!(
             "ACK {} SIP/2.0\r\n\
@@ -1733,6 +1946,7 @@ impl TetraEntityTrait for AsteriskEntity {
     // Was: Diese Funktion bearbeitet start.
     // Warum: Der abgegrenzte Arbeitsschritt kann dadurch wiederverwendet, getestet und leichter verstanden werden.
     fn tick_start(&mut self, queue: &mut MessageQueue, _ts: TdmaTime) {
+        self.poll_termination_requests();
         self.maybe_periodic_sip();
         self.poll_sip(queue);
         self.poll_rtp(queue);
@@ -1818,11 +2032,11 @@ template_directory = "{directory}/netcore-sip-test-templates"
     }
 
     fn invite_response(invite: &SipMessage, code: u16, extra: &str) -> String {
+        let to = AsteriskEntity::tagged_to(invite.header("To").unwrap(), Some(&format!("server-{code}")));
         format!(
-            "SIP/2.0 {code} Test response\r\nVia: {}\r\nFrom: {}\r\nTo: {};tag=server-{code}\r\nCall-ID: {}\r\nCSeq: {}\r\n{extra}Content-Length: 0\r\n\r\n",
+            "SIP/2.0 {code} Test response\r\nVia: {}\r\nFrom: {}\r\nTo: {to}\r\nCall-ID: {}\r\nCSeq: {}\r\n{extra}Content-Length: 0\r\n\r\n",
             invite.header("Via").unwrap(),
             invite.header("From").unwrap(),
-            invite.header("To").unwrap(),
             invite.call_id().unwrap(),
             invite.header("CSeq").unwrap(),
         )
@@ -1836,6 +2050,299 @@ template_directory = "{directory}/netcore-sip-test-templates"
         assert_eq!(ack.header("Via"), invite.header("Via"));
         assert_eq!(ack.header("To"), response.header("To"));
         assert_eq!(ack.header("CSeq").unwrap(), invite.header("CSeq").unwrap().replace("INVITE", "ACK"));
+    }
+
+    fn radio_release(entity: &mut AsteriskEntity, queue: &mut MessageQueue, uuid: Uuid) {
+        entity.rx_prim(
+            queue,
+            SapMsg {
+                sap: Sap::Control,
+                src: TetraEntity::Cmce,
+                dest: TetraEntity::Asterisk,
+                msg: SapMsgInner::CmceCallControl(CallControl::NetworkCircuitRelease { brew_uuid: uuid, cause: 1 }),
+            },
+        );
+    }
+
+    fn established_peer() -> (AsteriskEntity, UdpSocket, Uuid, SipMessage, SipMessage) {
+        let (mut entity, peer, uuid, invite) = outbound_peer();
+        let response = invite_response(&invite, 200, &format!("Contact: <sip:asterisk@{}>\r\n", peer.local_addr().unwrap()));
+        let mut queue = MessageQueue::new();
+        entity.handle_sip_message(
+            &mut queue,
+            SipMessage::parse(response.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        let ack = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+        assert_eq!(ack.method(), Some("ACK"));
+        assert!(matches!(
+            queue.pop_front().unwrap().msg,
+            SapMsgInner::CmceCallControl(CallControl::NetworkCircuitConnectRequest { .. })
+        ));
+        (entity, peer, uuid, invite, ack)
+    }
+
+    #[test]
+    fn radio_hangup_uses_contact_target_and_retries_challenged_bye() {
+        let (mut entity, peer, uuid, invite, ack) = established_peer();
+        let target = format!("sip:asterisk@{}", peer.local_addr().unwrap());
+        assert_eq!(ack.request_uri(), Some(target.as_str()));
+        let mut queue = MessageQueue::new();
+        let repeated_answer = invite_response(&invite, 200, &format!("Contact: <{target}>\r\n"));
+        entity.handle_sip_message(
+            &mut queue,
+            SipMessage::parse(repeated_answer.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        assert_eq!(SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap().method(), Some("ACK"));
+        assert!(queue.is_empty());
+        entity.mark_media_ready(uuid, 6, 3);
+        radio_release(&mut entity, &mut queue, uuid);
+        let bye = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+        assert_eq!(bye.method(), Some("BYE"));
+        assert_eq!(bye.request_uri(), Some(target.as_str()));
+        assert_eq!(bye.header("To"), ack.header("To"));
+        assert_eq!(bye.header("CSeq"), Some("2 BYE"));
+        assert_ne!(bye.header("Via"), invite.header("Via"));
+        assert!(entity.dialogs.is_empty());
+        assert!(entity.rtp_by_ts.is_empty());
+        let challenge = invite_response(
+            &bye,
+            401,
+            "WWW-Authenticate: Digest realm=\"asterisk\", nonce=\"bye\", qop=\"auth\"\r\n",
+        );
+        entity.handle_sip_message(
+            &mut queue,
+            SipMessage::parse(challenge.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        let retry = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+        assert_eq!(retry.method(), Some("BYE"));
+        assert_eq!(retry.request_uri(), bye.request_uri());
+        assert_eq!(retry.header("To"), bye.header("To"));
+        assert_eq!(retry.header("From"), bye.header("From"));
+        assert_eq!(retry.header("CSeq"), Some("3 BYE"));
+        assert_ne!(retry.header("Via"), bye.header("Via"));
+        assert!(retry.header("Authorization").unwrap().contains(&format!("uri=\"{target}\"")));
+        let ok = invite_response(&retry, 200, "");
+        entity.handle_sip_message(&mut queue, SipMessage::parse(ok.as_bytes()).unwrap(), peer.local_addr().unwrap());
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn lost_release_packet_is_repeated_and_timeout_never_releases_radio_again() {
+        let (mut entity, peer, uuid, _, _) = established_peer();
+        let mut queue = MessageQueue::new();
+        radio_release(&mut entity, &mut queue, uuid);
+        let bye = receive_sip(&peer);
+        entity.pending_terminations[0].next_retry = Instant::now() - Duration::from_millis(1);
+        entity.poll_termination_requests();
+        assert_eq!(receive_sip(&peer), bye);
+        assert_eq!(entity.pending_terminations[0].retry_interval, Duration::from_secs(1));
+        entity.pending_terminations[0].created = Instant::now() - Duration::from_secs(33);
+        entity.poll_termination_requests();
+        assert!(entity.pending_terminations.is_empty());
+        assert!(entity.last_error.as_deref().unwrap().contains("BYE"));
+        assert!(queue.is_empty());
+        assert!(entity.dialogs.is_empty());
+    }
+
+    #[test]
+    fn cancelled_ringing_invite_acks_487_and_keeps_original_transaction_headers() {
+        let (mut entity, peer, uuid, invite) = outbound_peer();
+        let mut queue = MessageQueue::new();
+        let ringing = invite_response(&invite, 180, "");
+        entity.handle_sip_message(
+            &mut queue,
+            SipMessage::parse(ringing.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        while queue.pop_front().is_some() {}
+        radio_release(&mut entity, &mut queue, uuid);
+        let cancel = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+        assert_eq!(cancel.method(), Some("CANCEL"));
+        assert_eq!(cancel.request_uri(), invite.request_uri());
+        assert_eq!(cancel.header("Via"), invite.header("Via"));
+        assert_eq!(cancel.header("From"), invite.header("From"));
+        assert_eq!(cancel.header("To"), invite.header("To"));
+        assert_eq!(cancel.header("CSeq"), Some("1 CANCEL"));
+        let ok = invite_response(&cancel, 200, "");
+        entity.handle_sip_message(&mut queue, SipMessage::parse(ok.as_bytes()).unwrap(), peer.local_addr().unwrap());
+        let terminated = invite_response(&invite, 487, "");
+        for _ in 0..2 {
+            let response = SipMessage::parse(terminated.as_bytes()).unwrap();
+            entity.handle_sip_message(
+                &mut queue,
+                SipMessage::parse(terminated.as_bytes()).unwrap(),
+                peer.local_addr().unwrap(),
+            );
+            assert_error_ack(&SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap(), &invite, &response);
+        }
+        assert!(entity.pending_terminations.is_empty());
+        assert!(entity.dialogs.is_empty());
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn late_answer_after_radio_cancel_is_acked_then_ended_without_reconnecting_radio() {
+        let (mut entity, peer, uuid, invite) = outbound_peer();
+        let mut queue = MessageQueue::new();
+        let trying = invite_response(&invite, 100, "");
+        entity.handle_sip_message(
+            &mut queue,
+            SipMessage::parse(trying.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        radio_release(&mut entity, &mut queue, uuid);
+        let cancel = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+        let cancel_ok = invite_response(&cancel, 200, "");
+        entity.handle_sip_message(
+            &mut queue,
+            SipMessage::parse(cancel_ok.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        let target = format!("sip:asterisk@{}", peer.local_addr().unwrap());
+        let answer = invite_response(&invite, 200, &format!("Contact: <{target}>\r\n"));
+        entity.handle_sip_message(
+            &mut queue,
+            SipMessage::parse(answer.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        let ack = receive_sip(&peer);
+        let bye = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+        assert_eq!(SipMessage::parse(ack.as_bytes()).unwrap().method(), Some("ACK"));
+        assert_eq!(bye.method(), Some("BYE"));
+        assert_eq!(bye.request_uri(), Some(target.as_str()));
+        assert_eq!(
+            bye.header("To"),
+            Some(format!("{};tag=server-200", invite.header("To").unwrap()).as_str())
+        );
+        entity.handle_sip_message(
+            &mut queue,
+            SipMessage::parse(answer.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        assert_eq!(receive_sip(&peer), ack);
+        assert_eq!(entity.pending_terminations.len(), 1);
+        peer.set_nonblocking(true).unwrap();
+        assert_eq!(
+            peer.recv_from(&mut [0; SIP_MAX_DATAGRAM]).unwrap_err().kind(),
+            io::ErrorKind::WouldBlock
+        );
+        assert!(entity.dialogs.is_empty());
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn radio_cancel_before_any_response_waits_for_provisional_reply() {
+        let (mut entity, peer, uuid, invite) = outbound_peer();
+        let mut queue = MessageQueue::new();
+        radio_release(&mut entity, &mut queue, uuid);
+        peer.set_nonblocking(true).unwrap();
+        assert_eq!(
+            peer.recv_from(&mut [0; SIP_MAX_DATAGRAM]).unwrap_err().kind(),
+            io::ErrorKind::WouldBlock
+        );
+        peer.set_nonblocking(false).unwrap();
+        let trying = invite_response(&invite, 100, "");
+        entity.handle_sip_message(
+            &mut queue,
+            SipMessage::parse(trying.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        let cancel = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+        assert_eq!(cancel.method(), Some("CANCEL"));
+        assert_eq!(cancel.header("Via"), invite.header("Via"));
+        assert!(entity.dialogs.is_empty());
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn provisional_response_after_late_answer_does_not_send_a_new_cancel() {
+        let (mut entity, peer, uuid, invite) = outbound_peer();
+        let mut queue = MessageQueue::new();
+        radio_release(&mut entity, &mut queue, uuid);
+        let answer = invite_response(&invite, 200, &format!("Contact: <sip:asterisk@{}>\r\n", peer.local_addr().unwrap()));
+        entity.handle_sip_message(
+            &mut queue,
+            SipMessage::parse(answer.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        assert_eq!(SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap().method(), Some("ACK"));
+        assert_eq!(SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap().method(), Some("BYE"));
+        let trying = invite_response(&invite, 100, "");
+        entity.handle_sip_message(
+            &mut queue,
+            SipMessage::parse(trying.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        peer.set_nonblocking(true).unwrap();
+        assert_eq!(
+            peer.recv_from(&mut [0; SIP_MAX_DATAGRAM]).unwrap_err().kind(),
+            io::ErrorKind::WouldBlock
+        );
+        assert_eq!(entity.pending_terminations.len(), 1);
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn repeated_bye_authentication_failure_does_not_loop_or_report_radio_congestion() {
+        let (mut entity, peer, uuid, _, _) = established_peer();
+        let mut queue = MessageQueue::new();
+        radio_release(&mut entity, &mut queue, uuid);
+        let mut bye = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+        for attempt in 0..2 {
+            let challenge = invite_response(&bye, 401, "WWW-Authenticate: Digest realm=\"asterisk\", nonce=\"denied\"\r\n");
+            entity.handle_sip_message(
+                &mut queue,
+                SipMessage::parse(challenge.as_bytes()).unwrap(),
+                peer.local_addr().unwrap(),
+            );
+            if attempt == 0 {
+                bye = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+            }
+        }
+        assert!(entity.pending_terminations.is_empty());
+        assert!(entity.last_error.as_deref().unwrap().contains("SIP/2.0 401"));
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn inbound_radio_hangup_uses_original_dialog_identities_and_peer_contact() {
+        let peer = UdpSocket::bind("127.0.0.1:0").unwrap();
+        peer.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+        let mut entity = entity();
+        entity.remote = peer.local_addr().unwrap();
+        let target = format!("sip:asterisk@{}", peer.local_addr().unwrap());
+        let body = "v=0\r\nc=IN IP4 127.0.0.1\r\nm=audio 30000 RTP/AVP 0\r\n";
+        let request = format!(
+            "INVITE sip:5102@127.0.0.1 SIP/2.0\r\nVia: SIP/2.0/UDP {}\r\nFrom: <sip:101@pbx.test>;tag=caller\r\nTo: <sip:5102@127.0.0.1>\r\nContact: <{target}>\r\nCall-ID: inbound-release-test\r\nCSeq: 17 INVITE\r\nContent-Length: {}\r\n\r\n{body}",
+            peer.local_addr().unwrap(),
+            body.len()
+        );
+        let mut queue = MessageQueue::new();
+        entity.start_inbound_call(
+            &mut queue,
+            &SipMessage::parse(request.as_bytes()).unwrap(),
+            peer.local_addr().unwrap(),
+        );
+        receive_sip(&peer);
+        let SapMsgInner::CmceCallControl(CallControl::NetworkCircuitSetupRequest { brew_uuid: uuid, call }) =
+            queue.pop_front().unwrap().msg
+        else {
+            panic!("missing inbound setup")
+        };
+        entity.handle_inbound_connect_request(&mut queue, uuid, call);
+        let answer = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+        while queue.pop_front().is_some() {}
+        radio_release(&mut entity, &mut queue, uuid);
+        let bye = SipMessage::parse(receive_sip(&peer).as_bytes()).unwrap();
+        assert_eq!(bye.method(), Some("BYE"));
+        assert_eq!(bye.request_uri(), Some(target.as_str()));
+        assert_eq!(bye.header("From"), answer.header("To"));
+        assert_eq!(bye.header("To"), Some("<sip:101@pbx.test>;tag=caller"));
+        assert!(entity.dialogs.is_empty());
+        assert!(queue.is_empty());
     }
 
     #[test]
