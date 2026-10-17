@@ -6,6 +6,7 @@ on:
     paths:
       - crates/tetra-entities/src/net_dashboard/**
       - crates/tetra-entities/src/net_sda/**
+      - crates/tetra-entities/src/net_asterisk/**
       - crates/tetra-entities/src/cmce/**
       - crates/tetra-entities/src/lib.rs
       - crates/tetra-entities/tests/common/**
@@ -71,6 +72,7 @@ jobs:
           cargo check --locked -p bluestation-bs
           cargo test --locked -p tetra-entities --features recording,asterisk --lib net_dashboard::
           cargo test --locked -p tetra-entities --features recording,asterisk --lib net_sda::
+          cargo test --locked -p tetra-entities --features recording,asterisk --lib net_asterisk::entity::tests
           cargo test --locked -p tetra-entities --features recording,asterisk --test test_sda_service
           cargo test --locked -p tetra-entities --features recording,asterisk --test test_sds_bs
 

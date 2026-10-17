@@ -1,0 +1,121 @@
+{
+  "date": "2026-10-17",
+  "scope": "Z05 / NC1-SDA-01 and SIP client transaction correction",
+  "baseline": "6d3b481",
+  "sda": {
+    "file": "13_NetCore_SDA_Rueckmeldung_V1_9.rmt",
+    "sha256": "a77adc1fca0664e897695ecad45c677477237eb1d6a3b8e55169dd6363acb200",
+    "parameters_read_back": 20717,
+    "parameter_changes": 39,
+    "active_incoming_forms": [
+      4,
+      9
+    ],
+    "reply_field": 69,
+    "max_reply_characters": 140,
+    "archive_and_ascii_contract": "passed",
+    "unmodified_firmware_field_layout_and_feature_gate_blocks": "passed with mocked parameter access, allocation and prepared string buffers",
+    "forms_loaded": 9,
+    "assertions": [],
+    "native_full_receiver_and_physical_radio": "not tested"
+  },
+  "sip": {
+    "actual_source": "crates/tetra-entities/src/net_asterisk/entity.rs",
+    "component_tests_passed": 14,
+    "local_udp": "actual sockets and datagrams",
+    "media_backend": "simulated; no real codec/audio/SDR",
+    "dependent_config_core_pdus_saps": "actual repository crates",
+    "previous_client_regression": "new authentication wire test fails on previous production source as expected",
+    "full_local_runtime_test": "blocked before entity compilation by missing SoapySDR/PothosSDR SDK",
+    "linux_ci": {
+      "source_commit": "0ac7ef0df0899656eddd6d8e19736e3b1a67d443",
+      "run": "https://github.com/JanHG98/netcore-tetra/actions/runs/39044149774",
+      "status": "passed with complete native dependencies",
+      "base_station_build_check": "passed",
+      "dashboard_tests": 78,
+      "sda_tests": 12,
+      "sip_tests": 6,
+      "sda_rf_tests": 6,
+      "sds_tests": 17,
+      "browser_checks": 150
+    },
+    "live_pbx_switch_radio": "not tested; hosts not reachable from session",
+    "inbound_chanunavail_root_cause": "missing AstDB routing gate confirmed; complete live call cause/acceptance pending",
+    "radio_hangup_leaves_fixed_line_call_active": "protocol defects corrected; complete live trace and call acceptance pending"
+  },
+  "routing_gate": {
+    "host_output_date": "2026-10-17",
+    "switch_pbx_and_tbs_contacts": "Avail",
+    "tbs_central_native_and_fallback_contacts": "Avail",
+    "tbs_registration": "exactly one central registration, Registered",
+    "tbs_astdb_mode": "Database entry not found.",
+    "periodic_reconciliation": "implemented; writes only missing or mismatched values and preserves the active registration",
+    "local_regression_tests_passed": 5,
+    "before_fix_counterexample": "healthy-central missing-key regression fails against previous production controller",
+    "linux_and_actual_asterisk_astdb": {
+      "source_commit": "bbe080508a24a70df6180edadeca7c6dc3cf1364",
+      "run": "https://github.com/JanHG98/netcore-tetra/actions/runs/39044850193",
+      "status": "passed",
+      "platforms": [
+        "ubuntu-24.04",
+        "ubuntu-26.04"
+      ],
+      "tests_per_platform": 70,
+      "actual_asterisk_version": "22.11.0",
+      "actual_astdb_key_recovery": "passed; central health simulated",
+      "sip_and_deploy_browser": "passed"
+    },
+    "reason_for_original_key_loss": "confirmed missing /var/lib/netcore-tbs-sip-fallback causes systemd 226/NAMESPACE before controller startup",
+    "live_service_recovery": "user confirmed active/running and Value: central at 2026-10-17 17:34:47 CEST"
+  },
+  "sip_teardown": {
+    "radio_and_media_routes": "released immediately; only bounded signaling metadata retained",
+    "dialog_target": "peer Contact with original dialog To/From URIs and tags",
+    "late_answer_after_radio_cancel": "ACK then BYE without reconnecting or releasing the radio again",
+    "bye_authentication": "one 401/407 retry with new CSeq/branch",
+    "udp_retransmission": "500 ms initial interval, exponential backoff up to 4 s, 32 s per transaction",
+    "pending_requests_limit": 64,
+    "cancelled_invite_metadata_limit": 64,
+    "cancel": "wait for provisional response; original INVITE headers; ACK final 487",
+    "local_sip_tests_passed": 14,
+    "previous_client_counterexamples": "Contact target and late-answer wire tests fail as expected on bbe08050",
+    "linux_ci": {
+      "source_commit": "4c62b9c3752c29cdc4caf041a3b626d422392b4d",
+      "run": "https://github.com/JanHG98/netcore-tetra/actions/runs/39045467407",
+      "status": "passed with full native dependencies",
+      "sip_tests": 14,
+      "dashboard_tests": 78,
+      "sda_tests": 12,
+      "sda_rf_tests": 6,
+      "sds_tests": 17,
+      "browser_checks": 150
+    },
+    "actual_live_call_and_audio": "not accepted; host trace pending"
+  },
+  "service_namespace": {
+    "failure": "226/NAMESPACE; missing state directory in ReadWritePaths",
+    "live_recovery": "directory created and service restarted; user output confirms running and central",
+    "permanent_fix": "StateDirectory=netcore-tbs-sip-fallback with mode 0750; update explicitly creates the directory",
+    "actual_systemd_regression": {
+      "source_commit": "06beddcf4b7e5574fc7bcc9eee5b7bdd173b2546",
+      "run": "https://github.com/JanHG98/netcore-tetra/actions/runs/39045989430",
+      "platforms": [
+        "ubuntu-24.04",
+        "ubuntu-26.04"
+      ],
+      "status": "passed",
+      "before_fix": "actual sandbox fails with NAMESPACE/226 when state directory is absent",
+      "after_fix": "systemd creates state directory with mode 0750 before namespace setup; command executes successfully"
+    }
+  },
+  "checks": {
+    "rustfmt": "passed",
+    "git_diff_check": "passed"
+  },
+  "next": [
+    "Review draft PR 108 and carry the verified change into the existing TBS update path",
+    "Import file 13 and verify an actual INFO reply on ISSI 5102",
+    "Collect CMCE/SIP teardown messages from a new call with the updated binary",
+    "Verify outgoing and incoming calls over the intended central path and exclusive fallback"
+  ]
+}

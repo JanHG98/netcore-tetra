@@ -6,6 +6,9 @@ on:
       - system-backend/sip-switch/**
       - system-backend/deployment-core/image/sip_setup.py
       - tools/test_sip_station_*
+      - tools/test_sip_failover_reconciliation.py
+      - tools/test_tbs_sip_failover_unit.py
+      - tools/check_sip_switch_phase11c.py
       - .github/workflows/sip-station-management.yml
   workflow_dispatch:
 permissions:
@@ -25,10 +28,13 @@ jobs:
           python3 tools/test_sip_station_management.py
           python3 tools/test_image_sip_setup.py
           python3 tools/test_sip_network_runtime.py
+          python3 tools/test_sip_failover_reconciliation.py
           python3 tools/test_sip_config_permissions.py
           python3 tools/test_sip_number_routing.py
           python3 tools/check_sip_switch_phase11c.py
           python3 tools/embed_auxiliary_service_design.py --check
+      - name: Verify failover namespace startup with a missing state directory
+        run: sudo env GITHUB_ACTIONS=true python3 tools/test_tbs_sip_failover_unit.py
   browser:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

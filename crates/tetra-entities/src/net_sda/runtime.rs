@@ -23,6 +23,8 @@ pub fn start_worker(config: SharedConfig, replies: Sender<ControlCommand>, path:
                 reference = reference.wrapping_add(1).max(1);
                 if let Err(e) = replies.try_send(command) {
                     tracing::warn!("SDA: cannot enqueue reply to ISSI {}: {e}", request.source_issi);
+                } else {
+                    tracing::info!("SDA: reply queued for ISSI {}: {:?}", request.source_issi, reply);
                 }
             }
         }
