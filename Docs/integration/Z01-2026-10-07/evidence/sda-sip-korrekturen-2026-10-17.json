@@ -62,7 +62,8 @@
       "actual_astdb_key_recovery": "passed; central health simulated",
       "sip_and_deploy_browser": "passed"
     },
-    "reason_for_original_key_loss": "controller service state and logs pending"
+    "reason_for_original_key_loss": "confirmed missing /var/lib/netcore-tbs-sip-fallback causes systemd 226/NAMESPACE before controller startup",
+    "live_service_recovery": "user confirmed active/running and Value: central at 2026-10-17 17:34:47 CEST"
   },
   "sip_teardown": {
     "radio_and_media_routes": "released immediately; only bounded signaling metadata retained",
@@ -75,17 +76,33 @@
     "cancel": "wait for provisional response; original INVITE headers; ACK final 487",
     "local_sip_tests_passed": 14,
     "previous_client_counterexamples": "Contact target and late-answer wire tests fail as expected on bbe08050",
-    "linux_ci": "not started for the new teardown source",
+    "linux_ci": {
+      "source_commit": "4c62b9c3752c29cdc4caf041a3b626d422392b4d",
+      "run": "https://github.com/JanHG98/netcore-tetra/actions/runs/39045467407",
+      "status": "passed with full native dependencies",
+      "sip_tests": 14,
+      "dashboard_tests": 78,
+      "sda_tests": 12,
+      "sda_rf_tests": 6,
+      "sds_tests": 17,
+      "browser_checks": 150
+    },
     "actual_live_call_and_audio": "not accepted; host trace pending"
+  },
+  "service_namespace": {
+    "failure": "226/NAMESPACE; missing state directory in ReadWritePaths",
+    "live_recovery": "directory created and service restarted; user output confirms running and central",
+    "permanent_fix": "StateDirectory=netcore-tbs-sip-fallback with mode 0750; update explicitly creates the directory",
+    "actual_systemd_regression": "prepared; Linux execution pending"
   },
   "checks": {
     "rustfmt": "passed",
     "git_diff_check": "passed"
   },
   "next": [
-    "Publish and run Linux checks for the added SIP teardown handling",
+    "Run the actual systemd namespace regression for the new managed state directory",
     "Import file 13 and verify an actual INFO reply on ISSI 5102",
-    "Collect TBS failover service status and CMCE/SIP teardown messages",
+    "Collect CMCE/SIP teardown messages from a new call with the updated binary",
     "Verify outgoing and incoming calls over the intended central path and exclusive fallback"
   ]
 }

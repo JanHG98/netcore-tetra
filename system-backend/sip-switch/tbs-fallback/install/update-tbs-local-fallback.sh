@@ -17,6 +17,7 @@ EOF
   exit 2
 fi
 
+install -d -m 0750 /var/lib/netcore-tbs-sip-fallback
 install -m 0755 "${FALLBACK_DIR}/src/netcore_tbs_sip_fallback.py" /usr/local/bin/netcore-tbs-sip-fallback
 install -m 0755 "${FALLBACK_DIR}/install/migrate-phase11c-config.py" /usr/local/lib/netcore-tbs-sip-migrate-phase11c.py
 install -m 0644 "${FALLBACK_DIR}/systemd/netcore-tbs-sip-failover.service" /etc/systemd/system/netcore-tbs-sip-failover.service

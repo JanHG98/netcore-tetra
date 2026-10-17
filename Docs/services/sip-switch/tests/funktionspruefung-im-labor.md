@@ -20,8 +20,9 @@ Jans beobachteter Ruf an ISSI 5102 wird vom zentralen Resolver der TBS
 SRV-M-TBS-01 zugeordnet und endet anschließend mit `CHANUNAVAIL`.
 `CongestionInInfrastructure` im TBS-CMCE-Protokoll ist die bereits übersetzte
 TETRA-Ursache; sie benennt nicht den fehlschlagenden SIP-Hop. Die aktuellen
-Hosts sind aus der Entwicklungssitzung nicht erreichbar. Eine Anlagenreparatur
-oder erfolgreiche Rufabnahme ist damit nicht belegt.
+Hosts sind aus der Entwicklungssitzung nicht erreichbar. Jans nachgereichte
+Hostausgaben belegen die Reparatur des Dienststarts. Vollständige Rufe und
+Sprache müssen separat abgenommen werden.
 
 Im nativen SIP-Client wird ein unabhängig davon nachgewiesener Fehler behoben:
 ACK auf 401/407 und andere 3xx–6xx-Antworten muss zur ursprünglichen INVITE-
@@ -108,9 +109,39 @@ an einer isolierten echten Asterisk-AstDB mit nachgebildeter Zentralgesundheit.
 Der [Linux-Lauf an bbe08050](https://github.com/JanHG98/netcore-tetra/actions/runs/39044850193)
 ist bestanden: Ubuntu 24.04 und 26.04 mit jeweils 70 Tests, SIP-/Deploy-WebUI
 und die Reparatur des gelöschten Schlüssels an Asterisk 22.11.0.
-Ob der Live-Schlüssel durch einen
-inaktiven Controller, einen Neustart oder einen anderen Eingriff fehlte,
-ist ohne dessen Dienstprotokoll offen.
+Jans folgendes Dienstprotokoll klärt auch das ursprüngliche Fehlen des Schlüssels.
+
+### Startfehler 226/NAMESPACE durch fehlendes Zustandsverzeichnis
+
+Das TBS-Journal nennt ausdrücklich
+`/run/systemd/unit-root/var/lib/netcore-tbs-sip-fallback: No such file or directory`.
+Der Zielordner `/var/lib/netcore-tbs-sip-fallback` fehlt auf dem Host.
+Der Controller startet deshalb vor dem Python-Programm mit `226/NAMESPACE`
+neu; sein `ReadWritePaths` benötigt den Ordner bereits beim Einrichten der
+systemd-Mountumgebung. Die Unit hatte sich bisher auf die vorherige Anlage
+des Ordners durch andere Installationsschritte verlassen.
+
+Die Unit verwaltet den Ordner nun mit `StateDirectory` und Modus 0750, sodass
+er vor dem Einrichten des Namensraums existiert. Der Updateweg legt ihn
+zusätzlich ausdrücklich an. Die Sandbox-Einstellungen bleiben bestehen.
+Für eine bestehende betroffene TBS:
+
+```bash
+sudo install -d -m 0750 /var/lib/netcore-tbs-sip-fallback
+sudo systemctl reset-failed netcore-tbs-sip-failover
+sudo systemctl restart netcore-tbs-sip-failover
+sleep 2
+sudo systemctl status netcore-tbs-sip-failover --no-pager -l
+sudo asterisk -rx 'database get netcore failover_mode'
+```
+
+Jan bestätigt am 17.10.2026 um 17:34:47 CEST den tatsächlichen Dienststart;
+die nachgereichte Ausgabe zeigt `active (running)` und `Value: central`.
+Damit ist der Startfehler live behoben. Ein zusätzlicher Linux-Test startet
+eine isolierte Kopie der tatsächlichen Unit mit unveränderter Sandbox und
+einem Testkommando: Ohne StateDirectory muss sie mit 226 scheitern, danach
+den Ordner anlegen und erfolgreich starten. Dieser neue Unit-Test ist noch
+ausstehend; ein vollständiger Telefonieruf folgt daraus nicht.
 
 ### Nach Funk-Auflegen stehen bleibende Telefonrufe
 
@@ -139,7 +170,9 @@ verwenden Contact sowie die ursprünglichen To-/From-URIs und Tags.
 Alle 14 lokalen SIP-Tests bestehen am tatsächlichen Client mit echten
 UDP-Datagrammen und nachgebildetem Medienbackend. Die beiden neuen
 Drahtformat-/Rennfallregressionen scheitern am vorherigen Client wie erwartet.
-Der vollständige Linux-Lauf für diese Rufabbauergänzung steht noch aus.
+Der [vollständige Linux-Lauf an 4c62b9c3](https://github.com/JanHG98/netcore-tetra/actions/runs/39045467407)
+ist ebenfalls bestanden: TBS-Buildcheck, 14 SIP-, 78 Dashboard-, 12 SDA-,
+sechs SDA-RF- und 17 SDS-Tests sowie 150 Browserprüfungen.
 Eine erfolgreiche Live-Abnahme ist weiterhin nicht belegt: Dafür den
 CMCE-Freigabe-/BYE/CANCEL-Ablauf und das Ende des Festnetzkanals nach einem
 neuen Ruf mit dem aktualisierten Binary prüfen. Während des Klingelns,
